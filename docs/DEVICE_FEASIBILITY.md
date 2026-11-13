@@ -91,7 +91,7 @@ fixtures only; real provider formats remain uncalibrated.
 | Do removal records, promotions and old history stay out of review queues? | `CaptureProcessingTest`, `TaskLogicTest` | PASS (host) | REMOVED events labelled `REMOVAL_RECORD` without finance/task collection; promotion/system labels skip task extraction; deadlines over seven days old are not review items | Observe queue volume with real notification/SMS/mail backfill |
 | Does a repeated provider reference avoid a second review item? | `FinanceTest` | PASS (host) | Second source stored as `DUPLICATE`, linked as ledger evidence on approval; one entry posted. Candidates without a parsed reference still need manual review | Calibrate reference parsing on a real corpus |
 | Are relative day words parsed as whole words? | `TaskLogicTest`, `AssistantCommandsTest` | PASS (host) | "call Leonard on monday" → Monday; keshokutwa/kesho kutwa/day after tomorrow → +2 days | — |
-| Full host suite and lint? | `./gradlew :app:testDebugUnitTest :app:lintDebug` | PASS (host) | 152 tests: 148 passed, 4 opt-in live AI tests skipped; lint 0 errors, 33 warnings | — |
+| Full host suite and lint? | `./gradlew :app:testDebugUnitTest :app:lintDebug` | PASS (host) | Branch: 152 tests, 148 passed, 4 opt-in live AI tests skipped. Merged main with advanced audio: 155 tests, 151 passed, 4 skipped; lint 0 errors, 46 warnings | — |
 
 ## WhatsApp linked capture checkpoint — 2026-11-13
 
