@@ -1,0 +1,7 @@
+<voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sessionService="com.hellfire.ass.assistant.HellFireSessionService"
+    android:recognitionService="com.hellfire.ass.assistant.HellFireRecognitionService"
+    android:settingsActivity="com.hellfire.ass.MainActivity"
+    android:supportsAssist="true"
+    android:supportsLaunchVoiceAssistFromKeyguard="false"
+    android:supportsLocalInteraction="true" />
