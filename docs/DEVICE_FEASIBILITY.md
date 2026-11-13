@@ -14,12 +14,12 @@ No device-dependent phase is fully accepted solely because its host checks pass.
 | 0 — feasibility | Android skeleton, real assistant/session metadata, capture, visible recording controls, access/status UI | PARTIAL | OEM role/gesture/microphone/access behavior NOT TESTED |
 | 1 — capture | Transactional immutable sources, processing jobs, audits/policy, read-only paged SMS reconciliation | PASS (host) / PARTIAL (device) | Real delivery, SMS grants, screen-off/process/boot behavior NOT TESTED |
 | 2 — AI/finance | Integer ledger, separate fees/transfers/reversals/evidence, review edits, provider-scoped merchant aliases, cash/date review, strict candidate schemas, LiteRT-LM adapter and bundled OCR | PARTIAL | Gemma 4 E2B/fallback benchmark BLOCKED without owner-selected compatible model/device; representative provider corpus unavailable; 95% accuracy NOT ESTABLISHED |
-| 3 — communications | IMAPS/SMTP, UIDVALIDITY/MIME handling, bounded visible IDLE, drafts/one-use approval/recovery, encrypted signed-webhook relay and delivery/echo adapters | PARTIAL | Live Gmail app-password access and Meta eligibility/Coexistence onboarding NOT TESTED; no real sends or deployment |
+| 3 — communications | IMAPS/SMTP, UIDVALIDITY/MIME handling, bounded visible IDLE, drafts/one-use approval/recovery, encrypted relay, owner-selected whatsapp-web.js capture and optional Meta adapters | PARTIAL | Live Web pairing/restart/message coverage and Gmail access NOT TESTED; optional Meta eligibility/Coexistence remains unverified; no real sends or deployment |
 | 4 — tasks/alarms | Evidence-linked candidates, owner activation, escalation, Done/Snooze/Reschedule, durable restoration, nightly review and morning/evening query briefs | PARTIAL | Physical alarm/Doze/DND/permission/reboot tests NOT TESTED; overdue repeat interval owner-configurable (5–1440 minutes, default 10) |
 | 5 — media | Encrypted originals, SAF import/folder scanning, VAD intervals during visible owner recording, compiled whisper JNI adapter, chunked processing, OCR/PDF/video sampling, playback/export/delete/manual speakers/summary review | PARTIAL | Actual decoder/STT/OCR/model accuracy and OEM file visibility NOT TESTED. Opus encoding, reliable learned VAD/diarization/owner-voice matching and model-based vision/embedding index remain research gates; no simulated outputs |
 | 6 — assistant/stability/backup | Source queries/links, deterministic finance/briefs, typed review-only proposals, confirm-first English/Kiswahili voice/chat commands (reminders, memory notes, task done/snooze/reschedule, cash review items, email/WhatsApp drafts), memory provenance/correction/forget, encrypted portable backup/staging/recovery, startup storage and send recovery | PARTIAL | Full native/device backup round trip, SQLCipher conversion/Keystore, battery/peak RAM/thermal and usability tests NOT TESTED. Literal retrieval is bounded; autonomous/semantic capability is not claimed |
 
-## Host verification
+## Previous Android host checkpoint
 
 From `android/`:
 
@@ -78,6 +78,33 @@ Historical host checkpoints: Phase 0 — 34 tests; Phase 1 — 58; combined init
 finance/comms slice — 66; media slice — 80; initial assistant/backup slice — 87.
 Current artifact/results above supersede prior debug builds, not their untested
 physical outcomes.
+
+## WhatsApp linked capture checkpoint — 2026-11-13
+
+The owner explicitly selected `whatsapp-web.js` and authorized this capture-only
+slice, superseding the former Coexistence-only selection. Meta mode is preserved
+as an alternative. No live account, phone or personal message was used.
+
+| Question | Test | Result | Evidence | Next action |
+|---|---|---|---|---|
+| Worker normalization, encrypted queue and lifecycle? | `cd server/whatsapp-web && npm test` | PASS (host) | 6 tests: incoming/outgoing/group author and media metadata, AES-GCM identity binding, restart/deduplication, quota/expiry, lifecycle/late QR and text bounds | Verify real provider events after owner linking |
+| Relay and existing Meta regression? | `cd server && .venv/bin/python -m pytest -q` | PASS (host) | 21 passed; includes actual Node-generated ciphertext imported by Python, phone-envelope decryption, replay/ACK, failed commit/tampering preservation, auth, QR expiry, web send rejection and bounded batches fitting Android's 2 MiB limit. Existing Starlette/httpx deprecation warning remains | Exercise real HTTPS and paired Android persistence |
+| Dependency advisories? | `npm audit --omit=dev --omit=optional` | PASS (host) | Zero known vulnerabilities at this checkpoint after Puppeteer 25.17.0 override and omitting unused RemoteAuth dependencies; no global packages changed | Recheck on later updates; live browser/library compatibility remains unverified |
+| Library/browser adapter imports? | Construct real `Client` and `LocalAuth`, import Puppeteer launch function without initialization | PASS (host) | whatsapp-web.js 1.34.8 and Puppeteer 25.17.0 import/construct under Node 22.23.3. No browser or WhatsApp connection exercised | Verify full pairing and own-message sync |
+| Compose wiring? | `docker compose -f compose.yaml -f compose.web.yaml config --no-env-resolution --no-interpolate` | PASS (host) | Relay remains loopback-only; worker has no port; private profile volume separated from encrypted shared spool | Provision private env/public key and HTTPS before deployment |
+| Android capture adapter and setup controls? | Full host unit suite, lint and debug APK; final UI assembly/lint | PASS (host) | 141 tests: 137 passed, 4 opt-in live tests skipped. Four new GatewayEvents tests cover group author/thread, outgoing direction, transport mismatch and OTP/envelope redaction. Lint: 0 errors, 45 warnings; no suppression added | Verify phone capture and background behavior |
+| Relay and worker images? | Build both Dockerfiles; offline, network-disabled import/ASGI smoke | PASS (host) | Relay image `4903d7c497e2`; worker image `70cccf1ffad9`. Both run as UID 10001; final worker verifies Puppeteer 25.17.0 and constructs Client/LocalAuth. Pairing shell serves without exposing QR; unconfigured private endpoint rejects access | Browser startup, sandbox and account pairing remain NOT TESTED |
+| Live pairing and browser sandbox? | Start provisioned worker, scan QR, check linked-device list | NOT TESTED | No owner account linked. The official Puppeteer image needs SYS_ADMIN for its enabled Chromium sandbox; no `--no-sandbox` bypass added | Verify on selected trusted Linux Docker host |
+| Complete incoming/own/group/media coverage? | Controlled messages from phone and another account, disconnect/restart/replay | NOT TESTED | Software normalization and provenance pass host tests only. Attachments are metadata; history/edits/deletions/reactions and Web sending are outside this slice | Record actual gaps; never infer missing content |
+| Android grants/background sync? | Connect mode web, Sync, screen-off and periodic maintenance | NOT TESTED | Existing manual/best-effort maintenance reused; no push guarantee | Verify phone envelope decryption, Room persistence, redaction and subsequent ACK |
+
+Worker spool retention: seven days / 10,000 events, 128 KiB per event and 16,000
+body characters with explicit truncation. Queue/storage failures can lose new
+events; status reports errors. The relay retains its seven-day inbox / 30-day
+replay fingerprints. Session profile/QR status are sensitive, separately persisted
+and excluded from Git/build context; browser history/credentials are not encrypted
+by the event spool. Disconnecting the Android relay does not revoke the server's
+linked session. See README for deployment, pairing and revocation steps.
 
 ## Preserved AI provider checkpoint — 2026-11-13
 

@@ -32,6 +32,7 @@ fun CommunicationsScreen(app: HellFireApp) {
     var port by remember { mutableStateOf("465") }
     var gateway by remember { mutableStateOf("") }
     var token by remember { mutableStateOf("") }
+    var gatewayTransport by remember { mutableStateOf("web") }
     var channel by remember { mutableStateOf("EMAIL_IMAP") }
     var recipient by remember { mutableStateOf("") }
     var replyParent by remember { mutableStateOf<String?>(null) }
@@ -39,6 +40,15 @@ fun CommunicationsScreen(app: HellFireApp) {
     var body by remember { mutableStateOf("") }
     var sending by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf<OutboundDraft?>(null) }
+    LaunchedEffect(Unit) {
+        try {
+            withContext(Dispatchers.IO) { app.secrets.read("gateway") }?.let {
+                gateway = it.getString("url")
+                gatewayTransport = it.optString("transport", "meta")
+            }
+        } catch (error: CancellationException) { throw error }
+        catch (_: Exception) { status = "Saved gateway settings unavailable. Configure the connection again." }
+    }
     val publicExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/x-pem-file")) { uri ->
         if (uri != null) scope.launch {
             status = try { withContext(Dispatchers.IO) { app.contentResolver.openOutputStream(uri)!!.use { it.write(GatewayAdapter(app).publicKey().toByteArray()) } }; "Device public key exported. Provision it on your self-hosted gateway." }
@@ -46,8 +56,8 @@ fun CommunicationsScreen(app: HellFireApp) {
         }
     }
     Text("Communications", style = MaterialTheme.typography.titleLarge)
-    Text("Incoming email uses IMAP; sending uses SMTP. Gmail needs an eligible app password. WhatsApp Business uses the configured official Coexistence gateway; notification capture is not its replacement.")
-    states.forEach { Text("${it.adapter}: ${it.state}${it.error?.let { error -> " · $error" }.orEmpty()}") }
+    Text("Incoming email uses IMAP; sending uses SMTP. Gmail needs an eligible app password. WhatsApp can use a linked Web session for capture, or the official Business Coexistence gateway.")
+    states.filterNot { it.adapter == "WHATSAPP_BUSINESS" }.forEach { Text("${it.adapter}: ${it.state}${it.error?.let { error -> " · $error" }.orEmpty()}") }
     Text(status)
     OutlinedTextField(email, { email = it }, label = { Text("Email address") }, modifier = Modifier.fillMaxWidth())
     OutlinedTextField(password, { password = it }, label = { Text("Gmail app password / IMAP password") }, visualTransformation = PasswordVisualTransformation(), keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Password, autoCorrectEnabled = false), modifier = Modifier.fillMaxWidth())
@@ -74,9 +84,13 @@ fun CommunicationsScreen(app: HellFireApp) {
     }) { Text("Start visible IMAP IDLE · ten minutes") }
     TextButton(onClick = { app.stopService(android.content.Intent(app, com.hellfire.ass.communications.MailIdleService::class.java)) }) { Text("Stop IMAP IDLE") }
     HorizontalDivider()
+    Choice("WhatsApp connection", listOf("WhatsApp Web", "Business API"), if (gatewayTransport == "web") "WhatsApp Web" else "Business API") {
+        gatewayTransport = if (it == "WhatsApp Web") "web" else "meta"
+    }
     OutlinedTextField(gateway, { gateway = it }, label = { Text("Self-hosted gateway HTTPS URL") }, modifier = Modifier.fillMaxWidth())
     OutlinedTextField(token, { token = it }, label = { Text("Paired device token") }, visualTransformation = PasswordVisualTransformation(), keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Password, autoCorrectEnabled = false), modifier = Modifier.fillMaxWidth())
-    Text("Account eligibility, Meta onboarding, webhook subscription and Graph credentials must be configured on the gateway. Never paste the Meta app secret into this app.")
+    Text(if (gatewayTransport == "web") "WhatsApp Web uses an unofficial linked session. Your server can read captured messages. Sending is disabled; attachments are metadata only. Pair on a separate screen at your gateway's /pair page using the paired device token, then scan with WhatsApp → Linked devices."
+        else "Business mode requires eligible Meta Coexistence onboarding and gateway credentials. Never paste the Meta app secret into this app.")
     OutlinedButton(onClick = { publicExport.launch("hellfire-device-public.pem") }) { Text("Export device public key") }
     Button(enabled = gateway.isNotBlank() && token.length >= 32, onClick = {
         scope.launch {
@@ -85,15 +99,16 @@ fun CommunicationsScreen(app: HellFireApp) {
                     val uri = java.net.URI(gateway)
                     require(uri.scheme == "https" && !uri.host.isNullOrBlank() && uri.userInfo == null && uri.query == null && uri.fragment == null)
                     val existing = app.secrets.read("gateway")
-                    val id = if (existing?.optString("url") == gateway.trimEnd('/')) existing.getString("id") else com.hellfire.ass.events.NotificationNormalizer.sha256("gateway:${gateway.trimEnd('/')}")
+                    val id = if (existing?.optString("url") == gateway.trimEnd('/') && existing.optString("transport", "meta") == gatewayTransport) existing.getString("id")
+                        else com.hellfire.ass.events.NotificationNormalizer.sha256("gateway:$gatewayTransport:${gateway.trimEnd('/')}")
                     GatewayAdapter(app).publicKey()
-                    app.secrets.save("gateway", JSONObject().put("id", id).put("url", gateway.trimEnd('/')).put("token", token))
+                    app.secrets.save("gateway", JSONObject().put("id", id).put("url", gateway.trimEnd('/')).put("token", token).put("transport", gatewayTransport))
                 }
                 token = ""; CommunicationWork.schedule(app); "Gateway configuration encrypted; connection verification scheduled."
             } catch (_: Exception) { "Gateway configuration failed. Use HTTPS and the paired device token." }
         }
     }) { Text("Save and connect gateway") }
-    TextButton(onClick = { scope.launch { withContext(Dispatchers.IO) { app.secrets.remove("gateway") }; status = "Gateway disconnected; existing evidence retained." } }) { Text("Disconnect gateway") }
+    TextButton(onClick = { scope.launch { withContext(Dispatchers.IO) { app.secrets.remove("gateway") }; status = "Phone gateway disconnected; existing evidence retained. To stop Web capture, log out the server in WhatsApp's Linked devices and stop its worker." } }) { Text("Disconnect gateway") }
     OutlinedButton(onClick = { scope.launch { CommunicationWork.schedule(app); status = "Communication sync scheduled." } }) { Text("Sync connected sources") }
     HorizontalDivider()
     Text("Inbox", style = MaterialTheme.typography.titleMedium)
@@ -102,7 +117,7 @@ fun CommunicationsScreen(app: HellFireApp) {
         Text(message.subject)
         Text(message.body.take(2000).ifBlank { "No accessible text. Unsupported media/MIME content remains in source metadata when available." })
         Text("Source: ${message.sourceId}")
-        if (message.direction == "INCOMING") TextButton(onClick = {
+        if (message.direction == "INCOMING" && message.channel != "WHATSAPP_WEB") TextButton(onClick = {
             channel = message.channel
             recipient = if (message.channel == "EMAIL_IMAP") runCatching { javax.mail.internet.InternetAddress.parse(message.sender).first().address }.getOrDefault("") else message.sender
             subject = "Re: ${message.subject}"; body = ""
@@ -126,10 +141,11 @@ fun CommunicationsScreen(app: HellFireApp) {
             status = try {
                 withContext(Dispatchers.IO) {
                     val config = requireNotNull(app.secrets.read(if (channel == "EMAIL_IMAP") "mail" else "gateway"))
+                    require(channel == "EMAIL_IMAP" || config.optString("transport", "meta") == "meta") { "WhatsApp Web is capture-only" }
                     dao.draft(OutboundDraft(UUID.randomUUID().toString(), channel, config.getString("id"), recipient.trim(), subject, body, System.currentTimeMillis(), replyToMessageId = replyParent))
                 }
                 "Draft saved locally. Sending still requires confirmation."
-            } catch (_: Exception) { "Configure the chosen channel before saving a draft." }
+            } catch (_: Exception) { "Configure a sending-capable channel first. WhatsApp Web is capture-only." }
         }
     }) { Text("Save local draft") }
     drafts.take(20).forEach { draft ->

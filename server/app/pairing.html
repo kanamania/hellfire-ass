@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Link WhatsApp · HellFire Ass</title>
+<style>
+  body { font: 1rem/1.5 system-ui, sans-serif; margin: 2rem auto; max-width: 36rem; padding: 0 1rem; }
+  input, button { font: inherit; padding: .7rem; max-width: 100%; box-sizing: border-box; }
+  input { display: block; width: 100%; margin: .5rem 0 1rem; }
+  img { max-width: 100%; height: auto; }
+</style>
+<main>
+  <h1>Link WhatsApp to HellFire</h1>
+  <p>On your phone, open WhatsApp → Linked devices → Link a device. Scan the QR on this separate screen.</p>
+  <p>This uses an unofficial linked session. Your server can read captured messages. This version captures text and media metadata; it cannot send messages.</p>
+  <form id="pairing">
+    <label for="token">Paired device token</label>
+    <input id="token" type="password" autocomplete="off" required minlength="32" aria-describedby="token-help">
+    <p id="token-help">Use the token configured on your relay. It stays in this page’s memory until you clear it or close the page.</p>
+    <button type="submit">Show or refresh pairing</button>
+    <button type="button" id="clear">Clear token and QR</button>
+  </form>
+  <p id="status" role="status"></p>
+  <img id="qr" alt="WhatsApp device-linking QR code. Scan using WhatsApp on your phone." hidden>
+  <p>Refresh if the QR expires. To revoke access, log out this session in WhatsApp’s Linked devices settings.</p>
+</main>
+<script>
+  const form = document.getElementById('pairing');
+  const token = document.getElementById('token');
+  const status = document.getElementById('status');
+  const image = document.getElementById('qr');
+  let expiry;
+  let requestVersion = 0;
+  function hideQr() { clearTimeout(expiry); image.hidden = true; image.removeAttribute('src'); }
+  document.getElementById('clear').onclick = () => { requestVersion++; token.value = ''; hideQr(); status.textContent = 'Token and QR cleared.'; token.focus(); };
+  form.onsubmit = async event => {
+    event.preventDefault(); hideQr();
+    const version = ++requestVersion;
+    const button = form.querySelector('button[type=submit]');
+    button.disabled = true; status.textContent = 'Checking linked session…';
+    try {
+      const response = await fetch('device/whatsapp-web/pairing', {
+        headers: { Authorization: 'Bearer ' + token.value }, cache: 'no-store', credentials: 'omit', redirect: 'error',
+      });
+      if (!response.ok) throw new Error();
+      const value = await response.json();
+      if (version !== requestVersion) return;
+      status.textContent = value.state + (value.error ? ' · Capture needs attention; inspect the worker status.' : '') +
+        (value.state === 'PAIRING_REQUIRED' && !value.qr ? ' · Refresh to obtain a current QR.' : '');
+      if (value.qr) {
+        image.src = value.qr; image.hidden = false;
+        expiry = setTimeout(() => { hideQr(); status.textContent = 'QR expired. Refresh pairing.'; }, 45000);
+      }
+    } catch { if (version === requestVersion) status.textContent = 'Unable to load pairing. Check your token, relay and worker.'; }
+    finally { button.disabled = false; }
+  };
+</script>
+</html>

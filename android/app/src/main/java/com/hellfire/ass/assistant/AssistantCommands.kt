@@ -146,6 +146,7 @@ object AssistantCommands {
                     "Set up the ${if (command.channel == "EMAIL_IMAP") "email account" else "WhatsApp gateway"} in Messages first."
                 }
                 if (command.channel == "EMAIL_IMAP") javax.mail.internet.InternetAddress(command.recipient, true).validate()
+                else require(config.optString("transport", "meta") == "meta") { "WhatsApp Web is capture-only. Reply in WhatsApp." }
                 val id = UUID.randomUUID().toString()
                 app.database.withTransaction {
                     app.database.communications().draft(OutboundDraft(id, command.channel, config.getString("id"), command.recipient, command.subject, command.body, now))
