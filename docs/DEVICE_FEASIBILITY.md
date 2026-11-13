@@ -16,7 +16,7 @@ No device-dependent phase is fully accepted solely because its host checks pass.
 | 2 — AI/finance | Integer ledger, separate fees/transfers/reversals/evidence, review edits, provider-scoped merchant aliases, cash/date review, strict candidate schemas, LiteRT-LM adapter and bundled OCR | PARTIAL | Gemma 4 E2B/fallback benchmark BLOCKED without owner-selected compatible model/device; representative provider corpus unavailable; 95% accuracy NOT ESTABLISHED |
 | 3 — communications | IMAPS/SMTP, UIDVALIDITY/MIME handling, bounded visible IDLE, drafts/one-use approval/recovery, encrypted relay, owner-selected whatsapp-web.js capture and optional Meta adapters | PARTIAL | Live Web pairing/restart/message coverage and Gmail access NOT TESTED; optional Meta eligibility/Coexistence remains unverified; no real sends or deployment |
 | 4 — tasks/alarms | Evidence-linked candidates, owner activation, escalation, Done/Snooze/Reschedule, durable restoration, nightly review and morning/evening query briefs | PARTIAL | Physical alarm/Doze/DND/permission/reboot tests NOT TESTED; overdue repeat interval owner-configurable (5–1440 minutes, default 10) |
-| 5 — media | Encrypted originals, SAF import/folder scanning, VAD intervals during visible owner recording, compiled whisper JNI adapter, chunked processing, OCR/PDF/video sampling, bundled ML Kit image labels, playback/export/delete/manual speakers/summary review | PARTIAL | Actual decoder/STT/OCR/label/model accuracy and OEM file visibility NOT TESTED. Opus encoding and reliable learned VAD/diarization/owner-voice matching remain research gates; no simulated outputs |
+| 5 — media | Encrypted originals, SAF import/folder scanning, adaptive-noise-floor VAD intervals and AAC-LC/ADTS compressed encrypted recording during visible owner recording, compiled whisper JNI adapter, chunked processing, OCR/PDF/video sampling, bundled ML Kit image labels, playback/export/delete/manual speakers/summary review | PARTIAL | Actual decoder/STT/OCR/label/model accuracy and OEM file visibility NOT TESTED. On-device AAC encoder output/size/battery NOT TESTED. Learned VAD, diarization and owner-voice matching are not implemented (model-runtime decision pending); no simulated outputs |
 | 6 — assistant/stability/backup | Source queries/links, deterministic finance/briefs, typed review-only proposals, confirm-first English/Kiswahili voice/chat commands (reminders, memory notes, task done/snooze/reschedule, cash review items, email/WhatsApp drafts), memory provenance/correction/forget, encrypted portable backup/staging/recovery, startup storage and send recovery | PARTIAL | Full native/device backup round trip, SQLCipher conversion/Keystore, battery/peak RAM/thermal and usability tests NOT TESTED. Literal retrieval is bounded. Semantic search code is present (owner-imported MediaPipe text embedder, arm64-v8a only) but retrieval quality, indexing speed and battery cost are NOT TESTED; no autonomous capability is claimed |
 
 ## Previous Android host checkpoint
@@ -27,7 +27,7 @@ From `android/`:
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --console=plain
 ```
 
-Final result: **141 tests: 137 passed, 4 opt-in live AI tests skipped; 0 failures/errors. Lint: 0 errors,
+Final result: **148 tests: 144 passed, 4 opt-in live AI tests skipped; 0 failures/errors. Lint: 0 errors,
 33 warnings. APK assembly passed.** Native whisper JNI compiled for
 arm64-v8a and x86_64. Robolectric uses API 34 and ordinary SQLite/generated AES keys;
 it does not execute phone Keystore, native SQLCipher, MediaCodec, ML Kit or models.
@@ -36,7 +36,7 @@ annotations/KTX suggestions and the existing deprecated Material tab API.
 
 APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.4.0**, code 4,
 package `com.hellfire.ass`, min/target API 29/36, arm64-v8a and x86_64 only.
-SHA-256: `1592dd5614eeb4f53a8dcaec50d3c70fffe4d7343232bd6a15696026a3143048` (≈167 MB; MediaPipe text and bundled ML Kit labeling added ≈40 MB).
+SHA-256: `05c15b6800bbbd7d6fab25cc783325d183e2727f1999961a6605695ff115514f` (≈167 MB).
 HTML/XML reports are preserved under `android/app/build/reports/` and
 `android/app/build/test-results/testDebugUnitTest/` after integration.
 
@@ -51,7 +51,7 @@ HTML/XML reports are preserved under `android/app/build/reports/` and
 | Owner voice/chat commands | PASS (host) / NOT TESTED (device) | `AssistantCommandsTest`: questions stay queries; reminder dates/titles (EN/SW, past/missing dates rejected), memory subjects, cash parsing, email/WhatsApp validation and header injection, task action/reschedule parsing, active-only task lookup. `execute` composes existing tested task/draft/finance/memory writes but is not run on host (needs Keystore-backed `HellFireApp`). Spoken commands through the system session NOT TESTED |
 | Communication persistence/MIME | PASS (host) | Approval freshness/single claim, interrupted-process recovery, monotonic delivery states, UID cursor isolation, Unicode/plain-text alternatives and bounded deep MIME traversal |
 | Tasks | PASS (host) | Source-relative EAT dates, invalid dates, escalation math, review-only until activation, snooze/done, source FKs and explicit nightly review completion |
-| Media container | PASS (host) | Authenticated seeking across chunks, corruption/wrong identity rejection, interrupted recording prefix recovery and energy interval/exclusion logic; no real microphone/codec |
+| Media container | PASS (host) | Authenticated seeking across chunks, corruption/wrong identity rejection, interrupted recording prefix recovery, exclusion logic, ADTS header bits, and adaptive VAD on synthetic signals (steady 0.03 RMS noise rejected where the old fixed threshold fired, 20 ms clicks ignored, odd read boundaries); no real microphone/codec — `MediaCodec` AAC encoding does not run on host |
 | Backup components | PASS (host) | Table allowlists, Unicode rows/evidence, different payload key after restore, wrong passphrase and stale approval revocation. Does NOT establish full SAF/SQLCipher/Keystore/device restore |
 | APK/native alignment | PASS (host) | `zipalign -c -P 16 4` passes; all 17 packaged ELF libraries have LOAD alignment >=16 KiB. Physical installation remains NOT TESTED |
 | Relay tests | PASS (host) | Seven pytest tests: signature/verification/auth, encrypted replay/ACK, business filtering/statuses, approval/replay/expiry/unknown delivery, bounds/rate limiting and log query redaction; mocked Graph only |
@@ -295,8 +295,11 @@ Keep messages, credentials, recordings, serials and exported backups out of Git.
    permissions/notice and take a call; retain authenticated recording prefix with
    visible interruption status. No boot/process interruption may restart the mic.
    Test noise/speech/music and VAD false positives, manual speaker correction and
-   playback from timestamps. Measure actual PCM storage/battery cost; Opus and
-   learned speaker identity are not claimed. Import/replay accessible OPPO recordings
+   playback from timestamps. Confirm new recordings are `audio/aac`, play, seek,
+   transcribe and export as `.aac`; measure bytes per minute (expect ≈240 KB/min
+   versus ≈1.9 MB/min PCM), battery, and an interrupted recording's playable prefix.
+   Compare VAD spans in quiet rooms, fans/traffic and music. Learned speaker identity
+   is not claimed. Import/replay accessible OPPO recordings
    and selected-folder changes. If files are private/inaccessible, record BLOCKED
    and use dialer sharing. Test rename, unknown/known original dates, video without
    audio, charging/thermal constraints, analysis cancellation/recovery, decrypted

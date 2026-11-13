@@ -1,31 +1,78 @@
 package com.hellfire.ass.media
 
-/** Experimental energy-based intervals only; this does not identify a speaker or prove participation. */
+/**
+ * Experimental adaptive-energy speech intervals; this does not identify a speaker or prove participation.
+ * The noise floor is the minimum 20 ms frame level over the last ~10 s, so steady background noise
+ * (fans, traffic, hiss) is not reported as speech, while natural pauses keep the floor low during talk.
+ * A span needs 3 consecutive speech frames (rejects clicks), ends after 2 s of quiet, and keeps a
+ * 30 s pre-roll for transcription context; overlapping spans are merged.
+ */
 class SpeechActivity(private val sampleRate: Int = 16000) {
+    private val frameSize = sampleRate / 50
+    private val blockFrames = 25
+    private val maxBlocks = 20
+    private val blockMinima = ArrayDeque<Double>()
+    private var blockMin = Double.MAX_VALUE
+    private var blockCount = 0
+    private var frameSum = 0.0
+    private var frameFill = 0
     private var frames = 0L
+    private var pendingByte: Int? = null
+    private var run = 0
     private var started: Long? = null
-    private var lastLoud = 0L
+    private var lastSpeech = 0L
     private val spans = mutableListOf<Pair<Long, Long>>()
+
     fun accept(bytes: ByteArray, offset: Int, size: Int) {
-        var sum = 0.0
-        var count = 0
-        for (i in offset until offset + size - 1 step 2) {
-            val sample = ((bytes[i].toInt() and 255) or (bytes[i + 1].toInt() shl 8)).toShort().toDouble() / 32768
-            sum += sample * sample; count++
+        var i = offset
+        val end = offset + size
+        pendingByte?.let { low -> if (i < end) { sample((low or (bytes[i].toInt() shl 8)).toShort()); i++; pendingByte = null } }
+        while (i + 1 < end) { sample(((bytes[i].toInt() and 255) or (bytes[i + 1].toInt() shl 8)).toShort()); i += 2 }
+        if (i < end) pendingByte = bytes[i].toInt() and 255
+    }
+
+    private fun sample(value: Short) {
+        val x = value / 32768.0
+        frameSum += x * x
+        if (++frameFill == frameSize) { frame(kotlin.math.sqrt(frameSum / frameSize)); frameSum = 0.0; frameFill = 0 }
+    }
+
+    private fun ms(frame: Long) = frame * frameSize * 1000 / sampleRate
+
+    private fun frame(rms: Double) {
+        blockMin = minOf(blockMin, rms)
+        if (++blockCount == blockFrames) {
+            blockMinima.addLast(blockMin); if (blockMinima.size > maxBlocks) blockMinima.removeFirst()
+            blockMin = Double.MAX_VALUE; blockCount = 0
         }
-        if (count == 0) return
-        val at = frames * 1000 / sampleRate
-        frames += count
-        if (kotlin.math.sqrt(sum / count) >= 0.02) {
-            if (started == null) started = (at - 30_000).coerceAtLeast(0)
-            lastLoud = frames * 1000 / sampleRate
-        } else if (started != null && at - lastLoud >= 2000) {
-            spans += started!! to lastLoud
-            started = null
+        val floor = minOf(blockMinima.minOrNull() ?: Double.MAX_VALUE, blockMin).coerceAtLeast(0.001)
+        val speech = rms >= maxOf(MIN_LEVEL, floor * RATIO)
+        val index = frames++
+        if (speech) {
+            run++
+            lastSpeech = ms(index + 1)
+            if (started == null && run >= ONSET_FRAMES) started = (ms(index + 1 - ONSET_FRAMES) - PRE_ROLL_MS).coerceAtLeast(0)
+        } else {
+            run = 0
+            if (started != null && ms(index + 1) - lastSpeech >= HANGOVER_MS) close()
         }
     }
-    fun finish(): List<Pair<Long, Long>> {
-        started?.let { spans += it to lastLoud; started = null }
-        return spans.toList()
+
+    private fun close() {
+        val start = started ?: return
+        started = null
+        val previous = spans.lastOrNull()
+        if (previous != null && start <= previous.second) spans[spans.lastIndex] = previous.first to lastSpeech
+        else spans += start to lastSpeech
+    }
+
+    fun finish(): List<Pair<Long, Long>> { close(); return spans.toList() }
+
+    private companion object {
+        const val MIN_LEVEL = 0.01
+        const val RATIO = 3.0
+        const val ONSET_FRAMES = 3
+        const val HANGOVER_MS = 2000L
+        const val PRE_ROLL_MS = 30_000L
     }
 }
