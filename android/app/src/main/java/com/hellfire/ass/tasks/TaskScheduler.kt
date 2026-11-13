@@ -60,8 +60,8 @@ object TaskScheduler {
     }
     suspend fun restore(app: HellFireApp) = lock.withLock { arm(app) }
     suspend fun collect(app: HellFireApp, sourceId: String, sourceTime: Long, text: String, outgoing: Boolean) {
-        TaskExtractor.extract(text, sourceTime, outgoing)?.let { candidate ->
-            val now = System.currentTimeMillis()
+        val now = System.currentTimeMillis()
+        TaskExtractor.extract(text, sourceTime, outgoing)?.takeIf { TaskTime.reviewable(it.dueAt, now) }?.let { candidate ->
             app.database.tasks().insert(AssistantTask(com.hellfire.ass.events.NotificationNormalizer.sha256("task:$sourceId"), sourceId,
                 candidate.title, candidate.dueAt, party = candidate.party, evidence = candidate.evidence, createdAt = now, updatedAt = now))
         }

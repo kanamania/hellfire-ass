@@ -80,6 +80,19 @@ finance/comms slice — 66; media slice — 80; initial assistant/backup slice �
 Current artifact/results above supersede prior debug builds, not their untested
 physical outcomes.
 
+## Capture quality checkpoint — 2026-11-13
+
+Review fixes for silent loss and duplication between capture and review. Synthetic
+fixtures only; real provider formats remain uncalibrated.
+
+| Question | Test | Result | Evidence | Next action |
+|---|---|---|---|---|
+| Do everyday "code/PIN/token" words keep finance and mail content while codes are removed? | `NotificationNormalizerTest` | PASS (host) | "Usitoe PIN yako" payment, LUKU token purchase and "code review" mail keep content; keyed numeric/alphanumeric codes removed in every field, including a PIN repeated as a reference; OTP/password/verification/msimbo still withhold the whole item | Check against real M-Pesa/Airtel/Mixx/bank messages on device |
+| Do removal records, promotions and old history stay out of review queues? | `CaptureProcessingTest`, `TaskLogicTest` | PASS (host) | REMOVED events labelled `REMOVAL_RECORD` without finance/task collection; promotion/system labels skip task extraction; deadlines over seven days old are not review items | Observe queue volume with real notification/SMS/mail backfill |
+| Does a repeated provider reference avoid a second review item? | `FinanceTest` | PASS (host) | Second source stored as `DUPLICATE`, linked as ledger evidence on approval; one entry posted. Candidates without a parsed reference still need manual review | Calibrate reference parsing on a real corpus |
+| Are relative day words parsed as whole words? | `TaskLogicTest`, `AssistantCommandsTest` | PASS (host) | "call Leonard on monday" → Monday; keshokutwa/kesho kutwa/day after tomorrow → +2 days | — |
+| Full host suite and lint? | `./gradlew :app:testDebugUnitTest :app:lintDebug` | PASS (host) | 152 tests: 148 passed, 4 opt-in live AI tests skipped; lint 0 errors, 33 warnings | — |
+
 ## WhatsApp linked capture checkpoint — 2026-11-13
 
 The owner explicitly selected `whatsapp-web.js` and authorized this capture-only

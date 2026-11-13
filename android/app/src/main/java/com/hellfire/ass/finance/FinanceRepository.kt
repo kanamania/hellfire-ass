@@ -21,6 +21,7 @@ class FinanceRepository(private val db: EventDatabase) {
         val existing = dao.byKey(key)
         if (existing != null) {
             dao.evidence(LedgerEvidence(existing.id, candidate.sourceId))
+            linkReferenceDuplicates(existing.id, candidate)
             dao.candidateState(candidateId, "DUPLICATE_LINKED")
             return@withTransaction "Duplicate reference linked to existing evidence; no transaction added."
         }
@@ -45,6 +46,7 @@ class FinanceRepository(private val db: EventDatabase) {
             dao.post(LedgerEntry(feeId, accountId, "$key:fee", "FEE", Math.negateExact(candidate.fee), "Fees", description, candidate.occurredAt, now, id))
             dao.evidence(LedgerEvidence(feeId, candidate.sourceId))
         }
+        linkReferenceDuplicates(id, candidate)
         dao.candidateState(candidateId, "APPROVED")
         db.communications().audit(com.hellfire.ass.communications.ActionAudit(UUID.randomUUID().toString(), id, "OWNER_LEDGER_APPROVAL", "POSTED", now))
         "Transaction posted with source evidence."
@@ -85,12 +87,20 @@ class FinanceRepository(private val db: EventDatabase) {
         return FinanceSummary(income, expenses, sources.toList())
     }
 
+    /** Other sources of the same provider reference stay as evidence, out of the review queue. */
+    private suspend fun linkReferenceDuplicates(ledgerId: String, candidate: FinanceCandidate) {
+        val reference = candidate.reference ?: return
+        dao.duplicateSources(candidate.provider, reference).forEach { dao.evidence(LedgerEvidence(ledgerId, it)) }
+        dao.linkDuplicates(candidate.provider, reference)
+    }
+
     suspend fun collect(sourceId: String, occurredAt: Long, sender: String, text: String) {
         FinanceParser.parse(sender, text)?.let { parsed ->
+            val duplicate = parsed.reference != null && dao.hasReference(parsed.provider, parsed.reference)
             dao.candidate(FinanceCandidate(NotificationNormalizer.sha256("finance:$sourceId:0"), sourceId,
                 provider = parsed.provider, reference = parsed.reference, kind = parsed.kind,
                 amount = parsed.amount, fee = parsed.fee, merchant = parsed.merchant,
-                evidence = parsed.evidence, occurredAt = occurredAt))
+                evidence = parsed.evidence, occurredAt = occurredAt, state = if (duplicate) "DUPLICATE" else "REVIEW"))
         }
     }
 }

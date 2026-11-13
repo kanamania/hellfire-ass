@@ -46,6 +46,24 @@ class FinanceTest {
         assertEquals("DUPLICATE_LINKED", db.finances().findCandidate("notification")!!.state)
         assertTrue(runCatching { db.events().deleteAll() }.isFailure)
     }
+    @Test fun `a second source of the same reference waits as evidence instead of a second review item`() = runBlocking {
+        db.finances().addAccount(FinanceAccount("a", "Synthetic wallet", "MPESA"))
+        for (source in listOf("sms", "notification")) {
+            db.events().insertCaptured(SourceEvent(source, externalId = source, packageName = "fixture", occurredAt = 1, receivedAt = 1,
+                kind = "POSTED", payloadHash = "fixture", encryptedPayload = byteArrayOf(1), contentAvailable = true,
+                contentRedacted = false, securitySensitive = false))
+            repo.collect(source, 1, "M-PESA", "Umelipa TZS 15,000 ref SYNTHREF99 kwa duka")
+        }
+        val first = com.hellfire.ass.events.NotificationNormalizer.sha256("finance:sms:0")
+        val second = com.hellfire.ass.events.NotificationNormalizer.sha256("finance:notification:0")
+        assertEquals("DUPLICATE", db.finances().findCandidate(second)!!.state)
+        assertEquals(1, db.finances().reviewCount())
+        repo.approve(first, "a", "EXPENSE", "Food", "Synthetic purchase")
+        assertEquals("DUPLICATE_LINKED", db.finances().findCandidate(second)!!.state)
+        val entry = db.finances().byKey(com.hellfire.ass.events.NotificationNormalizer.sha256("a|MPESA|SYNTHREF99"))!!
+        assertEquals(setOf("sms", "notification"), db.finances().sources(entry.id).toSet())
+        assertEquals(1, db.finances().entryCount())
+    }
     @Test fun `fees are separate and own transfer credits balance the debit`() = runBlocking {
         db.finances().addAccount(FinanceAccount("a", "Synthetic source", "MPESA"))
         db.finances().addAccount(FinanceAccount("b", "Synthetic destination", "CASH"))

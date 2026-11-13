@@ -80,13 +80,36 @@ class NotificationNormalizerTest {
     @Test fun `synthetic fixtures are distinct from device delivery`() {
         assertNotEquals(normalize(raw()).id, normalize(raw().copy(source = "synthetic_notification")).id)
     }
-    @Test fun `valid ISO dates survive but security context still takes precedence over finance`() {
+    @Test fun `valid ISO dates survive and a keyed PIN is removed even where it repeats as a reference`() {
         val raw = NotificationSnapshot("date", "fixture", 1, 2, fields = mapOf("text" to listOf("Meeting 2026-11-14 at 10:00")))
         assertEquals("Meeting 2026-11-14 at 10:00", NotificationNormalizer.normalize(raw, "owner")!!.snapshot.fields["text"]!!.single())
         val auth = raw.copy(fields = mapOf("text" to listOf("PIN 432198 TZS 15000 ref 432198 on 2026-11-14")))
         val normalized = NotificationNormalizer.normalize(auth, "owner")!!
-        assertTrue(normalized.securitySensitive)
-        assertEquals("[SECURITY CONTENT REDACTED]", normalized.snapshot.fields["text"]!!.single())
+        assertTrue(normalized.contentRedacted)
+        assertEquals("PIN [CODE REDACTED] TZS 15000 ref [CODE REDACTED] on 2026-11-14", normalized.snapshot.fields["text"]!!.single())
     }
-
+    @Test fun `everyday code pin and token wording keeps finance and work content`() {
+        val payment = "Umepokea Tsh 50,000 kutoka JOHN. Usitoe PIN yako kwa mtu yeyote. Ref ABC12345"
+        val email = "Hi team, the code review for the payments module is done"
+        for (text in listOf(payment, email)) {
+            val event = normalize(raw("text" to listOf(text)))
+            assertFalse(text, event.securitySensitive)
+            assertFalse(text, event.contentRedacted)
+            assertEquals(text, event.snapshot.fields["text"]!!.single())
+        }
+        val luku = normalize(raw("text" to listOf("M-PESA: Umelipa Tsh 25,000 kwa LUKU. Token: 12345678901234567890. Salio Tsh 80,000")))
+        assertFalse(luku.securitySensitive)
+        assertEquals("M-PESA: Umelipa Tsh 25,000 kwa LUKU. Token: [CODE REDACTED]. Salio Tsh 80,000", luku.snapshot.fields["text"]!!.single())
+    }
+    @Test fun `codes after code pin token or verify are removed including alphanumeric values`() {
+        for (text in listOf("Your code is AB7K9Z", "Weka PIN ni 7Q4X2M", "verify: G7KX2Q", "Your code is 123456")) {
+            val event = normalize(raw("text" to listOf(text), "action_metadata" to listOf("Copy ${text.takeLast(6)}")))
+            assertTrue(text, event.contentRedacted)
+            assertFalse(text, event.snapshot.fields.toString().contains(text.takeLast(6)))
+        }
+    }
+    @Test fun `cloud prompts that mention code are not blanked`() {
+        assertEquals("Explain this code review comment", com.hellfire.ass.ai.CloudPrivacy.redact("Explain this code review comment"))
+        assertEquals("[SECURITY CONTENT REDACTED]", com.hellfire.ass.ai.CloudPrivacy.redact("My password is hunter2"))
+    }
 }

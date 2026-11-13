@@ -98,6 +98,18 @@ class CaptureProcessingTest {
         EventProcessor(database.events()) { error("Security content is never decrypted by classifier") }.drain()
         assertEquals("SECURITY_REDACTED", database.events().processing(id(security))!!.label)
     }
+    @Test fun `removal records and promotions do not create review candidates`() = runBlocking {
+        val removed = raw.copy(kind = "REMOVED", removedReason = 2)
+        val promo = raw.copy(key = "promo", fields = mapOf("text" to listOf("Flash SALE ends today only!")))
+        val chat = raw.copy(key = "chat", fields = mapOf("text" to listOf("Tukutane kesho 10:00"), "category" to listOf("msg")))
+        for (snapshot in listOf(raw, removed, promo, chat)) repository.capture(snapshot, own)
+        val finance = mutableSetOf<String>(); val tasks = mutableSetOf<String>()
+        EventProcessor(database.events(), { source, _, _, _ -> finance += source }, { source, _, _, _ -> tasks += source }) { cipher }.drain()
+        assertEquals(setOf(id()), finance)
+        assertEquals(setOf(id(), id(chat)), tasks)
+        assertEquals("REMOVAL_RECORD", database.events().processing(id(removed))!!.label)
+        assertEquals("PROMOTION_CANDIDATE", database.events().processing(id(promo))!!.label)
+    }
     @Test fun `empty image-only content is explicitly unavailable`() = runBlocking {
         val empty = raw.copy(fields = emptyMap())
         repository.capture(empty, own)

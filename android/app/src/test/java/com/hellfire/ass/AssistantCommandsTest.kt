@@ -35,6 +35,12 @@ class AssistantCommandsTest {
         val sw = parse("nikumbushe kulipa kodi kesho") as OwnerCommand.Remind
         assertEquals("kulipa kodi", sw.title)
         assertEquals("2026-11-14 09:00", TaskTime.display(sw.dueAt))
+        val later = parse("nikumbushe kulipa kodi keshokutwa") as OwnerCommand.Remind
+        assertEquals("kulipa kodi", later.title)
+        assertEquals("2026-11-15 09:00", TaskTime.display(later.dueAt))
+        val named = parse("remind me to call Leonard on monday") as OwnerCommand.Remind
+        assertEquals("call Leonard", named.title)
+        assertEquals("2026-11-16 09:00", TaskTime.display(named.dueAt))
         val weekday = parse("remind me to submit report on Monday 08:00") as OwnerCommand.Remind
         assertEquals("submit report", weekday.title)
         assertEquals("2026-11-16 08:00", TaskTime.display(weekday.dueAt))

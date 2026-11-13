@@ -40,6 +40,9 @@ interface FinanceDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun candidate(candidate: FinanceCandidate): Long
     @Query("SELECT * FROM finance_candidate WHERE state = 'REVIEW' ORDER BY occurredAt DESC") fun candidates(): Flow<List<FinanceCandidate>>
     @Query("SELECT * FROM finance_candidate WHERE id = :id") suspend fun findCandidate(id: String): FinanceCandidate?
+    @Query("SELECT EXISTS(SELECT 1 FROM finance_candidate WHERE provider = :provider AND reference = :reference)") suspend fun hasReference(provider: String, reference: String): Boolean
+    @Query("SELECT sourceId FROM finance_candidate WHERE provider = :provider AND reference = :reference AND state = 'DUPLICATE'") suspend fun duplicateSources(provider: String, reference: String): List<String>
+    @Query("UPDATE finance_candidate SET state = 'DUPLICATE_LINKED' WHERE provider = :provider AND reference = :reference AND state = 'DUPLICATE'") suspend fun linkDuplicates(provider: String, reference: String)
     @Query("UPDATE finance_candidate SET state = :state WHERE id = :id") suspend fun candidateState(id: String, state: String)
     @Query("SELECT * FROM ledger_entry ORDER BY occurredAt DESC, createdAt DESC LIMIT 100") fun entries(): Flow<List<LedgerEntry>>
     @Query("SELECT * FROM ledger_entry WHERE dedupeKey = :key") suspend fun byKey(key: String): LedgerEntry?
