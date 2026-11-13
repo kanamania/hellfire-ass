@@ -38,7 +38,7 @@ fun AssistantScreen(app: HellFireApp, onSession: () -> Unit) {
         finally { busy = false }
     } }
     Text("Ask HellFire", style = MaterialTheme.typography.titleLarge)
-    Text("Offline questions: spending today, income this month, balances, tasks tomorrow, morning brief, evening brief, or search <words>. Exact totals come from approved ledger entries. Search is a bounded literal lookup, not a complete semantic index.")
+    Text("Offline questions: spending today, income this month, balances, tasks tomorrow, morning brief, evening brief, or search <words>. Exact totals come from approved ledger entries. Search is a bounded literal lookup, plus ≈ meaning matches when an embedding model is imported in Local AI.")
     Text("Commands such as remind me to…, remember…, mark … done, snooze…, reschedule … to…, log cash…, email … : …, whatsapp … : … are only proposals until you confirm. Drafts still need approval in Messages before sending. Type help for the full list.")
     OutlinedTextField(query, { query = it }, label = { Text("Your question") }, modifier = Modifier.fillMaxWidth())
     Button(enabled = !busy, onClick = { run { answer = engine.answer(query); result = "" } }) { Text("Ask HellFire") }

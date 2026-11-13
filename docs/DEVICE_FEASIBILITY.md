@@ -16,8 +16,8 @@ No device-dependent phase is fully accepted solely because its host checks pass.
 | 2 — AI/finance | Integer ledger, separate fees/transfers/reversals/evidence, review edits, provider-scoped merchant aliases, cash/date review, strict candidate schemas, LiteRT-LM adapter and bundled OCR | PARTIAL | Gemma 4 E2B/fallback benchmark BLOCKED without owner-selected compatible model/device; representative provider corpus unavailable; 95% accuracy NOT ESTABLISHED |
 | 3 — communications | IMAPS/SMTP, UIDVALIDITY/MIME handling, bounded visible IDLE, drafts/one-use approval/recovery, encrypted signed-webhook relay and delivery/echo adapters | PARTIAL | Live Gmail app-password access and Meta eligibility/Coexistence onboarding NOT TESTED; no real sends or deployment |
 | 4 — tasks/alarms | Evidence-linked candidates, owner activation, escalation, Done/Snooze/Reschedule, durable restoration, nightly review and morning/evening query briefs | PARTIAL | Physical alarm/Doze/DND/permission/reboot tests NOT TESTED; overdue repeat interval owner-configurable (5–1440 minutes, default 10) |
-| 5 — media | Encrypted originals, SAF import/folder scanning, VAD intervals during visible owner recording, compiled whisper JNI adapter, chunked processing, OCR/PDF/video sampling, playback/export/delete/manual speakers/summary review | PARTIAL | Actual decoder/STT/OCR/model accuracy and OEM file visibility NOT TESTED. Opus encoding, reliable learned VAD/diarization/owner-voice matching and model-based vision/embedding index remain research gates; no simulated outputs |
-| 6 — assistant/stability/backup | Source queries/links, deterministic finance/briefs, typed review-only proposals, confirm-first English/Kiswahili voice/chat commands (reminders, memory notes, task done/snooze/reschedule, cash review items, email/WhatsApp drafts), memory provenance/correction/forget, encrypted portable backup/staging/recovery, startup storage and send recovery | PARTIAL | Full native/device backup round trip, SQLCipher conversion/Keystore, battery/peak RAM/thermal and usability tests NOT TESTED. Literal retrieval is bounded; autonomous/semantic capability is not claimed |
+| 5 — media | Encrypted originals, SAF import/folder scanning, VAD intervals during visible owner recording, compiled whisper JNI adapter, chunked processing, OCR/PDF/video sampling, bundled ML Kit image labels, playback/export/delete/manual speakers/summary review | PARTIAL | Actual decoder/STT/OCR/label/model accuracy and OEM file visibility NOT TESTED. Opus encoding and reliable learned VAD/diarization/owner-voice matching remain research gates; no simulated outputs |
+| 6 — assistant/stability/backup | Source queries/links, deterministic finance/briefs, typed review-only proposals, confirm-first English/Kiswahili voice/chat commands (reminders, memory notes, task done/snooze/reschedule, cash review items, email/WhatsApp drafts), memory provenance/correction/forget, encrypted portable backup/staging/recovery, startup storage and send recovery | PARTIAL | Full native/device backup round trip, SQLCipher conversion/Keystore, battery/peak RAM/thermal and usability tests NOT TESTED. Literal retrieval is bounded. Semantic search code is present (owner-imported MediaPipe text embedder, arm64-v8a only) but retrieval quality, indexing speed and battery cost are NOT TESTED; no autonomous capability is claimed |
 
 ## Host verification
 
@@ -27,7 +27,7 @@ From `android/`:
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --console=plain
 ```
 
-Final result: **137 tests: 133 passed, 4 opt-in live AI tests skipped; 0 failures/errors. Lint: 0 errors,
+Final result: **141 tests: 137 passed, 4 opt-in live AI tests skipped; 0 failures/errors. Lint: 0 errors,
 33 warnings. APK assembly passed.** Native whisper JNI compiled for
 arm64-v8a and x86_64. Robolectric uses API 34 and ordinary SQLite/generated AES keys;
 it does not execute phone Keystore, native SQLCipher, MediaCodec, ML Kit or models.
@@ -36,7 +36,7 @@ annotations/KTX suggestions and the existing deprecated Material tab API.
 
 APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.4.0**, code 4,
 package `com.hellfire.ass`, min/target API 29/36, arm64-v8a and x86_64 only.
-SHA-256: `6e3babaf6406b541a4b7344a24e815733125c2c5df956b95495f5d13c7cc6dcd`.
+SHA-256: `1592dd5614eeb4f53a8dcaec50d3c70fffe4d7343232bd6a15696026a3143048` (≈167 MB; MediaPipe text and bundled ML Kit labeling added ≈40 MB).
 HTML/XML reports are preserved under `android/app/build/reports/` and
 `android/app/build/test-results/testDebugUnitTest/` after integration.
 
@@ -44,15 +44,16 @@ HTML/XML reports are preserved under `android/app/build/reports/` and
 |---|---|---|
 | Tooling | PASS | JDK 21.0.13, SDK 36/build tools 35.0.0, NDK 28.2.13676358, CMake 3.22.1; no global package upgrades |
 | Normalization/capture/SMS regression | PASS (host) | Immutable identities, malformed/missing/protected content, OTP precedence, marked money/reference/date preservation, queue/policy/rollback/persistence and SMS paging fixtures |
-| Room migrations | PASS (host) | Construct schema 1, migrate non-destructively through schema 8; source ciphertext retained and Room validates tables/indices/FKs |
+| Room migrations | PASS (host) | Construct schema 1, migrate non-destructively through schema 9; source ciphertext retained and Room validates tables/indices/FKs |
 | Finance | PASS (host) | Integer limits, synthetic provider candidates, duplicate-reference evidence, transfer balancing, separate fees, edited approval, refunds/expense totals and append-only reversals |
 | Candidate/action contracts | PASS (host) | Strict integer/schema fields, invalid dates/parties/channels, unsupported execution and injected approval/header data rejected |
+| Semantic index / image labels | PASS (host) / NOT TESTED (device) | `SemanticIndexTest`: L2 normalization, little-endian vector round trip, cosine ranking, pending excludes sensitive/unavailable/indexed sources, empty-text markers never searched, model switch re-indexes, vectors cascade with sources, confident-label formatting. MediaPipe `libmediapipe_tasks_text_jni.so` 0.10.26 ships arm64-v8a only (16 KiB aligned); no embedding or ML Kit labeling is executed on host |
 | Owner voice/chat commands | PASS (host) / NOT TESTED (device) | `AssistantCommandsTest`: questions stay queries; reminder dates/titles (EN/SW, past/missing dates rejected), memory subjects, cash parsing, email/WhatsApp validation and header injection, task action/reschedule parsing, active-only task lookup. `execute` composes existing tested task/draft/finance/memory writes but is not run on host (needs Keystore-backed `HellFireApp`). Spoken commands through the system session NOT TESTED |
 | Communication persistence/MIME | PASS (host) | Approval freshness/single claim, interrupted-process recovery, monotonic delivery states, UID cursor isolation, Unicode/plain-text alternatives and bounded deep MIME traversal |
 | Tasks | PASS (host) | Source-relative EAT dates, invalid dates, escalation math, review-only until activation, snooze/done, source FKs and explicit nightly review completion |
 | Media container | PASS (host) | Authenticated seeking across chunks, corruption/wrong identity rejection, interrupted recording prefix recovery and energy interval/exclusion logic; no real microphone/codec |
 | Backup components | PASS (host) | Table allowlists, Unicode rows/evidence, different payload key after restore, wrong passphrase and stale approval revocation. Does NOT establish full SAF/SQLCipher/Keystore/device restore |
-| APK/native alignment | PASS (host) | `zipalign -c -P 16 4` passes; all 14 packaged ELF libraries have LOAD alignment >=16 KiB. Physical installation remains NOT TESTED |
+| APK/native alignment | PASS (host) | `zipalign -c -P 16 4` passes; all 17 packaged ELF libraries have LOAD alignment >=16 KiB. Physical installation remains NOT TESTED |
 | Relay tests | PASS (host) | Seven pytest tests: signature/verification/auth, encrypted replay/ACK, business filtering/statuses, approval/replay/expiry/unknown delivery, bounds/rate limiting and log query redaction; mocked Graph only |
 | Relay image / Compose | PASS (host) | `docker build -t hellfire-relay:local server`; non-root image `b02eda1eb4f8`; Compose parses with no env resolution. Ephemeral ASGI smoke confirms UID 10001, honest unconfigured health and protected endpoint 503; no listener/deployment/live network |
 | Physical/model/live-account tests | NOT TESTED | Explicitly deferred; neither grants, Coexistence eligibility, actual inference nor successful delivery is asserted |
@@ -284,6 +285,11 @@ Keep messages, credentials, recordings, serials and exported backups out of Git.
    confirm nothing changes before Confirm, reminders alarm at the stated EAT time,
    cash items appear only in Finance review, and drafts are never sent without the
    separate Messages approval.
+   Import a MediaPipe text-embedder model (e.g. Universal Sentence Encoder), run
+   Index now, and record indexed/pending counts, time per 100 sources, battery and
+   peak memory. Compare literal versus `≈` meaning matches on synthetic paraphrases;
+   confirm OTP/sensitive sources never appear. Import photos and check that
+   `media_labels` sources are plausible and marked unverified.
 9. **Backup:** export synthetic registered originals and relational data with a
    strong test passphrase. Authenticate/restore into an empty separate installation
    or test profile with capture/accounts off. Compare ciphertext decryption, media

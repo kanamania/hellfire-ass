@@ -52,7 +52,11 @@ Optional network adapters remain disconnected until configured by the owner.
   Finance totals use integer ledger arithmetic; unapproved candidates and own
   transfers are excluded from spending. Source search examines up to 2,000 recent
   events, returns up to 20 literal matches, and offers source evidence links.
-  It is not a complete semantic/embedding search or a general autonomous agent.
+  With an owner-imported MediaPipe text-embedder `.tflite` (Local AI → Meaning search),
+  search also adds up to 10 meaning matches (`≈ score`) from an on-device vector index of
+  non-sensitive sources. Scores are uncalibrated; it is not a general autonomous agent.
+- **Image labels:** imported images get bundled on-device ML Kit labels (≥70% confidence)
+  saved as a searchable `media_labels` source beside OCR text. Labels are unverified.
 - **Assistant commands:** `remind me to <task> <when>` / `nikumbushe …`,
   `remember <subject>: <note>`, `mark <task> done`, `snooze <task>`,
   `reschedule <task> to <when>`, `log cash <item> <amount> na …`,
@@ -336,6 +340,8 @@ SQLCipher/Keystore, actual model execution, live accounts or Android/OEM behavio
 - 2026-11-13, Phases 2–6 software slices: finance/local AI/OCR, encrypted database,
   mail/relay/drafts, tasks/alarms, encrypted multimedia/transcription adapters,
   evidence queries/memory and portable backup/recovery. Device testing stays last.
+- 2026-11-13, smarter memory: on-device image labels and owner-imported text-embedding
+  meaning search (schema 9 `semantic_vector`, rebuildable and excluded from backup); 141 host tests.
 - 2026-11-13, agent workflows: confirm-first voice/chat commands for reminders,
   memory notes, task done/snooze/reschedule, cash review items and email/WhatsApp
   drafts; 137 host tests.

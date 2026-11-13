@@ -9,8 +9,10 @@ import com.hellfire.ass.HellFireApp
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
+data class ImageText(val ocr: String, val labels: String?)
+
 object VisualReader {
-    suspend fun image(app: HellFireApp, item: MediaItem): String {
+    suspend fun image(app: HellFireApp, item: MediaItem): ImageText {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         app.media.reader(item).use { BitmapFactory.decodeStream(it.stream(), null, bounds) }
         require(bounds.outWidth in 1..100000 && bounds.outHeight in 1..100000) { "UNSUPPORTED_IMAGE" }
@@ -19,7 +21,10 @@ object VisualReader {
             while (maxOf(bounds.outWidth, bounds.outHeight) / inSampleSize > 2048) inSampleSize *= 2
         }
         val bitmap = app.media.reader(item).use { BitmapFactory.decodeStream(it.stream(), null, options) } ?: error("UNSUPPORTED_IMAGE")
-        return LocalOcr.read(bitmap)
+        // Labels run first because OCR recycles the bitmap; a labeling failure never blocks OCR.
+        val labels = try { LocalImageLabels.describe(LocalImageLabels.read(bitmap)) }
+            catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
+        return ImageText(LocalOcr.read(bitmap), labels)
     }
     suspend fun pdf(app: HellFireApp, item: MediaItem, start: Int, accept: suspend (Int, String) -> Unit): Boolean {
         val reader = app.media.reader(item)

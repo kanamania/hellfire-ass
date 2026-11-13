@@ -39,13 +39,14 @@ class DatabaseMigrationTest {
             old.version = 1
         }
         val migrated = Room.databaseBuilder(context, EventDatabase::class.java, name)
-            .addMigrations(EventDatabase.MIGRATION_1_2, EventDatabase.MIGRATION_2_3, EventDatabase.MIGRATION_3_4, EventDatabase.MIGRATION_4_5, EventDatabase.MIGRATION_5_6, EventDatabase.MIGRATION_6_7, EventDatabase.MIGRATION_7_8).build()
+            .addMigrations(EventDatabase.MIGRATION_1_2, EventDatabase.MIGRATION_2_3, EventDatabase.MIGRATION_3_4, EventDatabase.MIGRATION_4_5, EventDatabase.MIGRATION_5_6, EventDatabase.MIGRATION_6_7, EventDatabase.MIGRATION_7_8, EventDatabase.MIGRATION_8_9).build()
         try {
             val event = migrated.events().find("legacy-fixture")!!
             assertArrayEquals(byteArrayOf(1, 2, 3), event.encryptedPayload)
             assertEquals("PENDING", migrated.events().processing(event.id)!!.state)
             assertEquals(1, migrated.events().audits().first().single().captured)
-            assertEquals(8, migrated.openHelper.writableDatabase.version)
+            assertEquals(9, migrated.openHelper.writableDatabase.version)
+            assertEquals(0, migrated.semantic().indexedCount("any-model"))
         } finally { migrated.close(); context.deleteDatabase(name) }
     }
 }
