@@ -136,7 +136,7 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
                 catch (_: Exception) { result = "Playback unavailable for this format or encrypted file." }
                 finally { playback = null } }
         }) { Text("Play original audio") }
-        OutlinedButton(enabled = !busy, onClick = { exporting = item; exporter.launch(if (item.mime == "audio/pcm") "${item.name}.wav" else item.name) }) { Text("Export decrypted original…") }
+        OutlinedButton(enabled = !busy, onClick = { exporting = item; exporter.launch(when (item.mime) { "audio/pcm" -> "${item.name}.wav"; "audio/aac" -> "${item.name}.aac"; else -> item.name }) }) { Text("Export decrypted original…") }
         TextButton(enabled = !busy, onClick = { deletion = item }) { Text("Delete original and transcript…") }
         if (segments.isNotEmpty()) Button(enabled = !busy, onClick = { action {
             val evidence = segments.joinToString("\n") { "[${it.startMs}-${it.endMs} ${it.speaker}] ${it.text}" }.take(9500)

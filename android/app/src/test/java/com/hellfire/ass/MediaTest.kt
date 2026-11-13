@@ -52,12 +52,47 @@ class MediaTest {
             ChunkedMedia.Reader(file, key, id, 200).use { assertEquals(200, it.stream().readBytes().size) }
         } finally { file.delete() }
     }
+    /** Synthetic 16 kHz PCM: optional speech-like 200 Hz tone with 4 Hz syllable modulation over seeded noise. */
+    private fun pcm(seconds: Double, speech: Double = 0.0, noise: Double = 0.0, seed: Long = 7): ByteArray {
+        val random = java.util.Random(seed)
+        val n = (seconds * 16000).toInt()
+        return ByteArray(n * 2).also { out -> for (i in 0 until n) {
+            val t = i / 16000.0
+            val voice = speech * (0.55 + 0.45 * kotlin.math.sin(2 * Math.PI * 4 * t)) * kotlin.math.sin(2 * Math.PI * 200 * t)
+            val v = ((voice + noise * random.nextGaussian()).coerceIn(-1.0, 0.999) * 32768).toInt()
+            out[2 * i] = v.toByte(); out[2 * i + 1] = (v shr 8).toByte()
+        } }
+    }
+    private fun spans(vararg parts: ByteArray, chunk: Int = 4096) = SpeechActivity().apply {
+        val all = parts.fold(ByteArray(0)) { a, b -> a + b }
+        var at = 0; while (at < all.size) { val size = minOf(chunk, all.size - at); accept(all, at, size); at += size }
+    }.finish()
     @Test fun speechIntervalsAreBoundedAndDoNotAssignIdentity() {
-        val activity = SpeechActivity()
-        val loud = ByteArray(32000) { if (it % 2 == 0) 0 else 50 }
-        repeat(5) { activity.accept(loud, 0, loud.size) }
-        repeat(4) { activity.accept(ByteArray(32000), 0, 32000) }
-        assertEquals(listOf(0L to 5000L), activity.finish())
+        val result = spans(pcm(5.0, speech = 0.3), pcm(4.0))
+        assertEquals(1, result.size)
+        assertEquals(0L, result[0].first)                 // 30 s pre-roll clamps to the recording start
+        assertTrue(result[0].second in 4900L..5000L)
+    }
+    @Test fun steadyBackgroundNoiseIsNotSpeech() {
+        // 0.03 RMS noise exceeded the old fixed 0.02 threshold for the whole 19 s.
+        val result = spans(pcm(10.0, noise = 0.03, seed = 1), pcm(3.0, speech = 0.4, noise = 0.03, seed = 2), pcm(6.0, noise = 0.03, seed = 3))
+        assertEquals(1, result.size)
+        assertTrue("ended at ${result[0].second}", result[0].second in 12800L..13000L)
+        assertTrue(spans(pcm(12.0, noise = 0.03)).isEmpty())
+    }
+    @Test fun clicksAndOddReadBoundariesAreHandled() {
+        val click = ByteArray(640).also { for (i in 0 until 320) { it[2 * i] = 0; it[2 * i + 1] = 0x40 } }  // one 20 ms frame
+        assertTrue(spans(pcm(2.0, noise = 0.001), click, pcm(3.0, noise = 0.001)).isEmpty())
+        assertEquals(spans(pcm(5.0, speech = 0.3), pcm(4.0)), spans(pcm(5.0, speech = 0.3), pcm(4.0), chunk = 777))
+    }
+    @Test fun adtsHeadersDescribeAacLcFrames() {
+        val header = Adts.header(100, 16000, 1)
+        assertArrayEquals(byteArrayOf(0xFF.toByte(), 0xF1.toByte(), 0x60, 0x40, 0x0D, 0x7F, 0xFC.toByte()), header)
+        val length = ((header[3].toInt() and 3) shl 11) or ((header[4].toInt() and 255) shl 3) or ((header[5].toInt() and 255) shr 5)
+        assertEquals(107, length)
+        assertArrayEquals(byteArrayOf(0xFF.toByte(), 0xF1.toByte(), 0x50, 0x80.toByte()), Adts.header(10, 44100, 2).copyOf(4))
+        assertThrows(IllegalArgumentException::class.java) { Adts.header(10, 17000, 1) }
+        assertThrows(IllegalArgumentException::class.java) { Adts.header(8200, 16000, 1) }
     }
     @Test fun recordingExclusionsRespectOwnerSuppliedPeopleAndPlaces() {
         assertFalse(RecordingPolicy.allowed("Asha Hassan, owner", "Home", "asha", "hospital"))

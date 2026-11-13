@@ -69,7 +69,7 @@ class MicrophoneService : Service() {
                 Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
             val notification = Notification.Builder(this, CHANNEL)
                 .setSmallIcon(R.drawable.ic_hellfire).setContentTitle("HellFire Ass · microphone recording")
-                .setContentText(if (monitoring) "Owner-started conversation monitoring · 30 minute limit" else "User-started test · stops after 60 seconds")
+                .setContentText(if (monitoring) "Owner-started conversation monitoring · compressed · 30 minute limit" else "User-started test · stops after 60 seconds")
                 .setContentIntent(open).setOngoing(true)
                 .addAction(Notification.Action.Builder(null, "Stop recording", stop).build()).build()
             if (Build.VERSION.SDK_INT >= 30) {
@@ -137,7 +137,10 @@ class MicrophoneService : Service() {
                 }
             }
             if (monitoring) {
-                val saved = com.hellfire.ass.media.ChunkedMedia.write(input, file, id, true, cipher, retainInterrupted = true)
+                // Compressed AAC-LC (ADTS, 32 kbit/s) instead of 256 kbit/s PCM; VAD still sees the raw PCM above.
+                val saved = com.hellfire.ass.media.AacEncoderStream(input).use { encoded ->
+                    com.hellfire.ass.media.ChunkedMedia.write(encoded, file, id, false, cipher, retainInterrupted = true)
+                }
                 if (saved.size > 0) app.media.registerRecording(id, startedAt, saved.interrupted, activity.finish())
                 if (saved.interrupted) { MicrophoneStatus.state.value = "Monitoring interrupted · authenticated original retained in Media"; return }
             } else file.outputStream().use { output -> cipher.encryptStream(input, output) }

@@ -58,7 +58,7 @@ class MediaVault(private val app: HellFireApp) {
         val digest = hash.digest().joinToString("") { "%02x".format(it) }
         app.database.media().hash(digest)?.let { if (it.id != id) path.delete(); return@withLock it }
         val item = register(id, if (interrupted) "Interrupted conversation recording" else "Conversation recording",
-            "audio/pcm", "IN_PERSON_AUDIO", digest, size, start, interrupted, "")
+            "audio/aac", "IN_PERSON_AUDIO", digest, size, start, interrupted, "")
         spans.forEachIndexed { index, span -> app.database.media().span(SpeechSpan("$id:vad:$index", id, span.first, span.second)) }
         item
     }
