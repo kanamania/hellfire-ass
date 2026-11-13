@@ -19,7 +19,7 @@ No device-dependent phase is fully accepted solely because its host checks pass.
 | 5 — media | Encrypted originals, SAF import/folder scanning, VAD intervals during visible owner recording, compiled whisper JNI adapter, chunked processing, OCR/PDF/video sampling, bundled ML Kit image labels, playback/export/delete/manual speakers/summary review | PARTIAL | Actual decoder/STT/OCR/label/model accuracy and OEM file visibility NOT TESTED. Opus encoding and reliable learned VAD/diarization/owner-voice matching remain research gates; no simulated outputs |
 | 6 — assistant/stability/backup | Source queries/links, deterministic finance/briefs, typed review-only proposals, confirm-first English/Kiswahili voice/chat commands (reminders, memory notes, task done/snooze/reschedule, cash review items, email/WhatsApp drafts), memory provenance/correction/forget, encrypted portable backup/staging/recovery, startup storage and send recovery | PARTIAL | Full native/device backup round trip, SQLCipher conversion/Keystore, battery/peak RAM/thermal and usability tests NOT TESTED. Literal retrieval is bounded. Semantic search code is present (owner-imported MediaPipe text embedder, arm64-v8a only) but retrieval quality, indexing speed and battery cost are NOT TESTED; no autonomous capability is claimed |
 
-## Previous Android host checkpoint
+## Host verification
 
 From `android/`:
 
@@ -27,8 +27,8 @@ From `android/`:
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --console=plain
 ```
 
-Final result: **141 tests: 137 passed, 4 opt-in live AI tests skipped; 0 failures/errors. Lint: 0 errors,
-33 warnings. APK assembly passed.** Native whisper JNI compiled for
+Final result: **145 tests: 141 passed, 4 opt-in live AI tests skipped; 0 failures/errors. Lint: 0 errors,
+46 warnings. APK assembly passed.** Native whisper JNI compiled for
 arm64-v8a and x86_64. Robolectric uses API 34 and ordinary SQLite/generated AES keys;
 it does not execute phone Keystore, native SQLCipher, MediaCodec, ML Kit or models.
 Warnings remain enabled: dependency/update notices, English resources, native API
@@ -36,7 +36,7 @@ annotations/KTX suggestions and the existing deprecated Material tab API.
 
 APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.4.0**, code 4,
 package `com.hellfire.ass`, min/target API 29/36, arm64-v8a and x86_64 only.
-SHA-256: `1592dd5614eeb4f53a8dcaec50d3c70fffe4d7343232bd6a15696026a3143048` (≈167 MB; MediaPipe text and bundled ML Kit labeling added ≈40 MB).
+SHA-256: `96f7b0457767751e9b5fe7a54d4fbe24108e8924db64e552b8acd144f90eaea1` (≈167 MB; MediaPipe text and bundled ML Kit labeling added ≈40 MB).
 HTML/XML reports are preserved under `android/app/build/reports/` and
 `android/app/build/test-results/testDebugUnitTest/` after integration.
 
@@ -54,8 +54,8 @@ HTML/XML reports are preserved under `android/app/build/reports/` and
 | Media container | PASS (host) | Authenticated seeking across chunks, corruption/wrong identity rejection, interrupted recording prefix recovery and energy interval/exclusion logic; no real microphone/codec |
 | Backup components | PASS (host) | Table allowlists, Unicode rows/evidence, different payload key after restore, wrong passphrase and stale approval revocation. Does NOT establish full SAF/SQLCipher/Keystore/device restore |
 | APK/native alignment | PASS (host) | `zipalign -c -P 16 4` passes; all 17 packaged ELF libraries have LOAD alignment >=16 KiB. Physical installation remains NOT TESTED |
-| Relay tests | PASS (host) | Seven pytest tests: signature/verification/auth, encrypted replay/ACK, business filtering/statuses, approval/replay/expiry/unknown delivery, bounds/rate limiting and log query redaction; mocked Graph only |
-| Relay image / Compose | PASS (host) | `docker build -t hellfire-relay:local server`; non-root image `b02eda1eb4f8`; Compose parses with no env resolution. Ephemeral ASGI smoke confirms UID 10001, honest unconfigured health and protected endpoint 503; no listener/deployment/live network |
+| Relay tests | PASS (host) | 21 pytest tests (including linked-device capture): signature/verification/auth, encrypted replay/ACK, business filtering/statuses, approval/replay/expiry/unknown delivery, bounds/rate limiting and log query redaction; mocked Graph only |
+| Relay image / Compose | PASS (host) | `docker build -t hellfire-relay:whatsapp-web server`; non-root image `4903d7c497e2`; Compose parses with no env resolution. Ephemeral ASGI smoke confirms UID 10001, honest unconfigured health and protected endpoint 503; no listener/deployment/live network |
 | Physical/model/live-account tests | NOT TESTED | Explicitly deferred; neither grants, Coexistence eligibility, actual inference nor successful delivery is asserted |
 
 Relay verification from `server/`:
@@ -65,7 +65,7 @@ Relay verification from `server/`:
 docker compose config --no-env-resolution --no-interpolate
 ```
 
-Result: **7 passed**. One Starlette TestClient/httpx deprecation warning remains;
+Result: **21 passed**. One Starlette TestClient/httpx deprecation warning remains;
 no runtime/security check was disabled to hide it. Docker's legacy-builder notice
 also remains visible. A separate isolated container smoke test imports the app and
 checks ASGI routes without opening a port or contacting Meta.
@@ -93,11 +93,19 @@ as an alternative. No live account, phone or personal message was used.
 | Dependency advisories? | `npm audit --omit=dev --omit=optional` | PASS (host) | Zero known vulnerabilities at this checkpoint after Puppeteer 25.17.0 override and omitting unused RemoteAuth dependencies; no global packages changed | Recheck on later updates; live browser/library compatibility remains unverified |
 | Library/browser adapter imports? | Construct real `Client` and `LocalAuth`, import Puppeteer launch function without initialization | PASS (host) | whatsapp-web.js 1.34.8 and Puppeteer 25.17.0 import/construct under Node 22.23.3. No browser or WhatsApp connection exercised | Verify full pairing and own-message sync |
 | Compose wiring? | `docker compose -f compose.yaml -f compose.web.yaml config --no-env-resolution --no-interpolate` | PASS (host) | Relay remains loopback-only; worker has no port; private profile volume separated from encrypted shared spool | Provision private env/public key and HTTPS before deployment |
-| Android capture adapter and setup controls? | Full host unit suite, lint and debug APK; final UI assembly/lint | PASS (host) | 141 tests: 137 passed, 4 opt-in live tests skipped. Four new GatewayEvents tests cover group author/thread, outgoing direction, transport mismatch and OTP/envelope redaction. Lint: 0 errors, 45 warnings; no suppression added | Verify phone capture and background behavior |
+| Android capture adapter and setup controls? | Full host unit suite, lint and debug APK; final UI assembly/lint | PASS (host) | 145 tests: 141 passed, 4 opt-in live tests skipped. Four new GatewayEvents tests cover group author/thread, outgoing direction, transport mismatch and OTP/envelope redaction. Lint: 0 errors, 46 warnings; no suppression added | Verify phone capture and background behavior |
 | Relay and worker images? | Build both Dockerfiles; offline, network-disabled import/ASGI smoke | PASS (host) | Relay image `4903d7c497e2`; worker image `70cccf1ffad9`. Both run as UID 10001; final worker verifies Puppeteer 25.17.0 and constructs Client/LocalAuth. Pairing shell serves without exposing QR; unconfigured private endpoint rejects access | Browser startup, sandbox and account pairing remain NOT TESTED |
 | Live pairing and browser sandbox? | Start provisioned worker, scan QR, check linked-device list | NOT TESTED | No owner account linked. The official Puppeteer image needs SYS_ADMIN for its enabled Chromium sandbox; no `--no-sandbox` bypass added | Verify on selected trusted Linux Docker host |
 | Complete incoming/own/group/media coverage? | Controlled messages from phone and another account, disconnect/restart/replay | NOT TESTED | Software normalization and provenance pass host tests only. Attachments are metadata; history/edits/deletions/reactions and Web sending are outside this slice | Record actual gaps; never infer missing content |
 | Android grants/background sync? | Connect mode web, Sync, screen-off and periodic maintenance | NOT TESTED | Existing manual/best-effort maintenance reused; no push guarantee | Verify phone envelope decryption, Room persistence, redaction and subsequent ACK |
+
+Combined verification on `main` preserves the separately merged semantic-memory
+update: 145 Android tests (141 passed, 4 opt-in live tests skipped), 0 lint errors /
+46 warnings, debug APK assembled; 21 relay and 6 worker tests pass. The initial
+combined attempt hit a GitHub timeout fetching the existing whisper.cpp source.
+The already cached v1.9.5 archive was verified against the pinned SHA-256 and copied
+into the ignored CMake download cache; the normal checksummed build then passed.
+No build script, source pin, model or global package was changed for that recovery.
 
 Worker spool retention: seven days / 10,000 events, 128 KiB per event and 16,000
 body characters with explicit truncation. Queue/storage failures can lose new
