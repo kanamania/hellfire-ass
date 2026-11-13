@@ -3,6 +3,8 @@
 Evidence date: 2026-11-13, Africa/Dar_es_Salaam. The owner authorized remaining
 phases and explicitly kept physical device testing until last. No physical device,
 emulator, live account, personal message corpus, recording or model weights were used.
+The existing optional cloud providers/settings were merged from main; their live
+tests remain opt-in and unconfigured.
 No device-dependent phase is fully accepted solely because its host checks pass.
 
 ## Current phase gates
@@ -25,7 +27,7 @@ From `android/`:
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --console=plain
 ```
 
-Final result: **93 tests; 0 failures/errors/skips. Lint: 0 errors,
+Final result: **130 tests: 126 passed, 4 opt-in live AI tests skipped; 0 failures/errors. Lint: 0 errors,
 44 warnings. APK assembly passed.** Native whisper JNI compiled for
 arm64-v8a and x86_64. Robolectric uses API 34 and ordinary SQLite/generated AES keys;
 it does not execute phone Keystore, native SQLCipher, MediaCodec, ML Kit or models.
@@ -34,7 +36,7 @@ annotations/KTX suggestions and the existing deprecated Material tab API.
 
 APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.4.0**, code 4,
 package `com.hellfire.ass`, min/target API 29/36, arm64-v8a and x86_64 only.
-SHA-256: `98d21f570eb586aee7ea943d5ce0ae170a70bceb6176a311f01e213538c97134`.
+SHA-256: `c15f616f146f934a74899b68340fb85419c8e15a065e390938ab908b570884a3`.
 HTML/XML reports are preserved under `android/app/build/reports/` and
 `android/app/build/test-results/testDebugUnitTest/` after integration.
 
@@ -75,6 +77,54 @@ Historical host checkpoints: Phase 0 — 34 tests; Phase 1 — 58; combined init
 finance/comms slice — 66; media slice — 80; initial assistant/backup slice — 87.
 Current artifact/results above supersede prior debug builds, not their untested
 physical outcomes.
+
+## Preserved AI provider checkpoint — 2026-11-13
+
+The earlier main-branch update added optional AI provider support. Its adapters,
+settings, privacy/budget gates, UI and tests are preserved. The table records that
+standalone checkpoint; the combined current suite is reported above. Local queries
+and imported native model support have since been added in separate screens.
+
+| Question | Test | Result | Evidence | Next action |
+|---|---|---|---|---|
+| Existing local/capture workflows preserved? | Full host unit suite | PASS | All 58 previous tests still pass; original entry points preserved at that checkpoint; now extended with local source queries | Verify actual device behavior at final stage |
+| Official provider wire contracts? | Mocked discovery and generation | PASS | Claude versioned Messages, OpenAI/xAI Responses, DeepSeek Chat Completions; headers, payloads, text extraction and usage checked | Test accounts with inference permissions later |
+| Provider capability boundaries? | Request tools/images/streaming/structured output | PASS | Unsupported capabilities fail before transport; local test cannot claim reasoning, drafting, extraction or summarization | Add further capabilities only with explicit implementation |
+| Routing and manual switching? | Preferred model, ordered/deduplicated fallback, per-task routes | PASS | Distinct authorization/quota/network/outage/capability failures advance in saved order; no implicit cloud fallback | Exercise selectors on device |
+| Cancel avoids further inference? | Suspend mocked transport; cancel coroutine | PASS | Cancellation reaches transport and no fallback starts; uncertain reservation retained | Verify actual HTTPS disconnect/provider billing behavior later |
+| Cloud privacy boundary? | Protected input categories, cloud-disable, redaction tests | PASS | Notification/SMS/finance/recording/media categories never call cloud; submitted security text/email/phone redacted | Review prose manually; redaction is not exhaustive |
+| Credential/settings persistence? | Encrypted file round trip/reopen/delete/wrong key/corruption | PASS | Synthetic AES keys; authenticated ciphertext only; failure blocks cloud while basic local chat works | Verify Android Keystore and UI lifecycle on device |
+| Cost cap/accounting? | Integer prices, reservation, settlement, missing usage, restart and month tests | PASS | Monthly owner-timezone counters survive router restart; absent prices/cap or exhausted estimate prevents cloud call | Configure accurate highest applicable prices and provider-side account limits |
+| Prompt/secret-free debug metadata? | Audit/debug-string assertions; source review | PASS | Last 100 attempt metadata only; no prompt/answer/credential logging calls added | Keep actual credentials and personal input out of Git/test reports |
+| Live Claude/Grok/DeepSeek/OpenAI? | Opt-in `AiLiveProviderTest` | NOT TESTED | Four tests skipped; no configured credential-based verification run | Explicit opt-in plus key/model required; tests can incur charges |
+| Provider settings UI and actual device encryption? | Manual Android interaction | NOT TESTED | Compose compiles; no emulator or physical phone exercised | Save/delete keys, discover models, switch routes, rotate during responses, cancel, and test offline |
+| Subscription/account sign-in? | Existing code and official authentication documentation | PARTIAL | No existing sign-in found; API keys only added; no participating-tool entitlement assumed | Add account auth only with provider-authorized third-party inference scope |
+
+Host validation uses the same command from `android/`:
+
+```bash
+./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+```
+
+**Historical provider-only checkpoint: 91 tests passed, 0 failures/errors; 4 live
+tests skipped. Lint: 0 errors, 31 warnings.** These are host results with mocked
+network responses and synthetic encryption keys, not successful live API or device
+tests. That standalone update changed no dependency versions. API references and opt-in live test setup are
+in the existing README's **Optional AI providers** section.
+
+The cap covers local estimated/reserved spend using manually supplied prices,
+not exact provider invoices or spending by other clients. Errors, cancellations,
+missing usage and process loss retain conservative reservations. No automatic
+same-model retries or outward actions exist. Local fallback is only the original
+basic offline test; imported LiteRT-LM inference now lives separately in Local AI. The system
+voice session remains offline; provider/model selection lives in the activity.
+
+For device verification: start with cloud disabled, confirm hello/habari/time,
+then configure an API key and cap using non-sensitive text. Check unauthorized,
+exhausted credit, airplane-mode fallback, model rejection, cap exhaustion, and
+cancel. Verify response provider/model survives activity recreation. Saving keys
+must not expose them in logs, saved-instance state or backup/transfer. Test model
+listing separately from generation permissions. Do not use personal histories.
 
 ## Final-stage device verification
 

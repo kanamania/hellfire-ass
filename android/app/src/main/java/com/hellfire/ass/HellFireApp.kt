@@ -1,5 +1,6 @@
 package com.hellfire.ass
 
+import com.hellfire.ass.ai.*
 import android.app.Application
 import android.database.ContentObserver
 import android.os.Handler
@@ -14,6 +15,11 @@ import com.hellfire.ass.sms.SmsSyncWorker
 import kotlinx.coroutines.*
 
 class HellFireApp : Application() {
+    val ai by lazy {
+        val transport = HttpsAiTransport()
+        AiRouter(EncryptedAiStore(this) { cipher }, listOf(OfflineProvider(), OpenAiProvider(transport),
+            ClaudeProvider(transport), GrokProvider(transport), DeepSeekProvider(transport)))
+    }
     val database by lazy { EventDatabase.open(this) }
     val secrets by lazy { com.hellfire.ass.security.SecretStore(this) { cipher } }
     val communications by lazy { com.hellfire.ass.communications.CommunicationRepository(this) }
