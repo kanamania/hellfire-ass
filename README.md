@@ -53,6 +53,13 @@ Optional network adapters remain disconnected until configured by the owner.
   transfers are excluded from spending. Source search examines up to 2,000 recent
   events, returns up to 20 literal matches, and offers source evidence links.
   It is not a complete semantic/embedding search or a general autonomous agent.
+- **Assistant commands:** `remind me to <task> <when>` / `nikumbushe …`,
+  `remember <subject>: <note>`, `mark <task> done`, `snooze <task>`,
+  `reschedule <task> to <when>`, `log cash <item> <amount> na …`,
+  `email <address> about <subject>: <body>`, `whatsapp <number>: <body>`.
+  Each returns a proposal; nothing changes until you tap Confirm. Reminders become
+  active tasks, cash items go to Finance review, drafts still need Messages approval
+  to send. `help` lists them.
 - **Personal memory:** owner notes, exact source excerpts and uncertain inferences
   remain distinct. Confirm corrections and inspect source IDs. Forgetting an index
   item does not delete its source; the source can still appear in capture search.
@@ -116,7 +123,7 @@ Optional network adapters remain disconnected until configured by the owner.
   preserves uncertain sends. Reconnect accounts and review exclusions afterward.
   Full native/device round-trip verification is still required before relying on it.
 
-The system assistant session supports the same read-only local queries with optional
+The system assistant session supports the same local queries and confirm-first commands with optional
 installed on-device speech input and offline TTS. Gestures, engine/language support,
 lock-screen behavior and hotword support require physical verification.
 
@@ -329,6 +336,9 @@ SQLCipher/Keystore, actual model execution, live accounts or Android/OEM behavio
 - 2026-11-13, Phases 2–6 software slices: finance/local AI/OCR, encrypted database,
   mail/relay/drafts, tasks/alarms, encrypted multimedia/transcription adapters,
   evidence queries/memory and portable backup/recovery. Device testing stays last.
+- 2026-11-13, agent workflows: confirm-first voice/chat commands for reminders,
+  memory notes, task done/snooze/reschedule, cash review items and email/WhatsApp
+  drafts; 137 host tests.
 
 References: [Android assistant](https://developer.android.com/reference/android/service/voice/VoiceInteractionService),
 [exact alarms](https://developer.android.com/develop/background-work/services/alarms/schedule),

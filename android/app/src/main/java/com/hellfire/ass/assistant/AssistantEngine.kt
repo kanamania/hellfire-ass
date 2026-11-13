@@ -8,17 +8,21 @@ import org.json.JSONObject
 import java.time.*
 import java.util.Locale
 
-/** All queries are read-only. Untrusted source text never selects an executable action. */
+/** Queries are read-only. Owner commands only return a proposal; untrusted source text never selects an executable action. */
 class AssistantEngine(private val app: HellFireApp, private val clock: Clock = Clock.systemUTC()) {
-    data class Answer(val text: String, val sources: List<String> = emptyList())
+    data class Answer(val text: String, val sources: List<String> = emptyList(), val command: OwnerCommand? = null)
     suspend fun answer(query: String): Answer = withContext(Dispatchers.IO) {
         require(query.length <= 2000)
         val lower = query.trim().lowercase(Locale.ROOT)
         if (lower in setOf("hello", "hi", "hellfire", "habari", "hujambo", "time", "saa ngapi", "what time is it", "what time is it?"))
             return@withContext Answer(LocalAssistant(clock).answer(query))
+        val command = try { AssistantCommands.parse(query, clock.instant()) } catch (e: IllegalArgumentException) { return@withContext Answer(e.message ?: "Command not understood.") }
+        if (command != null) return@withContext propose(command)
         when {
             lower.startsWith("search ") || lower.startsWith("tafuta ") || lower.startsWith("find ") -> search(query.substringAfter(' ').trim())
-            lower in setOf("", "help", "msaada") -> Answer("Ask: spending today, income this month, balances, tasks tomorrow, morning brief, evening brief, or search <words>. Answers use saved evidence; review actions in their own tabs.")
+            lower in setOf("", "help", "msaada") -> Answer("Ask: spending today, income this month, balances, tasks tomorrow, morning brief, evening brief, or search <words>.\n" +
+                "Commands (applied only after you confirm): remind me to <task> <when>; remember <subject>: <note>; mark <task> done; snooze <task>; " +
+                "reschedule <task> to <when>; log cash <item> <amount>; email <address> about <subject>: <body>; whatsapp <number>: <body>.")
             "brief" in lower || "muhtasari" in lower -> brief(lower.contains("evening") || lower.contains("jioni"))
             lower.contains(Regex("\\b(balance|balances|salio)\\b")) -> {
                 val accounts = app.database.finances().allAccounts()
@@ -36,6 +40,17 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
             }
             else -> search(query.replace(Regex("(?i)^(search|find|what do you know about|tafuta)\\s+"), "").trim().trimEnd('?'))
         }
+    }
+    private suspend fun propose(command: OwnerCommand): Answer {
+        val resolved = if (command !is OwnerCommand.TaskAction) command else {
+            val matches = app.database.tasks().activeMatching(command.query)
+            when (matches.size) {
+                0 -> return Answer("No active task matches \"${command.query}\". Review items must be activated in Tasks first.")
+                1 -> command.copy(taskId = matches[0].id, title = matches[0].title)
+                else -> return Answer("Several active tasks match; say more of the title:\n" + matches.joinToString("\n") { "${TaskTime.display(it.dueAt)} · ${it.title}" })
+            }
+        }
+        return Answer("Proposed: ${resolved.summary}\nConfirm to apply. Nothing has changed yet.", command = resolved)
     }
     suspend fun source(id: String): String {
         val event = app.database.events().find(id) ?: return "Source no longer available."

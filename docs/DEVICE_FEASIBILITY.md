@@ -17,7 +17,7 @@ No device-dependent phase is fully accepted solely because its host checks pass.
 | 3 — communications | IMAPS/SMTP, UIDVALIDITY/MIME handling, bounded visible IDLE, drafts/one-use approval/recovery, encrypted signed-webhook relay and delivery/echo adapters | PARTIAL | Live Gmail app-password access and Meta eligibility/Coexistence onboarding NOT TESTED; no real sends or deployment |
 | 4 — tasks/alarms | Evidence-linked candidates, owner activation, escalation, Done/Snooze/Reschedule, durable restoration, nightly review and morning/evening query briefs | PARTIAL | Physical alarm/Doze/DND/permission/reboot tests NOT TESTED; overdue repeat interval owner-configurable (5–1440 minutes, default 10) |
 | 5 — media | Encrypted originals, SAF import/folder scanning, VAD intervals during visible owner recording, compiled whisper JNI adapter, chunked processing, OCR/PDF/video sampling, playback/export/delete/manual speakers/summary review | PARTIAL | Actual decoder/STT/OCR/model accuracy and OEM file visibility NOT TESTED. Opus encoding, reliable learned VAD/diarization/owner-voice matching and model-based vision/embedding index remain research gates; no simulated outputs |
-| 6 — assistant/stability/backup | Source queries/links, deterministic finance/briefs, typed review-only proposals, memory provenance/correction/forget, encrypted portable backup/staging/recovery, startup storage and send recovery | PARTIAL | Full native/device backup round trip, SQLCipher conversion/Keystore, battery/peak RAM/thermal and usability tests NOT TESTED. Literal retrieval is bounded; autonomous/semantic capability is not claimed |
+| 6 — assistant/stability/backup | Source queries/links, deterministic finance/briefs, typed review-only proposals, confirm-first English/Kiswahili voice/chat commands (reminders, memory notes, task done/snooze/reschedule, cash review items, email/WhatsApp drafts), memory provenance/correction/forget, encrypted portable backup/staging/recovery, startup storage and send recovery | PARTIAL | Full native/device backup round trip, SQLCipher conversion/Keystore, battery/peak RAM/thermal and usability tests NOT TESTED. Literal retrieval is bounded; autonomous/semantic capability is not claimed |
 
 ## Host verification
 
@@ -27,8 +27,8 @@ From `android/`:
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --console=plain
 ```
 
-Final result: **130 tests: 126 passed, 4 opt-in live AI tests skipped; 0 failures/errors. Lint: 0 errors,
-44 warnings. APK assembly passed.** Native whisper JNI compiled for
+Final result: **137 tests: 133 passed, 4 opt-in live AI tests skipped; 0 failures/errors. Lint: 0 errors,
+33 warnings. APK assembly passed.** Native whisper JNI compiled for
 arm64-v8a and x86_64. Robolectric uses API 34 and ordinary SQLite/generated AES keys;
 it does not execute phone Keystore, native SQLCipher, MediaCodec, ML Kit or models.
 Warnings remain enabled: dependency/update notices, English resources, native API
@@ -36,7 +36,7 @@ annotations/KTX suggestions and the existing deprecated Material tab API.
 
 APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.4.0**, code 4,
 package `com.hellfire.ass`, min/target API 29/36, arm64-v8a and x86_64 only.
-SHA-256: `c15f616f146f934a74899b68340fb85419c8e15a065e390938ab908b570884a3`.
+SHA-256: `6e3babaf6406b541a4b7344a24e815733125c2c5df956b95495f5d13c7cc6dcd`.
 HTML/XML reports are preserved under `android/app/build/reports/` and
 `android/app/build/test-results/testDebugUnitTest/` after integration.
 
@@ -47,6 +47,7 @@ HTML/XML reports are preserved under `android/app/build/reports/` and
 | Room migrations | PASS (host) | Construct schema 1, migrate non-destructively through schema 8; source ciphertext retained and Room validates tables/indices/FKs |
 | Finance | PASS (host) | Integer limits, synthetic provider candidates, duplicate-reference evidence, transfer balancing, separate fees, edited approval, refunds/expense totals and append-only reversals |
 | Candidate/action contracts | PASS (host) | Strict integer/schema fields, invalid dates/parties/channels, unsupported execution and injected approval/header data rejected |
+| Owner voice/chat commands | PASS (host) / NOT TESTED (device) | `AssistantCommandsTest`: questions stay queries; reminder dates/titles (EN/SW, past/missing dates rejected), memory subjects, cash parsing, email/WhatsApp validation and header injection, task action/reschedule parsing, active-only task lookup. `execute` composes existing tested task/draft/finance/memory writes but is not run on host (needs Keystore-backed `HellFireApp`). Spoken commands through the system session NOT TESTED |
 | Communication persistence/MIME | PASS (host) | Approval freshness/single claim, interrupted-process recovery, monotonic delivery states, UID cursor isolation, Unicode/plain-text alternatives and bounded deep MIME traversal |
 | Tasks | PASS (host) | Source-relative EAT dates, invalid dates, escalation math, review-only until activation, snooze/done, source FKs and explicit nightly review completion |
 | Media container | PASS (host) | Authenticated seeking across chunks, corruption/wrong identity rejection, interrupted recording prefix recovery and energy interval/exclusion logic; no real microphone/codec |
@@ -277,6 +278,12 @@ Keep messages, credentials, recordings, serials and exported backups out of Git.
    and index-only forgetting. Verify both typed and installed offline speech/TTS
    queries. Incoming instruction-like source text cannot execute tools. Typed
    proposals only retain Tasks/Messages review items; separate approval is required.
+   Speak and type each owner command (`remind me to … tomorrow 15:00`, `nikumbushe …
+   kesho`, `remember Asha: …`, `mark … done`, `snooze …`, `reschedule … to …`,
+   `log cash … 3000 na … elfu saba`, `email … about …: …`, `whatsapp +255…: …`):
+   confirm nothing changes before Confirm, reminders alarm at the stated EAT time,
+   cash items appear only in Finance review, and drafts are never sent without the
+   separate Messages approval.
 9. **Backup:** export synthetic registered originals and relational data with a
    strong test passphrase. Authenticate/restore into an empty separate installation
    or test profile with capture/accounts off. Compare ciphertext decryption, media
