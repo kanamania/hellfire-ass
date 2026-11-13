@@ -1,0 +1,98 @@
+package com.hellfire.ass.finance
+
+import androidx.room.withTransaction
+import com.hellfire.ass.data.EventDatabase
+import com.hellfire.ass.events.NotificationNormalizer
+import java.util.UUID
+
+class FinanceRepository(private val db: EventDatabase) {
+    private val dao get() = db.finances()
+    suspend fun approve(candidateId: String, accountId: String, kind: String, category: String,
+        description: String, transferTo: String? = null, amount: Long? = null, fee: Long? = null, occurredAt: Long? = null): String = db.withTransaction {
+        val original = requireNotNull(dao.findCandidate(candidateId))
+        val candidate = original.copy(amount = amount ?: original.amount, fee = fee ?: original.fee, occurredAt = occurredAt ?: original.occurredAt)
+        require(candidate.occurredAt >= 0)
+        require(candidate.state == "REVIEW") { "This candidate has already been reviewed" }
+        val account = requireNotNull(dao.account(accountId))
+        require(account.currency == "TZS" && candidate.amount > 0 && candidate.fee >= 0)
+        Math.addExact(candidate.amount, candidate.fee)
+        require(candidate.provider == "MANUAL" || candidate.provider == account.provider) { "Choose an account for this provider" }
+        val key = NotificationNormalizer.sha256("$accountId|${candidate.provider}|${candidate.reference ?: candidate.id}")
+        val existing = dao.byKey(key)
+        if (existing != null) {
+            dao.evidence(LedgerEvidence(existing.id, candidate.sourceId))
+            dao.candidateState(candidateId, "DUPLICATE_LINKED")
+            return@withTransaction "Duplicate reference linked to existing evidence; no transaction added."
+        }
+        val now = System.currentTimeMillis()
+        val id = UUID.randomUUID().toString()
+        val delta = if (kind == "OWN_TRANSFER") Math.negateExact(candidate.amount) else Money.delta(kind, candidate.amount)
+        Math.addExact(dao.balance(accountId), Math.subtractExact(delta, candidate.fee))
+        val destination = if (kind == "OWN_TRANSFER") requireNotNull(transferTo?.let { dao.account(it) }).also {
+            require(it.id != accountId && it.currency == account.currency)
+            Math.addExact(dao.balance(it.id), candidate.amount)
+        } else null
+        dao.post(LedgerEntry(id, accountId, key, kind, delta, category, description,
+            candidate.occurredAt, now, id))
+        dao.evidence(LedgerEvidence(id, candidate.sourceId))
+        if (destination != null) {
+            val credit = "$id:credit"
+            dao.post(LedgerEntry(credit, destination.id, "$key:credit", kind, candidate.amount, "Own transfer", description, candidate.occurredAt, now, id))
+            dao.evidence(LedgerEvidence(credit, candidate.sourceId))
+        }
+        if (candidate.fee > 0) {
+            val feeId = "$id:fee"
+            dao.post(LedgerEntry(feeId, accountId, "$key:fee", "FEE", Math.negateExact(candidate.fee), "Fees", description, candidate.occurredAt, now, id))
+            dao.evidence(LedgerEvidence(feeId, candidate.sourceId))
+        }
+        dao.candidateState(candidateId, "APPROVED")
+        db.communications().audit(com.hellfire.ass.communications.ActionAudit(UUID.randomUUID().toString(), id, "OWNER_LEDGER_APPROVAL", "POSTED", now))
+        "Transaction posted with source evidence."
+    }
+
+    suspend fun reverse(id: String): Unit = db.withTransaction {
+        val original = requireNotNull(dao.entry(id))
+        require(original.reversesId == null && !dao.reversed(original.id)) { "Already corrected or a correction entry" }
+        val group = dao.group(original.groupId)
+        for (entry in group) {
+            require(!dao.reversed(entry.id))
+            val delta = Math.negateExact(entry.amount)
+            Math.addExact(dao.balance(entry.accountId), delta)
+            val reversalId = UUID.randomUUID().toString()
+            dao.post(entry.copy(id = reversalId, dedupeKey = "reverse:${entry.id}",
+                kind = "ADJUSTMENT", amount = delta, description = "Reversal: ${entry.description}",
+                occurredAt = System.currentTimeMillis(), createdAt = System.currentTimeMillis(),
+                groupId = "reverse:${original.groupId}", reversesId = entry.id))
+            dao.sources(entry.id).forEach { dao.evidence(LedgerEvidence(reversalId, it)) }
+            db.communications().audit(com.hellfire.ass.communications.ActionAudit(UUID.randomUUID().toString(), reversalId, "OWNER_LEDGER_REVERSAL", "POSTED", System.currentTimeMillis()))
+        }
+    }
+
+    suspend fun summary(start: Long, end: Long): FinanceSummary {
+        require(start >= 0 && end > start)
+        var income = 0L
+        var expenses = 0L
+        val sources = linkedSetOf<String>()
+        for (entry in dao.period(start, end)) {
+            val original = entry.reversesId?.let { dao.entry(it) }
+            val kind = original?.kind ?: entry.kind
+            when (kind) {
+                "INCOME" -> income = Math.addExact(income, entry.amount)
+                "EXPENSE", "FEE", "REFUND" -> expenses = Math.subtractExact(expenses, entry.amount)
+            }
+            dao.sources(entry.id).forEach(sources::add)
+        }
+        return FinanceSummary(income, expenses, sources.toList())
+    }
+
+    suspend fun collect(sourceId: String, occurredAt: Long, sender: String, text: String) {
+        FinanceParser.parse(sender, text)?.let { parsed ->
+            dao.candidate(FinanceCandidate(NotificationNormalizer.sha256("finance:$sourceId:0"), sourceId,
+                provider = parsed.provider, reference = parsed.reference, kind = parsed.kind,
+                amount = parsed.amount, fee = parsed.fee, merchant = parsed.merchant,
+                evidence = parsed.evidence, occurredAt = occurredAt))
+        }
+    }
+}
+
+data class FinanceSummary(val income: Long, val expenses: Long, val sourceIds: List<String>)

@@ -11,15 +11,17 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 
 class PayloadCipher(private val key: SecretKey) {
-    fun encrypt(plaintext: ByteArray): ByteArray {
+    fun encrypt(plaintext: ByteArray, aad: ByteArray = byteArrayOf()): ByteArray {
         val cipher = encryptor()
+        if (aad.isNotEmpty()) cipher.updateAAD(aad)
         return byteArrayOf(1) + cipher.iv + cipher.doFinal(plaintext)
     }
 
-    fun decrypt(envelope: ByteArray): ByteArray {
+    fun decrypt(envelope: ByteArray, aad: ByteArray = byteArrayOf()): ByteArray {
         require(envelope.size >= 29 && envelope[0] == 1.toByte()) { "Invalid encrypted payload" }
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, envelope.copyOfRange(1, 13)))
+        if (aad.isNotEmpty()) cipher.updateAAD(aad)
         return cipher.doFinal(envelope.copyOfRange(13, envelope.size))
     }
 

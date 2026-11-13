@@ -7,7 +7,10 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import org.json.JSONObject
 
-class EventProcessor(private val dao: EventDao, private val cipher: () -> PayloadCipher) {
+class EventProcessor(private val dao: EventDao,
+    private val collectFinance: suspend (String, Long, String, String) -> Unit = { _, _, _, _ -> },
+    private val collectTask: suspend (String, Long, String, Boolean) -> Unit = { _, _, _, _ -> },
+    private val cipher: () -> PayloadCipher) {
     suspend fun drain() {
         while (true) {
             val batch = dao.pending()
@@ -24,10 +27,18 @@ class EventProcessor(private val dao: EventDao, private val cipher: () -> Payloa
                         event.securitySensitive -> "SECURITY_REDACTED"
                         !event.contentAvailable -> "CONTENT_UNAVAILABLE"
                         else -> {
-                            val fields = JSONObject(cipher().decrypt(event.encryptedPayload).toString(Charsets.UTF_8)).getJSONObject("fields")
+                            val payload = JSONObject(cipher().decrypt(event.encryptedPayload).toString(Charsets.UTF_8))
+                            val fields = payload.getJSONObject("fields")
                             val text = listOf("title", "text", "big_text", "text_lines", "sub_text", "messages")
-                                .joinToString("\n") { fields.optJSONArray(it)?.join(" ").orEmpty() }
-                            RuleClassifier.classify(text, fields.optJSONArray("category")?.optString(0), event.source)
+                                .flatMap { name -> fields.optJSONArray(name)?.let { array ->
+                                    (0 until array.length()).map { array.optString(it) }
+                                }.orEmpty() }.joinToString("\n")
+                            val label = RuleClassifier.classify(text, fields.optJSONArray("category")?.optString(0), event.source)
+                            if (label == "FINANCE_CANDIDATE") collectFinance(event.id, event.occurredAt,
+                                fields.optJSONArray("sender_hint")?.join(" ").orEmpty() + " " + event.packageName, text.replace("\"", ""))
+                            if (payload.optJSONObject("provenance")?.optString("recorded_time_known") != "false" && event.source != "media_summary")
+                                collectTask(event.id, event.occurredAt, text, event.kind == "OUTGOING")
+                            label
                         }
                     }
                     dao.finish(event.id, "DONE", label, null, System.currentTimeMillis())

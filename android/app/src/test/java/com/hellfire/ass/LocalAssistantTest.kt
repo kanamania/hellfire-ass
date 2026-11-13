@@ -17,7 +17,7 @@ class LocalAssistantTest {
         assertTrue(assistant.answer("habari").contains("bila intaneti"))
     }
     @Test fun `unsupported requests do not claim access`() {
-        assertTrue(assistant.answer("How much did I spend?").contains("not implemented"))
-        assertTrue(assistant.answer("").contains("no model"))
+        assertTrue(assistant.answer("How much did I spend?").contains("spending today"))
+        assertTrue(assistant.answer("").contains("saved evidence"))
     }
 }

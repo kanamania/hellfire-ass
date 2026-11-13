@@ -8,13 +8,17 @@ plugins {
 android {
     namespace = "com.hellfire.ass"
     compileSdk = 36
+    ndkVersion = "28.2.13676358"
     defaultConfig {
         applicationId = "com.hellfire.ass"
         minSdk = 29
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2.0"
+        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
+        externalNativeBuild { cmake { cppFlags += "-std=c++17" } }
+        versionCode = 4
+        versionName = "0.4.0"
     }
+    externalNativeBuild { cmake { path = file("src/main/cpp/CMakeLists.txt"); version = "3.22.1" } }
     buildFeatures { compose = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -23,11 +27,17 @@ android {
     testOptions { unitTests.isIncludeAndroidResources = true }
     sourceSets.getByName("test").resources.srcDir("schemas")
     lint { abortOnError = true }
+    packaging { resources { excludes += setOf("META-INF/NOTICE.md", "META-INF/LICENSE.md", "META-INF/LICENSE.txt", "META-INF/NOTICE.txt") } }
 }
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 
 dependencies {
+    implementation(libs.litertlm)
+    implementation(libs.ocr)
+    implementation(libs.sqlcipher)
+    implementation(libs.android.mail)
+    implementation(libs.android.activation)
     implementation(libs.work.runtime)
     implementation(libs.core)
     implementation(libs.activity.compose)

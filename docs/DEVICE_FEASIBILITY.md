@@ -1,79 +1,93 @@
-# HellFire Ass — capture-engine feasibility
+# HellFire Ass — implementation and feasibility
 
-Evidence date: 2026-11-13, Africa/Dar_es_Salaam. Phase 0, Phase 1 and the incremental AI provider update
-have passed host checks. The owner explicitly deferred physical device testing to
-the final stage. Device checks are **NOT TESTED**, rather than blockers to the next
-software milestone. Nothing here asserts successful OPPO testing or grants.
-The owner-supplied phone specifications remain unverified.
+Evidence date: 2026-11-13, Africa/Dar_es_Salaam. The owner authorized remaining
+phases and explicitly kept physical device testing until last. No physical device,
+emulator, live account, personal message corpus, recording or model weights were used.
+The existing optional cloud providers/settings were merged from main; their live
+tests remain opt-in and unconfigured.
+No device-dependent phase is fully accepted solely because its host checks pass.
 
-| Question | Test | Result | Evidence | Next action |
-|---|---|---|---|---|
-| Host JDK / SDK available? | `java -version`; inspect SDK directories | PASS | OpenJDK 21.0.13; SDK `/home/dev/android-sdk`; platform 36 and Build Tools 35.0.0 installed | Continue with project wrapper |
-| Current APK compiles? | `./gradlew :app:assembleDebug` | PASS | Version 0.2.0, application ID `com.hellfire.ass`, min/target API 29/36 | Preserve APK for final testing |
-| Host logic / SQLite checks? | `./gradlew :app:testDebugUnitTest` | PASS | 91 passed; 0 failures/errors; 4 opt-in live tests skipped | Keep host gates for subsequent changes |
-| Android lint? | `./gradlew :app:lintDebug` | PASS | 0 errors, 31 warnings: pinned dependency updates, English resources and KTX suggestions | Warnings remain enabled and visible |
-| Event/job insertion atomic? | Reject job insertion with a synthetic SQLite trigger | PASS | Source insert rolls back; no orphan event, job or audit increment | Preserve transactional contract |
-| Phase 0 schema upgrades? | Construct v1 database from committed schema, migrate to v2 | PASS | Original ciphertext unchanged; pending job and audit created; Room validates v2 | Do not use destructive fallback |
-| Pending work survives database reopen? | Close/reopen file-backed synthetic DB, drain processing | PASS | Persisted pending event becomes DONE; ciphertext retained | Verify actual process death on phone later |
-| Notification replay / storm processing? | 500 distinct synthetic versions, each replayed once | PASS | 500 events/jobs retained and processed, no duplicate count | Measure real callback floods during final testing |
-| OTP / missing / malformed content? | Synthetic body/title/message fixtures and malformed messaging extras | PASS | Redaction, unavailable label and preservation of valid top-level text pass | Verify OS-protected fields without bypasses later |
-| Per-app processing control? | Disable processing before capture | PASS | Source retained, CAPTURE_ONLY job, no classification/key load | Exercise switch accessibility on phone later |
-| SMS identity, paging and read-only adapter? | Synthetic incoming/sent rows and fake provider cursor | PASS | Stable identities, 500-row page, ordered parameterized query, cursor closed; drafts rejected | Verify actual provider behaviour later |
-| SMS permission / protected receiver? | Manifest contract; owner consent default | PARTIAL | Receiver requires BROADCAST_SMS; capture defaults off; no SEND_SMS permission | Verify READ_SMS/RECEIVE_SMS grants and provider access on OPPO |
-| WorkManager dispatch/reboot/background timing? | Final-stage device tests below | NOT TESTED | Persistent scheduling wired; host tests establish Room persistence, not OEM scheduling | Test after software milestones |
-| Physical phone / firmware / ABI? | Final ADB discovery below | NOT TESTED | Deferred by owner; no device used for Phase 1 tests | Capture actual non-secret firmware details at final stage |
-| Assistant role and active service selection? | Setup chooser and assistant settings | PARTIAL | Host metadata/session/service contracts pass; no physical role grant | Select and invoke on physical device later |
-| OEM gesture, power button, lock screen, hotword? | Exercise each entry point separately | NOT TESTED | Custom hotword/lock-screen launching disabled | Record actual firmware limits |
-| Offline assistant / speech / TTS on phone? | Airplane mode; activity and session queries | NOT TESTED | Host static query/timezone logic passes; system recognizer/voice availability unknown | Verify actual engines/languages later |
-| Notification permission and real delivery? | Grant/revoke access; shell/app notifications | NOT TESTED | No real phone callback or permission dialog exercised | Follow final checklist |
-| Mic capture / playback / interruption? | Visible Start/Stop; privacy toggle, incoming call, screen off | NOT TESTED | No actual microphone or phone used | Verify indicators, notification Stop, 60-second limit and error paths |
-| Device Keystore encryption? | Capture/playback; controlled debug-file inspection | NOT TESTED | Host tests use synthetic AES keys, not device Keystore hardware | Confirm ciphertext and key persistence later |
-| ColorOS battery / long screen-off capture? | Vendor settings, Doze and overnight checks | NOT TESTED | No survival/timing guarantee asserted | Measure later; keep source status honest |
-| Call recordings / local AI / finance / WhatsApp / Gmail? | Later phase-specific checks | NOT TESTED | Features not implemented in Phase 1; no models or credentials used | Continue in master-spec order |
+## Current phase gates
 
-## Verified host commands
+| Phase | Software evidence | Status | Remaining gate |
+|---|---|---|---|
+| 0 — feasibility | Android skeleton, real assistant/session metadata, capture, visible recording controls, access/status UI | PARTIAL | OEM role/gesture/microphone/access behavior NOT TESTED |
+| 1 — capture | Transactional immutable sources, processing jobs, audits/policy, read-only paged SMS reconciliation | PASS (host) / PARTIAL (device) | Real delivery, SMS grants, screen-off/process/boot behavior NOT TESTED |
+| 2 — AI/finance | Integer ledger, separate fees/transfers/reversals/evidence, review edits, provider-scoped merchant aliases, cash/date review, strict candidate schemas, LiteRT-LM adapter and bundled OCR | PARTIAL | Gemma 4 E2B/fallback benchmark BLOCKED without owner-selected compatible model/device; representative provider corpus unavailable; 95% accuracy NOT ESTABLISHED |
+| 3 — communications | IMAPS/SMTP, UIDVALIDITY/MIME handling, bounded visible IDLE, drafts/one-use approval/recovery, encrypted signed-webhook relay and delivery/echo adapters | PARTIAL | Live Gmail app-password access and Meta eligibility/Coexistence onboarding NOT TESTED; no real sends or deployment |
+| 4 — tasks/alarms | Evidence-linked candidates, owner activation, escalation, Done/Snooze/Reschedule, durable restoration, nightly review and morning/evening query briefs | PARTIAL | Physical alarm/Doze/DND/permission/reboot tests NOT TESTED; overdue repeat interval owner-configurable (5–1440 minutes, default 10) |
+| 5 — media | Encrypted originals, SAF import/folder scanning, VAD intervals during visible owner recording, compiled whisper JNI adapter, chunked processing, OCR/PDF/video sampling, playback/export/delete/manual speakers/summary review | PARTIAL | Actual decoder/STT/OCR/model accuracy and OEM file visibility NOT TESTED. Opus encoding, reliable learned VAD/diarization/owner-voice matching and model-based vision/embedding index remain research gates; no simulated outputs |
+| 6 — assistant/stability/backup | Source queries/links, deterministic finance/briefs, typed review-only proposals, memory provenance/correction/forget, encrypted portable backup/staging/recovery, startup storage and send recovery | PARTIAL | Full native/device backup round trip, SQLCipher conversion/Keystore, battery/peak RAM/thermal and usability tests NOT TESTED. Literal retrieval is bounded; autonomous/semantic capability is not claimed |
 
-Historical Phase 1 check, run in its isolated worktree using the installed SDK and JDK:
+## Host verification
+
+From `android/`:
 
 ```bash
-cd android
-./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
-# BUILD SUCCESSFUL in 37s; 58 actionable tasks: 17 executed, 41 up-to-date
+./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --console=plain
 ```
 
-**58 tests passed; 0 failures/errors/skips. Lint: 0 errors, 31 warnings.**
-Robolectric integration tests use API 34. No emulator, physical phone, personal SMS
-corpus, notification history, recordings, credentials or AI models were used.
+Final result: **130 tests: 126 passed, 4 opt-in live AI tests skipped; 0 failures/errors. Lint: 0 errors,
+44 warnings. APK assembly passed.** Native whisper JNI compiled for
+arm64-v8a and x86_64. Robolectric uses API 34 and ordinary SQLite/generated AES keys;
+it does not execute phone Keystore, native SQLCipher, MediaCodec, ML Kit or models.
+Warnings remain enabled: dependency/update notices, English resources, native API
+annotations/KTX suggestions and the existing deprecated Material tab API.
 
-The only Kotlin warning in changed test execution concerns the public deprecated
-StatusBarNotification constructor used for fixtures. The existing Material tab API
-also remains deprecated. The debug build packages the prebuilt
-`libandroidx.graphics.path.so` without stripping its symbols. None prevents building.
+APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.4.0**, code 4,
+package `com.hellfire.ass`, min/target API 29/36, arm64-v8a and x86_64 only.
+SHA-256: `c15f616f146f934a74899b68340fb85419c8e15a065e390938ab908b570884a3`.
+HTML/XML reports are preserved under `android/app/build/reports/` and
+`android/app/build/test-results/testDebugUnitTest/` after integration.
 
-Historical Phase 1 artifact: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.2.0**.
-SHA-256: `a7127f3c620f83229ea6f0a5d0cd7bc83549f8e7e92b6f6ec3e1940be1080f78`.
-Host reports are preserved under `android/app/build/reports/` after integration:
-`tests/testDebugUnitTest/index.html` and `lint-results-debug.html`.
+| Check | Result | Evidence / limits |
+|---|---|---|
+| Tooling | PASS | JDK 21.0.13, SDK 36/build tools 35.0.0, NDK 28.2.13676358, CMake 3.22.1; no global package upgrades |
+| Normalization/capture/SMS regression | PASS (host) | Immutable identities, malformed/missing/protected content, OTP precedence, marked money/reference/date preservation, queue/policy/rollback/persistence and SMS paging fixtures |
+| Room migrations | PASS (host) | Construct schema 1, migrate non-destructively through schema 8; source ciphertext retained and Room validates tables/indices/FKs |
+| Finance | PASS (host) | Integer limits, synthetic provider candidates, duplicate-reference evidence, transfer balancing, separate fees, edited approval, refunds/expense totals and append-only reversals |
+| Candidate/action contracts | PASS (host) | Strict integer/schema fields, invalid dates/parties/channels, unsupported execution and injected approval/header data rejected |
+| Communication persistence/MIME | PASS (host) | Approval freshness/single claim, interrupted-process recovery, monotonic delivery states, UID cursor isolation, Unicode/plain-text alternatives and bounded deep MIME traversal |
+| Tasks | PASS (host) | Source-relative EAT dates, invalid dates, escalation math, review-only until activation, snooze/done, source FKs and explicit nightly review completion |
+| Media container | PASS (host) | Authenticated seeking across chunks, corruption/wrong identity rejection, interrupted recording prefix recovery and energy interval/exclusion logic; no real microphone/codec |
+| Backup components | PASS (host) | Table allowlists, Unicode rows/evidence, different payload key after restore, wrong passphrase and stale approval revocation. Does NOT establish full SAF/SQLCipher/Keystore/device restore |
+| APK/native alignment | PASS (host) | `zipalign -c -P 16 4` passes; all 14 packaged ELF libraries have LOAD alignment >=16 KiB. Physical installation remains NOT TESTED |
+| Relay tests | PASS (host) | Seven pytest tests: signature/verification/auth, encrypted replay/ACK, business filtering/statuses, approval/replay/expiry/unknown delivery, bounds/rate limiting and log query redaction; mocked Graph only |
+| Relay image / Compose | PASS (host) | `docker build -t hellfire-relay:local server`; non-root image `b02eda1eb4f8`; Compose parses with no env resolution. Ephemeral ASGI smoke confirms UID 10001, honest unconfigured health and protected endpoint 503; no listener/deployment/live network |
+| Physical/model/live-account tests | NOT TESTED | Explicitly deferred; neither grants, Coexistence eligibility, actual inference nor successful delivery is asserted |
 
-`aapt dump permissions` confirms READ_SMS/RECEIVE_SMS, microphone/notification/FGS
-permissions and WorkManager's WAKE_LOCK/ACCESS_NETWORK_STATE/RECEIVE_BOOT_COMPLETED
-permissions plus AndroidX's app-scoped receiver permission. The AI provider delta adds INTERNET for explicit cloud use. There is no
-SEND_SMS, media-reading or exact-alarm permission. Declared permissions are not grants.
+Relay verification from `server/`:
 
-Phase 0 baseline: 34 tests passed, 0 lint errors / 29 warnings, debug version 0.1.0.
-That Phase 1 artifact superseded the Phase 0 debug APK; this does not change historical
-physical test outcomes, which remain untested.
+```bash
+.venv/bin/python -m pytest -q
+docker compose config --no-env-resolution --no-interpolate
+```
 
-## Incremental AI provider verification — 2026-11-13
+Result: **7 passed**. One Starlette TestClient/httpx deprecation warning remains;
+no runtime/security check was disabled to hide it. Docker's legacy-builder notice
+also remains visible. A separate isolated container smoke test imports the app and
+checks ASGI routes without opening a port or contacting Meta.
 
-This update adds only optional AI provider support. No Android assistant, capture,
-SMS, finance, microphone, mail, WhatsApp or alarm phase was restarted. Inspection
-found only the deterministic offline assistant: no prior OpenAI integration,
-subscription sign-in, backend proxy or on-device LLM runtime existed to preserve.
+`aapt` confirms INTERNET, SCHEDULE_EXACT_ALARM, data-sync/microphone foreground
+permissions, SMS read/receive, microphone/posting, and normal WorkManager permissions.
+It declares no SEND_SMS or broad media-reading grant. Declarations are not grants.
+The app acquires files/folders through owner-controlled SAF selection.
+
+Historical host checkpoints: Phase 0 — 34 tests; Phase 1 — 58; combined initial
+finance/comms slice — 66; media slice — 80; initial assistant/backup slice — 87.
+Current artifact/results above supersede prior debug builds, not their untested
+physical outcomes.
+
+## Preserved AI provider checkpoint — 2026-11-13
+
+The earlier main-branch update added optional AI provider support. Its adapters,
+settings, privacy/budget gates, UI and tests are preserved. The table records that
+standalone checkpoint; the combined current suite is reported above. Local queries
+and imported native model support have since been added in separate screens.
 
 | Question | Test | Result | Evidence | Next action |
 |---|---|---|---|---|
-| Existing local/capture workflows preserved? | Full host unit suite | PASS | All 58 previous tests still pass; original `LocalAssistant` and system session unchanged | Verify actual device behavior at final stage |
+| Existing local/capture workflows preserved? | Full host unit suite | PASS | All 58 previous tests still pass; original entry points preserved at that checkpoint; now extended with local source queries | Verify actual device behavior at final stage |
 | Official provider wire contracts? | Mocked discovery and generation | PASS | Claude versioned Messages, OpenAI/xAI Responses, DeepSeek Chat Completions; headers, payloads, text extraction and usage checked | Test accounts with inference permissions later |
 | Provider capability boundaries? | Request tools/images/streaming/structured output | PASS | Unsupported capabilities fail before transport; local test cannot claim reasoning, drafting, extraction or summarization | Add further capabilities only with explicit implementation |
 | Routing and manual switching? | Preferred model, ordered/deduplicated fallback, per-task routes | PASS | Distinct authorization/quota/network/outage/capability failures advance in saved order; no implicit cloud fallback | Exercise selectors on device |
@@ -92,17 +106,17 @@ Host validation uses the same command from `android/`:
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 ```
 
-**91 tests passed, 0 failures/errors; 4 live tests skipped. Lint: 0 errors,
-31 existing warnings. Debug APK assembles.** These are host results with mocked
+**Historical provider-only checkpoint: 91 tests passed, 0 failures/errors; 4 live
+tests skipped. Lint: 0 errors, 31 warnings.** These are host results with mocked
 network responses and synthetic encryption keys, not successful live API or device
-tests. No dependency versions changed. API references and opt-in live test setup are
+tests. That standalone update changed no dependency versions. API references and opt-in live test setup are
 in the existing README's **Optional AI providers** section.
 
 The cap covers local estimated/reserved spend using manually supplied prices,
 not exact provider invoices or spending by other clients. Errors, cancellations,
 missing usage and process loss retain conservative reservations. No automatic
 same-model retries or outward actions exist. Local fallback is only the original
-basic offline test; general local inference is still unimplemented. The system
+basic offline test; imported LiteRT-LM inference now lives separately in Local AI. The system
 voice session remains offline; provider/model selection lives in the activity.
 
 For device verification: start with cloud disabled, confirm hello/habari/time,
@@ -201,10 +215,81 @@ adb shell run-as com.hellfire.ass ls databases
 adb shell run-as com.hellfire.ass ls files/recordings
 ```
 
-Inspect only synthetic evidence if exporting a debug database. Sensitive payloads
-and audio must be ciphertext; package/timestamp/flag/hash/label/counter metadata is
-plaintext. Clear controlled test events and samples in the app. Keep all actual
+Inspect only synthetic evidence if exporting a debug database. The production database, payloads and audio must be ciphertext. Keystore/native
+SQLCipher behavior and legacy plaintext conversion need explicit physical verification. Clear controlled test events and samples in the app. Keep all actual
 device artifacts out of Git.
+
+## Final checks for Phases 2–6
+
+Run only after the owner starts physical testing, using controlled synthetic material.
+Keep messages, credentials, recordings, serials and exported backups out of Git.
+
+1. **Encryption and migration:** install over the previous debug app after a safe
+   backup of synthetic data. Confirm legacy events migrate and the database file
+   no longer exposes SQLite headers/plaintext. Exercise denied/unavailable Keystore,
+   storage-full and retry paths; original files must remain, with no plaintext
+   fallback. Host Room schema validation does not establish native conversion.
+2. **Finance:** create test accounts and approve expenses, income, own transfers,
+   separate fees, refunds and reversals. Replay SMS/notification evidence with the
+   same provider reference; it must not double post. Test edited dates/amounts,
+   merchant reuse and nightly skipped-day review. Obtain a representative,
+   owner-approved anonymized provider corpus before measuring the >=95% parser
+   target; synthetic fixtures are not that corpus. Review unfamiliar/reversal
+   templates explicitly.
+3. **Models/OCR:** owner imports licensed compatible model files. In airplane mode,
+   test Gemma 4 E2B and an appropriate smaller fallback separately on CPU/GPU.
+   Record cold-start/request latency, actual output correctness, peak memory,
+   thermal state and battery deltas, including failed runs. UI PSS is a process
+   snapshot after the request, not peak/model-only RAM. No NPU support is inferred
+   from the phone marketing description. Test bundled OCR with non-sensitive images,
+   receipts, multi-page PDFs, video samples and unsupported files; OCR never proves
+   settlement. Schema-invalid output must stay rejected.
+4. **Accounts:** only with actual owner permission, configure eligible Gmail app
+   password / IMAP and the owner-provisioned HTTPS Meta relay. Verify Coexistence
+   eligibility, number/account linkage, webhook subscriptions, encryption pairing,
+   incoming/echo/status delivery and unsupported envelopes. Drop network mid-sync,
+   change UIDVALIDITY and replay batches. Stop IDLE via UI/notification/timeout and
+   disconnect. Inspect source IDs and ensure no message is marked sent merely from
+   preparation or SMTP acceptance.
+5. **Approval/failure:** approve one controlled external reply; compare actual
+   recipient/body/reply headers. Test stale/replayed approval, app death before and
+   during transport, credential changes and delayed/out-of-order confirmations.
+   Recovery must require fresh approval or keep UNKNOWN; it must not resend. Check
+   the actual channel before manually creating another send after uncertainty.
+6. **Alarms:** review candidate versus active task, 24h/2h/due/overdue escalation,
+   configurable repeat interval, Done/Snooze/Reschedule, revoked posting/exact-alarm
+   access, blocked channel, reboot/update/time changes, Doze/DND and force-stop.
+   Record real delay, sound and restoration separately; best effort does not promise
+   DND bypass or force-stop survival. Check morning/evening brief totals and sources.
+7. **Recordings/media:** test owner notice/exclusions before visible monitoring;
+   verify Android indicator, ongoing notice, Stop and 30-minute bound. Revoke
+   permissions/notice and take a call; retain authenticated recording prefix with
+   visible interruption status. No boot/process interruption may restart the mic.
+   Test noise/speech/music and VAD false positives, manual speaker correction and
+   playback from timestamps. Measure actual PCM storage/battery cost; Opus and
+   learned speaker identity are not claimed. Import/replay accessible OPPO recordings
+   and selected-folder changes. If files are private/inaccessible, record BLOCKED
+   and use dialer sharing. Test rename, unknown/known original dates, video without
+   audio, charging/thermal constraints, analysis cancellation/recovery, decrypted
+   export and media deletion versus retained linked source snapshots.
+8. **Assistant/memory:** compare deterministic finance answers against the ledger;
+   inspect source links, query limits, facts versus inferences, owner corrections
+   and index-only forgetting. Verify both typed and installed offline speech/TTS
+   queries. Incoming instruction-like source text cannot execute tools. Typed
+   proposals only retain Tasks/Messages review items; separate approval is required.
+9. **Backup:** export synthetic registered originals and relational data with a
+   strong test passphrase. Authenticate/restore into an empty separate installation
+   or test profile with capture/accounts off. Compare ciphertext decryption, media
+   hashes, ledger evidence, tasks, transcripts, Unicode memory and source links.
+   Wrong password, truncation, tampering and unsupported schema must fail without
+   replacing current data. Test process loss during staging/commit and verify
+   journal cleanup. Restored approvals must not send; accounts, model files,
+   grants and exclusions need reconfiguration. Do not rely on backups until this
+   full native/device round trip passes.
+10. **Stability/energy:** compare baseline and enabled-source overnight runs, model
+    jobs on/off charger, screen off, low storage/battery, severe thermal status,
+    interrupted connectivity and process death. Record actual losses and delays.
+    Tune only from measurements; no overnight survival or energy claim is made.
 
 ## References and limits
 

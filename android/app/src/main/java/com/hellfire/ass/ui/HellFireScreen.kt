@@ -43,9 +43,23 @@ fun HellFireScreen(
     onSettings: (String) -> Unit,
     onMicrophonePermission: () -> Unit,
     onSession: () -> Unit,
+    onNotifications: () -> Unit,
     onSmsEnable: () -> Unit,
     onSmsDisable: () -> Unit,
 ) {
+    val storage by app.storageStatus.collectAsStateWithLifecycle()
+    if (storage != "READY") {
+        MaterialTheme {
+            Surface(Modifier.fillMaxSize()) {
+                Column(Modifier.safeDrawingPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text("HellFire Ass", style = MaterialTheme.typography.headlineMedium)
+                    Text(if (storage == "STARTING") "Opening encrypted local storage…" else "Encrypted storage is unavailable. Check free storage and device unlock/key availability. Existing files have been retained; no plaintext fallback or automatic reset was used.")
+                    if (storage != "STARTING") Button(onClick = { app.initializeStorage() }) { Text("Retry local storage") }
+                }
+            }
+        }
+        return
+    }
     val colors = if (isSystemInDarkTheme()) darkColorScheme(primary = Color(0xFFFFB595))
         else lightColorScheme(primary = Color(0xFF9A3412), secondary = Color(0xFF675044))
     MaterialTheme(colorScheme = colors) {
@@ -54,10 +68,10 @@ fun HellFireScreen(
             Column(Modifier.safeDrawingPadding().imePadding()) {
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                     Text("HellFire Ass", style = MaterialTheme.typography.headlineMedium)
-                    Text("Phase 1 · local capture engine", style = MaterialTheme.typography.bodyMedium)
+                    Text("Local capture · finance · assistant", style = MaterialTheme.typography.bodyMedium)
                 }
-                ScrollableTabRow(selectedTabIndex = listOf("Setup", "Assistant", "AI settings", "Capture", "Device").indexOf(tab), edgePadding = 8.dp) {
-                    listOf("Setup", "Assistant", "AI settings", "Capture", "Device").forEach { name ->
+                ScrollableTabRow(selectedTabIndex = listOf("Setup", "Assistant", "AI chat", "AI settings", "Capture", "Finance", "Messages", "Tasks", "Media", "Local AI", "Backup", "Device").indexOf(tab), edgePadding = 8.dp) {
+                    listOf("Setup", "Assistant", "AI chat", "AI settings", "Capture", "Finance", "Messages", "Tasks", "Media", "Local AI", "Backup", "Device").forEach { name ->
                         Tab(selected = tab == name, onClick = { tab = name }, text = { Text(name) })
                     }
                 }
@@ -66,9 +80,16 @@ fun HellFireScreen(
                     if (message != null) Text(message, color = MaterialTheme.colorScheme.primary)
                     when (tab) {
                         "Setup" -> Setup(permissions, onRole, onSettings, onMicrophonePermission, onSmsEnable, onSmsDisable)
-                        "Assistant" -> Assistant(app, onSession)
+                        "Assistant" -> AssistantScreen(app, onSession)
+                        "AI chat" -> Assistant(app, onSession)
                         "AI settings" -> AiSettingsScreen(app)
                         "Capture" -> Capture(app, permissions, onMicrophonePermission, onSettings)
+                        "Finance" -> FinanceScreen(app)
+                        "Messages" -> CommunicationsScreen(app)
+                        "Tasks" -> TasksScreen(app, onSettings, onNotifications)
+                        "Media" -> MediaScreen(app, permissions, onMicrophonePermission)
+                        "Local AI" -> LocalAiScreen(app)
+                        "Backup" -> BackupScreen(app)
                         "Device" -> Diagnostics(permissions)
                     }
                 }
@@ -103,11 +124,11 @@ private fun Setup(status: PermissionStatus, onRole: () -> Unit, onSettings: (Str
     if (!status.smsEnabled) Button(onClick = onSmsEnable) { Text("Enable SMS capture and history import") }
     else OutlinedButton(onClick = onSmsDisable) { Text("Disable SMS capture") }
     Status("Exact alarms", when (status.exactAlarm) {
-        true -> "Android reports access; scheduling is not implemented"
-        false -> "Not granted · reminders come in a later phase"
-        null -> "Special permission not required on this OS · scheduling not implemented"
+        true -> "Android reports exact-alarm access"
+        false -> "Not granted · reminders use best-effort alarms"
+        null -> "Special permission not required on this OS"
     })
-    Status("Media access", "Not requested · media import comes later")
+    Status("Media access", "Owner-selected files only · no broad library permission")
     Status("Battery optimization", if (status.batteryExempt) "Android optimization exemption reported" else "Subject to Android battery optimization")
     Text("ColorOS background controls require manual verification even if Android reports an exemption.")
     TextButton(onClick = { onSettings(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS) }) { Text("Open battery settings") }
@@ -210,7 +231,7 @@ private fun Capture(app: HellFireApp, permissions: PermissionStatus, onPermissio
         HorizontalDivider()
     }
     TextButton(onClick = { confirmClear = true }, enabled = !permissions.notificationAccess && !permissions.smsEnabled) { Text("Delete captured events") }
-    Text("Disable notification access and SMS capture before deleting the inbox. Payloads are encrypted; package names and timestamps remain visible to local database tools.")
+    Text("Disable notification access and SMS capture before deleting the inbox. Database and payloads are encrypted. Finance/task/media-linked source evidence cannot be removed through inbox clearing.")
     if (confirmClear) AlertDialog(onDismissRequest = { confirmClear = false }, title = { Text("Delete all captured events?") },
         text = { Text("This removes stored captured events and their processing jobs from this device.") },
         confirmButton = { TextButton(onClick = {
@@ -302,7 +323,7 @@ private fun Diagnostics(status: PermissionStatus) {
     Status("Voice service", if (status.voiceServiceActive) "Selected" else "Not selected")
     Status("Owner timezone", "Africa/Dar_es_Salaam")
     Text("The model name comes from Android. ColorOS version, OEM gestures, lock-screen invocation, microphone interruptions and overnight behaviour must be verified on the physical phone.")
-    Text("Later phases: finance, WhatsApp, email, call imports, alarms and on-device model inference are not implemented.")
+    Text("Device, model and live-account feasibility results are recorded separately; no physical verification has been claimed.")
 }
 
 @Composable

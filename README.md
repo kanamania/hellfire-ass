@@ -1,151 +1,183 @@
 # HellFire Ass
 
 Native, local-first Android assistant **HellFire**, package `com.hellfire.ass`.
-Phase 0 and the Phase 1 capture engine are implemented. The
-[master specification](docs/MASTER_SPEC.md) remains the product source of truth.
+The [master specification](docs/MASTER_SPEC.md) remains the product source of truth.
+Phase 0–1 capture and software slices for Phases 2–6 are implemented. Full phase
+acceptance remains **PARTIAL** pending the device, model, account and real-format
+gates in [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md).
 
-Owner direction on 2026-11-13: continue building incrementally and leave physical
-device testing until the end. Device outcomes remain **NOT TESTED** until observed.
-No physical-device gate is being represented as passed.
+The owner authorized the remaining phases on 2026-11-13 and kept physical device
+testing until last. No phone, live account, personal corpus or model weights were
+used to establish host results. No message has been sent and no gateway deployed.
 
-## Build from a clean checkout
+## Build and verify
 
-Required: JDK 17 or 21, Android SDK platform 36, Build Tools 35.0.0, and platform-tools.
-The first build downloads Gradle and dependencies. Core app demonstrations work
-offline without credentials or model downloads.
+Required: JDK 17/21, Android SDK platform 36, Build Tools 35.0.0, NDK
+**28.2.13676358**, CMake **3.22.1**, and platform-tools. Set `ANDROID_HOME`, or
+`sdk.dir` in ignored `android/local.properties`. The first build downloads Gradle,
+dependencies and the checksummed whisper.cpp source archive, never model weights.
 
 ```bash
-export ANDROID_HOME=/path/to/android-sdk
 cd android
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 ```
 
-Alternatively set `sdk.dir=/path/to/android-sdk` in ignored `android/local.properties`.
-Open `android/` in Android Studio. Use the checksummed Gradle 8.13 wrapper.
-Pinned tools: AGP 8.13.2, Kotlin/Compose compiler 2.2.21, KSP 2.2.21-2.0.4,
-Compose BOM 2025.10.00, Room 2.8.4, coroutines 1.10.2, Activity 1.11.0,
-Lifecycle 2.9.4, AndroidX Core 1.15.0, and WorkManager 2.10.5.
-Minimum Android: API 29; compile/target: API 36. Version: **0.2.0**.
+APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.4.0**.
+It supports **arm64-v8a and x86_64**, Android API 29+, target/compile API 36.
+Confirm the phone ABI before installation; 32-bit-only devices are unsupported by
+this build. This is a debug artifact, without private release signing.
 
-The single app module keeps capture, processing, database, security and UI code in
-separate packages. Optional cloud AI adapters are isolated in `ai/`; no backend or
-on-device model runtime has been added.
+Pinned stack: Gradle 8.13 (checksummed wrapper), AGP 8.13.2, Kotlin/Compose compiler
+2.2.21, KSP 2.2.21-2.0.4, Compose BOM 2025.10.00, Room 2.8.4, coroutines 1.10.2,
+WorkManager 2.10.5, LiteRT-LM 0.12.0, bundled ML Kit Latin OCR 16.0.1, SQLCipher
+Android 4.20.0, JavaMail Android/activation 1.6.8, whisper.cpp v1.9.5. Native source
+SHA-256: `ff1a9053feb509ff9d7729703355541ae9690073a6b1c40eb692c962e0dc1720`.
+The whisper MIT notice is bundled in app assets. LiteRT-LM is pinned to the runtime
+that compiles with this Kotlin toolchain; a newer AAR required newer Kotlin metadata.
+Model compatibility is established only by running the selected file on the phone.
 
-## Use the capture engine
+The app remains one Gradle module with bounded Kotlin packages. Core capture,
+ledger calculations, task review and bundled OCR work without account credentials.
+Optional network adapters remain disconnected until configured by the owner.
 
-- **Setup:** select HellFire Ass as digital assistant and grant notification access.
-  Sideloaded ColorOS builds may require Android's owner-controlled restricted-settings
-  flow. The app reads back actual grants; permission denial remains visible.
-- **Assistant:** ask `hello`, `habari`, or `time` offline. The actual system session
-  supports typed input and optional offline TTS. The activity also supports the
-  optional cloud providers described below; the system voice session stays offline. Spoken questions use only an already
-  installed Android on-device recognizer on API 31+. Unsupported engines/languages
-  keep typed input available; no model download or remote recognition fallback.
-- **SMS:** opt in with **Enable SMS capture and history import**. This authorizes
-  reading existing incoming/sent SMS and new records from the Android SMS provider.
-  READ_SMS and RECEIVE_SMS are requested separately from recording permissions.
-  Android/installer restrictions may prevent grants; the app does not bypass them
-  or request the default SMS role. No SMS sending is implemented or permitted.
-- **Capture:** inspect source counters, persisted processing states and safe metadata.
-  Insert the explicitly labeled synthetic notification fixture twice; its duplicate
-  is ignored. This is not evidence of real Android listener delivery.
-- **Processing controls:** all accessible notifications continue to be retained.
-  Turn processing off for a captured app to mark its future/pending events as
-  **CAPTURE_ONLY**. Existing results are unchanged. **Resume saved processing**
-  schedules pending work and retries explicitly failed payloads.
-- **Recording:** allow microphone and notification permissions, then start from the
-  visible activity. Stop in the app or ongoing notification, or wait for the
-  60-second limit. Samples remain encrypted until deleted and play locally from
-  decrypted memory. No transcript, VAD, background start or automatic mic restart.
-- **Device:** shows actual Android model, build, API and ABI. Follow the
-  [device guide](docs/DEVICE_FEASIBILITY.md) when physical testing begins.
+## App controls
 
-Final-stage installation, from the `android/` directory:
+- **Setup / Capture:** actual assistant, notification, SMS and microphone grants;
+  source counters, processing jobs and per-app processing policy. SMS capture starts
+  disabled. It imports authorized incoming/sent provider rows in 500-row pages.
+  No SEND_SMS permission or third-party call-audio capture is used.
+- **Assistant:** `hello`, `habari`, `time`, `spending today`, `income last month`,
+  `balances`, `tasks tomorrow`, `morning brief`, `evening brief`, `search <words>`.
+  Date ranges use EAT; explicit `2026-11-01 to 2026-11-03` includes both days.
+  Finance totals use integer ledger arithmetic; unapproved candidates and own
+  transfers are excluded from spending. Source search examines up to 2,000 recent
+  events, returns up to 20 literal matches, and offers source evidence links.
+  It is not a complete semantic/embedding search or a general autonomous agent.
+- **Personal memory:** owner notes, exact source excerpts and uncertain inferences
+  remain distinct. Confirm corrections and inspect source IDs. Forgetting an index
+  item does not delete its source; the source can still appear in capture search.
+  Contact identities are not merged automatically. Typed JSON proposals accept only
+  `create_task` and `prepare_reply`; they create review items, never approved sends
+  or recording starts. Model text cannot run shell commands.
+- **Finance:** add provider-scoped accounts; preview English/Kiswahili cash entries
+  and historical dates. Review/edit amount, fee, account, kind, category and date
+  before posting. Save confirmed Lipa Namba aliases. Own transfers balance debit and
+  credit; fees are separate. Corrections append reversal entries and retain source
+  evidence. Opening balances need a reviewed entry. Candidate parsers use synthetic
+  fixtures; real provider-format accuracy and the 95% target remain unverified.
+  Same-reference evidence links without double posting; unfamiliar/refund formats
+  require review, including explicit reversal of an existing transaction when needed.
+- **Messages:** encrypted IMAP/SMTP and gateway settings, inbox, local draft editing,
+  optional local refinement, and explicit **Approve and send once**. Email replies
+  retain a valid Message-ID parent in reply headers. Config changes need fresh
+  approval. A claimed send never retries automatically; uncertain delivery remains
+  UNKNOWN. SMTP acceptance, actual Sent-folder presence and WhatsApp delivery/read
+  confirmations are distinct states. A visible, owner-started IMAP IDLE session is
+  capped at ten minutes; durable polling remains available. No Gmail API is used.
+- **Tasks:** source-linked review candidates do not schedule alarms. Confirm edited
+  deadlines/party before activation. Alerts progress through 24h, 2h, due and
+  repeated overdue reminders (owner-configurable 5–1440 minutes); choose Done, Snooze or Reschedule in the app. Exact
+  alarms use Android special access or degrade to best effort. Restoration covers
+  supported boot/update/time/permission paths. Nightly 21:00 EAT expense review stays
+  pending until marked complete; the owner can turn it off.
+- **Media:** import a selected call recording, voice note, image, PDF or video.
+  Authorize a call-recordings folder for best-effort 15-minute audio scans: direct
+  children only, first 300 entries per scan, stable content-hash deduplication.
+  Inaccessible OEM storage requires manual sharing/export; access is never bypassed.
+  Originals remain encrypted until deleted. Rename, supply a known original date,
+  analyze, play from a transcript timestamp, export a decrypted original, or delete
+  the media index/original. Linked source snapshots and finance/task evidence remain.
+- **Conversation monitoring:** explicitly acknowledge notice and start from the
+  visible app. Saved people/place exclusions check the owner-supplied session names
+  and place; no automatic identity/location matching is claimed. Stop when the
+  session becomes excluded. Monitoring is visible, capped at 30 minutes, retains
+  the complete PCM original, and never restarts automatically. Experimental energy
+  intervals include up to 30 seconds of preceding audio; they are not reliable
+  diarization or proof of participation. Speaker labels start UNKNOWN and are
+  manually correctable. The separate 60-second Phase 0 sample control remains.
+- **Local AI:** import an owner-selected, licensed `.litertlm` model and choose
+  CPU/GPU. No NPU support or specific-model benchmark is asserted. Import a
+  multilingual whisper.cpp GGML model for English/Kiswahili transcription. Large
+  inference requests are serialized and bounded; media analysis defaults to charging,
+  waits for adequate battery, and pauses for severe thermal stress. Transcription
+  uses two-minute batches, PDF OCR five-page batches, video OCR up to 20 sampled
+  keyframes. Generated summaries/structured notes remain labeled inferences after
+  owner review. Imported recordings without a known original date do not generate
+  relative-date tasks automatically. OCR is not settlement verification.
+- **Backup:** export a portable, passphrase-encrypted backup through Android’s
+  document picker, optionally to an owner-configured self-hosted document provider.
+  Registered originals, source events, finance, messages/drafts, tasks, memory and
+  transcripts are included. Limits: 7 GiB originals plus 1 GiB database rows.
+  Passwords/tokens, gateway private key, Android grants, models, recording exclusions,
+  folder grants and Phase 0 samples are excluded. Restore requires the same backup
+  schema, empty local data, stopped microphone, disabled notification/SMS capture
+  and disconnected integrations. It authenticates/stages before merging, re-encrypts
+  payloads/media with the receiving device key, revokes stale send approvals and
+  preserves uncertain sends. Reconnect accounts and review exclusions afterward.
+  Full native/device round-trip verification is still required before relying on it.
+
+The system assistant session supports the same read-only local queries with optional
+installed on-device speech input and offline TTS. Gestures, engine/language support,
+lock-screen behavior and hotword support require physical verification.
+
+## WhatsApp relay setup
+
+`server/` contains the real single-owner FastAPI relay, not a deployed service.
+Its host tests use mock Graph responses and generated synthetic keys/events.
 
 ```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-adb shell am start -n com.hellfire.ass/.MainActivity
+cd server
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/python -m pytest -q
+docker compose config --no-env-resolution --no-interpolate
 ```
 
-This debug APK is for local verification. Private release signing/distribution
-is not implemented. Never commit signing keys or device data.
+For an owner-authorized deployment, export the device public key in Messages and
+place it at ignored `server/device-public.pem`. Create a private, ignored
+`server/.env`; never put secrets in Git, commands, screenshots or logs.
 
-## Capture and recovery guarantees
+| Environment variable | Owner-provided value |
+|---|---|
+| `META_APP_SECRET` | Meta app webhook signing secret |
+| `WEBHOOK_VERIFY_TOKEN` | Random webhook verification secret |
+| `DEVICE_TOKEN` | Random device bearer secret, at least 32 characters |
+| `STORE_KEY_BASE64` | Base64-encoded 32 random bytes for server draft encryption |
+| `META_WABA_ID` | Connected business account ID |
+| `META_PHONE_NUMBER_ID` | Connected phone-number ID |
+| `META_ACCESS_TOKEN` | Authorized WhatsApp Business access token |
+| `GRAPH_API_VERSION` | Explicit supported version, such as the version selected in the owner's Meta app; no guessed default |
+| `DEVICE_PUBLIC_KEY_FILE` | Set by Compose to `/app/device-public.pem` |
+| `RELAY_DATABASE` | Optional; default `state/relay.db` in the persistent volume |
 
-Each newly captured event and its **PENDING** processing row commit in one Room
-transaction. Event identity excludes receipt time, so identical replays are ignored.
-Edits, removals, changed ranking and SMS direction/content changes retain distinct
-immutable evidence. Processing state, attempts, rule labels and safe error codes live
-in `event_processing`; the original event's legacy `processingStatus` is not rewritten.
-Room schema 1 migrates to schema 2 without deleting Phase 0 events or ciphertext.
+Compose binds only `127.0.0.1:8080`. A real HTTPS reverse proxy is required for Meta
+and the Android client. After provisioning and explicit deployment authorization,
+`docker compose up -d --build` is the service entry point. This development run did
+not execute that deployment command. Register `/webhook`, verify signatures and
+actual account eligibility/Coexistence onboarding with Meta; app configuration alone
+cannot prove eligibility. Enter the matching HTTPS URL/device token in Android.
 
-The notification listener accepts all Android-delivered packages except this app's
-own notifications. Its 256-item memory queue drains in batches of up to 32 on IO.
-WorkManager processes committed jobs independently. Queue overflow/storage issues
-are visible, with persisted audit counters when storage is available. Notifications
-lost before a Room commit or while the listener is disconnected cannot be promised
-recoverable. Reconnect snapshots active notifications; it cannot restore vanished history.
+Endpoints: `GET /health`, `GET/POST /webhook`, `GET /device/events`,
+`POST /device/events/{id}/ack`, `POST /drafts`, `POST /drafts/{id}/approve`, and
+`POST /drafts/{id}/send`. Device endpoints require bearer auth; webhooks require
+verification/signatures and match configured business/phone IDs. Rate limit is
+120 requests/minute per peer IP. Access logs retain requests while redacting queries.
+No raw webhook contents or credentials are logged.
 
-Processing assigns conservative **candidate** labels for finance, delivery and
-promotion, plus system/message/security/unavailable/unclassified labels. These rules
-create no ledger entries, reminders or sends. Security content bypasses general
-classification. Invalid ciphertext/key access is marked FAILED for owner-controlled
-retry; source evidence remains intact. Source counters/errors are historical audit
-records, not claims of a current connection. Deleting captured events cascades to
-processing jobs; counters and processing preferences remain.
-
-WorkManager persists scheduling, retries transient worker errors with exponential
-backoff and performs best-effort maintenance at a 15-minute interval. App startup
-also schedules recovery, covering a crash between a Room commit and work enqueue.
-Work is appended after current processing to avoid ignoring events arriving while
-that worker finishes. OEM restrictions, Doze and force-stop can delay execution;
-no exact-time or OS-level survival guarantee is made. Nothing restarts recording.
-
-SMS broadcasts schedule reconciliation rather than putting message bodies/PDUs into
-WorkManager. The provider is the source of truth; unreadable or provider-omitted SMS
-are not fabricated. Imports use ordered, parameterized queries and pages of 500
-incoming/sent rows. Page continuations persist only a row-ID cursor in WorkManager
-before completing the prior page. Repeated initial triggers coalesce while a chain
-is active. Observer callbacks while the process lives and periodic full reconciliation
-also catch outgoing rows and outbox-to-sent updates. A change racing the final page
-may wait for the next reconciliation; background timing requires device measurement.
-Large SMS histories will be rescanned, although duplicate rows skip encryption and
-writes. Battery cost and provider behaviour need physical measurements before tuning.
-Disabling SMS capture persists the choice, unregisters observation and cancels its
-pending chain; existing evidence is retained. SMS permissions can be revoked in Android.
-
-## Privacy and boundaries
-
-Payloads are redacted before persistence and encrypted with Android Keystore-backed
-AES-256-GCM. English/Kiswahili security context replaces textual fields; standalone
-4–8 digit candidates are conservatively removed. This may redact benign amounts.
-The heuristic is not a universal secret detector. No personal fixtures or OTPs are
-needed for host tests. Protected fields are used only as Android delivers them;
-missing content stays unavailable, without pretending to know why it is absent.
-
-Package names, timestamps, flags, hashes, processing labels and counters remain
-plaintext database metadata. This is payload/media encryption, not full SQLCipher
-database encryption. Backup/device transfer is excluded; key loss or uninstall
-makes encrypted payloads unrecoverable.
-
-Audio is 16 kHz mono signed 16-bit little-endian PCM, streamed directly into an
-AES-GCM envelope (version byte, 12-byte IV, ciphertext/tag). It is not WAV. Failed
-streams are removed; process/power loss can leave an incomplete file that playback
-rejects. Retained samples are limited to 60 seconds each and decrypted into memory
-for user-started playback.
-
-INTERNET is declared for opt-in cloud AI. There is no analytics, external sending,
-notification reply execution, finance ledger, mail/WhatsApp integration, alarm
-scheduling, media indexing or on-device model inference. WorkManager supplies normal scheduling permissions such as boot reception
-and wake locks; none authorizes microphone capture. Financial provider parsing and
-cross-source transaction deduplication remain Phase 2 work. WhatsApp Coexistence,
-Gmail IMAP/SMTP and later recording imports retain the locked master-spec choices.
+Incoming events use RSA-OAEP-wrapped AES-GCM envelopes for the paired device,
+SQLite durability, acknowledgment after Android persistence and deduplication across
+replays. Pending envelopes expire after seven days, seen hashes after 30 days,
+server drafts after 24 hours. One-use send approval expires after five minutes;
+uncertain sends never auto-retry. Unsupported Coexistence/media envelopes remain
+source metadata rather than fabricated message bodies. Arbitrary attachment download,
+media sending and unverified Business account onboarding are not simulated.
 
 ## Optional AI providers
 
-This is an incremental addition to the existing app. Inspection found no previous
-OpenAI adapter, subscription sign-in, or loaded on-device model. The original
-`LocalAssistant` and system voice session remain intact, alongside new adapters:
+The existing official provider adapters and privacy/budget controls remain available
+in **AI settings** and **AI chat**. They are separate from local source queries,
+media/finance inference and the imported native model screen. System voice queries
+stay local. Cloud use is disabled by default and requires owner configuration.
 
 | Provider | Official API | Authentication |
 |---|---|---|
@@ -169,7 +201,7 @@ In **AI settings**:
    A blank key keeps the saved key; the delete checkbox removes it. Keys are masked,
    excluded from activity saved state, and encrypted using the existing AES-GCM /
    Android Keystore cipher in `noBackupFilesDir/ai-settings.enc`. Backup/transfer
-   exclusions remain enabled. No backend proxy exists in this architecture.
+   exclusions remain enabled. AI-provider calls go directly to the official API; the separate WhatsApp relay is not an AI proxy.
 3. **Test saved connection and discover models** checks authenticated model listing.
    Select a discovered model (or enter an official model ID), supply input/output USD
    prices per million tokens, and save. Blank pricing blocks cloud generation. Use
@@ -180,7 +212,7 @@ In **AI settings**:
    **Move up** to set the preferred model and fallback order. Selecting a provider's
    default model makes it available to the route and assistant selectors; it does
    not replace the offline default route automatically.
-5. In **Assistant**, choose a task and optionally switch model for that request.
+5. In **AI chat**, choose a task and optionally switch model for that request.
    Manual selection replaces the preferred entry and keeps the saved fallback
    entries. The route is displayed before submission. Each successful response
    identifies its provider, actual model, estimate and audit ID. Generated text is
@@ -240,30 +272,72 @@ API contracts checked against official documentation on 2026-11-13:
 [DeepSeek Chat Completions](https://api-docs.deepseek.com/api/create-chat-completion/),
 [DeepSeek errors](https://api-docs.deepseek.com/quick_start/error_codes/).
 
+## Storage, recovery and boundaries
+
+Room schema **8** has non-destructive migrations from schema 1. Production uses
+SQLCipher plus Android Keystore-wrapped database credentials; captured payloads
+also use Keystore-backed AES-GCM. Legacy plaintext database conversion exports to
+an encrypted copy, checks it and atomically replaces the original; errors do not
+fall back to plaintext or delete the database. Native conversion must still be
+verified on a device. Startup storage failure shows a retry screen and retains files.
+
+Registered media uses independently authenticated 64 KiB chunks for seeking through
+in-memory readers, including virtual WAV/PDF descriptors; no plaintext temporary
+original is created. An interrupted monitor can recover authenticated complete
+chunks; its unflushed tail can be lost. Phase 0 samples retain their legacy whole-file
+GCM format and reject incomplete streams. Originals are retained until owner deletion;
+automated retention deletion is not enabled. Portable backups use PBKDF2-HMAC-SHA256
+(600,000 iterations), a random salt, authenticated chunks and a completion manifest;
+staging databases/originals stay encrypted. OS backup remains excluded.
+
+Capture/event-processing commits are atomic and immutable; reference FKs preserve
+finance/task/media evidence. Per-app processing off continues capture-only retention.
+The notification queue is bounded at 256; disconnection or loss before Room commit
+can lose notifications. Active-notification reconnect snapshots cannot restore vanished
+history. WorkManager persists jobs and schedules best-effort 15-minute maintenance;
+Doze, force-stop and OEM rules can delay work. Nothing restarts microphone capture.
+
+OTPs/security context are redacted before source persistence. Unmarked standalone
+4–8 digit code candidates are removed conservatively; explicitly marked TZS amounts,
+financial references and valid ISO dates are preserved when no security context is
+present. This is not a universal secret detector. Android-protected/missing fields
+remain unavailable. External sends require fresh owner approval. Cloud AI is restricted
+to explicitly submitted AI chat input under the owner’s privacy/budget settings. There is no automatic capture/media upload, analytics,
+stealth microphone, OS bypass, custom hotword engine,
+automatic contact merging or unsupported SMS/call sending.
+
+Remaining validation/research gates include actual Gemma 4 E2B/fallback performance,
+real provider-template calibration, live Gmail/Meta eligibility and delivery, OEM
+alarms/microphone/file visibility, encrypted database/backup device round trips,
+compressed audio support, reliable VAD/diarization/owner-voice matching, semantic
+embeddings and vision classification with suitable local models, and battery/thermal
+measurements. Literal retrieval, OCR and manual speaker correction are implemented;
+those are not evidence that the advanced model-dependent gates passed. Optional
+Telegram and desktop dashboard have not been added.
+
 ## Verification and change log
 
-Build results, historical APK checksums and deferred device cases are in
-[DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md). Host tests cover normalized
-identities/redaction, encrypted Room persistence, transaction rollback, duplicate
-storms, pending-work recovery after database reopen, schema migration, rule labels,
-processing controls, SMS paging/identity and Android metadata contracts.
-Robolectric uses API 34 and synthetic AES keys; it does not establish device
-Keystore behaviour, SMS grants, OEM services, callback delivery, speech or mic capture.
+Exact host results, artifact checksum and the final physical checklist are in
+[DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md). Host tests use synthetic data,
+ordinary SQLite/Robolectric and generated AES/RSA keys; they do not prove native
+SQLCipher/Keystore, actual model execution, live accounts or Android/OEM behavior.
 
-- 2026-11-13, Phase 0: Android skeleton, assistant/session, notification capture,
-  encrypted payload/audio prototypes, permission/device screens; 34 host tests passed.
-- 2026-11-13, Phase 1: transactional durable processing, recovery scheduling,
-  source audit/status dashboard, per-app processing policy, opt-in SMS capture and
-  paged reconciliation, schema migration and expanded synthetic host coverage.
-  Physical tests deferred by owner instruction. Later phases remain unimplemented.
+- 2026-11-13, Phase 0: skeleton, assistant/session, notification capture, encrypted
+  prototypes and access/status screens; 34 host tests.
+- 2026-11-13, Phase 1: durable processing/recovery, audit/policy, authorized SMS history
+  and reconciliation; 58 host tests.
+- 2026-11-13, Phases 2–6 software slices: finance/local AI/OCR, encrypted database,
+  mail/relay/drafts, tasks/alarms, encrypted multimedia/transcription adapters,
+  evidence queries/memory and portable backup/recovery. Device testing stays last.
 
-References: [AGP compatibility](https://developer.android.com/build/releases/agp-8-13-0-release-notes),
-[Room](https://developer.android.com/jetpack/androidx/releases/room),
-[WorkManager releases](https://developer.android.com/jetpack/androidx/releases/work),
-[work chaining](https://developer.android.com/develop/background-work/background-tasks/persistent/how-to/chain-work),
-[Android SMS provider](https://developer.android.com/reference/android/provider/Telephony.Sms).
-
-- 2026-11-13, AI provider delta: isolated OpenAI, Claude, Grok and DeepSeek text
-  adapters; encrypted provider settings, authenticated discovery, five task routes,
-  ordered fallbacks/manual switching, cancellation, redaction, estimated spending
-  caps and metadata-only usage audit. No capture/database phase was reset.
+References: [Android assistant](https://developer.android.com/reference/android/service/voice/VoiceInteractionService),
+[exact alarms](https://developer.android.com/develop/background-work/services/alarms/schedule),
+[foreground timeouts](https://developer.android.com/develop/background-work/services/fgs/timeout),
+[LiteRT-LM](https://developers.google.com/edge/litert-lm/overview),
+[Gemma 4](https://developers.google.com/edge/litert-lm/models/gemma-4),
+[bundled OCR](https://developers.google.com/ml-kit/vision/text-recognition/v2/android),
+[SQLCipher Android](https://github.com/sqlcipher/sqlcipher-android),
+[JavaMail IMAP](https://javaee.github.io/javamail/docs/api/com/sun/mail/imap/IMAPFolder.html),
+[Gmail app passwords](https://support.google.com/accounts/answer/185833),
+[whisper.cpp](https://github.com/ggml-org/whisper.cpp/tree/v1.9.5),
+[WhatsApp Business](https://developers.facebook.com/docs/whatsapp/).
