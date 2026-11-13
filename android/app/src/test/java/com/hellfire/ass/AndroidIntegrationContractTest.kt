@@ -51,6 +51,13 @@ class AndroidIntegrationContractTest {
         assertTrue(safe.contentRedacted)
         assertFalse(safe.snapshot.fields.toString().contains("AB9K2Z"))
     }
+    @Test fun `malformed messaging extras preserve valid top-level text`() {
+        val notification = Notification.Builder(context, "fixture-channel")
+            .setContentTitle("Synthetic title").setContentText("Synthetic valid body").build()
+        notification.extras.putParcelableArray(Notification.EXTRA_MESSAGES, arrayOf(android.os.Bundle()))
+        val raw = AndroidNotificationAdapter.snapshot(sbn(notification), "POSTED", null, null)
+        assertEquals("Synthetic valid body", raw.fields["text"]!!.single())
+    }
     @Test fun `contentless notification does not fabricate content`() {
         val raw = AndroidNotificationAdapter.snapshot(sbn(Notification.Builder(context, "fixture-channel").build()), "POSTED", null, null)
         assertFalse(NotificationNormalizer.normalize(raw, "com.hellfire.ass")!!.contentAvailable)

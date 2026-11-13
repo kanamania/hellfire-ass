@@ -12,8 +12,8 @@ android {
         applicationId = "com.hellfire.ass"
         minSdk = 29
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
     }
     buildFeatures { compose = true }
     compileOptions {
@@ -21,12 +21,14 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     testOptions { unitTests.isIncludeAndroidResources = true }
+    sourceSets.getByName("test").resources.srcDir("schemas")
     lint { abortOnError = true }
 }
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 
 dependencies {
+    implementation(libs.work.runtime)
     implementation(libs.core)
     implementation(libs.activity.compose)
     implementation(platform(libs.compose.bom))

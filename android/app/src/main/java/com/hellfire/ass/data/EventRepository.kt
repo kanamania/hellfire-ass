@@ -12,6 +12,7 @@ class EventRepository(private val dao: EventDao, private val cipher: () -> Paylo
 
     suspend fun capture(raw: NotificationSnapshot, ownPackage: String): Boolean {
         val event = NotificationNormalizer.normalize(raw, ownPackage) ?: return false
+        if (dao.exists(event.id)) return false
         val safe = event.snapshot
         val payload = JSONObject().apply {
             put("notification_key_hash", safe.key)
@@ -26,12 +27,12 @@ class EventRepository(private val dao: EventDao, private val cipher: () -> Paylo
             put("remote_input_count", safe.remoteInputCount)
             put("content_status", if (event.contentAvailable) "AVAILABLE_AS_DELIVERED" else "UNAVAILABLE")
         }.toString().toByteArray(Charsets.UTF_8)
-        return dao.insert(SourceEvent(
+        return dao.insertCaptured(SourceEvent(
             id = event.id, source = safe.source, externalId = event.externalId, packageName = safe.packageName,
             occurredAt = safe.postedAt, receivedAt = safe.receivedAt, kind = safe.kind,
             payloadHash = event.payloadHash, encryptedPayload = cipher().encrypt(payload),
             contentAvailable = event.contentAvailable, contentRedacted = event.contentRedacted,
             securitySensitive = event.securitySensitive,
-        )) != -1L
+        ))
     }
 }

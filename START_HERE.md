@@ -1,8 +1,8 @@
 # Start HellFire Ass with Codex
 
-Phase 0 source is now implemented. See [README.md](README.md) for build and use
+Phase 0 and Phase 1 capture-engine source are now implemented. See [README.md](README.md) for build and use
 instructions and [docs/DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md) for
-actual verification results and physical-device checks. Later phases remain deferred.
+actual verification results and physical-device checks. Physical device tests are deferred to the final stage at the owner’s request; later feature phases remain unimplemented.
 
 The original starter instructions are retained below.
 

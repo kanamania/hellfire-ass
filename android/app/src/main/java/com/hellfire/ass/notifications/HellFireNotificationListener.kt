@@ -4,6 +4,8 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import com.hellfire.ass.HellFireApp
 import com.hellfire.ass.events.NotificationSnapshot
+import com.hellfire.ass.processing.CaptureWork
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,18 +19,33 @@ object NotificationCaptureStatus {
 class HellFireNotificationListener : NotificationListenerService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val inbox = Channel<NotificationSnapshot>(256)
+    private val pendingDrops = AtomicInteger()
 
     override fun onCreate() {
         super.onCreate()
+        val app = application as HellFireApp
         scope.launch {
-            for (snapshot in inbox) {
-                try {
-                    (application as HellFireApp).events.capture(snapshot, packageName)
-                } catch (_: Exception) {
-                    NotificationCaptureStatus.error.value = "Notification storage failed. Reopen the app and check local storage."
+            for (first in inbox) {
+                val batch = mutableListOf(first)
+                while (batch.size < 32) batch += inbox.tryReceive().getOrNull() ?: break
+                for (snapshot in batch) {
+                    try { app.events.capture(snapshot, packageName) }
+                    catch (e: CancellationException) { throw e }
+                    catch (_: Exception) {
+                        NotificationCaptureStatus.error.value = "Notification storage failed. Check local storage."
+                        runCatching { app.database.events().failure("android_notification", "NOTIFICATION_STORAGE_FAILED") }
+                    }
+                }
+                val dropped = pendingDrops.getAndSet(0)
+                if (dropped > 0) runCatching { app.database.events().failure("android_notification", "CAPTURE_QUEUE_OVERFLOW", dropped) }
+                try { CaptureWork.process(app) }
+                catch (e: CancellationException) { throw e }
+                catch (_: Exception) {
+                    NotificationCaptureStatus.error.value = "Processing delayed; saved events will resume during recovery."
+                    runCatching { app.database.events().failure("processing", "WORK_SCHEDULING_FAILED") }
                 }
             }
-        }
+        }.invokeOnCompletion { scope.cancel() }
     }
 
     override fun onListenerConnected() {
@@ -58,6 +75,7 @@ class HellFireNotificationListener : NotificationListenerService() {
         try {
             val snapshot = AndroidNotificationAdapter.snapshot(sbn, kind, reason, ranks)
             if (!inbox.trySend(snapshot).isSuccess) {
+                pendingDrops.incrementAndGet()
                 NotificationCaptureStatus.dropped.value += 1
                 NotificationCaptureStatus.error.value = "Capture queue full; some notifications were not saved."
             }
@@ -69,7 +87,7 @@ class HellFireNotificationListener : NotificationListenerService() {
     override fun onDestroy() {
         NotificationCaptureStatus.connected.value = false
         inbox.close()
-        scope.cancel()
+        // Drain accepted snapshots while this process remains alive; persisted jobs survive a restart.
         super.onDestroy()
     }
 }
