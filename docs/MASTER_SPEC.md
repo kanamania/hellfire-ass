@@ -15,7 +15,8 @@
 
 ---
 
-**Owner execution update — 2026-11-13:** Phase 0 software/host checks are implemented.
+**Owner execution update — 2026-11-13:** Phase 0–1 software/host checks are implemented.
+The owner explicitly authorized proceeding with the remaining phases.
 Continue building incrementally beyond Phase 0; physical device testing is deferred
 until the final stage at the owner's request. Keep device-dependent outcomes
 explicitly NOT TESTED and do not treat this sequencing change as successful device

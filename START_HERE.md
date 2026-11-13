@@ -1,8 +1,10 @@
 # Start HellFire Ass with Codex
 
-Phase 0 and Phase 1 capture-engine source are now implemented. See [README.md](README.md) for build and use
-instructions and [docs/DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md) for
-actual verification results and physical-device checks. Physical device tests are deferred to the final stage at the owner’s request; later feature phases remain unimplemented.
+Phase 0–1 and software slices across Phases 2–6 are implemented. See
+[README.md](README.md) for setup/use and [docs/DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md)
+for exact host results, remaining model/account gates and the final device checklist.
+The owner authorized remaining phases and deferred physical device testing until last.
+No physical, model or live-account success is claimed. The debug version is 0.4.0.
 
 The original starter instructions are retained below.
 

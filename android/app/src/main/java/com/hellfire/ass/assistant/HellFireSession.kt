@@ -17,9 +17,13 @@ import android.view.View
 import android.widget.*
 import com.hellfire.ass.MainActivity
 import java.util.Locale
+import kotlinx.coroutines.*
+import com.hellfire.ass.HellFireApp
 
 class HellFireSession(private val sessionContext: Context) : VoiceInteractionSession(sessionContext) {
     private val assistant = LocalAssistant()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var queryJob: Job? = null
     private var recognizer: SpeechRecognizer? = null
     private var speech: TextToSpeech? = null
     private var speechReady = false
@@ -40,9 +44,9 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
             setPadding(0, 8, 0, 8)
             layout.addView(this)
         }
-        label("HellFire Ass · offline assistant test")
+        label("HellFire Ass · offline assistant")
         val input = EditText(sessionContext).apply {
-            hint = "Ask HellFire: hello, habari, time"
+            hint = "Ask HellFire: spending today, tasks tomorrow, search…"
             contentDescription = "Question for HellFire"
             setSingleLine(true)
             setTextColor(Color.rgb(35, 30, 27))
@@ -50,9 +54,22 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
         }
         layout.addView(input)
         val answer = label(lastAnswer)
+        fun ask(text: String) {
+            queryJob?.cancel()
+            queryJob = scope.launch {
+                answer.text = "Checking local evidence…"
+                try {
+                    val app = sessionContext.applicationContext as HellFireApp
+                    val result = AssistantEngine(app).answer(text)
+                    lastAnswer = result.text + if (result.sources.isNotEmpty()) "\nEvidence IDs: " + result.sources.take(10).joinToString() else ""
+                    answer.text = lastAnswer
+                } catch (e: CancellationException) { throw e }
+                catch (_: Exception) { answer.text = "Local evidence unavailable. Open HellFire Ass to check storage, dates and source access." }
+            }
+        }
         layout.addView(Button(sessionContext).apply {
-            text = "Ask HellFire"
-            setOnClickListener { lastAnswer = assistant.answer(input.text.toString()); answer.text = lastAnswer }
+            this.text = "Ask HellFire"
+            setOnClickListener { ask(input.text.toString()) }
         })
         voiceStatus = label("Offline voice output is optional; text input works without microphone access.")
         speech = TextToSpeech(sessionContext) { status ->
@@ -85,8 +102,7 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
                                     val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
                                     if (text != null) {
                                         input.setText(text)
-                                        lastAnswer = assistant.answer(text)
-                                        answer.text = lastAnswer
+                                        ask(text)
                                         voiceStatus?.text = "Question recognized on device."
                                     }
                                 }
@@ -119,8 +135,9 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
         return ScrollView(sessionContext).apply { addView(layout) }
     }
 
-    override fun onHide() { recognizer?.cancel(); speech?.stop(); super.onHide() }
+    override fun onHide() { queryJob?.cancel(); recognizer?.cancel(); speech?.stop(); super.onHide() }
     override fun onDestroy() {
+        scope.cancel()
         speechReady = false
         recognizer?.destroy()
         recognizer = null

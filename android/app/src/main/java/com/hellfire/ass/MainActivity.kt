@@ -23,6 +23,7 @@ import com.hellfire.ass.ui.HellFireScreen
 import com.hellfire.ass.sms.SmsCaptureSettings
 import com.hellfire.ass.sms.SmsSyncWorker
 import androidx.work.WorkManager
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private var permissions by mutableStateOf(PermissionStatus())
@@ -52,7 +53,7 @@ class MainActivity : ComponentActivity() {
             HellFireScreen(
                 app = application as HellFireApp,
                 permissions = permissions,
-                initialTab = if (intent.action == Intent.ACTION_ASSIST) "Assistant" else "Setup",
+                initialTab = if (intent.data?.host == "tasks") "Tasks" else if (intent.action == Intent.ACTION_ASSIST) "Assistant" else "Setup",
                 message = message,
                 onRole = ::selectAssistant,
                 onSettings = ::openSettings,
@@ -60,6 +61,10 @@ class MainActivity : ComponentActivity() {
                     val needed = mutableListOf(Manifest.permission.RECORD_AUDIO)
                     if (Build.VERSION.SDK_INT >= 33) needed += Manifest.permission.POST_NOTIFICATIONS
                     requestPermissions.launch(needed.toTypedArray())
+                },
+                onNotifications = {
+                    if (Build.VERSION.SDK_INT >= 33) requestPermissions.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
+                    else openSettings(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                 },
                 onSmsEnable = {
                     requestSms.launch(arrayOf(Manifest.permission.READ_SMS, Manifest.permission.RECEIVE_SMS))
@@ -82,7 +87,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onResume() { super.onResume(); refreshStatus(); (application as HellFireApp).refreshSmsCapture() }
+    override fun onResume() {
+        super.onResume(); refreshStatus()
+        val app = application as HellFireApp
+        app.refreshSmsCapture()
+        app.captureScope.launch { runCatching { com.hellfire.ass.tasks.TaskScheduler.restore(app) } }
+    }
     override fun onStop() {
         if (isLocalVoiceInteractionSupported) stopLocalVoiceInteraction()
         super.onStop()
@@ -118,7 +128,7 @@ class MainActivity : ComponentActivity() {
     private fun openSettings(action: String) {
         try {
             startActivity(Intent(action).apply {
-                if (action == Settings.ACTION_APPLICATION_DETAILS_SETTINGS) data = Uri.parse("package:$packageName")
+                if (action == Settings.ACTION_APPLICATION_DETAILS_SETTINGS || action == Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM) data = Uri.parse("package:$packageName")
                 if (action == Settings.ACTION_APP_NOTIFICATION_SETTINGS) putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
             })
         } catch (_: Exception) {

@@ -15,6 +15,7 @@ data class SmsRecord(val rowId: Long, val address: String, val body: String, val
             key = "sms-provider:$rowId", packageName = "android.provider.Telephony.Sms",
             postedAt = date, receivedAt = receivedAt, source = "android_sms",
             kind = if (type == Telephony.Sms.MESSAGE_TYPE_INBOX) "INCOMING" else "OUTGOING",
+            provenance = mapOf("provider_row_id" to rowId.toString()),
             fields = mapOf("text" to listOf(body), "sender_hint" to listOf(address),
                 "date_sent" to listOf(dateSent.toString()), "subscription_id" to listOf(subscriptionId.toString())),
         )

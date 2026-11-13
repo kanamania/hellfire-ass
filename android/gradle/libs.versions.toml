@@ -8,6 +8,11 @@ coroutines = "1.10.2"
 lifecycle = "2.9.4"
 
 [libraries]
+litertlm = { module = "com.google.ai.edge.litertlm:litertlm-android", version = "0.12.0" }
+ocr = { module = "com.google.mlkit:text-recognition", version = "16.0.1" }
+sqlcipher = { module = "net.zetetic:sqlcipher-android", version = "4.20.0" }
+android-mail = { module = "com.sun.mail:android-mail", version = "1.6.8" }
+android-activation = { module = "com.sun.mail:android-activation", version = "1.6.8" }
 work-runtime = { module = "androidx.work:work-runtime-ktx", version = "2.10.5" }
 core = { module = "androidx.core:core", version = "1.15.0" }
 activity-compose = { module = "androidx.activity:activity-compose", version = "1.11.0" }

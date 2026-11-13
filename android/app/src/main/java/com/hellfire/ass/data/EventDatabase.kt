@@ -5,6 +5,12 @@ import androidx.room.*
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
+import com.hellfire.ass.finance.*
+import com.hellfire.ass.communications.*
+import com.hellfire.ass.tasks.*
+import com.hellfire.ass.media.*
+import com.hellfire.ass.memory.*
+import com.hellfire.ass.security.EncryptedDatabase
 
 @Entity(tableName = "source_event", indices = [Index(value = ["source", "externalId"], unique = true)])
 data class SourceEvent(
@@ -43,6 +49,9 @@ interface EventDao {
 
     @Query("SELECT EXISTS(SELECT 1 FROM source_event WHERE id = :id)")
     suspend fun exists(id: String): Boolean
+
+    @Query("SELECT * FROM source_event WHERE receivedAt < :before OR (receivedAt = :before AND id < :lastId) ORDER BY receivedAt DESC, id DESC LIMIT 100")
+    suspend fun searchBatch(before: Long, lastId: String): List<SourceEvent>
 
     @Query("SELECT * FROM source_event WHERE id = :id")
     suspend fun find(id: String): SourceEvent?
@@ -105,9 +114,14 @@ interface EventDao {
     suspend fun deleteAll()
 }
 
-@Database(entities = [SourceEvent::class, EventProcessing::class, CaptureAudit::class, NotificationPolicy::class], version = 2, exportSchema = true)
+@Database(entities = [SourceEvent::class, EventProcessing::class, CaptureAudit::class, NotificationPolicy::class, FinanceAccount::class, FinanceCandidate::class, LedgerEntry::class, LedgerEvidence::class, MerchantAlias::class, CommunicationMessage::class, MailCursor::class, OutboundDraft::class, ActionAudit::class, IntegrationState::class, AssistantTask::class, DailyReview::class, MediaItem::class, TranscriptSegment::class, SpeechSpan::class, MemoryItem::class], version = 8, exportSchema = true)
 abstract class EventDatabase : RoomDatabase() {
     abstract fun events(): EventDao
+    abstract fun finances(): FinanceDao
+    abstract fun communications(): CommunicationDao
+    abstract fun tasks(): TaskDao
+    abstract fun media(): MediaDao
+    abstract fun memory(): MemoryDao
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -118,8 +132,26 @@ abstract class EventDatabase : RoomDatabase() {
                 db.execSQL("INSERT INTO capture_audit (source, lastCapturedAt, captured, failures, dropped) SELECT source, MAX(receivedAt), COUNT(*), 0, 0 FROM source_event GROUP BY source")
             }
         }
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) { FinanceSchema.migrate(db) }
+        }
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) { CommunicationSchema.migrate(db) }
+        }
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) { TaskSchema.migrate(db) }
+        }
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) { MediaSchema.migrate(db) }
+        }
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) { MemorySchema.migrate(db) }
+        }
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE outbound_draft ADD COLUMN replyToMessageId TEXT") }
+        }
         fun open(context: Context): EventDatabase = Room.databaseBuilder(
             context.applicationContext, EventDatabase::class.java, "hellfire.db"
-        ).addMigrations(MIGRATION_1_2).build()
+        ).openHelperFactory(EncryptedDatabase.factory(context)).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8).build()
     }
 }

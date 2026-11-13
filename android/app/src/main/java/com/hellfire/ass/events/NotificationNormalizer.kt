@@ -17,6 +17,7 @@ data class NotificationSnapshot(
     val importance: Int? = null,
     val groupConversation: Boolean = false,
     val remoteInputCount: Int = 0,
+    val provenance: Map<String, String> = emptyMap(),
 )
 
 data class NormalizedNotification(
@@ -37,6 +38,8 @@ object NotificationNormalizer {
             "nenosiri|nywila|msimbo|nambari ya siri|code|token)\\b"
     )
     private val numericCode = Regex("(?<![\\p{L}\\p{N}])[\\p{Nd}]{4,8}(?![\\p{L}\\p{N}])")
+    private val currencyAmount = Regex("(?i)\\b(?:TZS|TShs?)\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)")
+    private val financialIdentifier = Regex("(?i)\\b(?:lipa\\s+namba|merchant(?:\\s+id)?|ref(?:erence)?|kumbukumbu|muamala(?:\\s+no)?)[ :#.-]+([A-Z0-9-]{3,40})")
     private val contentFields = setOf("title", "text", "big_text", "text_lines", "sub_text", "messages")
 
     fun normalize(raw: NotificationSnapshot, ownPackage: String): NormalizedNotification? {
@@ -46,7 +49,17 @@ object NotificationNormalizer {
         val fields = raw.fields.toSortedMap().mapValues { (_, values) ->
             values.map { value ->
                 val clean = if (sensitive && value.isNotBlank()) "[SECURITY CONTENT REDACTED]"
-                    else numericCode.replace(value, "[CODE REDACTED]")
+                    else {
+                        val dates = Regex("\\b20[0-9]{2}-[0-9]{2}-[0-9]{2}\\b").findAll(value).filter {
+                            runCatching { java.time.LocalDate.parse(it.value) }.isSuccess
+                        }.map { it.range }.toList()
+                        val amounts = dates + currencyAmount.findAll(value).map { it.groups[1]!!.range }.toList().let { money ->
+                            if (money.isEmpty()) money else money + financialIdentifier.findAll(value).map { it.groups[1]!!.range }.toList()
+                        }
+                        numericCode.replace(value) { match ->
+                            if (amounts.any { match.range.first >= it.first && match.range.last <= it.last }) match.value else "[CODE REDACTED]"
+                        }
+                    }
                 if (clean != value) redacted = true
                 clean
             }
@@ -59,6 +72,7 @@ object NotificationNormalizer {
                 safe.ongoing.toString(), safe.removedReason.toString(), safe.rank.toString(),
                 safe.importance.toString(), safe.groupConversation.toString(),
                 safe.remoteInputCount.toString()).forEach { frame(it) }
+            safe.provenance.toSortedMap().forEach { (name, value) -> frame(name); frame(value) }
             fields.forEach { (name, values) ->
                 frame(name); frame(values.size.toString()); values.forEach { frame(it) }
             }

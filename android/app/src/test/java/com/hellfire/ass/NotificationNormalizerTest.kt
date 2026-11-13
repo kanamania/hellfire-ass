@@ -65,6 +65,11 @@ class NotificationNormalizerTest {
         assertFalse(event.snapshot.fields.toString().contains("432198"))
         assertFalse(event.snapshot.fields.toString().contains("１２３４５６"))
     }
+    @Test fun `marked currency amounts survive while unrelated bare codes are removed`() {
+        val event = normalize(raw("text" to listOf("Paid TZS 15000, fee TZS 500, note 432198")))
+        assertTrue(event.snapshot.fields.toString().contains("TZS 15000"))
+        assertFalse(event.snapshot.fields.toString().contains("432198"))
+    }
     @Test fun `raw key is never retained`() {
         assertFalse(normalize(raw()).snapshot.key.contains("external-key"))
     }
@@ -75,4 +80,13 @@ class NotificationNormalizerTest {
     @Test fun `synthetic fixtures are distinct from device delivery`() {
         assertNotEquals(normalize(raw()).id, normalize(raw().copy(source = "synthetic_notification")).id)
     }
+    @Test fun `valid ISO dates survive but security context still takes precedence over finance`() {
+        val raw = NotificationSnapshot("date", "fixture", 1, 2, fields = mapOf("text" to listOf("Meeting 2026-11-14 at 10:00")))
+        assertEquals("Meeting 2026-11-14 at 10:00", NotificationNormalizer.normalize(raw, "owner")!!.snapshot.fields["text"]!!.single())
+        val auth = raw.copy(fields = mapOf("text" to listOf("PIN 432198 TZS 15000 ref 432198 on 2026-11-14")))
+        val normalized = NotificationNormalizer.normalize(auth, "owner")!!
+        assertTrue(normalized.securitySensitive)
+        assertEquals("[SECURITY CONTENT REDACTED]", normalized.snapshot.fields["text"]!!.single())
+    }
+
 }

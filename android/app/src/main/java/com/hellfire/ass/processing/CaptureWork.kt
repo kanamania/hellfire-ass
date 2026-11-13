@@ -28,7 +28,7 @@ class ProcessEventsWorker(context: Context, params: WorkerParameters) : Coroutin
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val app = applicationContext as HellFireApp
         try {
-            EventProcessor(app.database.events()) { app.cipher }.drain()
+            EventProcessor(app.database.events(), app.finances::collect, { id, time, text, outgoing -> com.hellfire.ass.tasks.TaskScheduler.collect(app, id, time, text, outgoing) }) { app.cipher }.drain()
             Result.success()
         } catch (e: CancellationException) { throw e }
         catch (_: Exception) { Result.retry() }
@@ -38,7 +38,9 @@ class ProcessEventsWorker(context: Context, params: WorkerParameters) : Coroutin
 class CaptureMaintenanceWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
+            com.hellfire.ass.tasks.TaskScheduler.restore(applicationContext as HellFireApp)
             CaptureWork.process(applicationContext)
+            com.hellfire.ass.communications.CommunicationWork.schedule(applicationContext)
             if (SmsCaptureSettings.enabled(applicationContext)) SmsSyncWorker.schedule(applicationContext)
             Result.success()
         } catch (e: CancellationException) { throw e }
