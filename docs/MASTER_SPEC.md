@@ -15,6 +15,12 @@
 
 ---
 
+**Owner execution update — 2026-11-13:** Phase 0 software/host checks are implemented.
+Continue building incrementally beyond Phase 0; physical device testing is deferred
+until the final stage at the owner's request. Keep device-dependent outcomes
+explicitly NOT TESTED and do not treat this sequencing change as successful device
+verification. This update supersedes the original starter prompt's Phase 0-only limit.
+
 ## 0. Requirements locked by the owner
 
 These are explicit decisions, not suggestions to reconsider:

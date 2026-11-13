@@ -26,6 +26,7 @@ import com.hellfire.ass.assistant.LocalAssistant
 import com.hellfire.ass.audio.*
 import com.hellfire.ass.events.NotificationSnapshot
 import com.hellfire.ass.notifications.NotificationCaptureStatus
+import com.hellfire.ass.processing.CaptureWork
 import kotlinx.coroutines.*
 import java.time.Instant
 import java.time.ZoneId
@@ -41,6 +42,8 @@ fun HellFireScreen(
     onSettings: (String) -> Unit,
     onMicrophonePermission: () -> Unit,
     onSession: () -> Unit,
+    onSmsEnable: () -> Unit,
+    onSmsDisable: () -> Unit,
 ) {
     val colors = if (isSystemInDarkTheme()) darkColorScheme(primary = Color(0xFFFFB595))
         else lightColorScheme(primary = Color(0xFF9A3412), secondary = Color(0xFF675044))
@@ -50,7 +53,7 @@ fun HellFireScreen(
             Column(Modifier.safeDrawingPadding().imePadding()) {
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                     Text("HellFire Ass", style = MaterialTheme.typography.headlineMedium)
-                    Text("Phase 0 · local device feasibility", style = MaterialTheme.typography.bodyMedium)
+                    Text("Phase 1 · local capture engine", style = MaterialTheme.typography.bodyMedium)
                 }
                 ScrollableTabRow(selectedTabIndex = listOf("Setup", "Assistant", "Capture", "Device").indexOf(tab), edgePadding = 8.dp) {
                     listOf("Setup", "Assistant", "Capture", "Device").forEach { name ->
@@ -61,7 +64,7 @@ fun HellFireScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     if (message != null) Text(message, color = MaterialTheme.colorScheme.primary)
                     when (tab) {
-                        "Setup" -> Setup(permissions, onRole, onSettings, onMicrophonePermission)
+                        "Setup" -> Setup(permissions, onRole, onSettings, onMicrophonePermission, onSmsEnable, onSmsDisable)
                         "Assistant" -> Assistant(onSession)
                         "Capture" -> Capture(app, permissions, onMicrophonePermission, onSettings)
                         "Device" -> Diagnostics(permissions)
@@ -73,7 +76,7 @@ fun HellFireScreen(
 }
 
 @Composable
-private fun Setup(status: PermissionStatus, onRole: () -> Unit, onSettings: (String) -> Unit, onMicrophone: () -> Unit) {
+private fun Setup(status: PermissionStatus, onRole: () -> Unit, onSettings: (String) -> Unit, onMicrophone: () -> Unit, onSmsEnable: () -> Unit, onSmsDisable: () -> Unit) {
     Text("Connect Android access", style = MaterialTheme.typography.titleLarge)
     Text("Access is optional and controlled by Android. Return here after changing settings to see the current state.")
     Status("Default assistant", when {
@@ -91,7 +94,12 @@ private fun Setup(status: PermissionStatus, onRole: () -> Unit, onSettings: (Str
     Status("Recording notifications", if (status.notificationPosting) "Allowed" else "Not allowed")
     Button(onClick = onMicrophone) { Text("Allow microphone and notifications") }
     TextButton(onClick = { onSettings(Settings.ACTION_APPLICATION_DETAILS_SETTINGS) }) { Text("Open app permission settings") }
-    Status("SMS", "Not requested · Phase 1")
+    Status("Read SMS", if (status.smsRead) "Granted" else "Not granted")
+    Status("Receive SMS", if (status.smsReceive) "Granted" else "Not granted")
+    Status("SMS capture", if (status.smsEnabled) "Enabled by owner" else "Disabled")
+    Text("Enabling SMS capture authorizes importing existing incoming/sent SMS and reconciling new messages locally. Android or your installer may restrict SMS permissions. This app does not send SMS.")
+    if (!status.smsEnabled) Button(onClick = onSmsEnable) { Text("Enable SMS capture and history import") }
+    else OutlinedButton(onClick = onSmsDisable) { Text("Disable SMS capture") }
     Status("Exact alarms", when (status.exactAlarm) {
         true -> "Android reports access; scheduling is not implemented"
         false -> "Not granted · reminders come in a later phase"
@@ -130,7 +138,8 @@ private fun Capture(app: HellFireApp, permissions: PermissionStatus, onPermissio
     val scope = rememberCoroutineScope()
     var result by remember { mutableStateOf<String?>(null) }
     var confirmClear by remember { mutableStateOf(false) }
-    Text("Notification inbox", style = MaterialTheme.typography.titleLarge)
+    CaptureDashboard(app, permissions)
+    Text("Captured event inbox", style = MaterialTheme.typography.titleLarge)
     Status("Listener", if (connected && permissions.notificationAccess) "Connected" else if (permissions.notificationAccess) "Access granted; listener disconnected" else "Access missing")
     Text("$count stored events · $dropped queue drops this process")
     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -143,7 +152,9 @@ private fun Capture(app: HellFireApp, permissions: PermissionStatus, onPermissio
                         receivedAt = System.currentTimeMillis(), source = "synthetic_notification",
                         fields = mapOf("title" to listOf("Synthetic Phase 0 fixture"), "text" to listOf("Offline capture test")),
                     ), app.packageName)
-                }.let { if (it) "Synthetic event stored in Room." else "Synthetic event already stored; duplicate ignored." }
+                }.let { inserted ->
+                    CaptureWork.process(app)
+                    if (inserted) "Synthetic event stored in Room." else "Synthetic event already stored; duplicate ignored." }
             } catch (_: Exception) { "Local storage test failed. Check device storage and encryption availability." }
         }
     }) { Text("Insert synthetic test event") }
@@ -158,13 +169,14 @@ private fun Capture(app: HellFireApp, permissions: PermissionStatus, onPermissio
                 event.contentRedacted -> "redacted"
                 else -> "content as delivered"
             })
+            Text("${event.source} · ${event.state} · ${event.label ?: "unclassified"}")
         }
         HorizontalDivider()
     }
-    TextButton(onClick = { confirmClear = true }, enabled = !permissions.notificationAccess) { Text("Delete captured events") }
-    Text("Disable notification access before deleting the inbox. Payloads are encrypted; package names and timestamps remain visible to local database tools.")
+    TextButton(onClick = { confirmClear = true }, enabled = !permissions.notificationAccess && !permissions.smsEnabled) { Text("Delete captured events") }
+    Text("Disable notification access and SMS capture before deleting the inbox. Payloads are encrypted; package names and timestamps remain visible to local database tools.")
     if (confirmClear) AlertDialog(onDismissRequest = { confirmClear = false }, title = { Text("Delete all captured events?") },
-        text = { Text("This removes stored notification events and synthetic fixtures from this device.") },
+        text = { Text("This removes stored captured events and their processing jobs from this device.") },
         confirmButton = { TextButton(onClick = {
             confirmClear = false
             scope.launch {
@@ -254,7 +266,7 @@ private fun Diagnostics(status: PermissionStatus) {
     Status("Voice service", if (status.voiceServiceActive) "Selected" else "Not selected")
     Status("Owner timezone", "Africa/Dar_es_Salaam")
     Text("The model name comes from Android. ColorOS version, OEM gestures, lock-screen invocation, microphone interruptions and overnight behaviour must be verified on the physical phone.")
-    Text("Later phases: SMS, finance, WhatsApp, email, call imports, alarms and AI inference are not implemented.")
+    Text("Later phases: finance, WhatsApp, email, call imports, alarms and AI inference are not implemented.")
 }
 
 @Composable

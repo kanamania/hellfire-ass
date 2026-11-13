@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -42,6 +45,10 @@
             android:permission="android.permission.RECORD_AUDIO">
             <intent-filter><action android:name="android.speech.RecognitionService" /></intent-filter>
         </service>
+        <receiver android:name=".sms.SmsReceivedReceiver" android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter><action android:name="android.provider.Telephony.SMS_RECEIVED" /></intent-filter>
+        </receiver>
         <service android:name=".audio.MicrophoneService" android:exported="false"
             android:foregroundServiceType="microphone" />
     </application>

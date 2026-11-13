@@ -25,7 +25,7 @@ object AndroidNotificationAdapter {
         field("category", n.category)
         field("channel_id", n.channelId)
         field("conversation_id", n.shortcutId)
-        NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(n)?.let { style ->
+        runCatching { NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(n) }.getOrNull()?.let { style ->
             val messages = style.messages
             fields["messages"] = messages.map { it.text?.toString().orEmpty() }
             fields["sender_hint"] = messages.map { it.person?.name?.toString().orEmpty() }
