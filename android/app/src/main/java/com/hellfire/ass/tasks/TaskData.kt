@@ -27,6 +27,7 @@ interface TaskDao {
     @Query("SELECT * FROM assistant_task WHERE state='ACTIVE' AND nextAlertAt <= :now ORDER BY nextAlertAt") suspend fun due(now: Long): List<AssistantTask>
     @Query("UPDATE assistant_task SET lastAlertAt=:now, alertCount=alertCount+1, nextAlertAt=:next WHERE id=:id AND state='ACTIVE'")
     suspend fun alerted(id: String, now: Long, next: Long)
+    @Query("SELECT * FROM assistant_task WHERE state='ACTIVE' AND instr(lower(title), lower(:query)) > 0 ORDER BY dueAt LIMIT 6") suspend fun activeMatching(query: String): List<AssistantTask>
     @Query("SELECT * FROM assistant_task WHERE state='ACTIVE' AND dueAt >= :start AND dueAt < :end ORDER BY dueAt") suspend fun period(start: Long, end: Long): List<AssistantTask>
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun review(value: DailyReview)
     @Query("SELECT * FROM daily_review WHERE state='PENDING' ORDER BY day") fun reviews(): Flow<List<DailyReview>>

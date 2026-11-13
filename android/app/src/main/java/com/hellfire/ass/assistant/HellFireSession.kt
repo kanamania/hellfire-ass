@@ -29,6 +29,7 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
     private var speechReady = false
     private var lastAnswer = assistant.answer("hello")
     private var voiceStatus: TextView? = null
+    private var pending: OwnerCommand? = null
 
     override fun onCreateContentView(): View {
         val padding = (20 * sessionContext.resources.displayMetrics.density).toInt()
@@ -46,7 +47,7 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
         }
         label("HellFire Ass · offline assistant")
         val input = EditText(sessionContext).apply {
-            hint = "Ask HellFire: spending today, tasks tomorrow, search…"
+            hint = "Ask or command: tasks tomorrow, remind me to…, log cash…"
             contentDescription = "Question for HellFire"
             setSingleLine(true)
             setTextColor(Color.rgb(35, 30, 27))
@@ -54,8 +55,11 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
         }
         layout.addView(input)
         val answer = label(lastAnswer)
+        val confirm = Button(sessionContext).apply { text = "Confirm proposed action"; visibility = View.GONE }
         fun ask(text: String) {
             queryJob?.cancel()
+            pending = null
+            confirm.visibility = View.GONE
             queryJob = scope.launch {
                 answer.text = "Checking local evidence…"
                 try {
@@ -63,10 +67,26 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
                     val result = AssistantEngine(app).answer(text)
                     lastAnswer = result.text + if (result.sources.isNotEmpty()) "\nEvidence IDs: " + result.sources.take(10).joinToString() else ""
                     answer.text = lastAnswer
+                    pending = result.command
+                    if (pending != null) confirm.visibility = View.VISIBLE
                 } catch (e: CancellationException) { throw e }
                 catch (_: Exception) { answer.text = "Local evidence unavailable. Open HellFire Ass to check storage, dates and source access." }
             }
         }
+        confirm.setOnClickListener {
+            val command = pending ?: return@setOnClickListener
+            pending = null
+            confirm.visibility = View.GONE
+            queryJob = scope.launch {
+                lastAnswer = try {
+                    withContext(Dispatchers.IO) { AssistantCommands.execute(sessionContext.applicationContext as HellFireApp, command) }
+                } catch (e: CancellationException) { throw e }
+                catch (e: IllegalArgumentException) { e.message ?: "Command could not be applied." }
+                catch (_: Exception) { "Command could not be fully applied. Open HellFire Ass to check; nothing was sent." }
+                answer.text = lastAnswer
+            }
+        }
+        layout.addView(confirm)
         layout.addView(Button(sessionContext).apply {
             this.text = "Ask HellFire"
             setOnClickListener { ask(input.text.toString()) }

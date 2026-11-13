@@ -6,8 +6,10 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.*
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hellfire.ass.HellFireApp
+import com.hellfire.ass.assistant.AssistantCommands
 import com.hellfire.ass.assistant.AssistantEngine
 import com.hellfire.ass.ai.ActionProposals
 import com.hellfire.ass.memory.MemoryItem
@@ -36,10 +38,20 @@ fun AssistantScreen(app: HellFireApp, onSession: () -> Unit) {
         finally { busy = false }
     } }
     Text("Ask HellFire", style = MaterialTheme.typography.titleLarge)
-    Text("Read-only, offline questions: spending today, income this month, balances, tasks tomorrow, morning brief, evening brief, or search <words>. Exact totals come from approved ledger entries. Search is a bounded literal lookup, not a complete semantic index.")
+    Text("Offline questions: spending today, income this month, balances, tasks tomorrow, morning brief, evening brief, or search <words>. Exact totals come from approved ledger entries. Search is a bounded literal lookup, not a complete semantic index.")
+    Text("Commands such as remind me to…, remember…, mark … done, snooze…, reschedule … to…, log cash…, email … : …, whatsapp … : … are only proposals until you confirm. Drafts still need approval in Messages before sending. Type help for the full list.")
     OutlinedTextField(query, { query = it }, label = { Text("Your question") }, modifier = Modifier.fillMaxWidth())
     Button(enabled = !busy, onClick = { run { answer = engine.answer(query); result = "" } }) { Text("Ask HellFire") }
     Text(answer.text, Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+    answer.command?.let { command -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Button(enabled = !busy, onClick = { answer = answer.copy(command = null); run {
+            answer = AssistantEngine.Answer(try { AssistantCommands.execute(app, command) }
+                catch (e: CancellationException) { throw e }
+                catch (e: IllegalArgumentException) { e.message ?: "Command could not be applied." }
+                catch (_: Exception) { "Command could not be fully applied. Check Tasks, Messages or Finance; nothing was sent." })
+        } }) { Text("Confirm") }
+        OutlinedButton(onClick = { answer = AssistantEngine.Answer("Proposal discarded. Nothing changed.") }) { Text("Discard") }
+    } }
     answer.sources.take(50).forEach { id -> TextButton(onClick = { run { source = engine.source(id) } }) { Text("Show source ${id.take(12)}…") } }
     if (answer.sources.size > 50) Text("Showing first 50 source links for this answer.")
     OutlinedButton(onClick = onSession) { Text("Open system voice assistant") }
