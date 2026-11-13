@@ -27,7 +27,7 @@ From `android/`:
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --console=plain
 ```
 
-Final result: **153 tests: 149 passed, 4 opt-in live AI tests skipped; 0 failures/errors. Lint: 0 errors,
+Final result: **160 tests on merged main (incl. capture-quality): 156 passed, 4 opt-in live AI tests skipped; 0 failures/errors. Lint: 0 errors,
 33 warnings. APK assembly passed.** Native whisper JNI compiled for
 arm64-v8a and x86_64. Robolectric uses API 34 and ordinary SQLite/generated AES keys;
 it does not execute phone Keystore, native SQLCipher, MediaCodec, ML Kit or models.
