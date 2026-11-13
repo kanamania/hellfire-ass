@@ -27,6 +27,7 @@ class HellFireApp : Application() {
     val semantic by lazy { com.hellfire.ass.memory.SemanticIndex(this) }
     val media by lazy { com.hellfire.ass.media.MediaVault(this) }
     val speech by lazy { com.hellfire.ass.media.LocalSpeech(this) }
+    val speakers by lazy { com.hellfire.ass.media.SpeakerModel(this) }
     val finances by lazy { com.hellfire.ass.finance.FinanceRepository(database) }
     val cipher by lazy { PayloadCipher.deviceCipher() }
     val events by lazy { EventRepository(database.events()) { cipher } }

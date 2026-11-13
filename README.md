@@ -104,7 +104,15 @@ Optional network adapters remain disconnected until configured by the owner.
   session becomes excluded. New conversation recordings are stored as encrypted
   AAC-LC (ADTS, 32 kbit/s mono, about 8× smaller than the earlier PCM); existing PCM
   recordings still play and export as WAV. Speech intervals use an adaptive noise
-  floor (DSP heuristic, not a learned model). Monitoring is visible, capped at 30 minutes, retains
+  floor (DSP heuristic, not a learned model).
+- **Speaker separation (experimental):** import an ONNX speaker-embedding model with
+  80-bin filterbank input (WeSpeaker/3D-Speaker style; runs on ONNX Runtime 1.31.1) and
+  enroll your voice from the latest 60-second test sample. "Label speakers automatically"
+  groups transcribed segments by voice (`AUTO SPEAKER n`), marks a group matching your
+  enrolled voice `AUTO OWNER? 0.72`, and adds names heard in the conversation as
+  placeholders (`AUTO SPEAKER 2 · Juma?`) when a self-introduction or repeated direct
+  address supports them. Manual labels are never replaced; thresholds are uncalibrated.
+  Monitoring is visible, capped at 30 minutes, retains
   the complete PCM original, and never restarts automatically. Experimental energy
   intervals include up to 30 seconds of preceding audio; they are not reliable
   diarization or proof of participation. Speaker labels start UNKNOWN and are
@@ -419,7 +427,7 @@ automatic contact merging or unsupported SMS/call sending.
 Remaining validation/research gates include actual Gemma 4 E2B/fallback performance,
 real provider-template calibration, live Gmail/Meta eligibility and delivery, OEM
 alarms/microphone/file visibility, encrypted database/backup device round trips,
-on-device AAC encoder behavior, learned VAD/diarization/owner-voice matching, semantic
+on-device AAC encoder behavior, speaker grouping/owner-voice/name-placeholder accuracy, semantic
 embedding and image-label quality on a real device, and battery/thermal
 measurements. Literal retrieval, OCR and manual speaker correction are implemented;
 those are not evidence that the advanced model-dependent gates passed. Optional
@@ -439,9 +447,9 @@ SQLCipher/Keystore, actual model execution, live accounts or Android/OEM behavio
 - 2026-11-13, Phases 2–6 software slices: finance/local AI/OCR, encrypted database,
   mail/relay/drafts, tasks/alarms, encrypted multimedia/transcription adapters,
   evidence queries/memory and portable backup/recovery. Device testing stays last.
-- 2026-11-13, advanced audio (part 1): compressed AAC conversation recordings and
-  adaptive-noise-floor speech intervals; speaker separation/owner voice pending a
-  model-runtime decision.
+- 2026-11-13, advanced audio: compressed AAC conversation recordings, adaptive-noise-floor
+  speech intervals, and experimental ONNX speaker grouping with owner-voice enrollment
+  and conversation-name placeholders.
 - 2026-11-13, smarter memory: on-device image labels and owner-imported text-embedding
   meaning search (schema 9 `semantic_vector`, rebuildable and excluded from backup); 141 host tests.
 - 2026-11-13, agent workflows: confirm-first voice/chat commands for reminders,
