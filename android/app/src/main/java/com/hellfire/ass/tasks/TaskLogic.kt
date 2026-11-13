@@ -17,6 +17,8 @@ object TaskTime {
         due > now -> due
         else -> now
     }
+    /** Extracted deadlines more than a week past are historical (SMS/mail backfill), not review items. */
+    fun reviewable(due: Long, now: Long): Boolean = due >= now - 7 * 24 * 60 * 60_000L
     fun nextAlert(due: Long, now: Long, repeatMinutes: Int = 10): Long {
         require(repeatMinutes in 5..1440)
         return when {
@@ -33,9 +35,11 @@ object TaskExtractor {
     fun extract(text: String, sourceTime: Long, outgoing: Boolean): TaskCandidate? {
         val source = Instant.ofEpochMilli(sourceTime).atZone(TaskTime.zone)
         val lower = text.lowercase(Locale.ROOT)
+        // Whole words only: "Leonard" is not "leo", and "keshokutwa" is two days ahead, not "kesho".
         val date = when {
-            "tomorrow" in lower || "kesho" in lower -> source.toLocalDate().plusDays(1)
-            "today" in lower || "leo" in lower -> source.toLocalDate()
+            Regex("\\b(day after tomorrow|keshokutwa|kesho kutwa)\\b").containsMatchIn(lower) -> source.toLocalDate().plusDays(2)
+            Regex("\\b(tomorrow|kesho)\\b").containsMatchIn(lower) -> source.toLocalDate().plusDays(1)
+            Regex("\\b(today|leo)\\b").containsMatchIn(lower) -> source.toLocalDate()
             else -> {
                 val explicit = Regex("\\b(20[0-9]{2}-[0-9]{2}-[0-9]{2})\\b").find(text)?.value
                 if (explicit != null) runCatching { LocalDate.parse(explicit) }.getOrNull()

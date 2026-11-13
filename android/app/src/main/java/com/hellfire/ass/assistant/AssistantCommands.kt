@@ -109,6 +109,7 @@ object AssistantCommands {
         .replace(Regex("(?i)\\bsaa nne asubuhi\\b"), " ")
         .replace(Regex("(?i)\\b(?:at\\s+|saa\\s+)?(?:[01]?[0-9]|2[0-3]):[0-5][0-9]\\b"), " ")
         .replace(Regex("(?i)\\b(?:on\\s+)?20[0-9]{2}-[0-9]{2}-[0-9]{2}\\b"), " ")
+        .replace(Regex("(?i)\\b(?:the\\s+)?(?:day after tomorrow|keshokutwa|kesho kutwa)\\b"), " ")
         .replace(Regex("(?i)\\b(?:today|tomorrow|leo|kesho)\\b"), " ")
         .replace(Regex("(?i)\\b(?:on\\s+|next\\s+)?(?:$weekdays)\\b"), " ")
         .replace(Regex("\\s+"), " ").trim().trimEnd(',', '.', ';').trim()

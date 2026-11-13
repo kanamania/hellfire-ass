@@ -407,7 +407,11 @@ can lose notifications. Active-notification reconnect snapshots cannot restore v
 history. WorkManager persists jobs and schedules best-effort 15-minute maintenance;
 Doze, force-stop and OEM rules can delay work. Nothing restarts microphone capture.
 
-OTPs/security context are redacted before source persistence. Unmarked standalone
+OTPs/security context are redacted before source persistence. Authentication context
+(OTP, password, passcode, verification, login/reset code, 2FA, nenosiri, nywila, msimbo)
+withholds the whole item. The everyday words code, PIN, token and verify remove only
+the code value that follows them, wherever it repeats, so payment SMS warning
+"Usitoe PIN yako", LUKU purchases and "code review" mail keep their content. Unmarked standalone
 4–8 digit code candidates are removed conservatively; explicitly marked TZS amounts,
 financial references and valid ISO dates are preserved when no security context is
 present. This is not a universal secret detector. Android-protected/missing fields
@@ -450,6 +454,12 @@ SQLCipher/Keystore, actual model execution, live accounts or Android/OEM behavio
 - 2026-11-13, WhatsApp Web: owner-authorized switch to linked-device capture with
   persistent LocalAuth, authenticated QR pairing/status, encrypted spool and relay,
   separate Android provenance and capture-only send guards. No live account paired.
+- 2026-11-13, capture quality: narrower whole-item security redaction (above);
+  notification removal records stay as evidence without re-creating finance/task
+  candidates; a candidate repeating an existing provider reference is kept as
+  duplicate evidence outside the review queue and linked on approval; promotions,
+  system notices and deadlines over seven days old create no task review items;
+  `leo`/`kesho` match whole words and `keshokutwa` means two days ahead; 152 host tests.
 
 References: [Android assistant](https://developer.android.com/reference/android/service/voice/VoiceInteractionService),
 [exact alarms](https://developer.android.com/develop/background-work/services/alarms/schedule),

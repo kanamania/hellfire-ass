@@ -13,6 +13,19 @@ class TaskLogicTest {
         assertEquals("OTHER", task.party)
         assertEquals("OWNER", TaskExtractor.extract("I will finish tomorrow 10:00", source, true)!!.party)
     }
+    @Test fun `relative day words match whole words only`() {
+        val source = Instant.parse("2026-11-13T04:00:00Z").toEpochMilli() // Friday 07:00 EAT
+        assertEquals("2026-11-16 09:00", TaskTime.display(TaskExtractor.extract("Call Leonard on monday", source, false)!!.dueAt))
+        assertEquals("2026-11-15 09:00", TaskTime.display(TaskExtractor.extract("Tutaonana keshokutwa", source, false)!!.dueAt))
+        assertEquals("2026-11-15 09:00", TaskTime.display(TaskExtractor.extract("Tutaonana kesho kutwa", source, false)!!.dueAt))
+        assertEquals("2026-11-15 09:00", TaskTime.display(TaskExtractor.extract("Pay the day after tomorrow", source, false)!!.dueAt))
+        assertNull(TaskExtractor.extract("Napoleon and Cleopatra documentary", source, false))
+    }
+    @Test fun `deadlines more than a week old are not review items`() {
+        val now = Instant.parse("2026-11-13T07:00:00Z").toEpochMilli()
+        assertTrue(TaskTime.reviewable(now - 6 * 86_400_000L, now))
+        assertFalse(TaskTime.reviewable(now - 8 * 86_400_000L, now))
+    }
     @Test fun `invalid dates and unsupported commitments fail closed`() {
         assertTrue(runCatching { TaskTime.parse("2026-02-30 10:00") }.isFailure)
         assertTrue(runCatching { TaskTime.parse("2026-11-13 25:00") }.isFailure)

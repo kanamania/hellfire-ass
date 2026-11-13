@@ -31,12 +31,14 @@ data class NormalizedNotification(
 )
 
 object NotificationNormalizer {
-    // Security context can be split across title, body, sender and action labels.
+    // Security context can be split across title, body, sender and action labels; any of these withholds all content.
     private val security = Regex(
-        "(?i)\\b(otp|pin|password|passcode|verification|verify|authentication|authenticate|" +
+        "(?i)\\b(otp|password|passcode|verification|authentication|authenticate|" +
             "one[ -]?time|security code|reset code|login code|log[ -]?in code|2fa|mfa|" +
-            "nenosiri|nywila|msimbo|nambari ya siri|code|token)\\b"
+            "nenosiri|nywila|msimbo|nambari ya siri)\\b"
     )
+    // Everyday words ("code review", "Usitoe PIN yako", "LUKU token") only lose the code value that follows them.
+    private val keyedCode = Regex("(?i)\\b(?:code|pin|token|verify)\\b[\\s:#=-]{0,3}(?:(?:is|ni|yako ni|wako ni)\\s+)?([\\p{L}\\p{N}-]{4,40})")
     private val numericCode = Regex("(?<![\\p{L}\\p{N}])[\\p{Nd}]{4,8}(?![\\p{L}\\p{N}])")
     private val currencyAmount = Regex("(?i)\\b(?:TZS|TShs?)\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)")
     private val financialIdentifier = Regex("(?i)\\b(?:lipa\\s+namba|merchant(?:\\s+id)?|ref(?:erence)?|kumbukumbu|muamala(?:\\s+no)?)[ :#.-]+([A-Z0-9-]{3,40})")
@@ -45,6 +47,10 @@ object NotificationNormalizer {
     fun normalize(raw: NotificationSnapshot, ownPackage: String): NormalizedNotification? {
         if (raw.packageName == ownPackage) return null
         val sensitive = raw.fields.values.flatten().any { security.containsMatchIn(it) }
+        // A keyed code is removed everywhere it appears, including where it repeats as a reference.
+        val keyed = raw.fields.values.flatten().flatMap { value -> keyedCode.findAll(value).map { it.groupValues[1] } }
+            .filter { code -> code.any(Char::isDigit) }.toSet()
+            .map { code -> Regex("(?<![\\p{L}\\p{N}])" + Regex.escape(code) + "(?![\\p{L}\\p{N}])") }
         var redacted = false
         val fields = raw.fields.toSortedMap().mapValues { (_, values) ->
             values.map { value ->
@@ -56,9 +62,10 @@ object NotificationNormalizer {
                         val amounts = dates + currencyAmount.findAll(value).map { it.groups[1]!!.range }.toList().let { money ->
                             if (money.isEmpty()) money else money + financialIdentifier.findAll(value).map { it.groups[1]!!.range }.toList()
                         }
-                        numericCode.replace(value) { match ->
+                        val bare = numericCode.replace(value) { match ->
                             if (amounts.any { match.range.first >= it.first && match.range.last <= it.last }) match.value else "[CODE REDACTED]"
                         }
+                        keyed.fold(bare) { text, code -> code.replace(text, "[CODE REDACTED]") }
                     }
                 if (clean != value) redacted = true
                 clean
