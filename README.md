@@ -28,7 +28,8 @@ Lifecycle 2.9.4, AndroidX Core 1.15.0, and WorkManager 2.10.5.
 Minimum Android: API 29; compile/target: API 36. Version: **0.2.0**.
 
 The single app module keeps capture, processing, database, security and UI code in
-separate packages. No backend or AI runtime has been added.
+separate packages. Optional cloud AI adapters are isolated in `ai/`; no backend or
+on-device model runtime has been added.
 
 ## Use the capture engine
 
@@ -36,7 +37,8 @@ separate packages. No backend or AI runtime has been added.
   Sideloaded ColorOS builds may require Android's owner-controlled restricted-settings
   flow. The app reads back actual grants; permission denial remains visible.
 - **Assistant:** ask `hello`, `habari`, or `time` offline. The actual system session
-  supports typed input and optional offline TTS. Spoken questions use only an already
+  supports typed input and optional offline TTS. The activity also supports the
+  optional cloud providers described below; the system voice session stays offline. Spoken questions use only an already
   installed Android on-device recognizer on API 31+. Unsupported engines/languages
   keep typed input available; no model download or remote recognition fallback.
 - **SMS:** opt in with **Enable SMS capture and history import**. This authorizes
@@ -132,16 +134,115 @@ streams are removed; process/power loss can leave an incomplete file that playba
 rejects. Retained samples are limited to 60 seconds each and decrypted into memory
 for user-started playback.
 
-There is no INTERNET permission, analytics, external sending, notification reply
-execution, finance ledger, mail/WhatsApp integration, alarms, media indexing or AI
-inference. WorkManager supplies normal scheduling permissions such as boot reception
+INTERNET is declared for opt-in cloud AI. There is no analytics, external sending,
+notification reply execution, finance ledger, mail/WhatsApp integration, alarm
+scheduling, media indexing or on-device model inference. WorkManager supplies normal scheduling permissions such as boot reception
 and wake locks; none authorizes microphone capture. Financial provider parsing and
 cross-source transaction deduplication remain Phase 2 work. WhatsApp Coexistence,
 Gmail IMAP/SMTP and later recording imports retain the locked master-spec choices.
 
+## Optional AI providers
+
+This is an incremental addition to the existing app. Inspection found no previous
+OpenAI adapter, subscription sign-in, or loaded on-device model. The original
+`LocalAssistant` and system voice session remain intact, alongside new adapters:
+
+| Provider | Official API | Authentication |
+|---|---|---|
+| On-device | Existing deterministic hello / habari / time test | None; no LLM loaded |
+| OpenAI | `https://api.openai.com/v1/responses` | API key |
+| Anthropic Claude | `https://api.anthropic.com/v1/messages`, version `2026-10-21` | Workspace-scoped API key |
+| xAI Grok | `https://api.x.ai/v1/responses` | API key |
+| DeepSeek | `https://api.deepseek.com/chat/completions` | API key |
+
+All adapters currently expose plain-text generation only. Streaming, tools, images,
+and structured output explicitly fail as unsupported. Model listing supplies current
+IDs; it does not prove that a model supports inference through the selected endpoint.
+No model versions or price lists are embedded. Models rejected by the endpoint show a
+request/model error and advance through the configured fallback list.
+
+In **AI settings**:
+
+1. Enable cloud use for explicitly submitted assistant text; all routes initially
+   select the offline test. Configure a monthly estimated spending cap in USD.
+2. Select a provider, enable it, enter its official API key, and **Save provider**.
+   A blank key keeps the saved key; the delete checkbox removes it. Keys are masked,
+   excluded from activity saved state, and encrypted using the existing AES-GCM /
+   Android Keystore cipher in `noBackupFilesDir/ai-settings.enc`. Backup/transfer
+   exclusions remain enabled. No backend proxy exists in this architecture.
+3. **Test saved connection and discover models** checks authenticated model listing.
+   Select a discovered model (or enter an official model ID), supply input/output USD
+   prices per million tokens, and save. Blank pricing blocks cloud generation. Use
+   the highest applicable uncached, context, cache-write and tier prices from your
+   provider's price sheet; prices are not fetched automatically.
+4. Configure the ordered route separately for general chat, complex reasoning,
+   reply drafting, task extraction and summarization. Add/remove entries and use
+   **Move up** to set the preferred model and fallback order. Selecting a provider's
+   default model makes it available to the route and assistant selectors; it does
+   not replace the offline default route automatically.
+5. In **Assistant**, choose a task and optionally switch model for that request.
+   Manual selection replaces the preferred entry and keeps the saved fallback
+   entries. The route is displayed before submission. Each successful response
+   identifies its provider, actual model, estimate and audit ID. Generated text is
+   a suggestion only; it cannot send messages or change captured records.
+
+The router tries each distinct configured provider/model once, in order, after
+network/outage, authorization, rate-limit, quota, model, capability or budget errors.
+It does not repeat a failed model, add unconfigured cloud fallbacks, or retry sends /
+record changes. Cancel stops transport/waiting and never initiates fallback; work
+already accepted by a provider may still be billed. The existing offline test can
+serve basic chat only. Other local tasks report unsupported capability honestly.
+
+Cloud use is off by default. The only UI cloud input is text explicitly submitted in
+the activity; the capture pipeline has no AI connection. Notification, SMS, finance,
+recording and media input categories are restricted to local processing, regardless
+of route or manual selection. Cloud text reuses the existing notification security
+redactor and additionally masks email addresses and long numbers. Redaction is not
+a universal detector: review prose before submitting. Full histories and attachments
+are never loaded or uploaded. Provider retention policies still apply; `store:false`
+is used for OpenAI/xAI response storage, not claimed as universal zero retention.
+
+Monthly usage is persisted per provider/model in Africa/Dar_es_Salaam months. Requests
+reserve a conservative UTF-8 input estimate plus framing and the maximum output
+budget before transmission. Known token usage settles the estimate; missing usage,
+errors and cancellations keep the reservation. These are local estimates using your
+configured prices, not authoritative billing or an account-wide hard cap. Set API
+account limits as well. Changing prices does not erase past charges/reservations.
+The last 100 audit attempts retain ID/time/task/provider/model/result/token/cost
+metadata, without prompts, answers or keys. Existing capture audits are untouched.
+Unreadable AI settings block cloud use while the offline test remains available.
+
+No browser cookies, scraped credentials, consumer-app impersonation or subscription
+inference has been added. No subscription sign-in existed to preserve. Official
+[OpenAI subscription documentation](https://help.openai.com/en/articles/6950777-what-is-chatgpt-plus)
+distinguishes API billing from separately authorized participating-tool allowances;
+this app has no participating-tool entitlement. Claude, Grok and DeepSeek also use
+only their official API credentials here.
+
+Mocked adapters/routing/encrypted-storage tests run with the normal unit suite.
+Optional live tests are skipped unless **all three** are set: explicit
+`HELLFIRE_RUN_LIVE_AI_TESTS=true`, the provider's `<PREFIX>_API_KEY`, and
+`<PREFIX>_TEST_MODEL`. Prefixes are `OPENAI`, `ANTHROPIC`, `XAI`, `DEEPSEEK`.
+Use an ignored local environment, never source files or committed credentials;
+live generation tests can incur charges. Run the configured tests with:
+
+```bash
+cd android
+./gradlew :app:testDebugUnitTest --tests 'com.hellfire.ass.AiLiveProviderTest' --rerun-tasks
+```
+
+API contracts checked against official documentation on 2026-11-13:
+[OpenAI Responses](https://developers.openai.com/api/reference/resources/responses/methods/create),
+[Claude authentication/versioning](https://platform.claude.com/docs/en/api/overview),
+[Claude Messages](https://platform.claude.com/docs/en/api/messages/create),
+[Claude errors/spend limits](https://platform.claude.com/docs/en/api/errors),
+[xAI Responses](https://docs.x.ai/developers/rest-api-reference/inference/responses),
+[DeepSeek Chat Completions](https://api-docs.deepseek.com/api/create-chat-completion/),
+[DeepSeek errors](https://api-docs.deepseek.com/quick_start/error_codes/).
+
 ## Verification and change log
 
-The current build's exact results, APK checksum and deferred device cases are in
+Build results, historical APK checksums and deferred device cases are in
 [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md). Host tests cover normalized
 identities/redaction, encrypted Room persistence, transaction rollback, duplicate
 storms, pending-work recovery after database reopen, schema migration, rule labels,
@@ -161,3 +262,8 @@ References: [AGP compatibility](https://developer.android.com/build/releases/agp
 [WorkManager releases](https://developer.android.com/jetpack/androidx/releases/work),
 [work chaining](https://developer.android.com/develop/background-work/background-tasks/persistent/how-to/chain-work),
 [Android SMS provider](https://developer.android.com/reference/android/provider/Telephony.Sms).
+
+- 2026-11-13, AI provider delta: isolated OpenAI, Claude, Grok and DeepSeek text
+  adapters; encrypted provider settings, authenticated discovery, five task routes,
+  ordered fallbacks/manual switching, cancellation, redaction, estimated spending
+  caps and metadata-only usage audit. No capture/database phase was reset.

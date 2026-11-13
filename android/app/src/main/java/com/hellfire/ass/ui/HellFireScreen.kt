@@ -23,6 +23,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hellfire.ass.HellFireApp
 import com.hellfire.ass.PermissionStatus
 import com.hellfire.ass.assistant.LocalAssistant
+import com.hellfire.ass.ai.*
 import com.hellfire.ass.audio.*
 import com.hellfire.ass.events.NotificationSnapshot
 import com.hellfire.ass.notifications.NotificationCaptureStatus
@@ -55,8 +56,8 @@ fun HellFireScreen(
                     Text("HellFire Ass", style = MaterialTheme.typography.headlineMedium)
                     Text("Phase 1 · local capture engine", style = MaterialTheme.typography.bodyMedium)
                 }
-                ScrollableTabRow(selectedTabIndex = listOf("Setup", "Assistant", "Capture", "Device").indexOf(tab), edgePadding = 8.dp) {
-                    listOf("Setup", "Assistant", "Capture", "Device").forEach { name ->
+                ScrollableTabRow(selectedTabIndex = listOf("Setup", "Assistant", "AI settings", "Capture", "Device").indexOf(tab), edgePadding = 8.dp) {
+                    listOf("Setup", "Assistant", "AI settings", "Capture", "Device").forEach { name ->
                         Tab(selected = tab == name, onClick = { tab = name }, text = { Text(name) })
                     }
                 }
@@ -65,7 +66,8 @@ fun HellFireScreen(
                     if (message != null) Text(message, color = MaterialTheme.colorScheme.primary)
                     when (tab) {
                         "Setup" -> Setup(permissions, onRole, onSettings, onMicrophonePermission, onSmsEnable, onSmsDisable)
-                        "Assistant" -> Assistant(onSession)
+                        "Assistant" -> Assistant(app, onSession)
+                        "AI settings" -> AiSettingsScreen(app)
                         "Capture" -> Capture(app, permissions, onMicrophonePermission, onSettings)
                         "Device" -> Diagnostics(permissions)
                     }
@@ -112,14 +114,48 @@ private fun Setup(status: PermissionStatus, onRole: () -> Unit, onSettings: (Str
 }
 
 @Composable
-private fun Assistant(onSession: () -> Unit) {
+private fun Assistant(app: HellFireApp, onSession: () -> Unit) {
     val assistant = remember { LocalAssistant() }
     var query by rememberSaveable { mutableStateOf("hello") }
     var response by rememberSaveable { mutableStateOf(assistant.answer("help")) }
     Text("Ask HellFire", style = MaterialTheme.typography.titleLarge)
-    Text("A deterministic offline test. Try hello, habari, or time. No AI model is loaded. Optional speech input in the system session uses an installed on-device recognizer.")
+    val scope = rememberCoroutineScope()
+    var state by remember { mutableStateOf(AiState()) }
+    var task by remember { mutableStateOf(AiTask.CHAT) }
+    var manual by remember { mutableStateOf<ModelRef?>(null) }
+    var running by remember { mutableStateOf<Job?>(null) }
+    var source by rememberSaveable { mutableStateOf("On-device offline test / ${OfflineProvider.MODEL}") }
+    var resultStatus by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        try { state = withContext(Dispatchers.IO) { app.ai.store.read() } }
+        catch (_: Exception) { resultStatus = AiError.STORAGE.message }
+    }
+    Text("Offline default: hello, habari, or time. No on-device language model is loaded. Cloud routes use only the text you submit here, after redaction. Configure cloud consent, models, prices and fallbacks in AI settings.")
+    AiChoice("Task", task.label, AiTask.entries.map { it to it.label }, enabled = running == null) { task = it }
+    AiChoice("Model", manual?.label() ?: "Use saved task route", listOf<Pair<ModelRef?, String>>(null to "Use saved task route") +
+        state.modelChoices().map { it to it.label() }, enabled = running == null) { manual = it }
+    Text("Route: " + (if (manual == null) state.route(task) else listOf(manual!!) + state.route(task).drop(1)).joinToString(" → ") { it.label() })
     OutlinedTextField(query, { query = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Your question") }, maxLines = 4)
-    Button(onClick = { response = assistant.answer(query) }) { Text("Ask HellFire") }
+    Button(enabled = running == null, onClick = {
+        val submittedTask = task
+        val submittedQuery = query
+        val submittedModel = manual
+        running = scope.launch {
+            resultStatus = "Generating…"
+            try {
+                val result = withContext(Dispatchers.IO) { app.ai.generate(submittedTask, submittedQuery, submittedModel) }
+                response = result.generation.text
+                source = "${result.provider.label} / ${result.generation.model}"
+                resultStatus = "Suggestion only · USD ${usd(result.estimatedMicroUsd)} estimated · audit ${result.requestId.take(8)}" +
+                    result.attempts.joinToString("") { "\n${it.ref.provider.label}: ${it.error.message}" }
+            } catch (e: CancellationException) { resultStatus = AiError.CANCELLED.message; throw e }
+            catch (e: Exception) { resultStatus = (e as? AiException)?.error?.message ?: "AI request failed. Offline tests remain available." }
+            finally { running = null }
+        }
+    }) { Text("Ask HellFire") }
+    if (running != null) OutlinedButton(onClick = { running?.cancel() }) { Text("Cancel generation") }
+    Text(resultStatus, Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+    Text(source, style = MaterialTheme.typography.labelLarge)
     Text(response, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
     HorizontalDivider()
     Text("System assistant session", style = MaterialTheme.typography.titleMedium)
@@ -266,7 +302,7 @@ private fun Diagnostics(status: PermissionStatus) {
     Status("Voice service", if (status.voiceServiceActive) "Selected" else "Not selected")
     Status("Owner timezone", "Africa/Dar_es_Salaam")
     Text("The model name comes from Android. ColorOS version, OEM gestures, lock-screen invocation, microphone interruptions and overnight behaviour must be verified on the physical phone.")
-    Text("Later phases: finance, WhatsApp, email, call imports, alarms and AI inference are not implemented.")
+    Text("Later phases: finance, WhatsApp, email, call imports, alarms and on-device model inference are not implemented.")
 }
 
 @Composable
