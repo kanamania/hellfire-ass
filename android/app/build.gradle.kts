@@ -37,6 +37,7 @@ dependencies {
     implementation(libs.ocr)
     implementation(libs.image.labeling)
     implementation(libs.mediapipe.text)
+    implementation(libs.onnxruntime)
     implementation(libs.sqlcipher)
     implementation(libs.android.mail)
     implementation(libs.android.activation)

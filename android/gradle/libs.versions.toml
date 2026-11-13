@@ -12,6 +12,7 @@ litertlm = { module = "com.google.ai.edge.litertlm:litertlm-android", version = 
 ocr = { module = "com.google.mlkit:text-recognition", version = "16.0.1" }
 image-labeling = { module = "com.google.mlkit:image-labeling", version = "17.0.9" }
 mediapipe-text = { module = "com.google.mediapipe:tasks-text", version = "0.10.26" }
+onnxruntime = { module = "com.microsoft.onnxruntime:onnxruntime-android", version = "1.31.1" }
 sqlcipher = { module = "net.zetetic:sqlcipher-android", version = "4.20.0" }
 android-mail = { module = "com.sun.mail:android-mail", version = "1.6.8" }
 android-activation = { module = "com.sun.mail:android-activation", version = "1.6.8" }

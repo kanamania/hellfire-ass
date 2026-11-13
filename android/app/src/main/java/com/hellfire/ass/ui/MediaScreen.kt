@@ -51,6 +51,10 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
     val model = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) action { app.speech.import(uri); "Transcription model imported. Device compatibility and accuracy remain unverified." }
     }
+    val speakerModel = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) action { try { app.speakers.import(uri); "Speaker model imported. Enroll your voice, then label transcribed recordings." }
+            catch (e: IllegalArgumentException) { e.message ?: "Speaker model import failed." } }
+    }
     val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
         val item = exporting; exporting = null
         if (uri != null && item != null) action {
@@ -69,7 +73,17 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
     OutlinedButton(enabled = !busy, onClick = { model.launch(arrayOf("*/*")) }) { Text("Import whisper.cpp GGML model") }
     OutlinedButton(enabled = !busy, onClick = { folder.launch(null) }) { Text("Authorize call-recordings folder…") }
     TextButton(enabled = !busy, onClick = { action { FolderImport.disable(app); "Folder import disabled; already imported originals retained." } }) { Text("Disable folder import") }
-    Text("Use a multilingual model for English/Kiswahili. No weights are included or downloaded. Speaker identity stays UNKNOWN until corrected manually.")
+    Text("Use a multilingual model for English/Kiswahili. No weights are included or downloaded. Speaker identity stays UNKNOWN until labelled automatically or corrected manually.")
+    Text("Speaker separation (experimental)", style = MaterialTheme.typography.titleMedium)
+    Text("Import an ONNX speaker-embedding model that takes 80-bin filterbank input (for example WeSpeaker or 3D-Speaker). Transcript segments are grouped by voice as AUTO SPEAKER n; an enrolled owner voice may be marked AUTO OWNER?, and names heard in the conversation (introductions or direct address) are added as placeholders like AUTO SPEAKER 2 · Juma? when evidence is strong enough. Labels are unverified guesses and never replace your manual labels.")
+    var speakerStatus by remember { mutableStateOf("") }
+    LaunchedEffect(busy) { if (!busy) speakerStatus = try { withContext(Dispatchers.IO) { app.speakers.status() } } catch (_: Exception) { "Speaker status unavailable." } }
+    Text(speakerStatus)
+    OutlinedButton(enabled = !busy, onClick = { speakerModel.launch(arrayOf("*/*")) }) { Text("Import speaker model (.onnx)") }
+    OutlinedButton(enabled = !busy && app.speakers.configured, onClick = { action {
+        try { app.speakers.enrollOwner() } catch (e: IllegalArgumentException) { e.message ?: "Enrollment failed." }
+    } }) { Text("Enroll my voice from latest test sample") }
+    TextButton(enabled = !busy && app.speakers.configured, onClick = { action { app.speakers.remove(); "Speaker model and owner voice enrollment removed. Existing labels stay until corrected." } }) { Text("Remove speaker model and enrollment") }
     val prefs = remember { app.getSharedPreferences("media", 0) }
     var charging by remember { mutableStateOf(prefs.getBoolean("charging", true)) }
     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
@@ -149,6 +163,9 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
                 app.database.media().summary(item.id, item.summary, "OWNER_CONFIRMED_INFERENCE"); "Owner review recorded; summary remains a derived inference."
             } }) { Text("Mark summary reviewed") }
         }
+        if (segments.isNotEmpty() && (item.mime.startsWith("audio/") || item.mime.startsWith("video/"))) OutlinedButton(enabled = !busy && app.speakers.configured, onClick = { action {
+            try { app.speakers.label(item) } catch (e: IllegalArgumentException) { e.message ?: "Speaker labelling failed." }
+        } }) { Text("Label speakers automatically (experimental)") }
         segments.take(200).forEach { segment ->
             Text("${segment.startMs}–${segment.endMs} · ${segment.speaker} · source ${segment.sourceId}"); Text(segment.text)
             var speaker by remember(segment.id) { mutableStateOf(segment.speaker) }
