@@ -1,6 +1,6 @@
 # HellFire Ass — capture-engine feasibility
 
-Evidence date: 2026-11-13, Africa/Dar_es_Salaam. Phase 0 and Phase 1 implementation
+Evidence date: 2026-11-13, Africa/Dar_es_Salaam. Phase 0, Phase 1 and the incremental AI provider update
 have passed host checks. The owner explicitly deferred physical device testing to
 the final stage. Device checks are **NOT TESTED**, rather than blockers to the next
 software milestone. Nothing here asserts successful OPPO testing or grants.
@@ -10,7 +10,7 @@ The owner-supplied phone specifications remain unverified.
 |---|---|---|---|---|
 | Host JDK / SDK available? | `java -version`; inspect SDK directories | PASS | OpenJDK 21.0.13; SDK `/home/dev/android-sdk`; platform 36 and Build Tools 35.0.0 installed | Continue with project wrapper |
 | Current APK compiles? | `./gradlew :app:assembleDebug` | PASS | Version 0.2.0, application ID `com.hellfire.ass`, min/target API 29/36 | Preserve APK for final testing |
-| Host logic / SQLite checks? | `./gradlew :app:testDebugUnitTest` | PASS | 58 tests; 0 failures/errors/skips | Keep host gates for subsequent changes |
+| Host logic / SQLite checks? | `./gradlew :app:testDebugUnitTest` | PASS | 91 passed; 0 failures/errors; 4 opt-in live tests skipped | Keep host gates for subsequent changes |
 | Android lint? | `./gradlew :app:lintDebug` | PASS | 0 errors, 31 warnings: pinned dependency updates, English resources and KTX suggestions | Warnings remain enabled and visible |
 | Event/job insertion atomic? | Reject job insertion with a synthetic SQLite trigger | PASS | Source insert rolls back; no orphan event, job or audit increment | Preserve transactional contract |
 | Phase 0 schema upgrades? | Construct v1 database from committed schema, migrate to v2 | PASS | Original ciphertext unchanged; pending job and audit created; Room validates v2 | Do not use destructive fallback |
@@ -33,7 +33,7 @@ The owner-supplied phone specifications remain unverified.
 
 ## Verified host commands
 
-Run in the isolated Phase 1 worktree using the installed SDK and JDK:
+Historical Phase 1 check, run in its isolated worktree using the installed SDK and JDK:
 
 ```bash
 cd android
@@ -50,19 +50,67 @@ StatusBarNotification constructor used for fixtures. The existing Material tab A
 also remains deprecated. The debug build packages the prebuilt
 `libandroidx.graphics.path.so` without stripping its symbols. None prevents building.
 
-Current artifact: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.2.0**.
+Historical Phase 1 artifact: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.2.0**.
 SHA-256: `a7127f3c620f83229ea6f0a5d0cd7bc83549f8e7e92b6f6ec3e1940be1080f78`.
 Host reports are preserved under `android/app/build/reports/` after integration:
 `tests/testDebugUnitTest/index.html` and `lint-results-debug.html`.
 
 `aapt dump permissions` confirms READ_SMS/RECEIVE_SMS, microphone/notification/FGS
 permissions and WorkManager's WAKE_LOCK/ACCESS_NETWORK_STATE/RECEIVE_BOOT_COMPLETED
-permissions plus AndroidX's app-scoped receiver permission. There is no INTERNET,
+permissions plus AndroidX's app-scoped receiver permission. The AI provider delta adds INTERNET for explicit cloud use. There is no
 SEND_SMS, media-reading or exact-alarm permission. Declared permissions are not grants.
 
 Phase 0 baseline: 34 tests passed, 0 lint errors / 29 warnings, debug version 0.1.0.
-The current artifact above supersedes that debug APK; this does not change historical
+That Phase 1 artifact superseded the Phase 0 debug APK; this does not change historical
 physical test outcomes, which remain untested.
+
+## Incremental AI provider verification — 2026-11-13
+
+This update adds only optional AI provider support. No Android assistant, capture,
+SMS, finance, microphone, mail, WhatsApp or alarm phase was restarted. Inspection
+found only the deterministic offline assistant: no prior OpenAI integration,
+subscription sign-in, backend proxy or on-device LLM runtime existed to preserve.
+
+| Question | Test | Result | Evidence | Next action |
+|---|---|---|---|---|
+| Existing local/capture workflows preserved? | Full host unit suite | PASS | All 58 previous tests still pass; original `LocalAssistant` and system session unchanged | Verify actual device behavior at final stage |
+| Official provider wire contracts? | Mocked discovery and generation | PASS | Claude versioned Messages, OpenAI/xAI Responses, DeepSeek Chat Completions; headers, payloads, text extraction and usage checked | Test accounts with inference permissions later |
+| Provider capability boundaries? | Request tools/images/streaming/structured output | PASS | Unsupported capabilities fail before transport; local test cannot claim reasoning, drafting, extraction or summarization | Add further capabilities only with explicit implementation |
+| Routing and manual switching? | Preferred model, ordered/deduplicated fallback, per-task routes | PASS | Distinct authorization/quota/network/outage/capability failures advance in saved order; no implicit cloud fallback | Exercise selectors on device |
+| Cancel avoids further inference? | Suspend mocked transport; cancel coroutine | PASS | Cancellation reaches transport and no fallback starts; uncertain reservation retained | Verify actual HTTPS disconnect/provider billing behavior later |
+| Cloud privacy boundary? | Protected input categories, cloud-disable, redaction tests | PASS | Notification/SMS/finance/recording/media categories never call cloud; submitted security text/email/phone redacted | Review prose manually; redaction is not exhaustive |
+| Credential/settings persistence? | Encrypted file round trip/reopen/delete/wrong key/corruption | PASS | Synthetic AES keys; authenticated ciphertext only; failure blocks cloud while basic local chat works | Verify Android Keystore and UI lifecycle on device |
+| Cost cap/accounting? | Integer prices, reservation, settlement, missing usage, restart and month tests | PASS | Monthly owner-timezone counters survive router restart; absent prices/cap or exhausted estimate prevents cloud call | Configure accurate highest applicable prices and provider-side account limits |
+| Prompt/secret-free debug metadata? | Audit/debug-string assertions; source review | PASS | Last 100 attempt metadata only; no prompt/answer/credential logging calls added | Keep actual credentials and personal input out of Git/test reports |
+| Live Claude/Grok/DeepSeek/OpenAI? | Opt-in `AiLiveProviderTest` | NOT TESTED | Four tests skipped; no configured credential-based verification run | Explicit opt-in plus key/model required; tests can incur charges |
+| Provider settings UI and actual device encryption? | Manual Android interaction | NOT TESTED | Compose compiles; no emulator or physical phone exercised | Save/delete keys, discover models, switch routes, rotate during responses, cancel, and test offline |
+| Subscription/account sign-in? | Existing code and official authentication documentation | PARTIAL | No existing sign-in found; API keys only added; no participating-tool entitlement assumed | Add account auth only with provider-authorized third-party inference scope |
+
+Host validation uses the same command from `android/`:
+
+```bash
+./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+```
+
+**91 tests passed, 0 failures/errors; 4 live tests skipped. Lint: 0 errors,
+31 existing warnings. Debug APK assembles.** These are host results with mocked
+network responses and synthetic encryption keys, not successful live API or device
+tests. No dependency versions changed. API references and opt-in live test setup are
+in the existing README's **Optional AI providers** section.
+
+The cap covers local estimated/reserved spend using manually supplied prices,
+not exact provider invoices or spending by other clients. Errors, cancellations,
+missing usage and process loss retain conservative reservations. No automatic
+same-model retries or outward actions exist. Local fallback is only the original
+basic offline test; general local inference is still unimplemented. The system
+voice session remains offline; provider/model selection lives in the activity.
+
+For device verification: start with cloud disabled, confirm hello/habari/time,
+then configure an API key and cap using non-sensitive text. Check unauthorized,
+exhausted credit, airplane-mode fallback, model rejection, cap exhaustion, and
+cancel. Verify response provider/model survives activity recreation. Saving keys
+must not expose them in logs, saved-instance state or backup/transfer. Test model
+listing separately from generation permissions. Do not use personal histories.
 
 ## Final-stage device verification
 
