@@ -1,5 +1,11 @@
 # Start HellFire Ass with Codex
 
+Phase 0 source is now implemented. See [README.md](README.md) for build and use
+instructions and [docs/DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md) for
+actual verification results and physical-device checks. Later phases remain deferred.
+
+The original starter instructions are retained below.
+
 1. Extract this ZIP into the root of an empty project/repository (or copy the `docs` folder and `AGENTS.md` into your existing repository).
 2. Open the repository in VS Code or your Codex working directory.
 3. Give Codex the prompt below.
