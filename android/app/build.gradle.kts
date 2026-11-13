@@ -35,6 +35,8 @@ ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 dependencies {
     implementation(libs.litertlm)
     implementation(libs.ocr)
+    implementation(libs.image.labeling)
+    implementation(libs.mediapipe.text)
     implementation(libs.sqlcipher)
     implementation(libs.android.mail)
     implementation(libs.android.activation)

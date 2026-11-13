@@ -29,6 +29,8 @@ class ProcessEventsWorker(context: Context, params: WorkerParameters) : Coroutin
         val app = applicationContext as HellFireApp
         try {
             EventProcessor(app.database.events(), app.finances::collect, { id, time, text, outgoing -> com.hellfire.ass.tasks.TaskScheduler.collect(app, id, time, text, outgoing) }) { app.cipher }.drain()
+            // Indexing is best-effort and bounded; maintenance runs continue any backlog.
+            try { app.semantic.indexPending() } catch (e: CancellationException) { throw e } catch (_: Exception) { }
             Result.success()
         } catch (e: CancellationException) { throw e }
         catch (_: Exception) { Result.retry() }

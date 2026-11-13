@@ -51,4 +51,27 @@ fun LocalAiScreen(app: HellFireApp) {
     }) { Text(if (busy) "Working locally…" else "Run local question") }
     Text(result)
     TextButton(enabled = !busy, onClick = { scope.launch { app.localModel.remove(); result = "Local model removed; core features remain available." } }) { Text("Remove imported model") }
+    HorizontalDivider()
+    Text("Meaning search", style = MaterialTheme.typography.titleMedium)
+    Text("Import a MediaPipe text-embedder .tflite model (for example Universal Sentence Encoder) to add meaning-based matches to assistant search. Vectors stay in the encrypted database, skip security-sensitive sources and are rebuilt rather than backed up. Requires an arm64-v8a device.")
+    var semanticStatus by remember { mutableStateOf("") }
+    LaunchedEffect(busy) { if (!busy) semanticStatus = try { app.semantic.status() } catch (_: Exception) { "Index status unavailable." } }
+    Text(semanticStatus)
+    val embedderLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            busy = true
+            result = try { app.semantic.import(uri); "Embedding model imported. Tap Index now or let background capture maintenance index sources." }
+                catch (e: IllegalArgumentException) { e.message ?: "Embedding model import failed." }
+                catch (_: Exception) { "Embedding model import failed. Check free storage." }
+            finally { busy = false }
+        }
+    }
+    Button(enabled = !busy, onClick = { embedderLauncher.launch(arrayOf("*/*")) }) { Text("Import embedding model") }
+    OutlinedButton(enabled = !busy && app.semantic.configured, onClick = { scope.launch {
+        busy = true
+        result = try { "Indexed ${app.semantic.indexPending(2000)} sources in this run." }
+            catch (_: Exception) { "Indexing stopped. Check model compatibility, device temperature and free memory." }
+        finally { busy = false }
+    } }) { Text("Index now (up to 2,000 sources)") }
+    TextButton(enabled = !busy && app.semantic.configured, onClick = { scope.launch { busy = true; try { app.semantic.remove(); result = "Embedding model and vectors removed; literal search remains." } finally { busy = false } } }) { Text("Remove embedding model and index") }
 }

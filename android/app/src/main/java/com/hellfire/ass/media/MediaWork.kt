@@ -33,7 +33,7 @@ object MediaWork {
         if (app.database.media().item(item.id)?.state == "DELETING") return@withTransaction
         val now = System.currentTimeMillis()
         val raw = NotificationSnapshot("${item.id}:$suffix:$start", "owner.media", (item.recordedAt ?: item.importedAt) + start, now,
-            source = if (suffix == "speech") "media_transcript" else "media_ocr",
+            source = when (suffix) { "speech" -> "media_transcript"; "image_labels" -> "media_labels"; else -> "media_ocr" },
             fields = mapOf("text" to listOf(text.take(60000))), provenance = mapOf("media_id" to item.id,
                 "start_ms" to start.toString(), "end_ms" to end.toString(), "index_kind" to suffix,
                 "recorded_time_known" to (item.recordedAt != null).toString()))
@@ -59,7 +59,10 @@ class MediaWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
             var complete = true
             var progress = item.processedMs
             when {
-                item.mime.startsWith("image/") -> MediaWork.text(app, item, 0, 0, VisualReader.image(app, item), "image")
+                item.mime.startsWith("image/") -> VisualReader.image(app, item).let { read ->
+                    MediaWork.text(app, item, 0, 0, read.ocr, "image")
+                    read.labels?.let { MediaWork.text(app, item, 0, 0, it, "image_labels") }
+                }
                 item.mime == "application/pdf" -> {
                     complete = VisualReader.pdf(app, item, progress.toInt()) { page, text ->
                         MediaWork.text(app, item, page.toLong(), page.toLong(), text, "pdf_page_zero_based")

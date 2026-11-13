@@ -80,10 +80,21 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
             }
             before = batch.last().receivedAt; cursorId = batch.last().id
         }
-        val lines = memories.map { "${it.kind} (${it.confidence}%) · ${it.subject}: ${it.text}" } + found.map { it.second }
+        val semantic = semanticMatches(query, found.map { it.first }.toSet())
+        val lines = memories.map { "${it.kind} (${it.confidence}%) · ${it.subject}: ${it.text}" } + found.map { it.second } + semantic.map { it.second }
         return Answer((if (lines.isEmpty()) "No matching saved evidence found." else lines.joinToString("\n\n")) +
-            "\nLiteral source search inspected $scanned recent events (limit 2,000; up to 20 matches). Sources and inferences can be incomplete.",
-            (memories.map { it.sourceId } + found.map { it.first }).distinct())
+            "\nLiteral source search inspected $scanned recent events (limit 2,000; up to 20 matches). " +
+            (if (app.semantic.configured) "Meaning matches (≈ score) come from the on-device embedding index (${app.semantic.status()}); scores are uncalibrated similarity, not proof. "
+            else "Import a text-embedding model in Local AI for meaning-based matches. ") +
+            "Sources and inferences can be incomplete.",
+            (memories.map { it.sourceId } + found.map { it.first } + semantic.map { it.first }).distinct())
+    }
+    private suspend fun semanticMatches(query: String, exclude: Set<String>): List<Pair<String, String>> {
+        val hits = try { app.semantic.search(query) } catch (e: CancellationException) { throw e } catch (_: Exception) { return emptyList() }
+        return hits.filter { it.first !in exclude }.mapNotNull { (id, score) ->
+            val event = app.database.events().find(id)?.takeIf { it.contentAvailable && !it.securitySensitive } ?: return@mapNotNull null
+            id to "≈ ${String.format(Locale.ROOT, "%.2f", score)} · ${event.source} · ${TaskTime.display(event.occurredAt)} · ${app.semantic.sourceText(event).take(280)}"
+        }
     }
     private suspend fun brief(evening: Boolean): Answer {
         val today = clock.instant().atZone(TaskTime.zone).toLocalDate()
