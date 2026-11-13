@@ -58,7 +58,10 @@ object ActionProposals {
                 val config = requireNotNull(app.secrets.read(if (proposal.channel == "EMAIL_IMAP") "mail" else "gateway"))
                 require(config.getString("id") == proposal.account)
                 if (proposal.channel == "EMAIL_IMAP") javax.mail.internet.InternetAddress(proposal.recipient, true).validate()
-                else require(proposal.recipient.matches(Regex("[0-9]{6,15}")))
+                else {
+                    require(config.optString("transport", "meta") == "meta") { "WhatsApp Web is capture-only" }
+                    require(proposal.recipient.matches(Regex("[0-9]{6,15}")))
+                }
                 if (app.database.communications().draft(id) == null) app.database.communications().draft(OutboundDraft(id, proposal.channel,
                     proposal.account, proposal.recipient, proposal.subject, proposal.body, now))
             }

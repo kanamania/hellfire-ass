@@ -22,6 +22,15 @@ until the final stage at the owner's request. Keep device-dependent outcomes
 explicitly NOT TESTED and do not treat this sequencing change as successful device
 verification. This update supersedes the original starter prompt's Phase 0-only limit.
 
+**Owner WhatsApp update — 2026-11-13:** The owner selected `whatsapp-web.js`
+and authorized implementation of a linked-device server capture adapter. This
+supersedes the earlier Coexistence-only requirement for the selected WhatsApp
+connection. The first slice is capture-only: QR linking, persistent session,
+incoming/outgoing/group text and media metadata, encrypted relay and truthful
+status. Attachment downloads, full-history import and Web-session sending are not
+part of this slice. The existing official Meta transport remains an alternative.
+Live pairing/account and physical Android tests remain NOT TESTED.
+
 ## 0. Requirements locked by the owner
 
 These are explicit decisions, not suggestions to reconsider:
@@ -29,7 +38,7 @@ These are explicit decisions, not suggestions to reconsider:
 1. This is a **personal AI life assistant**, **not** a Karibu product. All naming and UI branding must say **HellFire Ass**.
 2. HellFire Ass should be selectable as the **Android default digital assistant**, replacing Gemini for the system entry points Android/ColorOS makes available.
 3. Ingest and process **all notifications made accessible by Android**. Do not limit the listener to chat or bank apps. Notifications can contain finance, messages, tasks, system alerts, delivery status, travel updates, etc.
-4. Use **WhatsApp Business Platform Coexistence** for the eligible WhatsApp Business number: official Cloud API, official webhooks, and authorized outbound replies. This requires a small backend gateway. Do not substitute notification scraping for the configured Business account. A normal/personal WhatsApp account may need a separate notification-based fallback.
+4. Use the owner-selected **whatsapp-web.js linked-device capture** through the self-hosted relay. Keep it labeled unofficial and capture-only. Preserve official **WhatsApp Business Platform Coexistence** as an alternative for an eligible Business number; notification capture is separately labeled partial coverage.
 5. Use **Gmail IMAP for incoming email and SMTP for outgoing email**, authenticated via a user-provided **Gmail app password** when the account permits it. **Do not use Gmail API.** Support standard IMAP/SMTP accounts as an extensible protocol adapter.
 6. In-person conversations that the owner **participates in** should be automatically detected during a permitted, active microphone-monitoring session; preserve **original audio**, **transcript**, **summary**, **speaker turns**, and extracted tasks/agreements. Audio must **not** be auto-deleted just because a summary exists.
 7. Phone calls are **already recorded by the handset**. Import, index, transcribe, and summarize accessible call-recording files. Do not try to implement undocumented phone-call audio capture.
@@ -149,7 +158,7 @@ From Android's default-assistant gesture or shortcut, owner asks “HellFire, ho
 | Video | MediaCodec/MediaExtractor + scene/keyframe logic | Sample frames and speech track |
 | Search | SQLite FTS + locally stored embeddings | Avoid server-dependent personal search |
 | Mail | IMAP/SMTP Java/Kotlin-compatible client | IMAP IDLE + periodic reconciliation |
-| WhatsApp | Official Meta Cloud API via webhook gateway | Coexistence onboarding subject to eligibility |
+| WhatsApp | whatsapp-web.js linked capture; optional official Meta gateway | Web capture-only; Meta Coexistence subject to eligibility |
 | Backend | Python FastAPI + PostgreSQL / durable queue | Minimize retained webhook plaintext |
 | Transport | HTTPS + authenticated client sync | Durable event delivery and offline replay |
 | Optional cloud AI | User-selected provider via backend proxy | Redaction, allowlist, spending cap |
@@ -255,9 +264,24 @@ Implement `NotificationListenerService` with correct manifest registration and a
 
 ---
 
-## 6. WhatsApp Business Coexistence
+## 6. WhatsApp linked-device capture and optional Business Coexistence
 
-**Non-negotiable:** Use Meta's supported WhatsApp Business Platform / Cloud API Coexistence onboarding for an eligible WhatsApp Business number. The user has explicitly rejected notification-only integration as the primary WhatsApp Business path.
+**Selected connection:** `whatsapp-web.js` on the owner-controlled server, using
+QR-authorized Linked devices and `LocalAuth`. Preserve incoming/outgoing direction,
+group thread and participant IDs, source provenance and media metadata. Never
+represent unavailable attachment bytes or old history as captured. The server is
+a decrypted endpoint; its browser profile is sensitive and is not covered by the
+phone-envelope encryption. Show auth/disconnect/queue failures. There is no
+Web-session sending endpoint in this slice.
+
+The worker writes bounded AES-GCM-encrypted events to a shared spool. The existing
+relay commits device-public-key encrypted envelopes before deleting worker files;
+Android acknowledges only after local capture. Pairing/status require the device
+bearer token. Browser sessions use a separate persistent volume. See README for
+setup, limits and the browser sandbox capability required by its Docker image.
+
+**Alternative official connection:** Meta Coexistence remains available for an
+eligible Business number, with the original flow and approval controls below.
 
 ### Server flow
 
@@ -292,7 +316,7 @@ Meta Cloud API event
 - Is the owner onboarding directly or through an approved Solution Partner / Tech Provider pathway?
 - Which history sync, app echo, companion-device, group and calling capabilities are supported for **that exact onboarding path and API version**? Meta has additional Groups/Calling APIs, so do not declare blanket universal support or assume full WhatsApp app parity.
 
-If Coexistence is not eligible, keep the module **blocked with a clear integration status**, while other app features remain functional. Normal WhatsApp may use separately labeled notification-based coverage.
+If selected Meta Coexistence is not eligible, show that transport as blocked. The separately selected Web transport does not require Meta credentials; notification-based coverage remains separately labeled.
 
 ---
 
@@ -617,7 +641,7 @@ For initial proof of concept, it is acceptable to start with fewer Gradle module
 ### Phase 3 — communications
 
 - Gmail IMAP/SMTP account + sync + replies.
-- Meta WhatsApp gateway + eligible Coexistence connection + webhook/echo ingestion.
+- Owner-selected whatsapp-web.js capture + optional eligible Meta Coexistence webhook/echo ingestion.
 - Unified inbox, draft review, one-tap approved replies and send audit.
 - Optional Telegram and generic IMAP expansion.
 
@@ -686,7 +710,7 @@ Create/maintain `docs/DEVICE_FEASIBILITY.md` with columns `Question | Test | Res
 4. **Notification permission:** whether ColorOS requires additional manual “allow restricted settings” flow for sideloaded app.
 5. **Call recordings:** readable via MediaStore, SAF or manual import only.
 6. **Local inference:** which LiteRT-LM backend runs and performs well on this actual device; do not assume NPU.
-7. **WhatsApp:** Business account eligibility and exact permitted Coexistence features (onboarding path, app echoes, history behavior, groups, calls).
+7. **WhatsApp:** Web QR pairing, own/incoming/group messages, session restart, disconnect and replay; no complete-history claim. For optional Meta mode, Business eligibility and exact Coexistence features remain separate gates.
 8. **Gmail:** account can create an app password and IMAP access succeeds; fail clearly if not.
 9. **Battery / alarm delivery:** exact-alarm authorization and overnight behavior.
 10. **Swahili quality:** code-switching speech transcription and informal money/date extraction accuracy.
@@ -706,7 +730,7 @@ Codex must follow these rules during all phases:
 5. Do not upgrade the machine's OS/global packages or unrelated project dependencies without permission.
 6. Do not commit passwords, access tokens, private messages, recordings or source corpora.
 7. Label all missing permissions/API features clearly in UI and engineering notes; never fake success.
-8. Respect the locked integration choices: Coexistence for WhatsApp Business, Gmail via IMAP/SMTP app password, existing call-recording import, **original in-person audio retained**.
+8. Respect the current owner integration choices: whatsapp-web.js capture with optional Meta Coexistence, Gmail via IMAP/SMTP app password, existing call-recording import, **original in-person audio retained**.
 9. Every feature requiring external side effects must be gated by explicit owner approval unless a reviewed automation policy exists.
 10. Write tests for every parser, classifier contract, idempotency rule and public backend endpoint. Fail closed on invalid model outputs.
 11. Run available build/tests; report actual commands and outputs concisely. If environment lacks Android SDK/device, report precisely what's unverified.

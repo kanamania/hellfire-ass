@@ -21,7 +21,9 @@ class CommunicationRepository(private val app: HellFireApp) {
         val draft = requireNotNull(dao.draft(id))
         val config = try { when (draft.channel) {
             "EMAIL_IMAP" -> requireNotNull(app.secrets.read("mail")).also { require(it.getString("id") == draft.accountId) }
-            "WHATSAPP_BUSINESS" -> requireNotNull(app.secrets.read("gateway")).also { require(it.getString("id") == draft.accountId) }
+            "WHATSAPP_BUSINESS" -> requireNotNull(app.secrets.read("gateway")).also {
+                require(it.getString("id") == draft.accountId && it.optString("transport", "meta") == "meta") { "WhatsApp Web is capture-only" }
+            }
             else -> error("This channel does not support sending")
         }
         } catch (error: Exception) { dao.resetApproval(id, "CONFIGURATION_UNAVAILABLE"); throw error }
@@ -58,7 +60,7 @@ class CommunicationSyncWorker(context: Context, params: WorkerParameters) : Coro
         val app = applicationContext as HellFireApp
         var retry = false
         var more = false
-        for ((name, adapter) in listOf("mail" to "EMAIL_IMAP", "gateway" to "WHATSAPP_BUSINESS")) {
+        for ((name, adapter) in listOf("mail" to "EMAIL_IMAP", "gateway" to "WHATSAPP_GATEWAY")) {
             try {
                 val config = app.secrets.read(name)
                 if (config == null) {

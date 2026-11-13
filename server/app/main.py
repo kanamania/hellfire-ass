@@ -19,8 +19,10 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.whatsapp_web import capture_status, drain_spool
 
 
 @dataclass(frozen=True)
@@ -35,6 +37,8 @@ class Settings:
     phone_id: str = ""
     waba_id: str = ""
     database: str = "state/relay.db"
+    whatsapp_transport: str = "meta"
+    web_state_directory: str = ""
 
     @classmethod
     def from_env(cls):
@@ -45,14 +49,19 @@ class Settings:
             device_public_key=Path(public).read_bytes() if public else b"",
             graph_token=os.getenv("META_ACCESS_TOKEN", ""), graph_version=os.getenv("GRAPH_API_VERSION", ""),
             phone_id=os.getenv("META_PHONE_NUMBER_ID", ""), waba_id=os.getenv("META_WABA_ID", ""), database=os.getenv("RELAY_DATABASE", "state/relay.db"),
+            whatsapp_transport=os.getenv("WHATSAPP_TRANSPORT", "meta"),
+            web_state_directory=os.getenv("WHATSAPP_WEB_STATE_DIR", ""),
         )
 
     def ready(self):
-        return (bool(self.app_secret and self.verify_token and self.device_public_key and self.phone_id and self.waba_id)
-                and len(self.device_token) >= 32 and len(self.store_key) == 32)
+        common = bool(self.device_public_key) and len(self.device_token) >= 32 and len(self.store_key) == 32
+        if self.whatsapp_transport == "web":
+            return common and bool(self.web_state_directory)
+        return (common and self.whatsapp_transport == "meta"
+                and bool(self.app_secret and self.verify_token and self.phone_id and self.waba_id))
 
     def outbound_ready(self):
-        return bool(self.graph_token and re.fullmatch(r"v[0-9]+\.[0-9]+", self.graph_version)
+        return bool(self.whatsapp_transport == "meta" and self.graph_token and re.fullmatch(r"v[0-9]+\.[0-9]+", self.graph_version)
                     and re.fullmatch(r"[0-9]+", self.phone_id))
 
 
@@ -157,7 +166,11 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
     async def limit(request: Request, call_next):
         if store and not store.rate(request.client.host if request.client else "unknown"):
             return JSONResponse({"detail": "Rate limit exceeded"}, status_code=429)
-        return await call_next(request)
+        response = await call_next(request)
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        return response
 
     def authorized(authorization: str | None):
         if not store:
@@ -168,12 +181,27 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
     @app.get("/health")
     async def health():
         return {"service": "HellFire Ass", "configured": store is not None,
-                "outbound_configured": settings.outbound_ready(), "coexistence": "ACCOUNT_VERIFICATION_REQUIRED"}
+                "outbound_configured": settings.outbound_ready(), "transport": settings.whatsapp_transport,
+                "coexistence": "NOT_USED" if settings.whatsapp_transport == "web" else "ACCOUNT_VERIFICATION_REQUIRED"}
+
+    @app.get("/pair", response_class=HTMLResponse)
+    async def pairing_page():
+        return HTMLResponse(Path(__file__).with_name("pairing.html").read_text(), headers={
+            "Content-Security-Policy": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+        })
+
+    @app.get("/device/whatsapp-web/status")
+    @app.get("/device/whatsapp-web/pairing")
+    async def web_status(request: Request, authorization: str | None = Header(default=None)):
+        authorized(authorization)
+        if settings.whatsapp_transport != "web":
+            raise HTTPException(409, "Linked-device transport is not selected")
+        return capture_status(settings.web_state_directory, pairing=request.url.path.endswith("/pairing"))
 
     @app.get("/webhook")
     async def verify(request: Request):
         q = request.query_params
-        if (not store or q.get("hub.mode") != "subscribe"
+        if (not store or settings.whatsapp_transport != "meta" or q.get("hub.mode") != "subscribe"
                 or not hmac.compare_digest(q.get("hub.verify_token", ""), settings.verify_token)):
             raise HTTPException(403, "Verification rejected")
         challenge = q.get("hub.challenge", "")
@@ -185,6 +213,8 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
     async def webhook(request: Request, x_hub_signature_256: str | None = Header(default=None)):
         if not store:
             raise HTTPException(503, "Gateway not configured")
+        if settings.whatsapp_transport != "meta":
+            raise HTTPException(409, "Meta webhooks are disabled for the linked-device transport")
         body = bytearray()
         async for chunk in request.stream():
             body.extend(chunk)
@@ -202,9 +232,30 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
     @app.get("/device/events")
     async def events(authorization: str | None = Header(default=None)):
         authorized(authorization)
+        pending_spool = False
+        if settings.whatsapp_transport == "web":
+            try:
+                pending_spool = drain_spool(settings.web_state_directory, store)
+            except Exception:
+                raise HTTPException(503, "Linked-device spool unavailable or invalid; no events acknowledged") from None
         with store.lock:
-            rows = store.db.execute("SELECT id, box, created FROM inbox ORDER BY created,id LIMIT 100").fetchall()
-        return {"events": [{"id": r[0], "box": json.loads(r[1]), "created": r[2]} for r in rows]}
+            rows = store.db.execute("SELECT id, box, created FROM inbox ORDER BY created,id LIMIT 101").fetchall()
+        batch, size = [], 0
+        for row in rows[:100]:
+            event = {"id": row[0], "box": json.loads(row[1]), "created": row[2]}
+            event_size = len(json.dumps(event).encode())
+            # Keep the complete response below Android's 2 MiB read limit.
+            if size + event_size > 1536 * 1024:
+                if not batch:
+                    raise HTTPException(413, "Queued event exceeds the Android response limit")
+                break
+            batch.append(event)
+            size += event_size
+        result = {"transport": settings.whatsapp_transport,
+                  "events": batch, "has_more": len(rows) > len(batch) or pending_spool}
+        if settings.whatsapp_transport == "web":
+            result["capture_status"] = capture_status(settings.web_state_directory)
+        return result
 
     @app.post("/device/events/{identity}/ack")
     async def ack(identity: str, authorization: str | None = Header(default=None)):
@@ -216,6 +267,8 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
     @app.post("/drafts")
     async def draft(value: Draft, authorization: str | None = Header(default=None)):
         authorized(authorization)
+        if settings.whatsapp_transport == "web":
+            raise HTTPException(409, "Linked-device transport is capture-only; sending is disabled")
         identity, nonce = secrets.token_hex(16), secrets.token_urlsafe(32)
         iv = secrets.token_bytes(12)
         payload = iv + AESGCM(store.key).encrypt(iv, value.model_dump_json().encode(), identity.encode())

@@ -5,7 +5,6 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import com.hellfire.ass.HellFireApp
 import com.hellfire.ass.events.NotificationNormalizer
-import com.hellfire.ass.events.NotificationSnapshot
 import java.net.URI
 import javax.net.ssl.HttpsURLConnection
 import java.security.KeyStore
@@ -78,7 +77,11 @@ class GatewayAdapter(private val app: HellFireApp) {
     }
     suspend fun sync(config: JSONObject): Boolean {
         publicKey()
-        val events = request(config, "/device/events").getJSONArray("events")
+        val transport = config.optString("transport", "meta")
+        val channel = GatewayEvents.channel(transport)
+        val response = request(config, "/device/events")
+        require(response.optString("transport", "meta") == transport) { "GATEWAY_TRANSPORT_MISMATCH" }
+        val events = response.getJSONArray("events")
         for (index in 0 until events.length()) {
             val envelope = events.getJSONObject(index)
             val id = envelope.getString("id").also { require(it.matches(Regex("[a-f0-9]{64}"))) }
@@ -87,29 +90,31 @@ class GatewayAdapter(private val app: HellFireApp) {
             val collection = event.optString("collection")
             val timestamp = item?.optString("timestamp")?.toLongOrNull()?.let { Math.multiplyExact(it, 1000) }
                 ?: Math.multiplyExact(envelope.getLong("created"), 1000)
-            val body = item?.optJSONObject("text")?.optString("body").orEmpty()
-            val snapshot = NotificationSnapshot("relay:$id", "meta.whatsapp.business", timestamp, System.currentTimeMillis(),
-                source = "whatsapp_business", kind = when (collection) { "messages" -> "INCOMING"; "message_echoes" -> "OUTGOING"; else -> collection.uppercase() }, provenance = mapOf("relay_id" to id, "account_id" to config.getString("id")), fields = mapOf("text" to listOf(body),
-                    "sender_hint" to listOf(item?.optString("from").orEmpty()), "recipient_hint" to listOf(item?.optString("to").orEmpty()), "event_envelope" to listOf(event.toString())))
+            val snapshot = GatewayEvents.snapshot(event, id, config.getString("id"), transport, timestamp, System.currentTimeMillis())
             val safe = NotificationNormalizer.normalize(snapshot, app.packageName)!!
             app.events.capture(snapshot, app.packageName)
             if (item != null && collection in setOf("messages", "message_echoes")) {
                 val external = item.optString("id").ifBlank { id }
-                app.database.communications().message(CommunicationMessage(NotificationNormalizer.sha256("wa:$external"),
-                    "WHATSAPP_BUSINESS", config.getString("id"), external, safe.id, if (collection == "messages") item.optString("from") else item.optString("to"),
+                val identity = if (transport == "web") "wa-web:${config.getString("id")}:$external" else "wa:$external"
+                app.database.communications().message(CommunicationMessage(NotificationNormalizer.sha256(identity),
+                    channel, config.getString("id"), external, safe.id, GatewayEvents.thread(item, collection, transport),
                     safe.snapshot.fields["sender_hint"]?.firstOrNull().orEmpty(), safe.snapshot.fields["recipient_hint"]?.firstOrNull().orEmpty(), "",
                     safe.snapshot.fields["text"]?.firstOrNull().orEmpty(), timestamp, if (collection == "messages") "INCOMING" else "OUTGOING"))
-            } else if (item != null && collection == "statuses") {
+            } else if (transport == "meta" && item != null && collection == "statuses") {
                 val state = when (item.optString("status")) { "read" -> "READ"; "delivered" -> "DELIVERED"; "sent" -> "SENT_CONFIRMED"; else -> null }
                 if (state != null) app.database.communications().whatsappStatus(item.optString("id"), state)
             }
             // Only acknowledge after local durable capture/normalization succeeds.
             request(config, "/device/events/$id/ack", JSONObject())
         }
-        app.database.communications().integration(IntegrationState("WHATSAPP_BUSINESS", "CONNECTED", System.currentTimeMillis()))
-        return events.length() == 100
+        val capture = response.optJSONObject("capture_status")
+        app.database.communications().integration(IntegrationState("WHATSAPP_GATEWAY",
+            if (transport == "web") capture?.optString("state", "WORKER_UNAVAILABLE") ?: "WORKER_UNAVAILABLE" else "CONNECTED",
+            System.currentTimeMillis(), capture?.optString("error")?.takeUnless { it.isBlank() || it == "null" }))
+        return response.optBoolean("has_more", events.length() == 100)
     }
     fun send(config: JSONObject, draft: OutboundDraft): String {
+        require(config.optString("transport", "meta") == "meta") { "WhatsApp Web capture cannot send messages" }
         require(draft.recipient.matches(Regex("[0-9]{6,20}")) && draft.body.length in 1..4096)
         val remote = request(config, "/drafts", JSONObject().put("to", draft.recipient).put("text", draft.body))
         val id = remote.getString("id").also { require(it.matches(Regex("[a-f0-9]{32}"))) }

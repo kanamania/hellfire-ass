@@ -1,0 +1,7 @@
+node_modules
+state
+.wwebjs_auth
+.wwebjs_cache
+.env*
+*.pem
+*.key

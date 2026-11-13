@@ -133,6 +133,102 @@ lock-screen behavior and hotword support require physical verification.
 
 ## WhatsApp relay setup
 
+The owner-selected connection is now **whatsapp-web.js capture**. The original
+official Meta transport remains available separately below. Web mode captures new
+message events exposed by the linked session: incoming/outgoing text, group thread
+and author IDs, and media metadata. It does **not** download attachments, import a
+complete chat archive, transcribe voice notes or send replies. Notifications remain
+a separately labeled source. This is unofficial; upstream changes and account
+blocking remain possible. See the [library's own warning](https://wwebjs.dev/guide/).
+
+### Linked WhatsApp Web capture
+
+Required: Docker/Compose on a trusted Linux server, persistent storage, a working
+HTTPS reverse proxy, and the public key exported from **Messages** in the Android
+app. No Meta credentials are needed. No service has been deployed or account linked
+by this implementation run.
+
+1. Place the exported key at ignored `server/device-public.pem`.
+2. Create private `server/.env` with only `DEVICE_TOKEN` (at least 32 random
+   characters) and `STORE_KEY_BASE64` (base64 of 32 random bytes). Generate these
+   locally and save them privately; do not paste actual values into commands,
+   documentation or Git. Compose supplies the public-key path and Web mode.
+3. When deploying on your selected server, use this entry point from `server/`:
+
+   ```bash
+   docker compose -f compose.yaml -f compose.web.yaml up -d --build
+   ```
+
+4. On a separate screen, open `https://YOUR-RELAY/pair`, enter the device token,
+   and select **Show or refresh pairing**. On your phone select WhatsApp →
+   Linked devices → Link a device and scan the QR. Refresh if it expires. The
+   token is not put in a URL or browser storage. Clear it when finished. The page
+   and authenticated responses are marked `no-store`; configure the reverse
+   proxy to avoid caching and logging authentication headers or response bodies.
+5. In Android **Messages**, select connection **WhatsApp Web**, enter that same HTTPS URL
+   and device token, then **Save and connect gateway** / **Sync connected sources**.
+   Inbox entries are labeled `WHATSAPP_WEB`; capture status distinguishes pairing,
+   syncing, connected, auth failure, disconnect and a missing/stale worker. A
+   mismatched server/app transport fails rather than silently changing channels.
+
+Local worker verification (Node **22.12+**):
+
+```bash
+cd server/whatsapp-web
+PUPPETEER_SKIP_DOWNLOAD=true npm ci --omit=optional --ignore-scripts
+npm test
+npm audit --omit=dev --omit=optional
+```
+
+The lockfile pins whatsapp-web.js **1.34.8**, qrcode **1.5.4**, and a Puppeteer
+**25.17.0** override to avoid advisories in the upstream-pinned browser dependency.
+Unused RemoteAuth archive dependencies are omitted; the worker uses `LocalAuth`.
+The Docker base pins the matching official Puppeteer image. Live WhatsApp/browser
+compatibility still requires account verification. Outside Docker, install a
+matching browser through Puppeteer or provide `CHROME_BIN`, provide the two private
+environment values above, and run `npm start` under a service manager. Do not run
+two workers against the same browser profile. The Compose worker has no exposed
+port, runs as UID 10001 and keeps Chromium's sandbox enabled. It uses the official
+[Puppeteer Docker setup's `SYS_ADMIN` capability](https://pptr.dev/guides/docker);
+run it only on the trusted host. The relay retains its existing dropped capabilities.
+
+Three persistent volumes have distinct purposes: `whatsapp-web-session` holds the
+browser credentials/history; `whatsapp-web-spool` holds encrypted pending capture
+and private QR/status files; `relay-data` holds the phone-encrypted queue and replay
+fingerprints. The browser is a decrypted endpoint, and its profile is **not**
+encrypted by our spool/envelope code. Protect its host disk and backups. The worker
+gets the spool key but not the device bearer token or Meta credentials. Message
+bodies, raw browser objects, QR tokens and provider errors are not printed by our
+application code.
+
+Worker events are limited to 128 KiB and 16,000 text characters (truncation is
+marked), with up to 10,000 pending events retained for seven days. Quota/storage
+errors are surfaced; events arriving during failure can be lost. Relay copies are
+also retained seven days, with replay fingerprints retained 30 days. Android uses
+manual sync and its existing best-effort 15-minute maintenance; this is not an
+instant push connection. Offline/disconnected periods and linked-device history
+limits can leave gaps. Edits/deletions/reactions and historical backfill are not
+captured in this first slice. No attachment bytes or inferred transcripts are
+fabricated.
+
+To revoke access, log out this session from WhatsApp's **Linked devices**, stop
+the worker, and disconnect the gateway in Android. Disconnecting Android alone
+does not revoke the linked server session. If the worker disconnects, inspect status
+and restart it / pair again as required; no custom reconnect loop is implemented.
+Changing the WhatsApp account or transport requires draining the old queue first
+and a separate relay database/profile; old queued evidence must not be relabeled
+as a new account. Never run Web and Meta capture against the same relay database.
+
+Host relay checks:
+
+```bash
+cd server
+.venv/bin/python -m pytest -q
+docker compose -f compose.yaml -f compose.web.yaml config --no-env-resolution --no-interpolate
+```
+
+### Alternative official Meta transport
+
 `server/` contains the real single-owner FastAPI relay, not a deployed service.
 Its host tests use mock Graph responses and generated synthetic keys/events.
 
@@ -345,6 +441,9 @@ SQLCipher/Keystore, actual model execution, live accounts or Android/OEM behavio
 - 2026-11-13, agent workflows: confirm-first voice/chat commands for reminders,
   memory notes, task done/snooze/reschedule, cash review items and email/WhatsApp
   drafts; 137 host tests.
+- 2026-11-13, WhatsApp Web: owner-authorized switch to linked-device capture with
+  persistent LocalAuth, authenticated QR pairing/status, encrypted spool and relay,
+  separate Android provenance and capture-only send guards. No live account paired.
 
 References: [Android assistant](https://developer.android.com/reference/android/service/voice/VoiceInteractionService),
 [exact alarms](https://developer.android.com/develop/background-work/services/alarms/schedule),
