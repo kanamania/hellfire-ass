@@ -1,0 +1,281 @@
+package com.hellfire.ass.ui.settings
+
+import android.os.Build
+import android.provider.Settings
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.hellfire.ass.PermissionStatus
+import com.hellfire.ass.data.NotificationPolicy
+import com.hellfire.ass.events.NotificationSnapshot
+import com.hellfire.ass.notifications.NotificationCaptureStatus
+import com.hellfire.ass.processing.CaptureWork
+import com.hellfire.ass.sms.SmsSyncWorker
+import com.hellfire.ass.ui.*
+import com.hellfire.ass.ui.components.*
+import com.hellfire.ass.ui.theme.Hf
+import com.hellfire.ass.ui.theme.HfIcons
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+/** One Setup row: plain-language name, what it is for, live state from Android, and how to turn it on. */
+data class SetupStep(val title: String, val detail: String, val icon: ImageVector, val on: Boolean, val turnOn: () -> Unit)
+
+fun setupSteps(p: PermissionStatus, a: PermissionActions): List<SetupStep> = listOf(
+    SetupStep("Notifications", "Read payment and message alerts. Security codes are hidden.", HfIcons.Bell, p.notificationAccess,
+        { a.onSettings(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS) }),
+    SetupStep("SMS", "Track M-Pesa and bank messages. Never sends SMS.", HfIcons.Chat, p.smsEnabled && p.smsRead, a.onSmsEnable),
+    SetupStep("Microphone", "Ask by voice and record when you choose. Always shows a notification.", HfIcons.Mic, p.microphone && p.notificationPosting, a.onMicrophone),
+    SetupStep("On-time reminders", "Ring at the exact minute you set", HfIcons.Alarm, p.exactAlarm != false && p.notificationPosting,
+        { if (!p.notificationPosting) a.onNotifications() else if (Build.VERSION.SDK_INT >= 31) a.onSettings(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM) }),
+    SetupStep("Phone assistant", "Open HellFire with your assistant gesture", HfIcons.Spark, p.voiceServiceActive, a.onRole),
+    SetupStep("Run in background", "Stop the phone pausing capture overnight. On OPPO/ColorOS also allow auto-launch and background activity in phone settings; check it on the phone.",
+        HfIcons.Battery, p.batteryExempt, { a.onSettings(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS) }),
+)
+
+@Composable
+private fun SetupRows(steps: List<SetupStep>) {
+    val on = steps.count { it.on }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row {
+            Text("$on of ${steps.size} turned on", Modifier.weight(1f), style = Hf.type.label.copy(fontWeight = FontWeight.SemiBold), color = Hf.colors.onSurface)
+            Text("about 1 minute", style = Hf.type.label.copy(fontWeight = FontWeight.Normal), color = Hf.colors.muted)
+        }
+        Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(Hf.colors.outline)) {
+            Box(Modifier.fillMaxHeight().fillMaxWidth(on.toFloat() / steps.size).clip(CircleShape).background(Hf.colors.primary))
+        }
+    }
+    HfCard(radius = 22.dp) {
+        steps.forEachIndexed { i, s ->
+            if (i > 0) ListDivider(66.dp)
+            Row(Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(start = 16.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                IconTile(icon = s.icon, tone = if (s.on) Tone.Success else Tone.Neutral)
+                Column(Modifier.weight(1f)) {
+                    Text(s.title, style = Hf.type.rowTitle, color = Hf.colors.onSurface)
+                    Text(s.detail, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+                }
+                if (s.on) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(HfIcons.Check, null, Modifier.size(16.dp), tint = Hf.colors.success)
+                    Text("On", style = Hf.type.label.copy(fontWeight = FontWeight.SemiBold), color = Hf.colors.success)
+                } else Box(Modifier.heightIn(min = 36.dp).clip(CircleShape).background(Hf.colors.primaryContainer).clickableRow(s.turnOn).padding(horizontal = 14.dp),
+                    contentAlignment = Alignment.Center) {
+                    Text("Turn on", style = Hf.type.label.copy(fontWeight = FontWeight.SemiBold), color = Hf.colors.primaryPressed)
+                }
+            }
+        }
+    }
+}
+
+/** First-run setup (Setup.dc.html). State is read live from Android on every resume. */
+@Composable
+fun SetupScreen() {
+    val env = LocalEnv.current
+    val nav = LocalNav.current
+    fun finish() { env.app.getSharedPreferences("ui", 0).edit().putBoolean("setup_done", true).apply(); nav.pop() }
+    Column(Modifier.fillMaxSize()) {
+        ScrollPage(Modifier.weight(1f)) {
+            PushedTopBar("", onBack = { finish() })
+            Text("Let's set up HellFire", style = Hf.type.screenTitle.copy(fontSize = 28.sp), color = Hf.colors.onSurface)
+            Text("Turn on only what you want. Everything stays on this phone, and you can change it anytime.", style = Hf.type.body, color = Hf.colors.muted)
+            SetupRows(setupSteps(env.permissions, env.actions))
+        }
+        Column(Modifier.fillMaxWidth().padding(horizontal = ScreenPadding, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            PrimaryButton("Continue", { finish() }, Modifier.fillMaxWidth(), height = 54.dp)
+            QuietButton("Skip for now", { finish() }, Modifier.fillMaxWidth())
+        }
+    }
+}
+
+/** Settings hub (Settings.dc.html) with live subtitles. */
+@Composable
+fun SettingsHub() {
+    val env = LocalEnv.current
+    val nav = LocalNav.current
+    val app = env.app
+    val memories by remember { app.database.memory().items() }.collectAsStateWithLifecycle(emptyList())
+    val media by remember { app.database.media().items() }.collectAsStateWithLifecycle(emptyList())
+    val states by remember { app.database.communications().integrations() }.collectAsStateWithLifecycle(emptyList())
+    var ai by remember { mutableStateOf<com.hellfire.ass.ai.AiState?>(null) }
+    var mail by remember { mutableStateOf(false) }
+    var gateway by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) { withContext(Dispatchers.IO) {
+        ai = runCatching { app.ai.store.read() }.getOrNull()
+        mail = runCatching { app.secrets.read("mail") != null }.getOrDefault(false)
+        gateway = runCatching { app.secrets.read("gateway")?.optString("transport", "meta") }.getOrNull()
+    } }
+    val steps = setupSteps(env.permissions, env.actions)
+    val lastBackup = app.getSharedPreferences("ui", 0).getLong("last_backup_at", 0)
+    PushedPage("Settings") {
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Hf.colors.surfaceDark).padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Hf.colors.surfaceDarkInner), contentAlignment = Alignment.Center) {
+                Icon(HfIcons.Lock, null, Modifier.size(20.dp), tint = androidx.compose.ui.graphics.Color(0xFF6EE7A0))
+            }
+            Column(Modifier.weight(1f)) {
+                Text("Private by default", style = Hf.type.rowTitle, color = Hf.colors.onSurfaceDark)
+                Text(if (ai?.cloudEnabled == true) "Everything is encrypted on this phone. Cloud AI is on for text you send from Ask."
+                    else "Everything is encrypted on this phone. Nothing goes to the cloud unless you turn it on.", style = Hf.type.rowSubtitle, color = Hf.colors.mutedOnDark)
+            }
+        }
+        Group("Access") {
+            ListRow("Permissions and capture", subtitle = "${steps.count { it.on }} of ${steps.size} turned on", icon = HfIcons.Lock, chevron = true, onClick = { nav.push(Screen.Permissions) })
+            ListDivider()
+            ListRow("Reminders", subtitle = when (states.firstOrNull { it.adapter == "REMINDERS" }?.state) {
+                "EXACT_ALLOWED" -> "On time"; "BEST_EFFORT" -> "Best effort"; "PERMISSION_MISSING" -> "Notifications blocked"; else -> "Nightly review, overdue repeats" },
+                icon = HfIcons.Alarm, chevron = true, onClick = { nav.push(Screen.Reminders) })
+            ListDivider()
+            ListRow("Home screen widgets", subtitle = if (com.hellfire.ass.widgets.WidgetPrefs.hideAll(app)) "All amounts hidden" else "Amounts hidden unless you allow them",
+                icon = HfIcons.Home, chevron = true, onClick = { nav.push(Screen.Widgets) })
+        }
+        Group("AI") {
+            val providers = ai?.providers?.count { it.value.enabled && it.value.apiKey.isNotBlank() } ?: 0
+            ListRow("Cloud AI", subtitle = (if (ai?.cloudEnabled == true) "On" else "Off") + " · " + if (providers == 0) "no providers set up" else "$providers provider${if (providers > 1) "s" else ""}",
+                icon = HfIcons.Cloud, tone = Tone.Info, chevron = true, onClick = { nav.push(Screen.CloudAi) })
+            ListDivider()
+            ListRow("On-device models", subtitle = listOfNotNull("language".takeIf { app.localModel.configured }, "meaning search".takeIf { app.semantic.configured },
+                "speakers".takeIf { app.speakers.configured }).joinToString(", ").ifEmpty { "None imported" }.replaceFirstChar { it.uppercase() },
+                icon = HfIcons.Chip, tone = Tone.Success, chevron = true, onClick = { nav.push(Screen.LocalModels) })
+            ListDivider()
+            val spent = ai?.let { s -> s.usage.filterKeys { it.startsWith("${app.ai.month()}/") }.values.sumOf { it.charged } } ?: 0
+            ListRow("Monthly AI budget", subtitle = "USD ${usd(spent)} of ${usd(ai?.monthlyCap ?: 0)} used", icon = HfIcons.Reports, tone = Tone.Primary,
+                chevron = true, onClick = { nav.push(Screen.CloudAi, "budget") })
+        }
+        Group("Connected accounts") {
+            ListRow("Email", subtitle = if (!mail) "Not connected" else states.firstOrNull { it.adapter == "EMAIL_IMAP" }?.state?.lowercase()?.replace('_', ' ') ?: "Connected",
+                icon = HfIcons.Mail, tone = Tone.Info, chevron = true, onClick = { nav.push(Screen.Email) })
+            ListDivider()
+            ListRow("WhatsApp", subtitle = when (gateway) { null -> "Not connected"; "web" -> "WhatsApp Web · capture only"; else -> "Business API" },
+                icon = HfIcons.Chat, tone = Tone.Success, chevron = true, onClick = { nav.push(Screen.WhatsApp) })
+        }
+        Group("Your data") {
+            ListRow("Memory and proposals", subtitle = if (memories.isEmpty()) "Nothing saved yet" else "${memories.size} saved", icon = HfIcons.Key, tone = Tone.Neutral, chevron = true,
+                onClick = { nav.push(Screen.Memory) })
+            ListDivider()
+            ListRow("Recordings", subtitle = "${media.size} originals kept · import, exclusions, monitoring", icon = HfIcons.Waveform, tone = Tone.Neutral, chevron = true,
+                onClick = { nav.push(Screen.Recordings) })
+            ListDivider()
+            ListRow("Encrypted backup", subtitle = if (lastBackup == 0L) "Never backed up" else "Last backup ${Fmt.dayTime(lastBackup)}", icon = HfIcons.Download, tone = Tone.Neutral,
+                chevron = true, onClick = { nav.push(Screen.Backup) })
+            ListDivider()
+            ListRow("This device", subtitle = "Android, assistant role, timezone", icon = HfIcons.Phone, tone = Tone.Neutral, chevron = true, onClick = { nav.push(Screen.Device) })
+        }
+    }
+}
+
+@Composable
+private fun Group(label: String, content: @Composable ColumnScope.() -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        GroupLabel(label)
+        HfCard(radius = 22.dp, content = content)
+    }
+}
+
+/** Settings › Permissions and capture: the Setup rows plus capture status and maintenance. */
+@Composable
+fun PermissionsPage() {
+    val env = LocalEnv.current
+    val app = env.app
+    val p = env.permissions
+    val scope = rememberCoroutineScope()
+    val dao = remember { app.database.events() }
+    val queues by remember { dao.queueSummary() }.collectAsStateWithLifecycle(emptyList())
+    val audits by remember { dao.audits() }.collectAsStateWithLifecycle(emptyList())
+    val policies by remember { dao.appPolicies() }.collectAsStateWithLifecycle(emptyList())
+    val count by app.events.count.collectAsStateWithLifecycle(0)
+    val connected by NotificationCaptureStatus.connected.collectAsStateWithLifecycle()
+    val error by NotificationCaptureStatus.error.collectAsStateWithLifecycle()
+    val dropped by NotificationCaptureStatus.dropped.collectAsStateWithLifecycle()
+    var message by remember { mutableStateOf<String?>(null) }
+    var confirmClear by remember { mutableStateOf(false) }
+    PushedPage("Permissions and capture", breadcrumb = "Settings") {
+        message?.let { Banner(it, Tone.Info, null) }
+        SetupRows(setupSteps(p, env.actions))
+        if (p.smsEnabled) QuietButton("Turn off SMS capture", env.actions.onSmsDisable)
+        SectionHeader("Capture status")
+        KvList(listOfNotNull(
+            "Notification listener" to when { connected && p.notificationAccess -> "Connected"; p.notificationAccess -> "Access granted · disconnected"; else -> "Access missing" },
+            "SMS" to when { !p.smsEnabled -> "Off"; !p.smsRead -> "Read permission missing"; !p.smsReceive -> "History sync on · live SMS permission missing"; else -> "On · check delivery on the phone" },
+            "Stored events" to "$count · $dropped dropped this session",
+            "Processing" to queues.joinToString { "${it.state.lowercase()} ${it.count}" }.ifEmpty { "Nothing saved yet" },
+            error?.let { "Listener error" to it },
+        ))
+        audits.forEach { a ->
+            Note("${a.source}: ${a.captured} captured · ${a.failures} failures · ${a.dropped} drops" + (a.lastCapturedAt?.let { " · last ${Fmt.dayTime(it)}" } ?: "") +
+                (a.lastError?.let { " · last issue $it" } ?: ""))
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SecondaryButton("Resume processing", { scope.launch {
+                message = try { withContext(Dispatchers.IO) { dao.retryFailed() }; CaptureWork.process(app); "Pending and failed events scheduled for processing." }
+                    catch (_: Exception) { "Processing could not be scheduled. Saved events stay in the database." }
+            } })
+            if (p.smsEnabled && p.smsRead) SecondaryButton("Sync SMS history", { scope.launch {
+                message = try { SmsSyncWorker.schedule(app); "SMS sync scheduled." } catch (_: Exception) { "SMS sync could not be scheduled." }
+            } })
+        }
+        if (policies.isNotEmpty()) {
+            SectionHeader("Notification processing")
+            Note("Every accessible notification is kept. Turning an app off keeps its future notifications as capture only.")
+            HfCard {
+                policies.forEachIndexed { i, policy ->
+                    if (i > 0) ListDivider(16.dp)
+                    SwitchRow(policy.packageName, policy.processEnabled, { enabled -> scope.launch {
+                        message = try { withContext(Dispatchers.IO) { dao.setPolicy(NotificationPolicy(policy.packageName, enabled)) }
+                            if (enabled) "Processing on for ${policy.packageName}." else "Capture only for ${policy.packageName}." }
+                            catch (_: Exception) { "Setting could not be saved." }
+                    } })
+                }
+            }
+        }
+        SectionCard("Testing and cleanup") {
+            SecondaryButton("Insert a synthetic test event", { scope.launch {
+                message = try {
+                    val inserted = withContext(Dispatchers.IO) { app.events.capture(NotificationSnapshot(
+                        key = "synthetic-phase-zero-v1", packageName = "com.hellfire.fixture", postedAt = 1, receivedAt = System.currentTimeMillis(),
+                        source = "synthetic_notification", fields = mapOf("title" to listOf("Synthetic Phase 0 fixture"), "text" to listOf("Offline capture test"))), app.packageName) }
+                    CaptureWork.process(app)
+                    if (inserted) "Synthetic event stored." else "Synthetic event already stored; duplicate ignored."
+                } catch (_: Exception) { "Local storage test failed. Check storage and encryption." }
+            } }, Modifier.fillMaxWidth())
+            Note("This tests normalising, encryption and the database. It does not prove Android delivers notifications.")
+            QuietButton("Delete captured events…", { confirmClear = true }, Modifier.fillMaxWidth(), enabled = !p.notificationAccess && !p.smsEnabled)
+            Note("Turn off notification access and SMS capture first. Records linked to Money, Tasks or Media stay as evidence.")
+        }
+    }
+    if (confirmClear) ConfirmDialog("Delete all captured events?", "This removes stored captured events and their processing jobs from this phone.", "Delete events",
+        onConfirm = { confirmClear = false; scope.launch {
+            message = try { withContext(Dispatchers.IO) { dao.deleteAll() }; "Captured events deleted." } catch (_: Exception) { "Could not delete: some events are evidence for Money, Tasks or Media." }
+        } }, onDismiss = { confirmClear = false }, destructive = true)
+}
+
+@Composable
+fun DevicePage() {
+    val env = LocalEnv.current
+    val p = env.permissions
+    PushedPage("This device", breadcrumb = "Settings") {
+        KvList(listOf("Manufacturer / model" to "${Build.MANUFACTURER} / ${Build.MODEL}", "Android / API" to "${Build.VERSION.RELEASE} / ${Build.VERSION.SDK_INT}",
+            "Build" to Build.DISPLAY, "CPU ABIs" to Build.SUPPORTED_ABIS.joinToString(), "Security patch" to Build.VERSION.SECURITY_PATCH,
+            "Assistant role" to if (p.roleHeld) "Held" else "Not held", "Voice service" to if (p.voiceServiceActive) "Selected" else "Not selected",
+            "Owner timezone" to "Africa/Dar_es_Salaam"))
+        SectionCard("Assistant") {
+            SecondaryButton("Choose HellFire as the digital assistant", env.actions.onRole, Modifier.fillMaxWidth())
+            SecondaryButton("Open assistant settings", { env.actions.onSettings(Settings.ACTION_VOICE_INPUT_SETTINGS) }, Modifier.fillMaxWidth())
+            SecondaryButton("Test the assistant session", env.actions.onSession, Modifier.fillMaxWidth())
+            Note("Hotword, lock-screen and OEM gesture behaviour need testing on the phone.")
+        }
+        Note("The model name comes from Android. ColorOS version, OEM gestures, lock-screen invocation, microphone interruptions and overnight behaviour must be checked on the physical phone. No physical verification is claimed here.")
+    }
+}

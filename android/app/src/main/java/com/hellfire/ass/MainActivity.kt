@@ -15,11 +15,14 @@ import android.provider.Settings
 import android.service.voice.VoiceInteractionService
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import com.hellfire.ass.assistant.HellFireVoiceService
 import com.hellfire.ass.notifications.HellFireNotificationListener
-import com.hellfire.ass.ui.HellFireScreen
+import com.hellfire.ass.ui.HellFireRoot
+import com.hellfire.ass.ui.MainTab
+import com.hellfire.ass.ui.PermissionActions
 import com.hellfire.ass.sms.SmsCaptureSettings
 import com.hellfire.ass.sms.SmsSyncWorker
 import androidx.work.WorkManager
@@ -28,6 +31,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     private var permissions by mutableStateOf(PermissionStatus())
     private var message by mutableStateOf<String?>(null)
+    private var deepLink by mutableStateOf<Uri?>(null)
     private val requestPermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         refreshStatus()
         message = "Permission status refreshed. Tap Start recording when ready."
@@ -49,42 +53,62 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        deepLink = linkFor(intent)
         setContent {
-            HellFireScreen(
+            HellFireRoot(
                 app = application as HellFireApp,
                 permissions = permissions,
-                initialTab = if (intent.data?.host == "tasks") "Tasks" else if (intent.action == Intent.ACTION_ASSIST) "Assistant" else "Setup",
+                actions = PermissionActions(
+                    onRole = ::selectAssistant,
+                    onSettings = ::openSettings,
+                    onMicrophone = {
+                        val needed = mutableListOf(Manifest.permission.RECORD_AUDIO)
+                        if (Build.VERSION.SDK_INT >= 33) needed += Manifest.permission.POST_NOTIFICATIONS
+                        requestPermissions.launch(needed.toTypedArray())
+                    },
+                    onNotifications = {
+                        if (Build.VERSION.SDK_INT >= 33) requestPermissions.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
+                        else openSettings(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    },
+                    onSmsEnable = {
+                        requestSms.launch(arrayOf(Manifest.permission.READ_SMS, Manifest.permission.RECEIVE_SMS))
+                    },
+                    onSmsDisable = {
+                        val saved = SmsCaptureSettings.setEnabled(this, false)
+                        WorkManager.getInstance(this).cancelUniqueWork(SmsSyncWorker.WORK_NAME)
+                        (application as HellFireApp).refreshSmsCapture()
+                        refreshStatus()
+                        message = if (saved) "SMS capture disabled. Previously captured events are retained."
+                            else "SMS capture stopped for this session, but the preference could not be saved. Revoke SMS permission in app settings before restarting."
+                    },
+                    onSession = {
+                        if (permissions.voiceServiceActive) {
+                            try { startLocalVoiceInteraction(Bundle()) }
+                            catch (_: Exception) { message = "Assistant session unavailable. Try the system assistant gesture and record the device result." }
+                        } else message = "Select HellFire Ass as the digital assistant, then try again."
+                    },
+                ),
+                initialTab = MainTab.Home,
+                deepLink = deepLink,
+                onDeepLinkHandled = { deepLink = null },
                 message = message,
-                onRole = ::selectAssistant,
-                onSettings = ::openSettings,
-                onMicrophonePermission = {
-                    val needed = mutableListOf(Manifest.permission.RECORD_AUDIO)
-                    if (Build.VERSION.SDK_INT >= 33) needed += Manifest.permission.POST_NOTIFICATIONS
-                    requestPermissions.launch(needed.toTypedArray())
-                },
-                onNotifications = {
-                    if (Build.VERSION.SDK_INT >= 33) requestPermissions.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
-                    else openSettings(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                },
-                onSmsEnable = {
-                    requestSms.launch(arrayOf(Manifest.permission.READ_SMS, Manifest.permission.RECEIVE_SMS))
-                },
-                onSmsDisable = {
-                    val saved = SmsCaptureSettings.setEnabled(this, false)
-                    WorkManager.getInstance(this).cancelUniqueWork(SmsSyncWorker.WORK_NAME)
-                    (application as HellFireApp).refreshSmsCapture()
-                    refreshStatus()
-                    message = if (saved) "SMS capture disabled. Previously captured events are retained."
-                        else "SMS capture stopped for this session, but the preference could not be saved. Revoke SMS permission in app settings before restarting."
-                },
-                onSession = {
-                    if (permissions.voiceServiceActive) {
-                        try { startLocalVoiceInteraction(Bundle()) }
-                        catch (_: Exception) { message = "Assistant session unavailable. Try the system assistant gesture and record the device result." }
-                    } else message = "Select HellFire Ass as the digital assistant, then try again."
-                },
+                onMessageShown = { message = null },
             )
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        deepLink = linkFor(intent)
+    }
+
+    /** Deep links come from widgets, reminder notifications and the assist gesture; all are explicit, unexported intents. */
+    private fun linkFor(intent: Intent?): Uri? = when {
+        intent?.action == Intent.ACTION_ASSIST -> Uri.parse("hellfire://ask")
+        intent?.data?.scheme == "hellfire" -> intent.data
+        else -> null
     }
 
     override fun onResume() {

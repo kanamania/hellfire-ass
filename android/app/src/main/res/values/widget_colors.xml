@@ -1,0 +1,20 @@
+<resources>
+    <color name="wp_surface">#FFFFFF</color>
+    <color name="wp_on_surface">#111418</color>
+    <color name="wp_muted">#5B6470</color>
+    <color name="wp_primary">#C2410C</color>
+    <color name="wp_on_primary">#FFFFFF</color>
+    <color name="wp_pc">#FFEDE3</color>
+    <color name="wp_on_pc">#9A3412</color>
+    <color name="wp_fill">#F1F3F5</color>
+    <color name="wp_warn">#92400E</color>
+    <color name="wp_warn_bg">#FEF3C7</color>
+    <color name="wp_crit">#991B1B</color>
+    <color name="wp_crit_bg">#FDE8E8</color>
+    <color name="wp_success">#15803D</color>
+    <color name="wp_c2">#EA580C</color>
+    <color name="wp_c3">#2563EB</color>
+    <color name="wp_c4">#0F766E</color>
+    <color name="wp_c5">#8A929C</color>
+    <color name="wp_rec">#B91C1C</color>
+</resources>

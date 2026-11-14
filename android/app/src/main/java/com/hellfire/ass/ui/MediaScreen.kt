@@ -6,6 +6,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
+import com.hellfire.ass.ui.components.*
+import com.hellfire.ass.ui.theme.Hf
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -19,13 +21,13 @@ import com.hellfire.ass.tasks.TaskTime
 import kotlinx.coroutines.*
 
 @Composable
-fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: () -> Unit) {
+fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: () -> Unit, initialSelected: String? = null) {
     val items by app.database.media().items().collectAsStateWithLifecycle(initialValue = emptyList())
     val scope = rememberCoroutineScope()
     var result by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var kind by remember { mutableStateOf("CALL_RECORDING") }
-    var selected by remember { mutableStateOf<String?>(null) }
+    var selected by remember { mutableStateOf(initialSelected) }
     var deletion by remember { mutableStateOf<MediaItem?>(null) }
     var exporting by remember { mutableStateOf<MediaItem?>(null) }
     var playback by remember { mutableStateOf<Job?>(null) }
@@ -35,6 +37,8 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer); playback?.cancel() }
     }
+    val recording by MicrophoneStatus.busy.collectAsStateWithLifecycle()
+    val recordingState by MicrophoneStatus.state.collectAsStateWithLifecycle()
     fun action(block: suspend () -> String) { scope.launch {
         busy = true
         try { result = withContext(Dispatchers.IO) { block() } }
@@ -66,7 +70,8 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
             "Original exported to your selected destination. Exported media is decrypted."
         }
     }
-    Text("Media and conversations", style = MaterialTheme.typography.titleLarge)
+    if (result.isNotBlank()) Banner(result, Tone.Info, null)
+    if (initialSelected == null) SectionCard("Import and analysis") {
     Text("Originals remain encrypted locally until you delete them. Import uses Android’s file picker; inaccessible OPPO call recordings need sharing/export from the dialer.")
     Choice("Import as", listOf("CALL_RECORDING", "IN_PERSON_AUDIO", "IMAGE", "DOCUMENT", "VIDEO", "VOICE_NOTE"), kind) { kind = it }
     Button(enabled = !busy, onClick = { importer.launch(arrayOf("audio/*", "image/*", "video/*", "application/pdf")) }) { Text("Import original") }
@@ -93,9 +98,8 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
     var language by remember { mutableStateOf(prefs.getString("language", "auto")!!) }
     Choice("Transcription language", listOf("auto", "sw", "en"), language) { language = it; prefs.edit().putString("language", it).apply() }
     Text("Analysis waits for sufficient battery and acceptable thermals. Audio uses two-minute batches; PDF uses five-page batches. Video OCR samples up to twenty keyframes.")
-    HorizontalDivider()
-    val recording by MicrophoneStatus.busy.collectAsStateWithLifecycle()
-    val recordingState by MicrophoneStatus.state.collectAsStateWithLifecycle()
+    }
+    if (initialSelected == null) SectionCard("Conversation monitoring") {
     var notice by remember { mutableStateOf(false) }
     var participants by remember { mutableStateOf("") }; var place by remember { mutableStateOf("") }
     var excludedPeople by remember { mutableStateOf("") }; var excludedPlaces by remember { mutableStateOf("") }
@@ -125,11 +129,13 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
     }) { Text("Start visible monitoring") }
     OutlinedButton(enabled = recording, onClick = { app.startService(Intent(app, MicrophoneService::class.java).setAction(MicrophoneService.ACTION_STOP)) }) { Text("Stop monitoring") }
     Text("Monitoring never restarts automatically after boot or interruption.")
-    HorizontalDivider()
+    }
+    SectionCard(if (initialSelected == null) "Originals" else null) {
     if (playback != null) OutlinedButton(onClick = { playback?.cancel() }) { Text("Stop playback") }
-    if (result.isNotBlank()) Text(result)
-    Text("${items.size} originals retained")
-    items.forEach { item -> TextButton(onClick = { selected = item.id }) { Text("${item.name} · ${item.state}") } }
+    if (initialSelected == null) {
+        Text("${items.size} originals kept encrypted", style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+        items.forEach { item -> ListRow(item.name, subtitle = item.kind.lowercase().replace('_', ' ') + " · " + item.state.lowercase(), chevron = true, onClick = { selected = item.id }) }
+    }
     items.firstOrNull { it.id == selected }?.let { item -> key(item.id) {
         val segments by app.database.media().segments(item.id).collectAsStateWithLifecycle(initialValue = emptyList())
         var name by remember { mutableStateOf(item.name) }
@@ -180,6 +186,7 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
         }
         if (segments.size > 200) Text("Showing first 200 segments; all retained segments remain searchable.")
     } }
+    }
     deletion?.let { item -> AlertDialog(onDismissRequest = { deletion = null }, title = { Text("Delete ${item.name}?") },
         text = { Text("Deletes original, transcript, summary and speech intervals. Source snapshots and linked finance/tasks remain as evidence. Export first if needed.") },
         confirmButton = { TextButton(onClick = { deletion = null; playback?.cancel(); action { app.media.delete(item.id); "Original and media index deleted." } }) { Text("Delete media") } },
