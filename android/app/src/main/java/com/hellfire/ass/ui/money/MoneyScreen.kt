@@ -229,7 +229,7 @@ fun candidateTitle(c: FinanceCandidate, alias: MerchantAlias?): String = when {
     alias != null -> alias.name
     c.merchant != null -> "Lipa namba ${c.merchant}"
     c.provider == "MANUAL" -> c.evidence.take(60)
-    else -> "${Fmt.kind(c.kind)} · ${Fmt.provider(c.provider)}"
+    else -> Fmt.kind(c.kind)
 }
 
 @Composable
@@ -242,8 +242,8 @@ private fun CandidateCard(c: FinanceCandidate, alias: MerchantAlias?, onConfirm:
                 if (unknown) IconTile(text = "?", tone = Tone.Warning) else IconTile(icon = icon, tone = tone)
                 Column(Modifier.weight(1f)) {
                     Text(candidateTitle(c, alias), style = Hf.type.rowTitle, color = Hf.colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(listOfNotNull(if (c.provider == "MANUAL") "Cash, your entry" else "${Fmt.provider(c.provider)} SMS", Fmt.relativeDay(c.occurredAt),
-                        if (unknown) "New merchant" else alias?.category, if (c.reference == null && c.provider != "MANUAL") "No reference" else null).joinToString(" · "),
+                    Text(listOfNotNull(if (c.provider == "MANUAL") "Cash, your entry" else "Source message", Fmt.relativeDay(c.occurredAt),
+                        if (unknown) "New merchant" else c.category ?: alias?.category, if (c.reference == null && c.provider != "MANUAL") "No reference" else null).joinToString(" · "),
                         style = Hf.type.rowSubtitle, color = Hf.colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Text(if (c.kind == "INCOME" || c.kind == "REFUND") "+" + Fmt.amount(c.amount) else Fmt.outflow(c.amount),

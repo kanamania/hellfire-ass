@@ -45,10 +45,6 @@ object Fmt {
         val m = ((now - millis) / 60_000).coerceAtLeast(0)
         return when { m < 60 -> "${m}m"; m < 24 * 60 -> "${m / 60}h"; else -> "${m / (24 * 60)}d" }
     }
-    fun provider(code: String): String = when (code) {
-        "MPESA" -> "M-Pesa"; "AIRTEL" -> "Airtel Money"; "MIXX" -> "Mixx by Yas"; "HALOPESA" -> "HaloPesa"
-        "CRDB" -> "CRDB"; "NMB" -> "NMB"; "NBC" -> "NBC"; "CASH" -> "Cash"; "MANUAL" -> "Cash"; else -> code
-    }
     fun kind(code: String): String = when (code) {
         "EXPENSE" -> "Expense"; "INCOME" -> "Income"; "OWN_TRANSFER" -> "Transfer"; "REFUND" -> "Refund"; "FEE" -> "Fee"
         "ADJUSTMENT" -> "Correction"; "BALANCE" -> "Balance"; else -> code.lowercase().replaceFirstChar { it.uppercase() }

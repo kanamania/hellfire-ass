@@ -150,7 +150,7 @@ suspend fun loadWallets(app: HellFireApp): Pair<List<WalletRow>, Long?> {
     val accounts = app.database.finances().allAccounts()
     val rows = accounts.map { a ->
         when {
-            a.provider == "CASH" -> WalletRow(a.label, app.database.finances().balance(a.id), "from your ledger")
+            a.provider in setOf("CASH", "MANUAL") -> WalletRow(a.label, app.database.finances().balance(a.id), "from your ledger")
             balances[a.provider] != null -> WalletRow(a.label, balances.getValue(a.provider).amount, null)
             else -> WalletRow(a.label, null, "no SMS yet")
         }

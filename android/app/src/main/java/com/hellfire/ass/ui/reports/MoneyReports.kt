@@ -162,7 +162,7 @@ fun MoneyReport(arg: String) {
                     }) },
                 totals = spec.totals, sort = sort, onSort = { sort = it })
             TableFooter("Amounts in TZS · fees not included", "Swipe →")
-            Note("Tap a column to sort. Group by category, account, provider, week or day.")
+            Note("Tap a column to sort. Group by category, account, week or day.")
         }, calendar = { MoneyCalendar(all.filter { filter.accepts(it) }) })
 }
 
@@ -255,6 +255,16 @@ fun AccountsReport() {
     var sort by remember { mutableStateOf<Pair<Int, Boolean>?>(5 to false) }
     var message by remember { mutableStateOf<String?>(null) }
     val (entries, accounts) = ledger ?: (emptyList<LedgerEntry>() to emptyList())
+    var receiptSources by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    LaunchedEffect(entries) {
+        receiptSources = withContext(Dispatchers.IO) {
+            val dao = app.database.finances()
+            val candidates = dao.allCandidates().associateBy { it.sourceId }
+            dao.allEvidence().groupBy { it.ledgerId }.mapNotNull { (id, evidence) ->
+                evidence.mapNotNull { candidates[it.sourceId]?.provider }.distinct().singleOrNull()?.let { id to it }
+            }.toMap()
+        }
+    }
     val all = posted(entries, accounts)
     val figures = accountFigures(all, accounts, range)
     val inRange = all.filter { it.entry.occurredAt in range }
@@ -292,14 +302,14 @@ fun AccountsReport() {
                 if (payees.isEmpty()) Note("No confirmed payments in this range.")
                 payees.forEach { (name, list, amount) ->
                     val till = Regex("Lipa namba ([0-9]{3,12})").find(name)?.groupValues?.get(1)
-                    val provider = list.first().provider
+                    val provider = list.mapNotNull { receiptSources[it.entry.id] }.distinct().singleOrNull()
                     val known = till != null && aliases.any { it.number == till && it.provider == provider }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Column(Modifier.weight(1f)) {
                             Text(if (till != null && known) aliases.first { it.number == till && it.provider == provider }.name else name.take(40), style = Hf.type.rowTitle.copy(fontSize = 14.sp), color = Hf.colors.onSurface, maxLines = 1)
                             Text("${list.first().entry.category} · ${list.size}", style = Hf.type.rowSubtitle, color = Hf.colors.muted)
                         }
-                        if (till != null && !known) HfChip("Name it", { naming = provider to till })
+                        if (till != null && !known && provider != null) HfChip("Name it", { naming = provider to till })
                         Text(Fmt.amount(amount), style = Hf.type.rowTitle.copy(fontFeatureSettings = "tnum"), color = Hf.colors.onSurface)
                     }
                 }

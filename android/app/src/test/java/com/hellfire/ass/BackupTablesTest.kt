@@ -33,6 +33,8 @@ class BackupTablesTest {
             receivedAt = 2, kind = "POSTED", payloadHash = "fixture-hash", encryptedPayload = oldKey.encrypt(payload),
             contentAvailable = true, contentRedacted = false, securitySensitive = false))
         source.finances().addAccount(FinanceAccount("account", "Synthetic cash", "CASH"))
+        source.finances().candidate(FinanceCandidate("cash-review", "source", provider = "MANUAL", reference = null, kind = "EXPENSE",
+            amount = 3000, fee = 0, merchant = null, evidence = "Synthetic cash", occurredAt = 1, accountId = "account", category = "Transport"))
         source.finances().post(LedgerEntry("entry", "account", "key", "EXPENSE", -7000, "Food", "Synthetic", 1, 2, "entry"))
         source.finances().evidence(LedgerEvidence("entry", "source"))
         source.memory().insert(MemoryItem("memory", "source", "Synthetic", "Direct source", "SOURCE_EXCERPT", 100, 1, 2))
@@ -48,10 +50,32 @@ class BackupTablesTest {
         assertArrayEquals(payload, newKey.decrypt(restored.encryptedPayload))
         assertTrue(runCatching { oldKey.decrypt(restored.encryptedPayload) }.isFailure)
         assertEquals(-7000L, target.finances().balance("account"))
+        assertEquals("account", target.finances().findCandidate("cash-review")!!.accountId)
+        assertEquals("Transport", target.finances().findCandidate("cash-review")!!.category)
         assertEquals(listOf("source"), target.finances().sources("entry"))
         assertEquals("SOURCE_EXCERPT", target.memory().item("memory")!!.kind)
         target.openHelper.writableDatabase.query("PRAGMA foreign_key_check").use { assertFalse(it.moveToFirst()) }
     }
+    @Test fun `v11 cash review backups restore without account and category selections`() = runBlocking {
+        target.events().insertCaptured(SourceEvent("s", externalId = "s", packageName = "fixture", occurredAt = 1,
+            receivedAt = 1, kind = "POSTED", payloadHash = "fixture", encryptedPayload = byteArrayOf(1),
+            contentAvailable = true, contentRedacted = false, securitySensitive = false))
+        val row = """{"id":"c","sourceId":"s","position":0,"provider":"MANUAL","reference":null,"kind":"EXPENSE","amount":3000,"fee":0,"merchant":null,"evidence":"Synthetic cash","occurredAt":1,"state":"REVIEW"}"""
+        val out = ByteArrayOutputStream()
+        ZipOutputStream(out).use { zip ->
+            zip.putNextEntry(ZipEntry("tables/finance_candidate.jsonl"))
+            zip.write((row + "\n").toByteArray()); zip.closeEntry()
+        }
+        ZipInputStream(ByteArrayInputStream(out.toByteArray())).use { zip ->
+            zip.nextEntry
+            assertEquals(1L, BackupTables.readTable(target.openHelper.writableDatabase, zip, "finance_candidate", cipher()))
+        }
+        val restored = target.finances().findCandidate("c")!!
+        assertEquals(3000L, restored.amount)
+        assertNull(restored.accountId); assertNull(restored.category)
+        assertEquals(BackupTables.tables, BackupTables.tablesFor(11))
+    }
+
     @Test fun `archives cannot invent SQL tables or columns`() {
         val archive = ByteArrayOutputStream()
         ZipOutputStream(archive).use { zip -> zip.putNextEntry(ZipEntry("row")); zip.write("{\"id\":\"x\",\"injected\":\"DROP TABLE source_event\"}\n".toByteArray()); zip.closeEntry() }

@@ -121,7 +121,7 @@ class BriefingWidget : HfWidget<BriefingData>("Briefing", "hellfire://home") {
                 Gap(8)
                 Row(verticalAlignment = Alignment.CenterVertically) { Label("Needs review"); Spacer(GlanceModifier.width(6.dp)); Chip("${data.toReview}", ChipTone.Warn) }
                 data.unknownMerchant?.let { c -> Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Body("Lipa Namba ${c.merchant} · ${Fmt.provider(c.provider)} · ${Fmt.time(c.occurredAt)}", GlanceModifier.defaultWeight())
+                    Body("Lipa Namba ${c.merchant} · ${Fmt.time(c.occurredAt)}", GlanceModifier.defaultWeight())
                     Body(masked(Fmt.amount(c.amount), show), GlanceModifier.padding(horizontal = 6.dp))
                     TonalButton("Name", openApp(context, "hellfire://money/review"))
                 } }
@@ -381,7 +381,7 @@ class WalletsWidget : HfWidget<Pair<List<WalletRow>, Long?>>("Wallets", "hellfir
             if (size.tall && data.first.any { it.amount != null }) {
                 Gap(6)
                 Row(GlanceModifier.fillMaxWidth()) { Label("Total shown"); Spacer(GlanceModifier.defaultWeight()); Body(masked(Fmt.amount(data.first.sumOf { it.amount ?: 0 }), show), bold = true) }
-                Meta("SMS balances are what the provider last said, not ledger totals.", maxLines = 2)
+                Meta("SMS figures are the last reported balance. Other accounts use confirmed ledger entries.", maxLines = 2)
             }
             Spacer(GlanceModifier.defaultWeight())
             Meta("Last balance from SMS" + (data.second?.let { " · as of ${Fmt.dayTime(it)}" } ?: " · none yet"))
@@ -422,7 +422,7 @@ class ReviewWidget : HfWidget<ReviewCounts>("Nightly review", "hellfire://money/
         val c = app.database.finances().allCandidates().filter { it.state == "REVIEW" }
         val items = c.take(12).map { x ->
             val alias = x.merchant?.let { app.database.finances().merchant(x.provider, it) }
-            ReviewItem(com.hellfire.ass.ui.money.candidateTitle(x, alias), "${Fmt.provider(x.provider)} · ${Fmt.relativeDay(x.occurredAt)}", x.amount, x.kind == "INCOME" || x.kind == "REFUND")
+            ReviewItem(com.hellfire.ass.ui.money.candidateTitle(x, alias), Fmt.relativeDay(x.occurredAt), x.amount, x.kind == "INCOME" || x.kind == "REFUND")
         }
         return ReviewCounts(c.size, c.count { x -> x.merchant != null && app.database.finances().merchant(x.provider, x.merchant) == null },
             c.count { it.reference == null && it.provider != "MANUAL" }, app.database.tasks().reviewsNow().size, items)

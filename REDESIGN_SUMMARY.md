@@ -1,11 +1,11 @@
 # HellFire Ass redesign: summary
 
-Branch `feat/ui-redesign`, worktree `.worktrees/feat/ui-redesign`. Nothing is pushed or merged. Every decision is logged in [DECISIONS.md](DECISIONS.md); device evidence is in `docs/DEVICE_FEASIBILITY.md` → "UI redesign checkpoint".
+Branch `feat/ui-redesign`, worktree `.worktrees/feat/ui-redesign`. Nothing is pushed or merged into main. Every decision is logged in [DECISIONS.md](DECISIONS.md); device evidence is in `docs/DEVICE_FEASIBILITY.md` → "UI redesign checkpoint".
 
 **State at handover:**
 - Debug build passes.
-- 188 unit tests: 184 passed, 4 opt-in live-AI tests skipped, 0 failures.
-- Lint: 0 errors.
+- 192 unit tests: 188 passed, 4 opt-in live-AI tests skipped, 0 failures.
+- Lint: the earlier redesign passed with 0 errors; the Money follow-up lint run is incomplete under host memory pressure.
 - Checked on the Android emulator (Pixel 6 profile, API 34). **Not run on your OPPO**: no device was connected.
 
 ## What was built
@@ -113,3 +113,19 @@ Install the debug APK **over your current install**, so the real database migrat
 - [ ] Turn off battery optimisation for HellFire and allow auto-launch / background activity in ColorOS settings.
 - [ ] Leave the phone overnight: next morning, check notifications and SMS were still captured (Reports › Capture shows events per day) and that reminders fired.
 - [ ] Note any widget that stops updating overnight.
+
+## Money entry follow-up — 2026-11-14
+
+- Cash spending has date/time pickers (East Africa Time), category and account selectors.
+  These selections persist on each review item and prefill the confirmation sheet.
+- Accounts are created by name and optional balance. Provider controls, Money labels
+  and Money report grouping are removed. Receipt source identifiers remain internal
+  for duplicate detection and merchant evidence; they do not restrict account selection.
+- Room v12 preserves old records and adds optional review selections. Older backups
+  still restore; new backups retain the choices. Phone interaction checks remain NOT TESTED.
+
+Verification: 192 tests, 188 passed, 4 opt-in live AI tests skipped, no failures.
+Debug APK assembly passed. Lint is NOT COMPLETED: stopped after prolonged analysis
+under host memory pressure (about 600 MiB available RAM, 35 GiB swap in use).
+Rerun `./gradlew :app:lintDebug --max-workers=1 --console=plain` when the host has capacity.
+APK SHA-256: `dc852ff89217f8ef380e84c736e87338e42954c5dd583950f99b4aa8d40c2c43`.

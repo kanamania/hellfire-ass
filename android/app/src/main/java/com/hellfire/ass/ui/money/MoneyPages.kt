@@ -20,8 +20,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-val Providers = listOf("CASH", "MPESA", "AIRTEL", "MIXX", "HALOPESA", "CRDB", "NMB", "NBC")
-
 /** Captures the owner's own statement as source evidence (like a cash entry) and returns its record ID. */
 suspend fun ownerStatement(app: com.hellfire.ass.HellFireApp, text: String, at: Long): String {
     val raw = com.hellfire.ass.events.NotificationSnapshot(java.util.UUID.randomUUID().toString(), "owner.balance", at, System.currentTimeMillis(),
@@ -54,18 +52,18 @@ fun BalanceSheet(account: FinanceAccount, onDone: (String?) -> Unit) {
         Text("Set balance", style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
         Text("${account.label} · now ${current?.let { "TZS " + Fmt.amount(it) } ?: "…"} in your ledger", style = Hf.type.rowSubtitle, color = Hf.colors.muted)
         sms?.let { b ->
-            OptionCard("Use the balance from SMS", "TZS ${Fmt.amount(b.amount)} · ${Fmt.provider(b.provider)} said so on ${Fmt.dayTime(b.observedAt)}", useSms, {
+            OptionCard("Use the balance from SMS", "TZS ${Fmt.amount(b.amount)} · message from ${Fmt.dayTime(b.observedAt)}", useSms, {
                 useSms = true; amount = b.amount.toString(); at = com.hellfire.ass.tasks.TaskTime.display(b.observedAt)
             })
         }
         HfTextField(amount, { amount = it.filter { c -> c.isDigit() || c == '-' }; useSms = false }, "Balance TZS (whole shillings)", number = true)
-        HfTextField(at, { at = it; useSms = false }, "As of · yyyy-MM-dd HH:mm (East Africa Time)")
+        DateTimeField(at, { at = it; useSms = false }, "As of · East Africa Time")
         Note("HellFire adds one confirmed balance entry for the difference. It changes this account's balance but never counts as income or spending, and you can reverse it later.")
         error?.let { Banner(it, Tone.Danger, null) }
         PrimaryButton("Review balance", { confirm = true }, Modifier.fillMaxWidth(), enabled = amount.toLongOrNull() != null, height = 52.dp)
     }
     if (confirm) ConfirmDialog("Set ${account.label} to TZS ${amount.toLongOrNull()?.let(Fmt::amount) ?: amount}?",
-        "As of $at East Africa Time. " + if (useSms) "Evidence: the ${Fmt.provider(account.provider)} SMS." else "Evidence: your statement, saved on this phone.", "Confirm balance",
+        "As of $at East Africa Time. " + if (useSms) "Evidence: the saved SMS." else "Evidence: your statement, saved on this phone.", "Confirm balance",
         onConfirm = {
             confirm = false
             scope.launch {
@@ -93,7 +91,6 @@ fun AccountsPage(focusAdd: Boolean = false) {
     var balances by remember { mutableStateOf<Map<String, Long>>(emptyMap()) }
     LaunchedEffect(accounts, entries) { balances = withContext(Dispatchers.IO) { accounts.associate { it.id to dao.balance(it.id) } } }
     var label by remember { mutableStateOf("") }
-    var provider by remember { mutableStateOf("MPESA") }
     var opening by remember { mutableStateOf("") }
     var message by remember { mutableStateOf<String?>(null) }
     var setting by remember { mutableStateOf<FinanceAccount?>(null) }
@@ -101,12 +98,10 @@ fun AccountsPage(focusAdd: Boolean = false) {
     @Composable fun AddAccountCard() {
         SectionCard("Add an account") {
             HfTextField(label, { label = it }, "Account name, e.g. M-Pesa or CRDB Current")
-            GroupLabel("Provider")
-            ChipPicker(Providers, provider, Fmt::provider) { provider = it }
             HfTextField(opening, { opening = it.filter { c -> c.isDigit() } }, "Current balance TZS (optional)", number = true,
                 supporting = "Leave empty to start at zero. You can set it later.")
             PrimaryButton("Add account", { if (opening.isBlank()) scope.launch {
-                message = try { withContext(Dispatchers.IO) { dao.addAccount(FinanceAccount(label = label.trim(), provider = provider)) }; label = ""; "Account added." }
+                message = try { withContext(Dispatchers.IO) { dao.addAccount(FinanceAccount(label = label.trim())) }; label = ""; "Account added." }
                     catch (_: Exception) { "Account could not be saved." }
             } else confirmAdd = true }, Modifier.fillMaxWidth(), enabled = label.isNotBlank())
         }
@@ -118,7 +113,7 @@ fun AccountsPage(focusAdd: Boolean = false) {
         if (accounts.isNotEmpty()) ListCard {
             accounts.forEachIndexed { i, a ->
                 if (i > 0) ListDivider()
-                ListRow(a.label, subtitle = Fmt.provider(a.provider) + " · " + a.currency, icon = if (a.provider == "CASH") HfIcons.Money else HfIcons.Bank,
+                ListRow(a.label, subtitle = a.currency, icon = if (a.provider == "CASH") HfIcons.Money else HfIcons.Bank,
                     tone = Tone.Neutral, chevron = true, onClick = { nav.push(Screen.ReportStatement, a.id) },
                     trailing = {
                         Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
@@ -143,7 +138,7 @@ fun AccountsPage(focusAdd: Boolean = false) {
             scope.launch {
                 message = try {
                     withContext(Dispatchers.IO) {
-                        val account = FinanceAccount(label = label.trim(), provider = provider)
+                        val account = FinanceAccount(label = label.trim())
                         dao.addAccount(account)
                         val now = System.currentTimeMillis()
                         app.finances.setBalance(account.id, opening.toLong(), now,
