@@ -1,6 +1,6 @@
 # HellFire Ass — implementation and feasibility
 
-Evidence date: 2026-11-13, Africa/Dar_es_Salaam. The owner authorized remaining
+Evidence date: 2026-11-14, Africa/Dar_es_Salaam. The owner authorized remaining
 phases and explicitly kept physical device testing until last. No physical device,
 emulator, live account, personal message corpus, recording or model weights were used.
 The existing optional cloud providers/settings were merged from main; their live
@@ -27,7 +27,7 @@ From `android/`:
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --console=plain
 ```
 
-Final result: **160 tests on merged main (incl. capture-quality): 156 passed, 4 opt-in live AI tests skipped; 0 failures/errors. Lint: 0 errors,
+Final result: **165 tests (incl. resource-use regressions): 161 passed, 4 opt-in live AI tests skipped; 0 failures/errors. Lint: 0 errors,
 33 warnings. APK assembly passed.** Native whisper JNI compiled for
 arm64-v8a and x86_64. Robolectric uses API 34 and ordinary SQLite/generated AES keys;
 it does not execute phone Keystore, native SQLCipher, MediaCodec, ML Kit or models.
@@ -80,6 +80,30 @@ Historical host checkpoints: Phase 0 — 34 tests; Phase 1 — 58; combined init
 finance/comms slice — 66; media slice — 80; initial assistant/backup slice — 87.
 Current artifact/results above supersede prior debug builds, not their untested
 physical outcomes.
+
+## Resource-use checkpoint — 2026-11-14
+
+Processing coalesces repeated requests into one queued drain. If the current drain
+is already running, one successor covers events committed after its final queue
+read. Duplicate-only notification/SMS batches no longer request processing. Capture,
+finance/task rules and alarms do not wait for a charging constraint.
+
+Automatic semantic indexing has a separate, unique 15-minute periodic worker,
+requiring charging and adequate battery. It is registered on model import/startup
+and cancelled on model removal. New meaning matches can lag until charging and an
+OS-scheduled run; literal search still reads captured sources. Manual **Index now**
+works on battery. Empty backlogs skip native model creation; batch limits are exact,
+thermal status is checked between batches, and embedding runtimes share the existing
+speech/assistant model lock. No source/audio retention or permission is changed.
+
+| Question | Test | Result | Evidence | Next action |
+|---|---|---|---|---|
+| Work queue bounded under bursts and running/failed drains? | Real WorkManager persistence with worker execution disabled; concurrent requests and explicit work states | PASS (host) | 100 concurrent triggers leave one queued drain; 50 triggers during RUNNING leave one BLOCKED successor; FAILED work allows a new drain | Verify actual process/OS scheduling on device |
+| Automatic indexing power policy and idle behavior? | Persisted worker constraints; invalid synthetic model with empty Room backlog | PASS (host) | 20 registrations retain one periodic job with charging/battery constraints; empty backlog and zero budget return without loading the invalid model; negative budget rejected. All 5 `ResourceUseTest` checks pass | Verify actual embedding throughput, batch limits, cancellation and model serialization on device |
+| Lower battery, CPU and peak RAM on the OPPO? | Compare identical controlled workloads before/after | NOT TESTED | No physical profiling performed | Record baseline and optimized overnight battery, CPU time, PSS/peak memory and index latency; verify unplug/replug, severe thermal status and capture during indexing |
+
+Scheduling references: [unique work and chaining](https://developer.android.com/develop/background-work/background-tasks/persistent/how-to/manage-work),
+[work constraints](https://developer.android.com/develop/background-work/background-tasks/persistent/getting-started/define-work).
 
 ## Capture quality checkpoint — 2026-11-13
 

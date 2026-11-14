@@ -55,6 +55,11 @@ Optional network adapters remain disconnected until configured by the owner.
   With an owner-imported MediaPipe text-embedder `.tflite` (Local AI → Meaning search),
   search also adds up to 10 meaning matches (`≈ score`) from an on-device vector index of
   non-sensitive sources. Scores are uncalibrated; it is not a general autonomous agent.
+  Automatic meaning indexing runs in batches of at most 500 sources on a best-effort
+  15-minute schedule while charging with adequate battery. New sources stay available
+  to literal search immediately; meaning matches wait for indexing. **Index now**
+  remains available for a manual run on battery. Embedding, speech and assistant
+  models share the existing inference lock and release their runtime after use.
 - **Image labels:** imported images get bundled on-device ML Kit labels (≥70% confidence)
   saved as a searchable `media_labels` source beside OCR text. Labels are unverified.
 - **Assistant commands:** `remind me to <task> <when>` / `nikumbushe …`,
@@ -468,6 +473,12 @@ SQLCipher/Keystore, actual model execution, live accounts or Android/OEM behavio
   duplicate evidence outside the review queue and linked on approval; promotions,
   system notices and deadlines over seven days old create no task review items;
   `leo`/`kesho` match whole words and `keshokutwa` means two days ahead; 152 host tests.
+- 2026-11-14, resource use: coalesced queued processing drains with a successor for
+  events arriving during a running drain; duplicate-only notification/SMS batches
+  skip scheduling. Automatic meaning indexing waits for charging and adequate battery,
+  skips native model initialization for an empty backlog, respects the requested
+  batch limit and shares the heavy-model lock. Actual battery/peak RAM gains remain
+  unmeasured pending device profiling.
 
 References: [Android assistant](https://developer.android.com/reference/android/service/voice/VoiceInteractionService),
 [exact alarms](https://developer.android.com/develop/background-work/services/alarms/schedule),
