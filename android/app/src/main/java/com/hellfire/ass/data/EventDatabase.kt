@@ -125,7 +125,7 @@ interface EventDao {
 
 data class LabelledEvent(@Embedded val event: SourceEvent, val label: String?, val state: String)
 
-@Database(entities = [SourceEvent::class, EventProcessing::class, CaptureAudit::class, NotificationPolicy::class, FinanceAccount::class, FinanceCandidate::class, LedgerEntry::class, LedgerEvidence::class, MerchantAlias::class, CommunicationMessage::class, MailCursor::class, OutboundDraft::class, ActionAudit::class, IntegrationState::class, AssistantTask::class, DailyReview::class, MediaItem::class, TranscriptSegment::class, SpeechSpan::class, MemoryItem::class, com.hellfire.ass.memory.SemanticVector::class], version = 9, exportSchema = true)
+@Database(entities = [SourceEvent::class, EventProcessing::class, CaptureAudit::class, NotificationPolicy::class, FinanceAccount::class, FinanceCandidate::class, LedgerEntry::class, LedgerEvidence::class, MerchantAlias::class, CommunicationMessage::class, MailCursor::class, OutboundDraft::class, ActionAudit::class, IntegrationState::class, AssistantTask::class, DailyReview::class, MediaItem::class, TranscriptSegment::class, SpeechSpan::class, MemoryItem::class, com.hellfire.ass.memory.SemanticVector::class, AiUsage::class], version = 10, exportSchema = true)
 abstract class EventDatabase : RoomDatabase() {
     abstract fun events(): EventDao
     abstract fun finances(): FinanceDao
@@ -134,6 +134,7 @@ abstract class EventDatabase : RoomDatabase() {
     abstract fun media(): MediaDao
     abstract fun memory(): MemoryDao
     abstract fun semantic(): com.hellfire.ass.memory.SemanticDao
+    abstract fun aiUsage(): AiUsageDao
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -165,8 +166,20 @@ abstract class EventDatabase : RoomDatabase() {
         val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) { com.hellfire.ass.memory.SemanticSchema.migrate(db) }
         }
+        /** v10 (UI redesign §6): task completion time, media length, AI usage log. */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE assistant_task ADD COLUMN completedAt INTEGER")
+                // Completion times already recorded in the owner action audit are real evidence; other done tasks stay unknown.
+                db.execSQL("UPDATE assistant_task SET completedAt = (SELECT MAX(a.occurredAt) FROM action_audit a WHERE a.draftId = assistant_task.id AND a.action = 'OWNER_TASK_DONE') WHERE state = 'DONE'")
+                db.execSQL("ALTER TABLE media_item ADD COLUMN durationMs INTEGER")
+                db.execSQL("CREATE TABLE IF NOT EXISTS ai_usage (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, requestId TEXT NOT NULL, at INTEGER NOT NULL, task TEXT NOT NULL, provider TEXT NOT NULL, model TEXT NOT NULL, result TEXT NOT NULL, inputTokens INTEGER, outputTokens INTEGER, microUsd INTEGER NOT NULL)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_ai_usage_at ON ai_usage(at)")
+            }
+        }
+        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
         fun open(context: Context): EventDatabase = Room.databaseBuilder(
             context.applicationContext, EventDatabase::class.java, "hellfire.db"
-        ).openHelperFactory(EncryptedDatabase.factory(context)).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9).build()
+        ).openHelperFactory(EncryptedDatabase.factory(context)).addMigrations(*ALL_MIGRATIONS).build()
     }
 }

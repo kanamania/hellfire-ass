@@ -141,7 +141,7 @@ class MicrophoneService : Service() {
                 val saved = com.hellfire.ass.media.AacEncoderStream(input).use { encoded ->
                     com.hellfire.ass.media.ChunkedMedia.write(encoded, file, id, false, cipher, retainInterrupted = true)
                 }
-                if (saved.size > 0) app.media.registerRecording(id, startedAt, saved.interrupted, activity.finish())
+                if (saved.size > 0) app.media.registerRecording(id, startedAt, saved.interrupted, activity.finish(), written.toLong() * 1000 / (SAMPLE_RATE * 2))
                 if (saved.interrupted) { MicrophoneStatus.state.value = "Monitoring interrupted · authenticated original retained in Media"; return }
             } else file.outputStream().use { output -> cipher.encryptStream(input, output) }
             MicrophoneStatus.state.value = if (written > 0) "Saved encrypted ${if (monitoring) "conversation in Media" else "sample"} · ${written / (SAMPLE_RATE * 2)} seconds"

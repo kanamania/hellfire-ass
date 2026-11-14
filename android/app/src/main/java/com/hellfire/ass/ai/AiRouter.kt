@@ -32,6 +32,8 @@ data class RoutedGeneration(
 
 class AiRouter(
     val store: AiStore, providers: List<AiProvider>, private val clock: Clock = Clock.systemUTC(),
+    /** Called with each finished attempt's metadata (never prompt or answer text), e.g. to keep the usage log. */
+    private val onRecord: (AiAudit) -> Unit = {},
 ) {
     private val providers = providers.associateBy { it.id }
     private val inference = Mutex()
@@ -149,6 +151,7 @@ class AiRouter(
     }
 
     private fun record(audit: AiAudit) {
+        runCatching { onRecord(audit) }
         store.update { state -> state.copy(audit = (state.audit + audit).takeLast(100),
             providers = if (audit.provider == ProviderId.LOCAL) state.providers else state.providers +
                 (audit.provider to state.config(audit.provider).copy(status = if (audit.result == "SUCCESS") "Last inference passed" else

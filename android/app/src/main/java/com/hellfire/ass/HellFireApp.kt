@@ -18,7 +18,9 @@ class HellFireApp : Application() {
     val ai by lazy {
         val transport = HttpsAiTransport()
         AiRouter(EncryptedAiStore(this) { cipher }, listOf(OfflineProvider(), OpenAiProvider(transport),
-            ClaudeProvider(transport), GrokProvider(transport), DeepSeekProvider(transport)))
+            ClaudeProvider(transport), GrokProvider(transport), DeepSeekProvider(transport)), onRecord = { audit ->
+                captureScope.launch { runCatching { database.aiUsage().insert(audit.toUsage()) } }
+            })
     }
     val database by lazy { EventDatabase.open(this) }
     val secrets by lazy { com.hellfire.ass.security.SecretStore(this) { cipher } }
@@ -62,11 +64,20 @@ class HellFireApp : Application() {
                     CaptureWork.recover(this@HellFireApp)
                     com.hellfire.ass.tasks.TaskScheduler.restore(this@HellFireApp)
                     com.hellfire.ass.media.MediaWork.recover(this@HellFireApp)
+                    seedAiUsage()
                 } catch (_: Exception) { runCatching { database.events().failure("processing", "WORK_RECOVERY_FAILED") } }
             } catch (_: Exception) {
                 storageStatus.value = "UNAVAILABLE"
             } finally { storageLock.unlock() }
         }
+    }
+
+    /** One-time copy of the router's metadata audit (last 100 attempts) into the v10 usage log. */
+    private suspend fun seedAiUsage() {
+        val prefs = getSharedPreferences("ui", 0)
+        if (prefs.getBoolean("ai_usage_seeded", false)) return
+        if (database.aiUsage().count() == 0) ai.store.read().audit.filter { it.result != "STARTED" }.forEach { database.aiUsage().insert(it.toUsage()) }
+        prefs.edit().putBoolean("ai_usage_seeded", true).apply()
     }
 
     fun refreshSmsCapture() {
@@ -90,3 +101,6 @@ class HellFireApp : Application() {
         }
     }
 }
+
+private fun AiAudit.toUsage() = com.hellfire.ass.data.AiUsage(requestId = requestId, at = at, task = task.label, provider = provider.label,
+    model = model, result = result, inputTokens = input, outputTokens = output, microUsd = estimatedMicroUsd)

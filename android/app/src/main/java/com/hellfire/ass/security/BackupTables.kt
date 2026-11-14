@@ -8,9 +8,19 @@ import java.util.zip.*
 
 /** Fixed table/column allowlists; archives cannot supply executable SQL. */
 object BackupTables {
-    val tables = listOf("source_event", "event_processing", "capture_audit", "notification_policy", "finance_account",
+    /** Backup schema written by this version. Schema 8 archives (before the v10 database) still restore. */
+    const val SCHEMA = 10
+    private val schema8 = listOf("source_event", "event_processing", "capture_audit", "notification_policy", "finance_account",
         "finance_candidate", "ledger_entry", "ledger_evidence", "merchant_alias", "communication_message", "outbound_draft",
         "action_audit", "assistant_task", "daily_review", "media_item", "transcript_segment", "speech_span", "memory_item")
+    val tables = schema8 + "ai_usage"
+    fun tablesFor(schema: Int): List<String> = when (schema) {
+        8 -> schema8
+        SCHEMA -> tables
+        else -> throw IllegalArgumentException("Backup schema requires a matching app version")
+    }
+    /** Columns added after schema 8. Older archives may omit exactly these; they restore as the column default (NULL). */
+    val addedColumns = mapOf("assistant_task" to setOf("completedAt"), "media_item" to setOf("durationMs"))
     fun write(db: SupportSQLiteDatabase, zip: ZipOutputStream, cipher: PayloadCipher): Map<String, Long> {
         val counts = linkedMapOf<String, Long>()
         var bytesWritten = 0L
@@ -45,10 +55,11 @@ object BackupTables {
     fun readTable(db: SupportSQLiteDatabase, zip: ZipInputStream, table: String, cipher: PayloadCipher, budget: Budget = Budget()): Long {
         require(table in tables)
         val columns = db.query("SELECT * FROM $table LIMIT 0").use { it.columnNames.toList() }
-        val statement = db.compileStatement("INSERT INTO $table (${columns.joinToString(",")}) VALUES (${columns.joinToString(",") { "?" }})")
+        var keys: List<String>? = null
+        var insert: androidx.sqlite.db.SupportSQLiteStatement? = null
         var count = 0L
         val entryInput = java.io.BufferedInputStream(zip, 65536)
-        statement.use { insert ->
+        try {
             while (true) {
                 val line = StringBuilder()
                 while (true) {
@@ -61,27 +72,36 @@ object BackupTables {
                 if (line.isEmpty()) break
                 val bytes = ByteArray(line.length) { line[it].code.toByte() }
                 val row = JSONObject(bytes.toString(Charsets.UTF_8))
-                require(row.keys().asSequence().toSet() == columns.toSet()) { "Backup columns differ from current schema" }
-                insert.clearBindings()
-                columns.forEachIndexed { index, name ->
+                val rowKeys = row.keys().asSequence().toSet()
+                if (keys == null) {
+                    // Every row of a table has the same columns. Unknown columns are refused; only columns added after
+                    // schema 8 may be missing, and they take their SQL default.
+                    require(rowKeys.all { it in columns } && (columns - rowKeys).all { it in addedColumns[table].orEmpty() }) { "Backup columns differ from current schema" }
+                    keys = columns.filter { it in rowKeys }
+                    insert = db.compileStatement("INSERT INTO $table (${keys.joinToString(",")}) VALUES (${keys.joinToString(",") { "?" }})")
+                }
+                require(rowKeys == keys.toSet()) { "Backup columns differ between rows" }
+                val statement = insert!!
+                statement.clearBindings()
+                keys.forEachIndexed { index, name ->
                     val value = row.get(name)
                     when {
-                        value == JSONObject.NULL -> insert.bindNull(index + 1)
+                        value == JSONObject.NULL -> statement.bindNull(index + 1)
                         value is JSONObject -> {
                             require(value.keys().asSequence().toSet() == setOf("blob"))
                             val blob = Base64.getDecoder().decode(value.getString("blob"))
-                            insert.bindBlob(index + 1, if (table == "source_event" && name == "encryptedPayload") cipher.encrypt(blob) else blob)
+                            statement.bindBlob(index + 1, if (table == "source_event" && name == "encryptedPayload") cipher.encrypt(blob) else blob)
                             blob.fill(0)
                         }
-                        value is Int || value is Long -> insert.bindLong(index + 1, (value as Number).toLong())
-                        value is Double -> insert.bindDouble(index + 1, value)
-                        value is String -> insert.bindString(index + 1, value)
+                        value is Int || value is Long -> statement.bindLong(index + 1, (value as Number).toLong())
+                        value is Double -> statement.bindDouble(index + 1, value)
+                        value is String -> statement.bindString(index + 1, value)
                         else -> error("Unsupported backup value")
                     }
                 }
-                insert.executeInsert(); count++; require(count <= 2_000_000) { "Backup table row limit exceeded" }
+                statement.executeInsert(); count++; require(count <= 2_000_000) { "Backup table row limit exceeded" }
             }
-        }
+        } finally { insert?.close() }
         return count
     }
     fun revokeRestoredApprovals(db: SupportSQLiteDatabase) {

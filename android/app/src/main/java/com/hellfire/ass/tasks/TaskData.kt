@@ -9,7 +9,9 @@ import kotlinx.coroutines.flow.Flow
 data class AssistantTask(@PrimaryKey val id: String, val sourceId: String, val title: String,
     val dueAt: Long, val timezone: String = "Africa/Dar_es_Salaam", val party: String,
     val evidence: String, val state: String = "REVIEW", val createdAt: Long, val updatedAt: Long,
-    val nextAlertAt: Long? = null, val lastAlertAt: Long? = null, val alertCount: Int = 0)
+    val nextAlertAt: Long? = null, val lastAlertAt: Long? = null, val alertCount: Int = 0,
+    /** When the owner marked it done; null for tasks finished before v10 without an audit record. */
+    val completedAt: Long? = null)
 
 @Entity(tableName = "daily_review")
 data class DailyReview(@PrimaryKey val day: String, val state: String = "PENDING", val createdAt: Long, val completedAt: Long? = null)
@@ -21,7 +23,8 @@ interface TaskDao {
     @Query("SELECT * FROM assistant_task WHERE id = :id") suspend fun task(id: String): AssistantTask?
     @Query("UPDATE assistant_task SET title=:title, dueAt=:due, party=:party, state='ACTIVE', nextAlertAt=:next, updatedAt=:now WHERE id=:id AND state IN ('REVIEW','ACTIVE')")
     suspend fun activate(id: String, title: String, due: Long, party: String, next: Long, now: Long): Int
-    @Query("UPDATE assistant_task SET state=:state, nextAlertAt=NULL, updatedAt=:now WHERE id=:id") suspend fun close(id: String, state: String, now: Long)
+    @Query("UPDATE assistant_task SET state=:state, nextAlertAt=NULL, updatedAt=:now, completedAt=CASE WHEN :state='DONE' THEN :now ELSE completedAt END WHERE id=:id")
+    suspend fun close(id: String, state: String, now: Long)
     @Query("UPDATE assistant_task SET nextAlertAt=:next, updatedAt=:now WHERE id=:id AND state='ACTIVE'") suspend fun snooze(id: String, next: Long, now: Long)
     @Query("SELECT MIN(nextAlertAt) FROM assistant_task WHERE state='ACTIVE'") suspend fun nextAlert(): Long?
     @Query("SELECT * FROM assistant_task WHERE state='ACTIVE' AND nextAlertAt <= :now ORDER BY nextAlertAt") suspend fun due(now: Long): List<AssistantTask>
@@ -33,7 +36,7 @@ interface TaskDao {
     @Query("SELECT * FROM daily_review WHERE state='PENDING' ORDER BY day") fun reviews(): Flow<List<DailyReview>>
     @Query("SELECT EXISTS(SELECT 1 FROM daily_review WHERE day=:day)") suspend fun reviewedOrPrompted(day: String): Boolean
     @Query("UPDATE daily_review SET state='DONE', completedAt=:now WHERE day=:day") suspend fun completeReview(day: String, now: Long)
-    @Query("UPDATE assistant_task SET state='ACTIVE', nextAlertAt=:next, updatedAt=:now WHERE id=:id AND state='DONE'")
+    @Query("UPDATE assistant_task SET state='ACTIVE', nextAlertAt=:next, updatedAt=:now, completedAt=NULL WHERE id=:id AND state='DONE'")
     suspend fun reopen(id: String, next: Long, now: Long): Int
     @Query("SELECT * FROM assistant_task") suspend fun all(): List<AssistantTask>
     @Query("SELECT * FROM assistant_task WHERE id = :id") fun observe(id: String): Flow<AssistantTask?>
