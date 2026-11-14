@@ -2,11 +2,14 @@ package com.hellfire.ass.memory
 
 import android.net.Uri
 import android.os.PowerManager
+import android.content.Context
 import androidx.room.*
+import androidx.work.*
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.text.textembedder.TextEmbedder
 import com.hellfire.ass.HellFireApp
+import com.hellfire.ass.ai.HeavyModelGate
 import com.hellfire.ass.data.SourceEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -22,6 +25,7 @@ import java.nio.ByteOrder
 import java.nio.channels.FileChannel
 import java.security.MessageDigest
 import java.util.PriorityQueue
+import java.util.concurrent.TimeUnit
 
 /** Rebuildable cache of L2-normalized source embeddings; excluded from backups. An empty vector marks a source with no indexable text. */
 @Entity(tableName = "semantic_vector", indices = [Index("model")], foreignKeys = [ForeignKey(
@@ -85,14 +89,15 @@ class SemanticIndex(private val app: HellFireApp) {
         return digest.digest().joinToString("") { "%02x".format(it) }.also { cachedId = Triple(key.first, key.second, it) }
     }
 
-    private inline fun <T> withEmbedder(file: File = modelFile, block: (TextEmbedder) -> T): T {
+    private suspend inline fun <T> withEmbedder(file: File = modelFile, block: (TextEmbedder) -> T): T = HeavyModelGate.mutex.withLock {
+        check(app.getSystemService(PowerManager::class.java).currentThermalStatus < PowerManager.THERMAL_STATUS_SEVERE) { "Device must cool before local inference" }
         val buffer = FileInputStream(file).channel.use { it.map(FileChannel.MapMode.READ_ONLY, 0, it.size()) }
         val options = TextEmbedder.TextEmbedderOptions.builder()
             .setBaseOptions(BaseOptions.builder().setModelAssetBuffer(buffer).build())
             .setL2Normalize(true).setQuantize(false).build()
         val embedder = try { TextEmbedder.createFromOptions(app, options) }
             catch (e: UnsatisfiedLinkError) { throw IllegalStateException("Semantic search needs an arm64-v8a device", e) }
-        return embedder.use(block)
+        embedder.use(block)
     }
     private fun embed(embedder: TextEmbedder, text: String): FloatArray =
         VectorMath.normalize(embedder.embed(text.take(2000)).embeddingResult().embeddings().first().floatEmbedding())
@@ -120,9 +125,15 @@ class SemanticIndex(private val app: HellFireApp) {
                 dao.dropOtherModels(modelId())
             } finally { temp.delete() }
         }
+        SemanticIndexWork.schedule(app)
     }
 
-    suspend fun remove() = withContext(Dispatchers.IO) { mutex.withLock { modelFile.delete(); cachedId = null; dao.clear() } }
+    suspend fun remove() = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            WorkManager.getInstance(app).cancelUniqueWork(SemanticIndexWork.NAME).result.get()
+            modelFile.delete(); cachedId = null; dao.clear()
+        }
+    }
 
     suspend fun status(): String = withContext(Dispatchers.IO) {
         if (!configured) "No embedding model imported. Search uses literal matching only."
@@ -131,23 +142,27 @@ class SemanticIndex(private val app: HellFireApp) {
 
     /** Embeds up to [max] unindexed non-sensitive sources, newest first. Returns the number processed. */
     suspend fun indexPending(max: Int = 500): Int = withContext(Dispatchers.IO) {
-        if (!configured) return@withContext 0
+        require(max >= 0)
+        if (max == 0 || !configured) return@withContext 0
         if (app.getSystemService(PowerManager::class.java).currentThermalStatus >= PowerManager.THERMAL_STATUS_SEVERE) return@withContext 0
         mutex.withLock {
             val model = modelId()
             dao.dropOtherModels(model)
             var done = 0
+            var batch = dao.pending(model, minOf(32, max))
+            if (batch.isEmpty()) return@withLock 0
             withEmbedder { embedder ->
-                while (done < max) {
+                while (batch.isNotEmpty()) {
                     currentCoroutineContext().ensureActive()
-                    val batch = dao.pending(model, 32)
-                    if (batch.isEmpty()) break
+                    if (app.getSystemService(PowerManager::class.java).currentThermalStatus >= PowerManager.THERMAL_STATUS_SEVERE) break
                     val now = System.currentTimeMillis()
                     dao.put(batch.map { event ->
                         val text = sourceText(event)
                         SemanticVector(event.id, model, if (text.isBlank()) ByteArray(0) else VectorMath.encode(embed(embedder, text)), now)
                     })
                     done += batch.size
+                    if (done >= max) break
+                    batch = dao.pending(model, minOf(32, max - done))
                 }
             }
             done
@@ -174,5 +189,27 @@ class SemanticIndex(private val app: HellFireApp) {
             }
             VectorMath.top(limit, scored.asSequence()).filter { it.second >= minScore }
         }
+    }
+}
+
+/** Meaning-search indexing can wait for power; source capture and rules do not. */
+object SemanticIndexWork {
+    const val NAME = "semantic-index"
+    suspend fun schedule(context: Context) = withContext(Dispatchers.IO) {
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.KEEP,
+            PeriodicWorkRequestBuilder<SemanticIndexWorker>(15, TimeUnit.MINUTES)
+                .setConstraints(Constraints.Builder().setRequiresCharging(true).setRequiresBatteryNotLow(true).build())
+                .build()).result.get()
+        Unit
+    }
+}
+
+class SemanticIndexWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+    override suspend fun doWork(): Result {
+        return try {
+            (applicationContext as HellFireApp).semantic.indexPending()
+            Result.success()
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (_: Exception) { Result.retry() }
     }
 }

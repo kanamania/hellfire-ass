@@ -28,8 +28,9 @@ class HellFireNotificationListener : NotificationListenerService() {
             for (first in inbox) {
                 val batch = mutableListOf(first)
                 while (batch.size < 32) batch += inbox.tryReceive().getOrNull() ?: break
+                var captured = false
                 for (snapshot in batch) {
-                    try { app.events.capture(snapshot, packageName) }
+                    try { captured = app.events.capture(snapshot, packageName) || captured }
                     catch (e: CancellationException) { throw e }
                     catch (_: Exception) {
                         NotificationCaptureStatus.error.value = "Notification storage failed. Check local storage."
@@ -38,6 +39,7 @@ class HellFireNotificationListener : NotificationListenerService() {
                 }
                 val dropped = pendingDrops.getAndSet(0)
                 if (dropped > 0) runCatching { app.database.events().failure("android_notification", "CAPTURE_QUEUE_OVERFLOW", dropped) }
+                if (!captured) continue
                 try { CaptureWork.process(app) }
                 catch (e: CancellationException) { throw e }
                 catch (_: Exception) {

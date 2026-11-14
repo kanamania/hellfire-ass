@@ -17,12 +17,13 @@ class SmsSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                 return@withContext Result.success()
             }
             val rows = SmsProviderReader.readPage(app.contentResolver, inputData.getLong("after_id", 0))
+            var captured = false
             for (row in rows) {
                 ensureActive()
                 if (!SmsCaptureSettings.enabled(app) || !SmsCaptureSettings.canRead(app)) return@withContext Result.success()
-                app.events.capture(row.snapshot(System.currentTimeMillis()), app.packageName)
+                captured = app.events.capture(row.snapshot(System.currentTimeMillis()), app.packageName) || captured
             }
-            CaptureWork.process(app)
+            if (captured) CaptureWork.process(app)
             // A continuation's input is persisted by WorkManager before this page completes.
             if (rows.size == SmsProviderReader.PAGE_SIZE && SmsCaptureSettings.enabled(app)) schedule(app, rows.last().rowId)
             Result.success()
