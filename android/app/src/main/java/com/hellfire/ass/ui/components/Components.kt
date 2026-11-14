@@ -105,8 +105,8 @@ fun ListRow(
     ) {
         if (icon != null || tileText != null) IconTile(icon = icon, text = tileText, tone = tone)
         Column(Modifier.weight(1f)) {
-            Text(title, style = Hf.type.rowTitle, color = Hf.colors.onSurface)
-            if (subtitle != null) Text(subtitle, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+            Text(title, style = Hf.type.rowTitle, color = Hf.colors.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (subtitle != null) Text(subtitle, style = Hf.type.rowSubtitle, color = Hf.colors.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         trailing?.invoke()
         if (chevron) Icon(HfIcons.ChevronRight, null, Modifier.size(18.dp), tint = Hf.colors.faint)

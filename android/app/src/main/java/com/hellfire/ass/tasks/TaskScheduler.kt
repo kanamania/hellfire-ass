@@ -89,6 +89,16 @@ object TaskScheduler {
         notifications(app).cancel(id, 71)
         arm(app)
     }
+    /** Undo of an owner's "done" tap: the task becomes active again with its original due time. */
+    suspend fun reopen(app: HellFireApp, id: String) = lock.withLock {
+        val now = System.currentTimeMillis()
+        app.database.withTransaction {
+            val task = requireNotNull(app.database.tasks().task(id))
+            require(app.database.tasks().reopen(id, TaskTime.nextAlert(task.dueAt, now), now) == 1)
+            app.database.communications().audit(ActionAudit(UUID.randomUUID().toString(), id, "OWNER_TASK_REOPEN", "ACTIVE", now))
+        }
+        arm(app)
+    }
     @SuppressLint("MissingPermission")
     suspend fun fire(app: HellFireApp) = lock.withLock {
         val manager = notifications(app)

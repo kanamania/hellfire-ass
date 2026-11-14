@@ -19,13 +19,13 @@ import com.hellfire.ass.tasks.TaskTime
 import kotlinx.coroutines.*
 
 @Composable
-fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: () -> Unit) {
+fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: () -> Unit, initialSelected: String? = null) {
     val items by app.database.media().items().collectAsStateWithLifecycle(initialValue = emptyList())
     val scope = rememberCoroutineScope()
     var result by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var kind by remember { mutableStateOf("CALL_RECORDING") }
-    var selected by remember { mutableStateOf<String?>(null) }
+    var selected by remember { mutableStateOf(initialSelected) }
     var deletion by remember { mutableStateOf<MediaItem?>(null) }
     var exporting by remember { mutableStateOf<MediaItem?>(null) }
     var playback by remember { mutableStateOf<Job?>(null) }

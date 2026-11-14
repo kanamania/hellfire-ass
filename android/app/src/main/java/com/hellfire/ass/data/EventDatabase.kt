@@ -112,7 +112,15 @@ interface EventDao {
 
     @Query("DELETE FROM source_event")
     suspend fun deleteAll()
+
+    @Query("SELECT e.*, p.label AS label, COALESCE(p.state, 'PENDING') AS state FROM source_event e LEFT JOIN event_processing p ON p.eventId = e.id WHERE e.source IN (:sources) ORDER BY e.receivedAt DESC LIMIT :limit")
+    fun recentFrom(sources: List<String>, limit: Int): Flow<List<LabelledEvent>>
+
+    @Query("SELECT e.*, p.label AS label, COALESCE(p.state, 'PENDING') AS state FROM source_event e LEFT JOIN event_processing p ON p.eventId = e.id WHERE e.receivedAt >= :start AND e.receivedAt < :end")
+    suspend fun labelledPeriod(start: Long, end: Long): List<LabelledEvent>
 }
+
+data class LabelledEvent(@Embedded val event: SourceEvent, val label: String?, val state: String)
 
 @Database(entities = [SourceEvent::class, EventProcessing::class, CaptureAudit::class, NotificationPolicy::class, FinanceAccount::class, FinanceCandidate::class, LedgerEntry::class, LedgerEvidence::class, MerchantAlias::class, CommunicationMessage::class, MailCursor::class, OutboundDraft::class, ActionAudit::class, IntegrationState::class, AssistantTask::class, DailyReview::class, MediaItem::class, TranscriptSegment::class, SpeechSpan::class, MemoryItem::class, com.hellfire.ass.memory.SemanticVector::class], version = 9, exportSchema = true)
 abstract class EventDatabase : RoomDatabase() {

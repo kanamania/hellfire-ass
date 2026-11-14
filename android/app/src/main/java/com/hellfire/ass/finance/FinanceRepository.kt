@@ -70,6 +70,15 @@ class FinanceRepository(private val db: EventDatabase) {
         }
     }
 
+    /** Changes only the category label of a posted entry. Amounts, accounts and balances never change here; those need a reversal. */
+    suspend fun recategorize(id: String, category: String): Unit = db.withTransaction {
+        require(category.isNotBlank() && category.length <= 60)
+        val entry = requireNotNull(dao.entry(id))
+        require(entry.reversesId == null && entry.kind != "FEE") { "Only original payments can be recategorised" }
+        require(dao.setCategory(id, category) == 1)
+        db.communications().audit(com.hellfire.ass.communications.ActionAudit(UUID.randomUUID().toString(), id, "OWNER_LEDGER_RECATEGORIZE", category, System.currentTimeMillis()))
+    }
+
     suspend fun summary(start: Long, end: Long): FinanceSummary {
         require(start >= 0 && end > start)
         var income = 0L

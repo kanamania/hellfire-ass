@@ -132,6 +132,7 @@ fun HellFireRoot(app: HellFireApp, permissions: PermissionStatus, actions: Permi
         }
         val nav = remember { Nav(stack, tabState) }
         val env = AppEnv(app, permissions, actions)
+        LaunchedEffect(message) { if (message != null) { kotlinx.coroutines.delay(6000); onMessageShown() } }
         LaunchedEffect(deepLink) { if (deepLink != null) { nav.open(deepLink); onDeepLinkHandled() } }
         val route = stack.lastOrNull()
         BackHandler(enabled = route != null) { nav.pop() }

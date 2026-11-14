@@ -33,4 +33,8 @@ interface TaskDao {
     @Query("SELECT * FROM daily_review WHERE state='PENDING' ORDER BY day") fun reviews(): Flow<List<DailyReview>>
     @Query("SELECT EXISTS(SELECT 1 FROM daily_review WHERE day=:day)") suspend fun reviewedOrPrompted(day: String): Boolean
     @Query("UPDATE daily_review SET state='DONE', completedAt=:now WHERE day=:day") suspend fun completeReview(day: String, now: Long)
+    @Query("UPDATE assistant_task SET state='ACTIVE', nextAlertAt=:next, updatedAt=:now WHERE id=:id AND state='DONE'")
+    suspend fun reopen(id: String, next: Long, now: Long): Int
+    @Query("SELECT * FROM assistant_task") suspend fun all(): List<AssistantTask>
+    @Query("SELECT * FROM assistant_task WHERE id = :id") fun observe(id: String): Flow<AssistantTask?>
 }
