@@ -24,7 +24,7 @@
         android:theme="@style/Theme.HellFire"
         android:usesCleartextTraffic="false">
         <service android:name=".communications.MailIdleService" android:exported="false" android:foregroundServiceType="dataSync" />
-        <activity android:name=".MainActivity" android:exported="true">
+        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
