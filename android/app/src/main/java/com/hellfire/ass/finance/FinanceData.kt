@@ -66,5 +66,7 @@ interface FinanceDao {
     @Query("SELECT * FROM ledger_entry WHERE id IN (SELECT ledgerId FROM ledger_evidence WHERE sourceId = :sourceId)") suspend fun entriesFor(sourceId: String): List<LedgerEntry>
     @Query("SELECT * FROM finance_candidate ORDER BY occurredAt DESC") suspend fun allCandidates(): List<FinanceCandidate>
     @Query("UPDATE ledger_entry SET category = :category WHERE id = :id") suspend fun setCategory(id: String, category: String): Int
+    @Query("SELECT COALESCE(SUM(amount), 0) FROM ledger_entry WHERE accountId = :accountId AND occurredAt <= :at") suspend fun balanceAt(accountId: String, at: Long): Long
+    @Query("SELECT COUNT(*) FROM ledger_entry WHERE accountId = :accountId") suspend fun entryCount(accountId: String): Int
     @Query("SELECT * FROM ledger_entry WHERE id = :id") fun observeEntry(id: String): Flow<LedgerEntry?>
 }

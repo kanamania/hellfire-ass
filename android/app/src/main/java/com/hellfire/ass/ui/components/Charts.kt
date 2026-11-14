@@ -178,3 +178,49 @@ fun DotSummary(items: List<Pair<String, Color>>, modifier: Modifier = Modifier) 
         }
     }
 }
+
+/** Distinct colours for pie slices: the §8 category colours first, then other token colours. */
+@Composable
+fun sliceColors(): List<Color> = with(Hf.colors) { listOf(primary, seriesOrange, seriesBlue, seriesTeal, faint, success, warning, info, danger, primaryPressed) }
+
+/** Donut pie with a tappable legend showing value and share. Groups beyond [maxSlices] go into "Other". */
+@Composable
+fun PieChart(items: List<Pair<String, Long>>, format: (Long) -> String, modifier: Modifier = Modifier, maxSlices: Int = 6,
+    centerLabel: String? = null, onClick: ((String) -> Unit)? = null, description: String = "Pie chart") {
+    val sorted = items.filter { it.second > 0 }.sortedByDescending { it.second }
+    val slices = if (sorted.size > maxSlices) sorted.take(maxSlices - 1) + ("Other" to sorted.drop(maxSlices - 1).sumOf { it.second }) else sorted
+    val total = slices.sumOf { it.second }.coerceAtLeast(1)
+    val colors = sliceColors()
+    val track = Hf.colors.track
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Box(Modifier.size(132.dp).semantics { contentDescription = description }, contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize()) {
+                val stroke = 22.dp.toPx()
+                val box = Size(size.width - stroke, size.height - stroke)
+                val topLeft = Offset(stroke / 2, stroke / 2)
+                if (slices.isEmpty()) drawArc(track, 0f, 360f, false, topLeft, box, style = Stroke(stroke))
+                var start = -90f
+                slices.forEachIndexed { i, (_, v) ->
+                    val sweep = 360f * v / total
+                    drawArc(colors[i % colors.size], start, (sweep - 1.2f).coerceAtLeast(0.5f), false, topLeft, box, style = Stroke(stroke))
+                    start += sweep
+                }
+            }
+            if (centerLabel != null) Text(centerLabel, style = Hf.type.figure.copy(fontSize = 15.sp), color = Hf.colors.onSurface, textAlign = TextAlign.Center)
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (slices.isEmpty()) Text("Nothing in this range", style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+            slices.forEachIndexed { i, (name, v) ->
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 28.dp).then(if (onClick != null && name != "Other") Modifier.clip(RoundedCornerShape(6.dp)).clickableRow { onClick(name) } else Modifier),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(Modifier.size(10.dp).clip(RoundedCornerShape(3.dp)).background(colors[i % colors.size]))
+                    Text(name, Modifier.weight(1f), style = Hf.type.label, color = Hf.colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("${Math.round(v * 100.0 / total)}%", style = Hf.type.caption.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Normal), color = Hf.colors.muted)
+                    Text(format(v), Modifier.widthIn(min = 44.dp), style = Hf.type.label.copy(fontFeatureSettings = "tnum"), color = Hf.colors.onSurface, textAlign = TextAlign.End)
+                }
+            }
+        }
+    }
+}

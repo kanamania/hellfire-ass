@@ -51,7 +51,7 @@ object Fmt {
     }
     fun kind(code: String): String = when (code) {
         "EXPENSE" -> "Expense"; "INCOME" -> "Income"; "OWN_TRANSFER" -> "Transfer"; "REFUND" -> "Refund"; "FEE" -> "Fee"
-        "ADJUSTMENT" -> "Correction"; else -> code.lowercase().replaceFirstChar { it.uppercase() }
+        "ADJUSTMENT" -> "Correction"; "BALANCE" -> "Balance"; else -> code.lowercase().replaceFirstChar { it.uppercase() }
     }
     fun channel(code: String): String = when (code) {
         "EMAIL_IMAP" -> "Email"; "WHATSAPP_BUSINESS" -> "WhatsApp"; "WHATSAPP_WEB" -> "WhatsApp"; else -> code

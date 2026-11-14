@@ -45,7 +45,7 @@ fun RouteContent(route: Route) {
         Screen.Email -> EmailPage()
         Screen.WhatsApp -> WhatsAppPage()
         Screen.Memory -> MemoryPage(route.arg)
-        Screen.Accounts -> AccountsPage()
+        Screen.Accounts -> AccountsPage(focusAdd = route.arg == "add")
         Screen.Transaction -> TransactionPage(route.arg)
         Screen.Source -> SourcePage(route.arg)
         Screen.Task -> TaskPage(route.arg)

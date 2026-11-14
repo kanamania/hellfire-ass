@@ -50,6 +50,7 @@ fun ReportScaffold(
     group: Pair<String, List<String>>? = null, onGroup: (String) -> Unit = {},
     chart: (@Composable ColumnScope.() -> Unit)?,
     table: @Composable ColumnScope.() -> Unit,
+    calendar: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     val app = LocalEnv.current.app
     val prefs = remember { app.getSharedPreferences("reports", 0) }
@@ -65,11 +66,16 @@ fun ReportScaffold(
             if (filterSheet != null) HfChip("Filter", { sheet = "filter" }, style = ChipStyle.Add)
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (chart != null) SegmentedControl(listOf("Chart", "Table"), view, { view = it; prefs.edit().putString("view_$id", it).apply() }, compact = true)
+            if (chart != null) SegmentedControl(listOfNotNull("Chart", "Calendar".takeIf { calendar != null }, "Table"), view,
+                { view = it; prefs.edit().putString("view_$id", it).apply() }, compact = true)
             Spacer(Modifier.weight(1f))
             if (group != null && (view == "Table" || chart == null)) Dropdown("Group", group.first, group.second, { it }, onGroup)
         }
-        if (view == "Chart" && chart != null) chart() else table()
+        when {
+            view == "Chart" && chart != null -> chart()
+            view == "Calendar" && calendar != null -> calendar()
+            else -> table()
+        }
     }
     when (sheet) {
         "range" -> RangeSheet { sheet = "" }

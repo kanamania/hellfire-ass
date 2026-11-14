@@ -28,6 +28,7 @@ import com.hellfire.ass.finance.FinanceAccount
 import com.hellfire.ass.finance.FinanceCandidate
 import com.hellfire.ass.finance.LedgerEntry
 import com.hellfire.ass.finance.MerchantAlias
+import com.hellfire.ass.reports.spend
 import com.hellfire.ass.ui.*
 import com.hellfire.ass.ui.components.*
 import com.hellfire.ass.ui.theme.Hf
@@ -96,7 +97,17 @@ fun MoneyScreen() {
                 }
             }
             banner?.let { Banner(it, modifier = Modifier.clickableRow { banner = null }) }
-            BalanceCard(accounts, balances, totals) { nav.push(Screen.Accounts) }
+            BalanceCard(accounts, balances, totals, onOpen = { nav.push(Screen.Accounts) }, onAdd = { nav.push(Screen.Accounts, "add") })
+            val byCategory = remember(entries) { com.hellfire.ass.reports.posted(entries, accounts).groupBy { it.entry.category }
+                .mapValues { (_, v) -> v.sumOf(::spend) }.filterValues { it > 0 }.toList() }
+            if (byCategory.isNotEmpty()) ChartCard("Where it went", trailing = month.month.getDisplayName(java.time.format.TextStyle.SHORT, Locale.ENGLISH)) {
+                PieChart(byCategory, Fmt::compact, maxSlices = 5, centerLabel = Fmt.compact(byCategory.sumOf { it.second }),
+                    onClick = { nav.push(Screen.ReportCategory, it) }, description = "This month's spending by category")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HfChip("Calendar", { nav.push(Screen.ReportMoney, "calendar") })
+                    HfChip("Full report", { nav.push(Screen.ReportMoney) })
+                }
+            }
 
             if (reviews.isNotEmpty()) ActionCard(context = "Nightly review · 21:00 reminder", contextIcon = HfIcons.Alarm, contextTone = Tone.Warning,
                 actions = { PrimaryButton("I reviewed ${reviews.first().day}", { confirmReview = reviews.first().day }) }) {
@@ -169,7 +180,7 @@ private fun MonthChip(month: YearMonth, onPick: (YearMonth) -> Unit) {
 }
 
 @Composable
-private fun BalanceCard(accounts: List<FinanceAccount>, balances: Map<String, Long>, totals: com.hellfire.ass.finance.FinanceSummary?, onOpen: () -> Unit) {
+private fun BalanceCard(accounts: List<FinanceAccount>, balances: Map<String, Long>, totals: com.hellfire.ass.finance.FinanceSummary?, onOpen: () -> Unit, onAdd: () -> Unit) {
     val c = Hf.colors
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(c.surfaceDark).clickableRow(onOpen)
@@ -181,10 +192,15 @@ private fun BalanceCard(accounts: List<FinanceAccount>, balances: Map<String, Lo
             Text(if (accounts.isEmpty()) "—" else Fmt.amount(balances.values.sum()), style = Hf.type.bigFigure, color = c.onSurfaceDark)
         }
         if (accounts.isEmpty()) Text("Add your M-Pesa, bank and cash accounts to track balances.", style = Hf.type.rowSubtitle, color = c.mutedOnDark)
-        accounts.chunked(3).forEach { row ->
+        (accounts.map<FinanceAccount, FinanceAccount?> { it } + null).chunked(3).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { a ->
-                    Column(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(c.surfaceDarkInner).padding(horizontal = 12.dp, vertical = 10.dp)) {
+                    if (a == null) Column(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).border(1.dp, c.surfaceDarkInner, RoundedCornerShape(14.dp))
+                        .clickableRow(onAdd).padding(horizontal = 12.dp, vertical = 10.dp)) {
+                        Text("+ Add", style = Hf.type.caption.copy(fontWeight = FontWeight.SemiBold), color = c.onSurfaceDark)
+                        Text("account", style = Hf.type.rowTitle.copy(fontSize = 14.sp), color = c.mutedOnDark)
+                    }
+                    else Column(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(c.surfaceDarkInner).padding(horizontal = 12.dp, vertical = 10.dp)) {
                         Text(a.label, style = Hf.type.caption.copy(fontWeight = FontWeight.Normal), color = c.mutedOnDark, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(Fmt.amount(balances[a.id] ?: 0), style = Hf.type.rowTitle.copy(fontSize = 14.sp, fontFeatureSettings = "tnum"), color = c.onSurfaceDark, maxLines = 1)
                     }

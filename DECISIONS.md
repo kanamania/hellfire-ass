@@ -128,3 +128,23 @@ Decisions made where `HANDOFF.md` was unclear or a screen was marked *not drawn*
   - Wallets add a total.
 - **Add to home screen.** Settings › Home screen widgets can pin any widget through Android's `requestPinAppWidget`; Android asks for confirmation first.
 - **Merchant names (owner request).** Naming a merchant is a type-ahead field suggesting merchants already named; picking one also fills its usual category.
+
+## Owner requests after step 7 · Accounts, balances, calendar and charts
+
+- **Adding accounts is now visible.** A "+ Add account" tile sits in the Money balance card. Accounts opens with the add form first when you came to add, or when there are no accounts.
+- **Balances.**
+  - **How it is stored:** "Current balance (optional)" when adding an account, and "Set balance" on each account, become one confirmed **BALANCE ledger entry for the difference**. Balances stay ledger-derived, so nothing is overwritten.
+  - **Confirmation and evidence:** each needs an explicit confirmation dialog. The evidence is your own statement (captured as an owner entry, like a cash note), or the provider SMS when you pick the "Use the balance from SMS" suggestion and keep that figure.
+  - **Effect on totals:** BALANCE entries change account balances but **never count as income or spending** (Money totals, reports, Ask answers, calendar, widgets). They can be reversed from the Transaction page like any entry. "Opening balance" vs "Balance correction" is set by whether the account already had entries.
+  - **Past dates:** a balance "as of" a past time accounts for entries after that time. Audited as `OWNER_BALANCE_SET`.
+- **Calendar.** The Money report has Chart / Calendar / Table.
+  - Week: one row per day with a spending bar, spent and received.
+  - Month: a 7-column grid shaded by spending, with today outlined.
+  - Year: 12 month tiles.
+  - Each has ‹ › navigation and period totals. A day or month opens its payments (expenses and income, signed), with a category pie.
+  - Filters apply. Fees, own transfers and balance entries are left out of spent/received.
+- **Charts.**
+  - The Money report adds "Spending over time" (daily line graph), "Expenses by category" (pie, or bars via a switch) and "Spending by account" (pie).
+  - Pie slices beyond six go into "Other".
+  - Legend rows drill to that category's or account's payments.
+  - The Money tab shows a "Where it went" pie for the selected month, with Calendar and Full report shortcuts.

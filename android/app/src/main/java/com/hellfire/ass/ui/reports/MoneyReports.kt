@@ -90,7 +90,10 @@ fun MoneyReport(arg: String) {
     var group by remember { mutableStateOf(MoneyGroup.Category) }
     var sort by remember { mutableStateOf<Pair<Int, Boolean>?>(2 to false) }
     val app = LocalEnv.current.app
-    remember { if (arg == "table") app.getSharedPreferences("reports", 0).edit().putString("view_money", "Table").apply(); true }
+    remember { when (arg) {
+        "table" -> app.getSharedPreferences("reports", 0).edit().putString("view_money", "Table").apply()
+        "calendar" -> app.getSharedPreferences("reports", 0).edit().putString("view_money", "Calendar").apply()
+    }; true }
     val (entries, accounts) = ledger ?: (emptyList<LedgerEntry>() to emptyList())
     val all = remember(ledger) { posted(entries, accounts) }
     val current = all.filter { it.entry.occurredAt in range && filter.accepts(it) }
@@ -125,10 +128,26 @@ fun MoneyReport(arg: String) {
                     Series("Expenses", Hf.colors.seriesOrange, b.map { k -> current.filter { it.entry.occurredAt in k.start until k.end }.sumOf(::spend) })),
                     description = "Income and expenses for each period of ${range.label}")
             }
+            ChartCard("Spending over time") {
+                val days = buckets(DateRange(range.start, range.end, range.label)).let { if (range.days in 2..62) (0 until range.days.toInt()).map { i ->
+                    Bucket("", range.start + i * 86_400_000L, range.start + (i + 1) * 86_400_000L) } else it }
+                LineChart(days.map { k -> current.filter { it.entry.occurredAt in k.start until k.end }.sumOf(::spend) }, description = "Spending per day over ${range.label}")
+                Row { Text(Fmt.day(range.start), Modifier.weight(1f), style = Hf.type.caption, color = Hf.colors.muted); Text(Fmt.day(range.end - 1), style = Hf.type.caption, color = Hf.colors.muted) }
+            }
+            var catStyle by remember { mutableStateOf("Pie") }
             ChartCard("Expenses by category") {
                 val cats = expenseGroups(current, previous, MoneyGroup.Category, range)
+                SegmentedControl(listOf("Pie", "Bars"), catStyle, { catStyle = it }, compact = true)
                 if (cats.isEmpty()) Note("No confirmed expenses in this range.")
-                HorizontalBars(cats.take(8).map { it.key to it.amount }, Fmt::compact, onClick = { nav.push(Screen.ReportCategory, it) })
+                else if (catStyle == "Pie") PieChart(cats.map { it.key to it.amount }, Fmt::compact, centerLabel = Fmt.compact(cats.sumOf { it.amount }),
+                    onClick = { nav.push(Screen.ReportCategory, it) }, description = "Expenses by category")
+                else HorizontalBars(cats.take(8).map { it.key to it.amount }, Fmt::compact, onClick = { nav.push(Screen.ReportCategory, it) })
+            }
+            ChartCard("Spending by account") {
+                val byAccount = expenseGroups(current, previous, MoneyGroup.Account, range)
+                if (byAccount.isEmpty()) Note("No confirmed expenses in this range.")
+                else PieChart(byAccount.map { it.key to it.amount }, Fmt::compact, centerLabel = "${byAccount.size} acct",
+                    onClick = { label -> accounts.firstOrNull { it.label == label }?.let { nav.push(Screen.ReportCategory, "account:${it.id}") } }, description = "Spending by account")
             }
             Note("Only confirmed payments count. Own transfers are left out; tap a category to see its payments.")
         },
@@ -144,7 +163,7 @@ fun MoneyReport(arg: String) {
                 totals = spec.totals, sort = sort, onSort = { sort = it })
             TableFooter("Amounts in TZS · fees not included", "Swipe →")
             Note("Tap a column to sort. Group by category, account, provider, week or day.")
-        })
+        }, calendar = { MoneyCalendar(all.filter { filter.accepts(it) }) })
 }
 
 object TaskTimeFmt { fun iso(ms: Long) = com.hellfire.ass.tasks.TaskTime.display(ms) }
@@ -173,33 +192,57 @@ private fun MoneyFilterSheet(initial: MoneyFilter, accounts: List<FinanceAccount
     Note("$count transactions in the current view.")
 }
 
+/** Payments behind a drill-down: a category ("Food"), a day ("day:2026-11-14"), a month ("month:2026-11") or an account ("account:<id>"). */
 @Composable
-fun CategoryReport(category: String) {
+fun CategoryReport(arg: String) {
     val nav = LocalNav.current
     val range = ReportRange.range
     val ledger = rememberLedger()
     var shown by remember { mutableStateOf(20) }
     var sort by remember { mutableStateOf<Pair<Int, Boolean>?>(0 to false) }
     val (entries, accounts) = ledger ?: (emptyList<LedgerEntry>() to emptyList())
-    val items = posted(entries, accounts).filter { it.entry.occurredAt in range && it.entry.category == category && spend(it) != 0L }
-    val total = items.sumOf(::spend)
+    val all = posted(entries, accounts)
+    val dayFmt = java.time.format.DateTimeFormatter.ofPattern("EEE d MMM yyyy", java.util.Locale.ENGLISH)
+    val (title, crumb, items, spendingOnly) = when {
+        arg.startsWith("day:") -> java.time.LocalDate.parse(arg.removePrefix("day:")).let { d ->
+            val r = DateRange.of(d, d)
+            Quad(dayFmt.format(d), "Money › Calendar", all.filter { it.entry.occurredAt in r && it.kind in setOf("EXPENSE", "INCOME", "REFUND") }, false) }
+        arg.startsWith("month:") -> java.time.YearMonth.parse(arg.removePrefix("month:")).let { m ->
+            val r = DateRange.of(m.atDay(1), m.atEndOfMonth())
+            Quad(r.label, "Money › Calendar", all.filter { it.entry.occurredAt in r && it.kind in setOf("EXPENSE", "INCOME", "REFUND") }, false) }
+        arg.startsWith("account:") -> (accounts.firstOrNull { it.id == arg.removePrefix("account:") }?.label ?: "Account").let { label ->
+            Quad(label, "Money › Spending by account", all.filter { it.entry.occurredAt in range && it.accountLabel == label && spend(it) != 0L }, true) }
+        else -> Quad(arg, "Money › Expenses › $arg", all.filter { it.entry.occurredAt in range && it.entry.category == arg && spend(it) != 0L }, true)
+    }
+    fun value(p: Posted) = if (spendingOnly) spend(p) else p.entry.amount
+    fun shownValue(p: Posted) = if (spendingOnly) Fmt.amount(spend(p)) else Fmt.signed(p.entry.amount)
+    val spent = items.sumOf(::spend)
+    val received = items.filter { it.kind == "INCOME" }.sumOf { it.entry.amount }
     val payments = items.count { it.entry.reversesId == null }
     val paymentsLabel = if (payments == 1) "1 payment" else "$payments payments"
-    val spec = ExportSpec(category, "${range.label} · Money › Expenses › $category", listOf("Spent" to Fmt.amount(total), "Payments" to payments.toString()),
-        listOf("Date", "Description", "Account", "Amount"), items.map { listOf(Fmt.day(it.entry.occurredAt), it.entry.description, it.accountLabel, Fmt.amount(spend(it))) },
-        listOf("Total", paymentsLabel, "", Fmt.amount(total)), listOf("Date", "Account", "Description", "Amount", "Source IDs"),
-        items.map { listOf(TaskTimeFmt.iso(it.entry.occurredAt), it.accountLabel, it.entry.description, spend(it).toString(), it.entry.id) }, 4, items.map(::spend))
-    ReportScaffold("category", category, "Money › Expenses › $category",
-        listOf(ActiveFilter("Expenses") { nav.pop() }, ActiveFilter(category) { nav.pop() }), export = spec, chart = null, table = {
-            KpiGrid(listOf(Triple("Spent on ${category.lowercase()}", Fmt.amount(total), "TZS · $paymentsLabel"),
-                Triple("Average", if (payments > 0) Fmt.amount(total / payments) else "0", "TZS per payment")))
-            DataTable(listOf(TableColumn("Date"), TableColumn("Description", width = 150.dp), TableColumn("Account", width = 96.dp), TableColumn("Amount", true, 96.dp)),
-                items.take(shown).map { p -> TableRow(p.entry.id, listOf(Fmt.day(p.entry.occurredAt), p.entry.description, p.accountLabel, Fmt.amount(spend(p))),
-                    listOf(p.entry.occurredAt, p.entry.description, p.accountLabel, spend(p)), onClick = { nav.push(Screen.Transaction, p.entry.id) }) },
-                totals = listOf("Total", paymentsLabel, "", Fmt.amount(total)), sort = sort, onSort = { sort = it }, firstWidth = 84.dp)
-            TableFooter("Showing ${minOf(shown, items.size)} of ${items.size}", if (shown < items.size) "Load more" else null, if (shown < items.size) ({ shown += 20 }) else null)
-        })
+    val totalText = if (spendingOnly) Fmt.amount(spent) else Fmt.signed(received - spent)
+    val spec = ExportSpec(title, "${if (arg.contains(':') && !arg.startsWith("account:")) title else range.label} · $crumb",
+        listOf("Spent" to Fmt.amount(spent), "Received" to Fmt.amount(received), "Payments" to payments.toString()),
+        listOf("Date", "Description", "Account", "Amount"), items.map { listOf(Fmt.day(it.entry.occurredAt), it.entry.description, it.accountLabel, shownValue(it)) },
+        listOf("Total", paymentsLabel, "", totalText), listOf("Date", "Account", "Type", "Category", "Description", "Amount", "Source IDs"),
+        items.map { listOf(TaskTimeFmt.iso(it.entry.occurredAt), it.accountLabel, it.kind, it.entry.category, it.entry.description, it.entry.amount.toString(), it.entry.id) }, 6,
+        items.map { kotlin.math.abs(value(it)) })
+    val filters = if (arg.contains(':')) listOf(ActiveFilter(title) { nav.pop() }) else listOf(ActiveFilter("Expenses") { nav.pop() }, ActiveFilter(arg) { nav.pop() })
+    ReportScaffold("category", title, crumb, filters, export = spec, chart = null, table = {
+        KpiGrid(if (spendingOnly) listOf(Triple("Spent", Fmt.amount(spent), "TZS · $paymentsLabel"), Triple("Average", if (payments > 0) Fmt.amount(spent / payments) else "0", "TZS per payment"))
+            else listOf(Triple("Spent", Fmt.amount(spent), "TZS · $paymentsLabel"), Triple("Received", Fmt.amount(received), "TZS · net ${Fmt.signed(received - spent)}")))
+        if (!spendingOnly && items.isNotEmpty()) ChartCard("By category") {
+            PieChart(items.filter { spend(it) > 0 }.groupBy { it.entry.category }.map { (k, v) -> k to v.sumOf(::spend) }, Fmt::compact, description = "Spending by category")
+        }
+        DataTable(listOf(TableColumn("Date"), TableColumn("Description", width = 150.dp), TableColumn("Account", width = 96.dp), TableColumn("Amount", true, 96.dp)),
+            items.take(shown).map { p -> TableRow(p.entry.id, listOf(Fmt.day(p.entry.occurredAt), p.entry.description, p.accountLabel, shownValue(p)),
+                listOf(p.entry.occurredAt, p.entry.description, p.accountLabel, value(p)), onClick = { nav.push(Screen.Transaction, p.entry.id) }) },
+            totals = listOf("Total", paymentsLabel, "", totalText), sort = sort, onSort = { sort = it }, firstWidth = 84.dp)
+        TableFooter("Showing ${minOf(shown, items.size)} of ${items.size}", if (shown < items.size) "Load more" else null, if (shown < items.size) ({ shown += 20 }) else null)
+    })
 }
+
+private data class Quad(val title: String, val crumb: String, val items: List<Posted>, val spendingOnly: Boolean)
 
 @Composable
 fun AccountsReport() {

@@ -70,6 +70,28 @@ class FinanceRepository(private val db: EventDatabase) {
         }
     }
 
+    /**
+     * Records the owner's stated balance for an account at [at] as one BALANCE ledger entry for the difference.
+     * Evidence is [sourceId]: the owner's own statement, or the provider SMS that stated the balance.
+     * BALANCE entries move the account balance but never count as income or spending; they can be reversed like any entry.
+     */
+    suspend fun setBalance(accountId: String, target: Long, at: Long, sourceId: String): Long = db.withTransaction {
+        val account = requireNotNull(dao.account(accountId)) { "Unknown account" }
+        require(account.currency == "TZS" && at >= 0 && target in -1_000_000_000_000L..1_000_000_000_000L)
+        requireNotNull(db.events().find(sourceId)) { "Balance needs evidence" }
+        val delta = Math.subtractExact(target, dao.balanceAt(accountId, at))
+        if (delta == 0L) return@withTransaction 0L
+        Math.addExact(dao.balance(accountId), delta)
+        val opening = dao.entryCount(accountId) == 0
+        val now = System.currentTimeMillis()
+        val id = UUID.randomUUID().toString()
+        dao.post(LedgerEntry(id, accountId, "balance:$accountId:$at:$id", "BALANCE", delta, if (opening) "Opening balance" else "Balance correction",
+            "${if (opening) "Opening balance" else "Balance set"} · TZS ${String.format(java.util.Locale.ENGLISH, "%,d", target)}", at, now, id))
+        dao.evidence(LedgerEvidence(id, sourceId))
+        db.communications().audit(com.hellfire.ass.communications.ActionAudit(UUID.randomUUID().toString(), id, "OWNER_BALANCE_SET", "POSTED", now))
+        delta
+    }
+
     /** Changes only the category label of a posted entry. Amounts, accounts and balances never change here; those need a reversal. */
     suspend fun recategorize(id: String, category: String): Unit = db.withTransaction {
         require(category.isNotBlank() && category.length <= 60)
