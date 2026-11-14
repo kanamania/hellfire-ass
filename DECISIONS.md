@@ -60,3 +60,23 @@ Decisions made where `HANDOFF.md` was unclear or a screen was marked *not drawn*
 - **Monthly AI budget** opens the Cloud AI screen in a budget-only mode (cap, month spend, usage) instead of a separate copy of that logic.
 - **Restyled "not drawn" screens** keep their fields, wording and behaviour, grouped into cards: Cloud AI, On-device models, Recordings (import and analysis, conversation monitoring, originals, the 60-second microphone test), Encrypted backup and This device.
 - **Last backup time** is stored in preferences on successful export so Settings can show it.
+
+## Step 5 · Reports
+
+- **Shared range.** One app-wide date range (Today, last 7 days, this month, Custom via the Material date-range picker), set on the hub or from any report's dark date chip. "Week" means the last 7 days including today.
+- **Chart buckets:**
+  - 4 × 6 hours for one day.
+  - Daily up to 14 days.
+  - The mockup's four week-blocks (1–7, 8–14, 15–21, 22–end) for a calendar month.
+  - Otherwise 7-day blocks, at most about 12.
+- **Money figures.** Built from confirmed ledger entries only; candidates never appear. "Expenses" is expenses net of refunds and **excluding fees**; fees are their own KPI, and Net = income − expenses − fees (the mockup's figures add up this way). Own transfers are left out of income and expenses and shown in the Accounts footer. A reversal counts under the kind of the entry it reverses, as in `FinanceRepository.summary`. "vs previous" compares with the period of equal length just before.
+- **Money groups:** category, account, provider, week, day. The mockup also mentions merchant; posted entries don't store a merchant, so merchants are in Accounts › "Who you pay most", grouped by description, with "Name it" for unnamed Lipa namba numbers. Category rows drill to the category list → transaction → source; account rows drill to the statement.
+- **Accounts.** Opening = sum of entries before the range; in/out exclude fees; closing = opening + in − out − fees (unit-tested). Balance lines use one scale per account, as the mockup says. The statement shows a running balance.
+- **Capture "needs attention".** Failed and pending processing, plus **"not understood"**: a message the classifier marked as financial that produced no payment candidate and no ledger entry. That is the case the Fix-SMS mockup describes. Rows group by app or SMS sender (the sender is decrypted on the phone for the report only) and drill to the sender's events, then to Fix (for failed or unread) or the source record.
+- **Fix a captured message.** Shows a clearly labelled guess (direction words plus the first TSh amount). "Add as income/expense" creates a normal payment candidate in Money › To confirm, never a ledger entry. "Try again" re-queues processing for that one event.
+- **Tasks report.** Outcomes: on time, done late, done with time unknown, still overdue, not due yet, waiting for review. Until step 6 adds completion times, done tasks show "done, time unknown". Snooze counts come from the action audit.
+- **Messages report.** Received = incoming email and WhatsApp messages. "Sent by you" = drafts the channel accepted (submitted, confirmed, delivered or read), all owner-approved. The funnel is drafted → approved → sent → confirmed.
+- **Media length.** Taken from the saved length (step 6), else the last transcript timestamp, else "unknown".
+- **AI usage** reads the router's metadata audit until step 6 adds a longer per-request log.
+- **Export.** PDF via Android `PdfDocument` (title, scope, KPIs, a bar chart of the table's main figure, table and totals), CSV of the table, or CSV of every record, with an optional source-ID column. Saved only through the Android file picker; nothing is uploaded. CSV cells starting with `= + - @` (and not numbers) are prefixed with `'` so spreadsheets don't run them as formulas.
+- **Sheets scroll.** Bottom sheets now scroll; long sheets such as payment confirmation were cut off on a phone-sized screen.

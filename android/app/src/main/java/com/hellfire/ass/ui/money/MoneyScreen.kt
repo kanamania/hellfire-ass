@@ -136,7 +136,7 @@ fun MoneyScreen() {
         }
     }
     reviewing?.let { (c, focus) -> CandidateReviewSheet(c, accounts, aliases, focus, onDone = { msg -> reviewing = null; if (msg != null) banner = msg }) }
-    naming?.let { c -> MerchantSheet(c, aliases.firstOrNull { it.provider == c.provider && it.number == c.merchant }) { msg -> naming = null; if (msg != null) banner = msg } }
+    naming?.let { c -> MerchantSheet(c.provider, c.merchant.orEmpty(), aliases.firstOrNull { it.provider == c.provider && it.number == c.merchant }) { msg -> naming = null; if (msg != null) banner = msg } }
     if (cashOpen) CashSheet { msg -> cashOpen = false; if (msg != null) banner = msg }
     confirmReview?.let { day -> ConfirmDialog("Mark $day reviewed?", "This clears the nightly review reminder for that day. Payments still waiting stay in To confirm.",
         "Mark reviewed", onConfirm = {

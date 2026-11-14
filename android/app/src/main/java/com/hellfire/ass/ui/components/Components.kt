@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
@@ -451,7 +452,8 @@ fun HfBottomSheet(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> 
         scrimColor = Color(0x73111418),
         dragHandle = { Box(Modifier.padding(top = 10.dp).size(width = 40.dp, height = 4.dp).clip(CircleShape).background(Hf.colors.handle)) },
     ) {
-        Column(Modifier.fillMaxWidth().padding(start = ScreenPadding, end = ScreenPadding, top = 12.dp, bottom = 24.dp),
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding()
+            .padding(start = ScreenPadding, end = ScreenPadding, top = 12.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
     }
 }

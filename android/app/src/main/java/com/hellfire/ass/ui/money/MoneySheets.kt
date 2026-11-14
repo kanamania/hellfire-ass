@@ -98,24 +98,24 @@ fun CandidateReviewSheet(c: FinanceCandidate, accounts: List<FinanceAccount>, al
 
 /** Name a Lipa namba merchant. Saving is the owner's confirmation; it changes no ledger entry. */
 @Composable
-fun MerchantSheet(c: FinanceCandidate, alias: MerchantAlias?, onDone: (String?) -> Unit) {
+fun MerchantSheet(provider: String, number: String, alias: MerchantAlias?, onDone: (String?) -> Unit) {
     val app = LocalEnv.current.app
     val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf(alias?.name.orEmpty()) }
     var category by remember { mutableStateOf(alias?.category ?: "Other") }
     HfBottomSheet(onDismiss = { onDone(null) }) {
         Text("Name this merchant", style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
-        Text("Lipa namba ${c.merchant} · ${Fmt.provider(c.provider)}", style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+        Text("Lipa namba $number · ${Fmt.provider(provider)}", style = Hf.type.rowSubtitle, color = Hf.colors.muted)
         HfTextField(name, { name = it }, "Merchant name")
         GroupLabel("Usual category")
         ChipPicker(Categories, category) { category = it }
         Note("Future payments to this number use this name and category. You still confirm each payment.")
         PrimaryButton("Save name", {
             scope.launch {
-                withContext(Dispatchers.IO) { app.database.finances().merchant(MerchantAlias(c.provider, c.merchant!!, name.trim(), category, System.currentTimeMillis())) }
-                onDone("Saved ${name.trim()} for Lipa namba ${c.merchant}.")
+                withContext(Dispatchers.IO) { app.database.finances().merchant(MerchantAlias(provider, number, name.trim(), category, System.currentTimeMillis())) }
+                onDone("Saved ${name.trim()} for Lipa namba $number.")
             }
-        }, Modifier.fillMaxWidth(), enabled = name.isNotBlank() && c.merchant != null, height = 52.dp)
+        }, Modifier.fillMaxWidth(), enabled = name.isNotBlank(), height = 52.dp)
     }
 }
 

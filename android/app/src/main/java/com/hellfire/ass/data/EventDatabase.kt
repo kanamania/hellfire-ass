@@ -101,6 +101,9 @@ interface EventDao {
     @Query("UPDATE event_processing SET state = 'PENDING', error = NULL WHERE state = 'FAILED'")
     suspend fun retryFailed()
 
+    @Query("UPDATE event_processing SET state = 'PENDING', error = NULL WHERE eventId = :id")
+    suspend fun retry(id: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun setPolicy(policy: NotificationPolicy)
 

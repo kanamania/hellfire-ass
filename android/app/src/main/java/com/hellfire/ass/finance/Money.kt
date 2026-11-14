@@ -33,9 +33,13 @@ object FinanceParser {
     private val amount = Regex("(?i)\\b(?:TZS|TShs?|Tsh)\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)")
     private val reference = Regex("(?i)\\b(?:ref(?:erence)?|kumbukumbu|muamala(?:\\s+no)?)[ :#.-]+([A-Z0-9-]{5,40})\\b")
     private val merchant = Regex("(?i)\\b(?:lipa\\s+namba|merchant(?:\\s+id)?)[ :#-]*([0-9]{3,12})\\b")
-    fun parse(sender: String, text: String): ParsedFinance? {
+    /** Provider named in the sender or text, or null. */
+    fun provider(sender: String, text: String): String? {
         val lower = "$sender $text".lowercase(Locale.ROOT)
-        val provider = providers.entries.firstOrNull { (_, aliases) -> aliases.any(lower::contains) }?.key ?: return null
+        return providers.entries.firstOrNull { (_, aliases) -> aliases.any(lower::contains) }?.key
+    }
+    fun parse(sender: String, text: String): ParsedFinance? {
+        val provider = provider(sender, text) ?: return null
         if (Regex("(?i)\\b(failed|unsuccessful|declined|imeshindwa|haijafanikiwa|pending)\\b").containsMatchIn(text)) return null
         val kind = when {
             Regex("(?i)\\b(reversal|reversed|imebatilishwa|refund|returned|umerejeshewa)\\b").containsMatchIn(text) -> "REFUND"

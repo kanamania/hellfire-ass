@@ -50,6 +50,17 @@ fun RouteContent(route: Route) {
         Screen.Source -> SourcePage(route.arg)
         Screen.Task -> TaskPage(route.arg)
         Screen.Message -> MessagePage(route.arg)
+        Screen.Reports -> com.hellfire.ass.ui.reports.ReportsHub()
+        Screen.ReportMoney -> com.hellfire.ass.ui.reports.MoneyReport(route.arg)
+        Screen.ReportCategory -> com.hellfire.ass.ui.reports.CategoryReport(route.arg)
+        Screen.ReportAccounts -> com.hellfire.ass.ui.reports.AccountsReport()
+        Screen.ReportStatement -> com.hellfire.ass.ui.reports.StatementReport(route.arg)
+        Screen.ReportCapture -> com.hellfire.ass.ui.reports.CaptureReport(route.arg)
+        Screen.FixSms -> com.hellfire.ass.ui.reports.FixSmsPage(route.arg)
+        Screen.ReportTasks -> com.hellfire.ass.ui.reports.TasksReport()
+        Screen.ReportMessages -> com.hellfire.ass.ui.reports.MessagesReport()
+        Screen.ReportMedia -> com.hellfire.ass.ui.reports.MediaReport()
+        Screen.ReportAi -> com.hellfire.ass.ui.reports.AiReport()
         else -> PushedPage(route.screen.name) { Note("This screen is not available yet.") }
     }
 }
