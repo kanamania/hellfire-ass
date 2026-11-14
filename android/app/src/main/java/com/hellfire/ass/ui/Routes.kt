@@ -1,6 +1,5 @@
 package com.hellfire.ass.ui
 
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import com.hellfire.ass.ui.ask.AskTab
 import com.hellfire.ass.ui.ask.MemoryPage
@@ -30,47 +29,18 @@ fun RouteContent(route: Route) {
     val nav = LocalNav.current
     val a = env.actions
     when (route.screen) {
-        Screen.Setup -> PushedPage("Set up HellFire") {
-            LegacySetup(env.permissions, a.onRole, a.onSettings, a.onMicrophone, a.onSmsEnable, a.onSmsDisable)
-            PrimaryButton("Continue", { env.app.getSharedPreferences("ui", 0).edit().putBoolean("setup_done", true).apply(); nav.pop() })
+        Screen.Setup -> com.hellfire.ass.ui.settings.SetupScreen()
+        Screen.Settings -> com.hellfire.ass.ui.settings.SettingsHub()
+        Screen.Permissions -> com.hellfire.ass.ui.settings.PermissionsPage()
+        Screen.CloudAi -> PushedPage(if (route.arg == "budget") "Monthly AI budget" else "Cloud AI", breadcrumb = "Settings") { AiSettingsScreen(env.app, budgetOnly = route.arg == "budget") }
+        Screen.LocalModels -> PushedPage("On-device models", breadcrumb = "Settings") { SectionCard("Language model and offline reading") { LocalAiScreen(env.app) }; ModelExtractionSection() }
+        Screen.Recordings -> PushedPage("Recordings", breadcrumb = "Settings") {
+            MediaScreen(env.app, env.permissions, a.onMicrophone)
+            SectionCard("60-second microphone test") { MicTestSection(env.app, env.permissions, a.onMicrophone, a.onSettings) }
         }
-        Screen.Settings -> PushedPage("Settings") {
-            ListCard {
-                ListRow("Permissions and capture", icon = HfIcons.Lock, chevron = true, onClick = { nav.push(Screen.Permissions) })
-                ListDivider()
-                ListRow("Reminders", icon = HfIcons.Alarm, chevron = true, onClick = { nav.push(Screen.Reminders) })
-                ListDivider()
-                ListRow("Cloud AI", icon = HfIcons.Cloud, tone = Tone.Info, chevron = true, onClick = { nav.push(Screen.CloudAi) })
-                ListDivider()
-                ListRow("On-device models", icon = HfIcons.Chip, tone = Tone.Success, chevron = true, onClick = { nav.push(Screen.LocalModels) })
-                ListDivider()
-                ListRow("Email", icon = HfIcons.Mail, tone = Tone.Info, chevron = true, onClick = { nav.push(Screen.Email) })
-                ListDivider()
-                ListRow("WhatsApp", icon = HfIcons.Chat, tone = Tone.Success, chevron = true, onClick = { nav.push(Screen.WhatsApp) })
-                ListDivider()
-                ListRow("Memory and proposals", icon = HfIcons.Key, tone = Tone.Neutral, chevron = true, onClick = { nav.push(Screen.Memory) })
-                ListDivider()
-                ListRow("Recordings", icon = HfIcons.Waveform, tone = Tone.Neutral, chevron = true, onClick = { nav.push(Screen.Recordings) })
-                ListDivider()
-                ListRow("Encrypted backup", icon = HfIcons.Key, tone = Tone.Neutral, chevron = true, onClick = { nav.push(Screen.Backup) })
-                ListDivider()
-                ListRow("This device", icon = HfIcons.Phone, tone = Tone.Neutral, chevron = true, onClick = { nav.push(Screen.Device) })
-            }
-        }
-        Screen.Permissions -> PushedPage("Permissions and capture") {
-            LegacySetup(env.permissions, a.onRole, a.onSettings, a.onMicrophone, a.onSmsEnable, a.onSmsDisable)
-            HorizontalDivider()
-            LegacyCapture(env.app, env.permissions, a.onMicrophone, a.onSettings)
-        }
-        Screen.CloudAi -> PushedPage("Cloud AI") { AiSettingsScreen(env.app) }
-        Screen.LocalModels -> PushedPage("On-device models") { LocalAiScreen(env.app); ModelExtractionSection() }
-        Screen.Recordings -> PushedPage("Recordings") { MediaScreen(env.app, env.permissions, a.onMicrophone) }
         Screen.MediaItem -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, route.arg) }
-        Screen.Backup -> PushedPage("Encrypted backup") { BackupScreen(env.app) }
-        Screen.Device -> PushedPage("This device") {
-            LegacyDiagnostics(env.permissions)
-            SecondaryButton("Test the assistant session", a.onSession)
-        }
+        Screen.Backup -> PushedPage("Encrypted backup", breadcrumb = "Settings") { BackupScreen(env.app) }
+        Screen.Device -> com.hellfire.ass.ui.settings.DevicePage()
         Screen.Reminders -> RemindersPage()
         Screen.Email -> EmailPage()
         Screen.WhatsApp -> WhatsAppPage()

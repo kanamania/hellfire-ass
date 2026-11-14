@@ -44,3 +44,19 @@ Decisions made where `HANDOFF.md` was unclear or a screen was marked *not drawn*
 - **Ask.** One chat. "On this phone" uses the offline evidence engine (answers, sources and command proposals); choosing an AI task or model uses the existing router, which still enforces cloud consent, redaction, the budget cap and fallbacks. Chat history is kept in memory only. Spend answers gained an optional structured total and per-category breakdown, computed with the same confirmed-only rules as `FinanceRepository.summary`.
 - **Voice input** uses Android's speech recogniser intent with `EXTRA_PREFER_OFFLINE`. Whether it stays offline depends on the phone's recogniser; HellFire itself makes no network call.
 - **Home "Up next"** shows active tasks due before the end of tomorrow, plus the 21:00 nightly review when it is on. "Needs you" also lists unfinished nightly reviews.
+
+## Step 4 · Setup and Settings
+
+- **Setup rows map to real Android state:**
+  - Notifications = notification-listener access.
+  - SMS = owner-enabled capture and read permission.
+  - Microphone = record permission and notification posting (recording must show its notification).
+  - On-time reminders = exact-alarm access and notifications.
+  - Phone assistant = HellFire voice service selected.
+  - Run in background = battery-optimisation exemption. The ColorOS auto-launch caveat is in that row's detail.
+- **Leaving first-run Setup.** Back, Continue and Skip all mark it seen. Everything stays reachable in Settings › Permissions and capture, which reuses the same rows.
+- **Permissions and capture** also holds what was the Capture tab: listener and SMS status, processing queue, per-source audits, resume processing, SMS history sync, per-app processing switches, the synthetic test event and "Delete captured events" (still only possible with capture turned off).
+- **Settings groups** follow the mockup (Access, AI, Connected accounts, Your data), with extra rows for Reminders, Memory and proposals and Recordings, which have no other home. Subtitles are live: setup count, cloud state and provider count, imported models, this month's AI spend, mail and gateway state, memory count, originals count and last backup time.
+- **Monthly AI budget** opens the Cloud AI screen in a budget-only mode (cap, month spend, usage) instead of a separate copy of that logic.
+- **Restyled "not drawn" screens** keep their fields, wording and behaviour, grouped into cards: Cloud AI, On-device models, Recordings (import and analysis, conversation monitoring, originals, the 60-second microphone test), Encrypted backup and This device.
+- **Last backup time** is stored in preferences on successful export so Settings can show it.
