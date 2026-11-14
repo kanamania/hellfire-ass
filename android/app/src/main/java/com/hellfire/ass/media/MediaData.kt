@@ -8,7 +8,9 @@ import kotlinx.coroutines.flow.Flow
     foreignKeys = [ForeignKey(entity = SourceEvent::class, parentColumns = ["id"], childColumns = ["sourceId"], onDelete = ForeignKey.RESTRICT)])
 data class MediaItem(@PrimaryKey val id: String, val sourceId: String, val name: String, val mime: String,
     val kind: String, val contentHash: String, val size: Long, val importedAt: Long, val recordedAt: Long?,
-    val processedMs: Long = 0, val state: String = "RETAINED", val summary: String = "", val summaryState: String = "NONE", val error: String? = null)
+    val processedMs: Long = 0, val state: String = "RETAINED", val summary: String = "", val summaryState: String = "NONE", val error: String? = null,
+    /** Recording length saved at import (v10); null when unknown. */
+    val durationMs: Long? = null)
 
 @Entity(tableName = "transcript_segment", indices = [Index("mediaId"), Index("sourceId")], foreignKeys = [
     ForeignKey(entity = MediaItem::class, parentColumns = ["id"], childColumns = ["mediaId"], onDelete = ForeignKey.CASCADE),

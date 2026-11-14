@@ -3,6 +3,8 @@ package com.hellfire.ass.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
+import com.hellfire.ass.ui.components.*
+import com.hellfire.ass.ui.theme.Hf
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
@@ -37,7 +39,7 @@ internal fun AiState.modelChoices(): List<ModelRef> = listOf(OfflineProvider.ref
 }
 
 @Composable
-fun AiSettingsScreen(app: HellFireApp) {
+fun AiSettingsScreen(app: HellFireApp, budgetOnly: Boolean = false) {
     val scope = rememberCoroutineScope()
     var state by remember { mutableStateOf<AiState?>(null) }
     var message by remember { mutableStateOf("Loading encrypted settings…") }
@@ -67,80 +69,85 @@ fun AiSettingsScreen(app: HellFireApp) {
             message = "Cloud is off by default. Keys stay encrypted on this device."
         } catch (_: Exception) { message = AiError.STORAGE.message }
     }
-    Text("AI providers", style = MaterialTheme.typography.titleLarge)
-    Text(message, Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-    val current = state ?: return
-    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-        Checkbox(current.cloudEnabled, modifier = Modifier.semantics { contentDescription = "Allow cloud AI for submitted assistant text" }, enabled = !busy, onCheckedChange = { enabled ->
-            runOperation("Cloud ${if (enabled) "enabled for explicitly submitted text" else "disabled"}.") {
-                app.ai.store.update { it.copy(cloudEnabled = enabled) }
-            }
-        })
-        Text("Allow cloud AI for submitted assistant text")
-    }
-    Text("Captured notifications, SMS, finance, recordings and media stay local. Cloud requests redact security content, emails and long numbers. Review your text before submitting; names and other sensitive prose may remain.")
-    OutlinedTextField(cap, { cap = it }, label = { Text("Monthly estimated spending cap (USD)") },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true, modifier = Modifier.fillMaxWidth())
-    Button(enabled = !busy, onClick = { runOperation("Monthly cap saved.") {
-        val amount = microUsd(cap)
-        require(amount <= 1_000_000_000_000)
-        app.ai.store.update { it.copy(monthlyCap = amount) }
-    } }) { Text("Save spending cap") }
+    val current = state
+    if (current == null) { Text(message, Modifier.semantics { liveRegion = LiveRegionMode.Polite }); return }
     val month = app.ai.month()
     val monthly = current.usage.filterKeys { it.startsWith("$month/") }
-    Text("$month · estimated / reserved USD ${usd(monthly.values.sumOf { it.charged })} / ${usd(current.monthlyCap)}")
-    Text("Configure input/output prices per model before cloud generation. Estimates use your prices and conservative input reservations. Unknown usage, errors and cancellations retain the reservation. Provider billing and account limits remain authoritative.")
-    ProviderId.entries.filter { it != ProviderId.LOCAL }.forEach { id ->
-        val config = current.config(id)
-        Text("${id.label}: ${if (config.enabled) "enabled" else "disabled"} · ${if (config.apiKey.isBlank()) "key missing" else "key saved"} · ${config.status}")
+    Banner(message, Tone.Info, null, Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+    if (!budgetOnly) {
+        HfCard {
+            SwitchRow("Allow cloud AI", current.cloudEnabled, { enabled ->
+                runOperation("Cloud ${if (enabled) "enabled for text you submit in Ask" else "disabled"}.") { app.ai.store.update { it.copy(cloudEnabled = enabled) } }
+            }, subtitle = "Only for text you type in Ask with a cloud model chosen", enabled = !busy)
+        }
+        Note("Captured notifications, SMS, finance, recordings and media stay local. Cloud requests redact security content, emails and long numbers. Review your text before submitting; names and other sensitive prose may remain.")
     }
-    AiChoice("Configure provider", provider.label, ProviderId.entries.filter { it != ProviderId.LOCAL }.map { it to it.label }, enabled = !busy) { provider = it }
-    key(provider) {
-        ProviderEditor(provider, current.config(provider), busy,
-            onSave = { enabled, key, model, price, clear -> runOperation("Provider configuration saved.") {
-                require(model.length <= 200 && model.all { it.isLetterOrDigit() || it in "-._:/" })
-                require(key.length <= 4096 && key.none { it.isWhitespace() || it.isISOControl() })
-                app.ai.store.update { latest ->
-                    val old = latest.config(provider)
-                    val credential = if (clear) "" else key.ifBlank { old.apiKey }
-                    latest.copy(providers = latest.providers + (provider to old.copy(enabled = enabled, apiKey = credential,
-                        defaultModel = model, prices = if (price == null) old.prices - model else old.prices + (model to price),
-                        models = if (credential == old.apiKey) old.models else emptyList(),
-                        status = if (credential == old.apiKey) old.status else "Credentials changed; test connection")))
+    SectionCard("Monthly budget") {
+        Text("$month · USD ${usd(monthly.values.sumOf { it.charged })} of ${usd(current.monthlyCap)} estimated or reserved", style = Hf.type.body, color = Hf.colors.onSurface)
+        HfTextField(cap, { cap = it }, "Monthly estimated spending cap (USD)", number = true)
+        PrimaryButton("Save spending cap", { runOperation("Monthly cap saved.") {
+            val amount = microUsd(cap)
+            require(amount <= 1_000_000_000_000)
+            app.ai.store.update { it.copy(monthlyCap = amount) }
+        } }, Modifier.fillMaxWidth(), enabled = !busy)
+        Note("Set input and output prices per model before cloud use. Estimates use your prices and a cautious input reservation. Errors and cancellations keep the reservation. Your provider's bill is the real figure.")
+    }
+    if (!budgetOnly) {
+        SectionCard("Providers") {
+            ProviderId.entries.filter { it != ProviderId.LOCAL }.forEach { id ->
+                val config = current.config(id)
+                Text("${id.label}: ${if (config.enabled) "on" else "off"} · ${if (config.apiKey.isBlank()) "no key" else "key saved"} · ${config.status}", style = Hf.type.rowSubtitle, color = Hf.colors.bodySecondary)
+            }
+            AiChoice("Configure provider", provider.label, ProviderId.entries.filter { it != ProviderId.LOCAL }.map { it to it.label }, enabled = !busy) { provider = it }
+            key(provider) {
+                ProviderEditor(provider, current.config(provider), busy,
+                    onSave = { enabled, key, model, price, clear -> runOperation("Provider settings saved.") {
+                        require(model.length <= 200 && model.all { it.isLetterOrDigit() || it in "-._:/" })
+                        require(key.length <= 4096 && key.none { it.isWhitespace() || it.isISOControl() })
+                        app.ai.store.update { latest ->
+                            val old = latest.config(provider)
+                            val credential = if (clear) "" else key.ifBlank { old.apiKey }
+                            latest.copy(providers = latest.providers + (provider to old.copy(enabled = enabled, apiKey = credential,
+                                defaultModel = model, prices = if (price == null) old.prices - model else old.prices + (model to price),
+                                models = if (credential == old.apiKey) old.models else emptyList(),
+                                status = if (credential == old.apiKey) old.status else "Credentials changed; test connection")))
+                        }
+                    } },
+                    onTest = { runOperation("Model discovery passed. Select a model and set its prices; inference is tested by asking a question.") { app.ai.testConnection(provider) } })
+            }
+        }
+        SectionCard("Task routing") {
+            Note("The first entry is preferred; later entries are tried once in order when a provider is limited, down, unsupported, off or over budget. The offline test can be a fallback for basic chat only.")
+            AiChoice("Task", task.label, AiTask.entries.map { it to it.label }, enabled = !busy) { task = it }
+            val route = current.route(task)
+            val choices = current.modelChoices()
+            route.forEachIndexed { index, ref ->
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Text("${index + 1}. ${ref.label()}", Modifier.weight(1f), style = Hf.type.body, color = Hf.colors.onSurface)
+                    if (index > 0) QuietButton("Up", { runOperation("Route order saved.") {
+                        val updated = route.toMutableList().apply { add(index - 1, removeAt(index)) }
+                        app.ai.store.update { it.copy(routes = it.routes + (task to updated)) }
+                    } }, enabled = !busy)
+                    QuietButton("Remove", { runOperation("Route saved.") {
+                        app.ai.store.update { it.copy(routes = it.routes + (task to route.filterIndexed { i, _ -> i != index })) }
+                    } }, enabled = !busy)
                 }
-            } },
-            onTest = { runOperation("Model discovery passed. Select a model and configure its prices; inference is tested by submitting a question.") { app.ai.testConnection(provider) } })
-    }
-    HorizontalDivider()
-    Text("Task routing", style = MaterialTheme.typography.titleLarge)
-    Text("The first entry is preferred; following entries are tried once in order. Rate limits, quota, outages, unsupported features, disabled providers and spending limits advance to the next entry. Add the offline test as a fallback for basic chat. It cannot summarize, reason, draft or extract tasks.")
-    AiChoice("Task", task.label, AiTask.entries.map { it to it.label }, enabled = !busy) { task = it }
-    val route = current.route(task)
-    val choices = current.modelChoices()
-    route.forEachIndexed { index, ref ->
-        Text("${index + 1}. ${ref.label()}")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (index > 0) TextButton(enabled = !busy, onClick = { runOperation("Route order saved.") {
-                val updated = route.toMutableList().apply { add(index - 1, removeAt(index)) }
-                app.ai.store.update { it.copy(routes = it.routes + (task to updated)) }
-            } }) { Text("Move up") }
-            TextButton(enabled = !busy, onClick = { runOperation("Route saved.") {
-                app.ai.store.update { it.copy(routes = it.routes + (task to route.filterIndexed { i, _ -> i != index })) }
-            } }) { Text("Remove") }
+            }
+            if (!busy) AiChoice("Add to route", "Select provider / model", choices.filter { it !in route }.map { it to it.label() }) { ref ->
+                runOperation("Route saved.") { app.ai.store.update { it.copy(routes = it.routes + (task to (route + ref))) } }
+            }
         }
     }
-    if (!busy) AiChoice("Add to route", "Select provider / model", choices.filter { it !in route }.map { it to it.label() }) { ref ->
-        runOperation("Route saved.") { app.ai.store.update { it.copy(routes = it.routes + (task to (route + ref))) } }
+    SectionCard("Usage this month") {
+        if (monthly.isEmpty()) Text("No requests yet.", style = Hf.type.body, color = Hf.colors.muted)
+        monthly.forEach { (key, total) ->
+            Text("${key.substringAfter('/')} · ${total.requests} requests · ${total.input} in / ${total.output} out tokens · USD ${usd(total.charged)}", style = Hf.type.rowSubtitle, color = Hf.colors.bodySecondary)
+        }
+        current.audit.takeLast(10).reversed().forEach { a -> Text("${a.provider.label} / ${a.model} · ${a.result} · ${a.task.label} · ${a.requestId.take(8)}", style = Hf.type.rowSubtitle, color = Hf.colors.muted) }
+        Note("Records hold task, time, provider, model, result and usage only. Prompts, answers and keys are never stored. Full history is in Reports › AI usage.")
     }
-    HorizontalDivider()
-    Text("Usage and request audit", style = MaterialTheme.typography.titleLarge)
-    monthly.forEach { (key, total) ->
-        Text("${key.substringAfter('/')} · ${total.requests} requests · ${total.input} input / ${total.output} output tokens reported · USD ${usd(total.charged)} estimated/reserved")
-    }
-    Text("Last 100 attempt records contain task, time, provider, model, result and usage only. Prompts, answers and keys are excluded. No generated output executes an action.")
-    current.audit.takeLast(10).reversed().forEach { a -> Text("${a.provider.label} / ${a.model} · ${a.result} · ${a.task.label} · ${a.requestId.take(8)}") }
-    if (busy) OutlinedButton(onClick = { operation?.cancel() }) { Text("Cancel operation") }
-    Text("Authentication: official API keys only. No account/subscription sign-in or backend proxy exists in this checkout. The on-device provider is the existing deterministic test, not a loaded language model. Adapters expose text only; tools, images, structured output and streaming are unsupported.")
+    if (busy) SecondaryButton("Cancel operation", { operation?.cancel() })
+    if (!budgetOnly) Note("Official API keys only. No account sign-in or proxy exists. The on-device provider is the deterministic offline test, not a loaded language model. Only text is exchanged; tools, images and streaming are not supported.")
 }
 
 @Composable

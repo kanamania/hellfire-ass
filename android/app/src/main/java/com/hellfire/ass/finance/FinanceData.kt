@@ -57,4 +57,16 @@ interface FinanceDao {
     @Query("SELECT * FROM merchant_alias WHERE provider = :provider AND number = :number") suspend fun merchant(provider: String, number: String): MerchantAlias?
     @Query("SELECT sourceId FROM ledger_evidence WHERE ledgerId=:id") suspend fun sources(id: String): List<String>
     @Query("SELECT COUNT(*) FROM ledger_entry") suspend fun entryCount(): Int
+    @Query("SELECT * FROM merchant_alias ORDER BY name") fun aliases(): Flow<List<MerchantAlias>>
+    @Query("SELECT * FROM ledger_entry WHERE occurredAt >= :start AND occurredAt < :end ORDER BY occurredAt DESC") fun periodFlow(start: Long, end: Long): Flow<List<LedgerEntry>>
+    @Query("SELECT * FROM ledger_entry ORDER BY occurredAt") suspend fun allEntries(): List<LedgerEntry>
+    @Query("SELECT * FROM ledger_evidence") suspend fun allEvidence(): List<LedgerEvidence>
+    @Query("SELECT DISTINCT sourceId FROM ledger_evidence WHERE sourceId IN (:ids)") suspend fun evidenced(ids: List<String>): List<String>
+    @Query("SELECT * FROM finance_candidate WHERE sourceId = :sourceId") suspend fun candidatesFor(sourceId: String): List<FinanceCandidate>
+    @Query("SELECT * FROM ledger_entry WHERE id IN (SELECT ledgerId FROM ledger_evidence WHERE sourceId = :sourceId)") suspend fun entriesFor(sourceId: String): List<LedgerEntry>
+    @Query("SELECT * FROM finance_candidate ORDER BY occurredAt DESC") suspend fun allCandidates(): List<FinanceCandidate>
+    @Query("UPDATE ledger_entry SET category = :category WHERE id = :id") suspend fun setCategory(id: String, category: String): Int
+    @Query("SELECT COALESCE(SUM(amount), 0) FROM ledger_entry WHERE accountId = :accountId AND occurredAt <= :at") suspend fun balanceAt(accountId: String, at: Long): Long
+    @Query("SELECT COUNT(*) FROM ledger_entry WHERE accountId = :accountId") suspend fun entryCount(accountId: String): Int
+    @Query("SELECT * FROM ledger_entry WHERE id = :id") fun observeEntry(id: String): Flow<LedgerEntry?>
 }

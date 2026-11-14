@@ -18,7 +18,9 @@ class HellFireApp : Application() {
     val ai by lazy {
         val transport = HttpsAiTransport()
         AiRouter(EncryptedAiStore(this) { cipher }, listOf(OfflineProvider(), OpenAiProvider(transport),
-            ClaudeProvider(transport), GrokProvider(transport), DeepSeekProvider(transport)))
+            ClaudeProvider(transport), GrokProvider(transport), DeepSeekProvider(transport)), onRecord = { audit ->
+                captureScope.launch { runCatching { database.aiUsage().insert(audit.toUsage()) } }
+            })
     }
     val database by lazy { EventDatabase.open(this) }
     val secrets by lazy { com.hellfire.ass.security.SecretStore(this) { cipher } }
@@ -62,12 +64,36 @@ class HellFireApp : Application() {
                     CaptureWork.recover(this@HellFireApp)
                     com.hellfire.ass.tasks.TaskScheduler.restore(this@HellFireApp)
                     com.hellfire.ass.media.MediaWork.recover(this@HellFireApp)
+                    seedAiUsage()
+                    watchForWidgets()
                 } catch (_: Exception) { runCatching { database.events().failure("processing", "WORK_RECOVERY_FAILED") } }
             } catch (_: Exception) {
                 storageStatus.value = "UNAVAILABLE"
             } finally { storageLock.unlock() }
         }
     }
+
+    /** One-time copy of the router's metadata audit (last 100 attempts) into the v10 usage log. */
+    private suspend fun seedAiUsage() {
+        val prefs = getSharedPreferences("ui", 0)
+        if (prefs.getBoolean("ai_usage_seeded", false)) return
+        if (database.aiUsage().count() == 0) ai.store.read().audit.filter { it.result != "STARTED" }.forEach { database.aiUsage().insert(it.toUsage()) }
+        prefs.edit().putBoolean("ai_usage_seeded", true).apply()
+    }
+
+    private val refreshWidgets = Runnable { captureScope.launch { runCatching { com.hellfire.ass.widgets.Widgets.refresh(this@HellFireApp) } } }
+    private var watchingWidgets = false
+    /** Widgets update when the ledger, tasks, inbox, media or budgets change (§8 freshness), debounced to one refresh. */
+    private fun watchForWidgets() {
+        if (watchingWidgets) return
+        watchingWidgets = true
+        database.invalidationTracker.addObserver(object : androidx.room.InvalidationTracker.Observer(arrayOf("ledger_entry", "finance_candidate", "finance_account",
+            "assistant_task", "daily_review", "communication_message", "outbound_draft", "media_item", "category_budget", "provider_balance", "merchant_alias", "integration_state")) {
+            override fun onInvalidated(tables: Set<String>) { handler.removeCallbacks(refreshWidgets); handler.postDelayed(refreshWidgets, 1500) }
+        })
+        handler.post(refreshWidgets)
+    }
+    fun requestWidgetRefresh() { handler.removeCallbacks(refreshWidgets); handler.postDelayed(refreshWidgets, 300) }
 
     fun refreshSmsCapture() {
         smsObserver?.let(contentResolver::unregisterContentObserver)
@@ -90,3 +116,6 @@ class HellFireApp : Application() {
         }
     }
 }
+
+private fun AiAudit.toUsage() = com.hellfire.ass.data.AiUsage(requestId = requestId, at = at, task = task.label, provider = provider.label,
+    model = model, result = result, inputTokens = input, outputTokens = output, microUsd = estimatedMicroUsd)
