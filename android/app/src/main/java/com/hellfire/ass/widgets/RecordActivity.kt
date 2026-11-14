@@ -50,6 +50,10 @@ class RecordActivity : ComponentActivity() {
             Toast.makeText(this, "Recording stopped. Saved encrypted on this phone.", Toast.LENGTH_SHORT).show()
             finish(); return
         }
+        if (com.hellfire.ass.security.AppLock.enabled(this)) {
+            startActivity(Intent(this, MainActivity::class.java).setData(Uri.parse("hellfire://settings/recordings")))
+            finish(); return
+        }
         val ready = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED &&
             getSystemService(NotificationManager::class.java).areNotificationsEnabled()
         if (ready && RecordSession.valid()) { start(app, RecordSession.participants, RecordSession.place); finish(); return }

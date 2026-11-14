@@ -16,7 +16,11 @@ import java.util.zip.*
 
 class PortableBackup(private val app: HellFireApp) {
     private val prefix = "HFABACK2".toByteArray(Charsets.US_ASCII)
-    suspend fun export(uri: Uri, password: CharArray) = withContext(Dispatchers.IO) {
+    suspend fun export(uri: Uri, password: CharArray) {
+        export(password) { app.contentResolver.openOutputStream(uri, "wt") ?: error("Destination unavailable") }
+    }
+    suspend fun export(file: File, password: CharArray) { export(password) { file.outputStream() } }
+    private suspend fun export(password: CharArray, destination: () -> OutputStream) = withContext(Dispatchers.IO) {
         require(!com.hellfire.ass.audio.MicrophoneStatus.busy.value) { "Stop microphone recording first" }
         val salt = SecureRandom().generateSeed(16)
         val portable = try { BackupCrypto.derive(password, salt) } finally { password.fill('\u0000') }
@@ -47,18 +51,18 @@ class PortableBackup(private val app: HellFireApp) {
                     finally { runCatching { pipe.close() }; runCatching { output.close() } }
                 }
             }
-            app.contentResolver.openOutputStream(uri, "wt")!!.use { output ->
+            destination().use { output ->
                 output.write(prefix); output.write(salt)
                 encrypted.inputStream().use { copyBounded(it, output, 9L * 1024 * 1024 * 1024) }
             }
         } finally { encrypted.delete() }
     }
-    suspend fun restore(uri: Uri, password: CharArray) = withContext(Dispatchers.IO) {
-        require(!com.hellfire.ass.audio.MicrophoneStatus.busy.value)
-        require(!com.hellfire.ass.sms.SmsCaptureSettings.enabled(app)) { "Disable SMS capture before restore" }
-        require(!androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(app).contains(app.packageName)) { "Disable notification access before restore" }
-        require(app.secrets.read("mail") == null && app.secrets.read("gateway") == null) { "Disconnect integrations before restore" }
-        requireEmpty()
+    suspend fun restore(uri: Uri, password: CharArray) {
+        restore(password) { app.contentResolver.openInputStream(uri) ?: error("Backup unavailable") }
+    }
+    suspend fun restore(file: File, password: CharArray) { restore(password) { file.inputStream() } }
+    private suspend fun restore(password: CharArray, source: () -> InputStream) = withContext(Dispatchers.IO) {
+        checkRestoreAllowed()
         val stageId = "restore-${UUID.randomUUID()}"
         val folder = File(app.noBackupFilesDir, stageId).apply { mkdirs() }
         val encrypted = File(folder, "archive.hfm")
@@ -66,7 +70,7 @@ class PortableBackup(private val app: HellFireApp) {
         val moved = mutableListOf<String>()
         var committed = false
         try {
-            val portable = app.contentResolver.openInputStream(uri)!!.use { input ->
+            val portable = source().use { input ->
                 val header = ByteArray(24); DataInputStream(input).readFully(header)
                 require(header.copyOfRange(0, 8).contentEquals(prefix)) { "Unsupported backup format" }
                 val key = try { BackupCrypto.derive(password, header.copyOfRange(8, 24)) } finally { password.fill('\u0000') }
@@ -144,6 +148,13 @@ class PortableBackup(private val app: HellFireApp) {
             if (!committed) app.secrets.remove("restore-journal")
             folder.deleteRecursively()
         }
+    }
+    suspend fun checkRestoreAllowed() = withContext(Dispatchers.IO) {
+        require(!com.hellfire.ass.audio.MicrophoneStatus.busy.value)
+        require(!com.hellfire.ass.sms.SmsCaptureSettings.enabled(app)) { "Disable SMS capture before restore" }
+        require(!androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(app).contains(app.packageName)) { "Disable notification access before restore" }
+        require(app.secrets.read("mail") == null && app.secrets.read("gateway") == null) { "Disconnect integrations before restore" }
+        requireEmpty()
     }
     private suspend fun requireEmpty() {
         val db = app.database.openHelper.writableDatabase

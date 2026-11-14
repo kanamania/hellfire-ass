@@ -30,8 +30,35 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
     private var lastAnswer = assistant.answer("hello")
     private var voiceStatus: TextView? = null
     private var pending: OwnerCommand? = null
+    private var wasLocked = false
+
+    override fun onShow(args: Bundle?, showFlags: Int) {
+        super.onShow(args, showFlags)
+        if (com.hellfire.ass.security.AppLock.enabled(sessionContext)) {
+            queryJob?.cancel()
+            recognizer?.cancel()
+            speech?.stop()
+            pending = null
+            lastAnswer = assistant.answer("hello")
+            setContentView(lockedView())
+            wasLocked = true
+        } else if (wasLocked) {
+            wasLocked = false
+            setContentView(onCreateContentView())
+        }
+    }
+
+    private fun lockedView(): View = Button(sessionContext).apply {
+        text = "HellFire Ass is locked · open and unlock"
+        setOnClickListener {
+            sessionContext.startActivity(Intent(sessionContext, MainActivity::class.java)
+                .setAction(Intent.ACTION_ASSIST).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            hide()
+        }
+    }
 
     override fun onCreateContentView(): View {
+        if (com.hellfire.ass.security.AppLock.enabled(sessionContext)) return lockedView()
         val padding = (20 * sessionContext.resources.displayMetrics.density).toInt()
         val layout = LinearLayout(sessionContext).apply {
             orientation = LinearLayout.VERTICAL

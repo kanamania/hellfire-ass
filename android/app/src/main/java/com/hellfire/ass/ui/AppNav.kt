@@ -55,6 +55,7 @@ data class Route(val screen: Screen, val arg: String = "")
 data class PermissionActions(
     val onRole: () -> Unit, val onSettings: (String) -> Unit, val onMicrophone: () -> Unit, val onSession: () -> Unit,
     val onNotifications: () -> Unit, val onSmsEnable: () -> Unit, val onSmsDisable: () -> Unit,
+    val onAppLockChange: (Boolean) -> Unit,
 )
 
 class AppEnv(val app: HellFireApp, val permissions: PermissionStatus, val actions: PermissionActions)
@@ -90,7 +91,7 @@ class Nav(private val stack: SnapshotStateList<Route>, private val tabState: Mut
             "draft" -> tab(MainTab.Inbox, parts.firstOrNull()?.let { "draft:$it" })
             "message" -> { tab(MainTab.Inbox); parts.firstOrNull()?.let { push(Screen.Message, it) } }
             "note" -> { tab(MainTab.Ask); push(Screen.Memory, "new") }
-            "settings" -> { tab(MainTab.Home); push(Screen.Settings); if (parts.firstOrNull() == "permissions") push(Screen.Permissions) }
+            "settings" -> { tab(MainTab.Home); push(Screen.Settings); when (parts.firstOrNull()) { "permissions" -> push(Screen.Permissions); "recordings" -> push(Screen.Recordings) } }
             "report" -> { tab(MainTab.Home); push(Screen.Reports)
                 when (parts.firstOrNull()) {
                     "money" -> uri.getQueryParameter("category")?.let { push(Screen.ReportCategory, it) } ?: push(Screen.ReportMoney)

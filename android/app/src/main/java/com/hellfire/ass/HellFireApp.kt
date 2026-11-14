@@ -60,6 +60,10 @@ class HellFireApp : Application() {
                 database.openHelper.writableDatabase
                 if (!recoveredDrafts) { database.communications().recoverAfterProcessStart(); recoveredDrafts = true }
                 storageStatus.value = "READY"
+                runCatching {
+                    if (secrets.read(com.hellfire.ass.security.DriveBackupWork.CONFIG)?.optBoolean("enabled") == true)
+                        com.hellfire.ass.security.DriveBackupWork.schedule(this@HellFireApp)
+                }
                 try {
                     CaptureWork.recover(this@HellFireApp)
                     com.hellfire.ass.tasks.TaskScheduler.restore(this@HellFireApp)

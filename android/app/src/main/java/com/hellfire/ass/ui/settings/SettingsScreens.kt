@@ -118,7 +118,8 @@ fun SettingsHub() {
         gateway = runCatching { app.secrets.read("gateway")?.optString("transport", "meta") }.getOrNull()
     } }
     val steps = setupSteps(env.permissions, env.actions)
-    val lastBackup = app.getSharedPreferences("ui", 0).getLong("last_backup_at", 0)
+    val lastBackup = maxOf(app.getSharedPreferences("ui", 0).getLong("last_backup_at", 0),
+        app.getSharedPreferences(com.hellfire.ass.security.DriveBackupWork.CONFIG, 0).getLong("last-success", 0))
     PushedPage("Settings") {
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Hf.colors.surfaceDark).padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -130,6 +131,12 @@ fun SettingsHub() {
                 Text(if (ai?.cloudEnabled == true) "Everything is encrypted on this phone. Cloud AI is on for text you send from Ask."
                     else "Everything is encrypted on this phone. Nothing goes to the cloud unless you turn it on.", style = Hf.type.rowSubtitle, color = Hf.colors.mutedOnDark)
             }
+        }
+        SectionCard("Fingerprint app lock") {
+            Note(if (env.permissions.appLockEnabled) "Enabled · fingerprint or device screen lock is required when reopening HellFire Ass." else "Disabled · enable to protect the app when you leave it.")
+            Note("Enroll fingerprints in Android Settings. Background capture and scheduled backups continue while locked. Widget visibility is controlled separately in Home screen widgets.")
+            SecondaryButton(if (env.permissions.appLockEnabled) "Disable app lock…" else "Enable fingerprint app lock…",
+                { env.actions.onAppLockChange(!env.permissions.appLockEnabled) }, Modifier.fillMaxWidth())
         }
         Group("Access") {
             ListRow("Permissions and capture", subtitle = "${steps.count { it.on }} of ${steps.size} turned on", icon = HfIcons.Lock, chevron = true, onClick = { nav.push(Screen.Permissions) })

@@ -31,6 +31,15 @@ status. Attachment downloads, full-history import and Web-session sending are no
 part of this slice. The existing official Meta transport remains an alternative.
 Live pairing/account and physical Android tests remain NOT TESTED.
 
+**Owner device-security and recovery update — 2026-11-14:** Support fingerprint
+app login on physical devices through Android's biometric prompt, with device
+screen-lock fallback. Support opt-in daily, passphrase-encrypted Google Drive
+backups and an explicit restore flow for a replacement/empty installation. Daily
+execution is best effort under Android/ColorOS scheduling. Keep fingerprint/OEM
+behavior, Google authorization and real backup/restore round trips NOT TESTED
+until verified. This adds Google Drive backup as an owner-approved cloud destination;
+it does not authorize cloud AI or upload account credentials.
+
 ## 0. Requirements locked by the owner
 
 These are explicit decisions, not suggestions to reconsider:

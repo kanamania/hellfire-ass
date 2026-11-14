@@ -33,6 +33,7 @@ kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarg
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 
 dependencies {
+    implementation(libs.google.auth)
     implementation(libs.litertlm)
     implementation(libs.ocr)
     implementation(libs.image.labeling)

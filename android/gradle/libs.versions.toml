@@ -9,6 +9,7 @@ lifecycle = "2.9.4"
 glance = "1.1.1"
 
 [libraries]
+google-auth = { module = "com.google.android.gms:play-services-auth", version = "22.0.0" }
 litertlm = { module = "com.google.ai.edge.litertlm:litertlm-android", version = "0.12.0" }
 ocr = { module = "com.google.mlkit:text-recognition", version = "16.0.1" }
 image-labeling = { module = "com.google.mlkit:image-labeling", version = "17.0.9" }
