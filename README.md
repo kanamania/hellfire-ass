@@ -392,8 +392,8 @@ API contracts checked against official documentation on 2026-11-13:
 
 ## Fingerprint login and daily Google Drive recovery
 
-In **Setup**, enroll a fingerprint in Android Settings, set a device screen lock,
-and choose **Enable fingerprint app lock…**. Android authenticates both enabling
+In Android Settings, enroll a fingerprint in Android Settings, set a device screen lock,
+then open **HellFire Settings** and choose **Enable fingerprint app lock…**. Android authenticates both enabling
 and disabling the lock. The app locks after leaving the foreground and after
 activity/process recreation; authentication is never restored from saved state.
 Strong biometrics or the device PIN/pattern/password are accepted on API 30+;
@@ -415,7 +415,7 @@ certificate fingerprints. Devices need Google Play services and a Google account
 Google account policy or incomplete Cloud setup may block authorization; no live
 account has been connected by this implementation.
 
-In **Backup**, choose **Connect / reconnect Google Drive…**, select your Google
+In **Settings → Encrypted backup**, choose **Connect / reconnect Google Drive…**, select your Google
 account, and approve `drive.file` access. Enter a strong passphrase (12–1024
 characters), keep a separate copy, and choose **Enable daily encrypted backups**.
 The first upload is queued immediately; subsequent uploads use a persisted
@@ -439,7 +439,7 @@ To recover on a replacement phone or empty app installation:
 
 1. Install the matching HellFire Ass app/version with the registered signing identity.
 2. Leave notification/SMS capture off, disconnect mail/gateway accounts, and stop recording.
-3. Open **Backup**, connect the original Google account and choose **Find Google Drive backups to restore**.
+3. Open **Settings → Encrypted backup**, connect the original Google account and choose **Find Google Drive backups to restore**.
 4. Enter the archive's original passphrase, select a dated backup and confirm **Download and restore**.
 5. Regrant Android permissions, reconnect accounts, import models and re-enable app lock/daily backup as desired.
 

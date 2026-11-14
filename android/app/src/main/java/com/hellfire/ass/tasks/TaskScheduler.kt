@@ -63,7 +63,8 @@ object TaskScheduler {
         val now = System.currentTimeMillis()
         TaskExtractor.extract(text, sourceTime, outgoing)?.takeIf { TaskTime.reviewable(it.dueAt, now) }?.let { candidate ->
             app.database.tasks().insert(AssistantTask(com.hellfire.ass.events.NotificationNormalizer.sha256("task:$sourceId"), sourceId,
-                candidate.title, candidate.dueAt, party = candidate.party, evidence = candidate.evidence, createdAt = now, updatedAt = now))
+                candidate.title, candidate.dueAt, party = candidate.party, evidence = candidate.evidence, createdAt = now, updatedAt = now,
+                direction = directionFor(candidate.party)))
         }
     }
     suspend fun activate(app: HellFireApp, id: String, title: String, due: Long, party: String) = lock.withLock {
@@ -76,17 +77,51 @@ object TaskScheduler {
         notifications(app).cancel(id, 71)
         arm(app)
     }
+    /** The owner set this bill to repeat: next month's bill, scheduled from the same source evidence. Null for anything else. */
+    fun nextBill(task: AssistantTask, now: Long): AssistantTask? {
+        if (task.kind != "BILL" || !task.repeatMonthly || task.state != "ACTIVE") return null
+        val next = Instant.ofEpochMilli(task.dueAt).atZone(TaskTime.zone).plusMonths(1).toInstant().toEpochMilli()
+        return task.copy(id = com.hellfire.ass.events.NotificationNormalizer.sha256("bill:${task.id}:$next"), dueAt = next, state = "ACTIVE",
+            createdAt = now, updatedAt = now, nextAlertAt = TaskTime.firstAlert(next, now), lastAlertAt = null, alertCount = 0, completedAt = null)
+    }
+
+    /** Who a message commitment is owed by, from the extracted responsible party. */
+    fun directionFor(party: String) = when (party) { "OWNER" -> "I_OWE"; "OTHER" -> "OWED_TO_ME"; else -> "NONE" }
+
+    /** Owner-edited promise and bill details. Amounts are display only and never reach the ledger. */
+    suspend fun updateDetails(app: HellFireApp, id: String, direction: String, amount: Long?, kind: String, repeatMonthly: Boolean) = lock.withLock {
+        require(direction in setOf("I_OWE", "OWED_TO_ME", "NONE") && kind in setOf("TASK", "BILL") && (amount == null || amount > 0))
+        require(app.database.tasks().details(id, direction, amount, kind, repeatMonthly && kind == "BILL", System.currentTimeMillis()) == 1)
+    }
+
     suspend fun action(app: HellFireApp, id: String, action: String) = lock.withLock {
         val now = System.currentTimeMillis()
         app.database.withTransaction {
             when (action) {
-                "DONE", "REJECTED" -> app.database.tasks().close(id, action, now)
+                "DONE", "REJECTED" -> {
+                    val task = app.database.tasks().task(id)
+                    app.database.tasks().close(id, action, now)
+                    if (action == "DONE" && task != null) nextBill(task, now)?.let { next ->
+                        app.database.tasks().insert(next)
+                        app.database.communications().audit(ActionAudit(UUID.randomUUID().toString(), next.id, "OWNER_BILL_REPEAT", "ACTIVE", now))
+                    }
+                }
                 "SNOOZE" -> app.database.tasks().snooze(id, Math.addExact(now, 10 * 60_000), now)
                 else -> error("Unsupported task action")
             }
             app.database.communications().audit(ActionAudit(UUID.randomUUID().toString(), id, "OWNER_TASK_$action", action, now))
         }
         notifications(app).cancel(id, 71)
+        arm(app)
+    }
+    /** Undo of an owner's "done" tap: the task becomes active again with its original due time. */
+    suspend fun reopen(app: HellFireApp, id: String) = lock.withLock {
+        val now = System.currentTimeMillis()
+        app.database.withTransaction {
+            val task = requireNotNull(app.database.tasks().task(id))
+            require(app.database.tasks().reopen(id, TaskTime.nextAlert(task.dueAt, now), now) == 1)
+            app.database.communications().audit(ActionAudit(UUID.randomUUID().toString(), id, "OWNER_TASK_REOPEN", "ACTIVE", now))
+        }
         arm(app)
     }
     @SuppressLint("MissingPermission")
@@ -113,6 +148,7 @@ object TaskScheduler {
                 .setVisibility(Notification.VISIBILITY_PRIVATE).setContentIntent(open).build())
             app.database.tasks().review(DailyReview(day, createdAt = now))
         }
+        if (local.hour >= 21) app.requestWidgetRefresh()
         arm(app)
     }
 }

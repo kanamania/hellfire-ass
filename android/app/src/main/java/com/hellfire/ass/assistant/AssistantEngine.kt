@@ -10,7 +10,9 @@ import java.util.Locale
 
 /** Queries are read-only. Owner commands only return a proposal; untrusted source text never selects an executable action. */
 class AssistantEngine(private val app: HellFireApp, private val clock: Clock = Clock.systemUTC()) {
-    data class Answer(val text: String, val sources: List<String> = emptyList(), val command: OwnerCommand? = null)
+    /** [figure]/[breakdown] are optional structured parts of spend answers, computed from approved ledger entries only. */
+    data class Answer(val text: String, val sources: List<String> = emptyList(), val command: OwnerCommand? = null,
+        val figureLabel: String? = null, val figure: Long? = null, val breakdown: List<Pair<String, Long>> = emptyList())
     suspend fun answer(query: String): Answer = withContext(Dispatchers.IO) {
         require(query.length <= 2000)
         val lower = query.trim().lowercase(Locale.ROOT)
@@ -31,7 +33,10 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
             lower.contains(Regex("\\b(spend|spent|spending|expenses|income|earned|earn|matumizi|mapato)\\b")) -> {
                 val range = QueryDates.range(lower, clock.instant())
                 val totals = app.finances.summary(range.first, range.second)
-                Answer("${rangeLabel(range)} · approved ledger\nIncome ${Money.display(totals.income)}\nNet expenses including fees/refunds ${Money.display(totals.expenses)}\nOwn transfers excluded. Missing/unapproved expenses are not included.", totals.sourceIds)
+                val income = Regex("\\b(income|earned|earn|mapato)\\b").containsMatchIn(lower)
+                Answer("${rangeLabel(range)} · approved ledger\nIncome ${Money.display(totals.income)}\nNet expenses including fees/refunds ${Money.display(totals.expenses)}\nOwn transfers excluded. Missing/unapproved expenses are not included.", totals.sourceIds,
+                    figureLabel = (if (income) "Income · " else "Spent · ") + shortRange(range), figure = if (income) totals.income else totals.expenses,
+                    breakdown = if (income) emptyList() else expenseBreakdown(range))
             }
             lower.contains(Regex("\\b(tasks|commitments|appointments|ahadi)\\b")) -> {
                 val range = QueryDates.range(lower, clock.instant())
@@ -112,6 +117,21 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
             (if (tasks.isEmpty()) "No active due/overdue commitments in this briefing window." else tasks.take(30).joinToString("\n") { "${TaskTime.display(it.dueAt)} · ${it.party} · ${it.title}" }) +
             "\nOnly saved, owner-approved ledger/tasks are included. Check unlogged cash, bills, unconfirmed dates and important replies.",
             (finance.sourceIds + tasks.map { it.sourceId }).distinct())
+    }
+    /** Net expenses per category; reversals count under the kind of the entry they reverse, as in FinanceRepository.summary. */
+    private suspend fun expenseBreakdown(range: Pair<Long, Long>): List<Pair<String, Long>> {
+        val dao = app.database.finances()
+        val totals = linkedMapOf<String, Long>()
+        for (entry in dao.period(range.first, range.second)) {
+            val kind = entry.reversesId?.let { dao.entry(it) }?.kind ?: entry.kind
+            if (kind in setOf("EXPENSE", "FEE", "REFUND")) totals[entry.category] = Math.subtractExact(totals[entry.category] ?: 0, entry.amount)
+        }
+        return totals.entries.filter { it.value > 0 }.sortedByDescending { it.value }.map { it.key to it.value }
+    }
+    private fun shortRange(range: Pair<Long, Long>): String {
+        val f = java.time.format.DateTimeFormatter.ofPattern("EEE d MMM", Locale.ENGLISH)
+        val a = Instant.ofEpochMilli(range.first).atZone(TaskTime.zone); val b = Instant.ofEpochMilli(range.second - 1).atZone(TaskTime.zone)
+        return if (a.toLocalDate() == b.toLocalDate()) f.format(a) else "${f.format(a)} – ${f.format(b)}"
     }
     private fun rangeLabel(range: Pair<Long, Long>) = "${TaskTime.display(range.first)} to ${TaskTime.display(range.second)} EAT (end exclusive)"
 }

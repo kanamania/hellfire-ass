@@ -192,6 +192,24 @@ cancel. Verify response provider/model survives activity recreation. Saving keys
 must not expose them in logs, saved-instance state or backup/transfer. Test model
 listing separately from generation permissions. Do not use personal histories.
 
+## UI redesign checkpoint — 2026-11-14
+
+Branch `feat/ui-redesign` (not merged). Redesign per the UI handoff: new theme, five-tab navigation, redesigned tabs, settings,
+reports, Room v10/v11 and Glance home screen widgets. Evidence below is host tests and the Android emulator only
+(Pixel 6 profile, API 34). **No physical OPPO/ColorOS device was connected; nothing here is a device result.**
+
+| Question | Test | Result | Evidence | Next action |
+|---|---|---|---|---|
+| Does the app build and pass the host suite? | `./gradlew assembleDebug :app:testDebugUnitTest :app:lintDebug` | PASS (host) | 188 tests, 184 passed, 4 opt-in live AI tests skipped, 0 failures; lint 0 errors (warnings only) | — |
+| Do Room migrations 9→10→11 keep data with no destructive fallback? | `SchemaV10Test`, `WidgetDataTest`, `DatabaseMigrationTest`; emulator upgrade over existing encrypted v9 data | PASS (host + emulator) | Rows kept; completion times backfilled from owner done-audits; promise direction backfilled for message-extracted tasks; SQLCipher DB opened and migrated in place on the emulator | Install over the owner's real database on the OPPO before relying on it |
+| Do older encrypted backups still restore? | `SchemaV10Test`, `WidgetDataTest` | PASS (host) | Schema 8 and 10 rows restore into v11 with defaults; unknown or missing core columns still refused | Run a real export → restore on a spare install |
+| Do confirm-before-act rules still hold? | Emulator walkthrough | PASS (emulator) | SMS candidates post only after the review sheet's Confirm; drafts send only after "Approve and send" confirmation; task proposals need Add task; balances need Confirm balance; widgets only open the app (promise checkbox marks done, as specified) | — |
+| Do reports compute from confirmed entries only, and export? | `ReportDataTest`, `BalanceAndCalendarTest`, emulator | PASS (host + emulator) | Totals, groups, account reconciliation, running balance, calendar totals; PDF exported through the file picker and read back | Compare report totals with real statements |
+| Do home screen widgets render, refresh and protect privacy? | Emulator (Pixel launcher) | PARTIAL (emulator) | 13 widgets listed with previews; pinned and rendered; amounts masked by default; a new SMS refreshed Wallets and Nightly review without a timer; widget record → consent → visible notification → stop → "Saved, transcript queued" | ColorOS launcher, resize to large, lock-screen/after-reboot behaviour |
+| Widget recording on OPPO/ColorOS | — | NOT TESTED | No device | See REDESIGN_SUMMARY.md checklist |
+| Assistant gesture opens Ask | — | NOT TESTED | Intent routing implemented (`ACTION_ASSIST` → Ask) | Test the ColorOS gesture and power-button assistant |
+| Background capture overnight with the new UI | — | NOT TESTED | Unchanged services; Setup row shows battery exemption and ColorOS caveat | Overnight test with battery optimisation off and auto-launch on |
+
 ## Final-stage device verification
 
 Run these when physical testing begins, from the checkout root. Do not assume the

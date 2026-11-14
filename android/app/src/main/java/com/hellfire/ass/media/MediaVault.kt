@@ -29,9 +29,15 @@ class MediaVault(private val app: HellFireApp) {
             if (it.moveToFirst()) name = it.getString(0).orEmpty().take(200)
         }
         val mime = app.contentResolver.getType(uri) ?: "application/octet-stream"
-        app.contentResolver.openInputStream(uri)!!.use { importStream(it, name, mime, kind, uri.toString()) }
+        val duration = if (mime.startsWith("audio/") || mime.startsWith("video/")) runCatching {
+            android.media.MediaMetadataRetriever().run {
+                try { setDataSource(app, uri); extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()?.takeIf { it > 0 } }
+                finally { release() }
+            }
+        }.getOrNull() else null
+        app.contentResolver.openInputStream(uri)!!.use { importStream(it, name, mime, kind, uri.toString(), duration) }
     }
-    suspend fun importStream(input: InputStream, name: String, mime: String, kind: String, origin: String = ""): MediaItem = lock.withLock {
+    suspend fun importStream(input: InputStream, name: String, mime: String, kind: String, origin: String = "", durationMs: Long? = null): MediaItem = lock.withLock {
         val id = UUID.randomUUID().toString()
         val temporary = File(directory, "$id.importing")
         val digest = MessageDigest.getInstance("SHA-256")
@@ -41,10 +47,10 @@ class MediaVault(private val app: HellFireApp) {
             val hash = digest.digest().joinToString("") { "%02x".format(it) }
             app.database.media().hash(hash)?.let { temporary.delete(); return@withLock it }
             java.nio.file.Files.move(temporary.toPath(), file(id).toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-            register(id, name, mime, kind, hash, written.size, null, false, origin)
+            register(id, name, mime, kind, hash, written.size, null, false, origin, durationMs)
         } catch (error: Exception) { temporary.delete(); throw error }
     }
-    suspend fun registerRecording(id: String, start: Long?, interrupted: Boolean, spans: List<Pair<Long, Long>>): MediaItem = lock.withLock {
+    suspend fun registerRecording(id: String, start: Long?, interrupted: Boolean, spans: List<Pair<Long, Long>>, durationMs: Long? = null): MediaItem = lock.withLock {
         val path = file(id)
         val hash = MessageDigest.getInstance("SHA-256")
         var size = 0L
@@ -58,12 +64,12 @@ class MediaVault(private val app: HellFireApp) {
         val digest = hash.digest().joinToString("") { "%02x".format(it) }
         app.database.media().hash(digest)?.let { if (it.id != id) path.delete(); return@withLock it }
         val item = register(id, if (interrupted) "Interrupted conversation recording" else "Conversation recording",
-            "audio/aac", "IN_PERSON_AUDIO", digest, size, start, interrupted, "")
+            "audio/aac", "IN_PERSON_AUDIO", digest, size, start, interrupted, "", durationMs)
         spans.forEachIndexed { index, span -> app.database.media().span(SpeechSpan("$id:vad:$index", id, span.first, span.second)) }
         item
     }
     private suspend fun register(id: String, name: String, mime: String, kind: String, hash: String,
-        size: Long, recordedAt: Long?, interrupted: Boolean, origin: String): MediaItem = app.database.withTransaction {
+        size: Long, recordedAt: Long?, interrupted: Boolean, origin: String, durationMs: Long? = null): MediaItem = app.database.withTransaction {
         val now = System.currentTimeMillis()
         val source = when (kind) { "CALL_RECORDING" -> "call_recording_import"; "IN_PERSON_AUDIO" -> "in_person_audio"; else -> "media_import" }
         val snapshot = NotificationSnapshot("media:$hash", "owner.media", recordedAt ?: now, now, source = source,
@@ -72,7 +78,7 @@ class MediaVault(private val app: HellFireApp) {
         val safe = NotificationNormalizer.normalize(snapshot, app.packageName)!!
         app.events.capture(snapshot, app.packageName)
         val item = MediaItem(id, safe.id, name, mime, kind, hash, size, now, recordedAt,
-            state = if (interrupted) "INTERRUPTED_RETAINED" else "RETAINED")
+            state = if (interrupted) "INTERRUPTED_RETAINED" else "RETAINED", durationMs = durationMs)
         app.database.media().insert(item)
         item
     }

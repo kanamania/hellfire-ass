@@ -26,7 +26,7 @@
         android:theme="@style/Theme.HellFire"
         android:usesCleartextTraffic="false">
         <service android:name=".communications.MailIdleService" android:exported="false" android:foregroundServiceType="dataSync" />
-        <activity android:name=".MainActivity" android:exported="true">
+        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -67,5 +67,59 @@
         </receiver>
         <service android:name=".audio.MicrophoneService" android:exported="false"
             android:foregroundServiceType="microphone" />
+        <activity android:name=".widgets.RecordActivity" android:exported="false" android:excludeFromRecents="true"
+            android:taskAffinity="" android:noHistory="true" android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+        <receiver android:name=".widgets.BriefingReceiver" android:exported="false" android:label="@string/widget_briefing_label">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_briefing" />
+        </receiver>
+        <receiver android:name=".widgets.CaptureHealthReceiver" android:exported="false" android:label="@string/widget_capture_label">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_capture" />
+        </receiver>
+        <receiver android:name=".widgets.AskShortcutReceiver" android:exported="false" android:label="@string/widget_ask_shortcut_label">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_ask_shortcut" />
+        </receiver>
+        <receiver android:name=".widgets.CashShortcutReceiver" android:exported="false" android:label="@string/widget_cash_shortcut_label">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_cash_shortcut" />
+        </receiver>
+        <receiver android:name=".widgets.NoteShortcutReceiver" android:exported="false" android:label="@string/widget_note_shortcut_label">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_note_shortcut" />
+        </receiver>
+        <receiver android:name=".widgets.MoneyTodayReceiver" android:exported="false" android:label="@string/widget_money_label">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_money" />
+        </receiver>
+        <receiver android:name=".widgets.PromisesReceiver" android:exported="false" android:label="@string/widget_promises_label">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_promises" />
+        </receiver>
+        <receiver android:name=".widgets.AskReceiver" android:exported="false" android:label="@string/widget_ask_label">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_ask" />
+        </receiver>
+        <receiver android:name=".widgets.RecordReceiver" android:exported="false" android:label="@string/widget_record_label">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_record" />
+        </receiver>
+        <receiver android:name=".widgets.WalletsReceiver" android:exported="false" android:label="@string/widget_wallets_label">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_wallets" />
+        </receiver>
+        <receiver android:name=".widgets.RepliesReceiver" android:exported="false" android:label="@string/widget_replies_label">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_replies" />
+        </receiver>
+        <receiver android:name=".widgets.ReviewReceiver" android:exported="false" android:label="@string/widget_review_label">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_review" />
+        </receiver>
+        <receiver android:name=".widgets.BudgetReceiver" android:exported="false" android:label="@string/widget_budget_label">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_budget" />
+        </receiver>
     </application>
 </manifest>

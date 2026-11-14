@@ -1,15 +1,6 @@
 package com.hellfire.ass
 
 import android.Manifest
-import android.app.AlarmManager
-import android.app.NotificationManager
-import android.app.role.RoleManager
-import android.content.ComponentName
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
-import android.os.Build
-import android.os.Bundle
 import android.os.CancellationSignal
 import android.hardware.biometrics.BiometricPrompt
 import android.hardware.biometrics.BiometricManager.Authenticators
@@ -22,17 +13,29 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import android.app.AlarmManager
+import android.app.NotificationManager
+import android.app.role.RoleManager
+import android.content.ComponentName
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import android.service.voice.VoiceInteractionService
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import com.hellfire.ass.assistant.HellFireVoiceService
 import com.hellfire.ass.notifications.HellFireNotificationListener
-import com.hellfire.ass.ui.HellFireScreen
+import com.hellfire.ass.ui.HellFireRoot
+import com.hellfire.ass.ui.MainTab
+import com.hellfire.ass.ui.PermissionActions
 import com.hellfire.ass.sms.SmsCaptureSettings
 import com.hellfire.ass.sms.SmsSyncWorker
 import androidx.work.WorkManager
@@ -46,6 +49,7 @@ class MainActivity : ComponentActivity() {
     private var lockMessage by mutableStateOf("")
     private var permissions by mutableStateOf(PermissionStatus())
     private var message by mutableStateOf<String?>(null)
+    private var deepLink by mutableStateOf<Uri?>(null)
     private val requestPermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         refreshStatus()
         message = "Permission status refreshed. Tap Start recording when ready."
@@ -67,65 +71,80 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         lockEnabled = AppLock.enabled(this)
         locked = lockSession.requiresUnlock(lockEnabled)
+        deepLink = linkFor(intent)
         setContent {
             val privateUi = rememberSaveableStateHolder()
-            Box(Modifier.fillMaxSize()) {
-                // Restores document/account result registrations after unlocking.
-                if (!locked) privateUi.SaveableStateProvider("private-ui") {
-                    HellFireScreen(
-                        app = application as HellFireApp,
-                        permissions = permissions,
-                        appLockEnabled = lockEnabled,
-                        onAppLockChange = { authenticate(it) },
-                        initialTab = if (intent.data?.host == "tasks") "Tasks" else if (intent.action == Intent.ACTION_ASSIST) "Assistant" else "Setup",
-                        message = message,
-                        onRole = ::selectAssistant,
-                        onSettings = ::openSettings,
-                        onMicrophonePermission = {
-                            val needed = mutableListOf(Manifest.permission.RECORD_AUDIO)
-                            if (Build.VERSION.SDK_INT >= 33) needed += Manifest.permission.POST_NOTIFICATIONS
-                            requestPermissions.launch(needed.toTypedArray())
-                        },
-                        onNotifications = {
-                            if (Build.VERSION.SDK_INT >= 33) requestPermissions.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
-                            else openSettings(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                        },
-                        onSmsEnable = {
-                            requestSms.launch(arrayOf(Manifest.permission.READ_SMS, Manifest.permission.RECEIVE_SMS))
-                        },
-                        onSmsDisable = {
-                            val saved = SmsCaptureSettings.setEnabled(this, false)
-                            WorkManager.getInstance(this).cancelUniqueWork(SmsSyncWorker.WORK_NAME)
-                            (application as HellFireApp).refreshSmsCapture()
-                            refreshStatus()
-                            message = if (saved) "SMS capture disabled. Previously captured events are retained."
-                                else "SMS capture stopped for this session, but the preference could not be saved. Revoke SMS permission in app settings before restarting."
-                        },
-                        onSession = {
-                            if (permissions.voiceServiceActive) {
-                                try { startLocalVoiceInteraction(Bundle()) }
-                                catch (_: Exception) { message = "Assistant session unavailable. Try the system assistant gesture and record the device result." }
-                            } else message = "Select HellFire Ass as the digital assistant, then try again."
-                        },
-                    )
-                }
-                if (locked) {
-                    MaterialTheme {
-                        Surface(Modifier.fillMaxSize()) {
-                            Column(Modifier.safeDrawingPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                Text("HellFire Ass is locked", style = MaterialTheme.typography.headlineMedium)
-                                Text("Use your enrolled fingerprint or device PIN, pattern or password to open your private data.")
-                                Button(onClick = { authenticate() }) { Text("Unlock HellFire Ass") }
-                                Text(lockMessage)
-                            }
+            if (!locked) privateUi.SaveableStateProvider("private-ui") {
+                HellFireRoot(
+                app = application as HellFireApp,
+                permissions = permissions,
+                actions = PermissionActions(
+                    onAppLockChange = { authenticate(it) },
+                    onRole = ::selectAssistant,
+                    onSettings = ::openSettings,
+                    onMicrophone = {
+                        val needed = mutableListOf(Manifest.permission.RECORD_AUDIO)
+                        if (Build.VERSION.SDK_INT >= 33) needed += Manifest.permission.POST_NOTIFICATIONS
+                        requestPermissions.launch(needed.toTypedArray())
+                    },
+                    onNotifications = {
+                        if (Build.VERSION.SDK_INT >= 33) requestPermissions.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
+                        else openSettings(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    },
+                    onSmsEnable = {
+                        requestSms.launch(arrayOf(Manifest.permission.READ_SMS, Manifest.permission.RECEIVE_SMS))
+                    },
+                    onSmsDisable = {
+                        val saved = SmsCaptureSettings.setEnabled(this, false)
+                        WorkManager.getInstance(this).cancelUniqueWork(SmsSyncWorker.WORK_NAME)
+                        (application as HellFireApp).refreshSmsCapture()
+                        refreshStatus()
+                        message = if (saved) "SMS capture disabled. Previously captured events are retained."
+                            else "SMS capture stopped for this session, but the preference could not be saved. Revoke SMS permission in app settings before restarting."
+                    },
+                    onSession = {
+                        if (permissions.voiceServiceActive) {
+                            try { startLocalVoiceInteraction(Bundle()) }
+                            catch (_: Exception) { message = "Assistant session unavailable. Try the system assistant gesture and record the device result." }
+                        } else message = "Select HellFire Ass as the digital assistant, then try again."
+                    },
+                ),
+                initialTab = MainTab.Home,
+                deepLink = deepLink,
+                onDeepLinkHandled = { deepLink = null },
+                message = message,
+                onMessageShown = { message = null },
+                )
+            } else {
+                com.hellfire.ass.ui.theme.HellFireTheme {
+                    Surface(Modifier.fillMaxSize()) {
+                        Column(Modifier.safeDrawingPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text("HellFire Ass is locked", style = MaterialTheme.typography.headlineMedium)
+                            Text("Use your enrolled fingerprint or device PIN, pattern or password to open your private data.")
+                            com.hellfire.ass.ui.components.PrimaryButton("Unlock HellFire Ass", { authenticate() })
+                            Text(lockMessage)
                         }
                     }
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        deepLink = linkFor(intent)
+    }
+
+    /** Deep links come from widgets, reminder notifications and the assist gesture; all are explicit, unexported intents. */
+    private fun linkFor(intent: Intent?): Uri? = when {
+        intent?.action == Intent.ACTION_ASSIST -> Uri.parse("hellfire://ask")
+        intent?.data?.scheme == "hellfire" -> intent.data
+        else -> null
     }
 
     override fun onResume() {
@@ -158,6 +177,7 @@ class MainActivity : ComponentActivity() {
                     try {
                         if (enable != null) AppLock.setEnabled(this@MainActivity, enable)
                         lockEnabled = AppLock.enabled(this@MainActivity)
+                        refreshStatus()
                         lockSession.authenticate()
                         locked = lockSession.requiresUnlock(lockEnabled)
                         lockMessage = ""
@@ -196,6 +216,7 @@ class MainActivity : ComponentActivity() {
         val roles = getSystemService(RoleManager::class.java)
         val notifications = getSystemService(NotificationManager::class.java)
         permissions = PermissionStatus(
+            appLockEnabled = lockEnabled,
             roleAvailable = roles.isRoleAvailable(RoleManager.ROLE_ASSISTANT),
             roleHeld = roles.isRoleHeld(RoleManager.ROLE_ASSISTANT),
             voiceServiceActive = VoiceInteractionService.isActiveService(this, ComponentName(this, HellFireVoiceService::class.java)),
@@ -232,6 +253,7 @@ class MainActivity : ComponentActivity() {
 }
 
 data class PermissionStatus(
+    val appLockEnabled: Boolean = false,
     val roleAvailable: Boolean = false,
     val roleHeld: Boolean = false,
     val voiceServiceActive: Boolean = false,

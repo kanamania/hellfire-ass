@@ -33,9 +33,21 @@ object FinanceParser {
     private val amount = Regex("(?i)\\b(?:TZS|TShs?|Tsh)\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)")
     private val reference = Regex("(?i)\\b(?:ref(?:erence)?|kumbukumbu|muamala(?:\\s+no)?)[ :#.-]+([A-Z0-9-]{5,40})\\b")
     private val merchant = Regex("(?i)\\b(?:lipa\\s+namba|merchant(?:\\s+id)?)[ :#-]*([0-9]{3,12})\\b")
-    fun parse(sender: String, text: String): ParsedFinance? {
+    /** Provider named in the sender or text, or null. */
+    fun provider(sender: String, text: String): String? {
         val lower = "$sender $text".lowercase(Locale.ROOT)
-        val provider = providers.entries.firstOrNull { (_, aliases) -> aliases.any(lower::contains) }?.key ?: return null
+        return providers.entries.firstOrNull { (_, aliases) -> aliases.any(lower::contains) }?.key
+    }
+    private val balanceRegex = Regex("(?i)\\b(?:salio(?:\\s+jipya)?(?:\\s+(?:ni|la|lako))?|new\\s+balance(?:\\s+is)?|available\\s+balance(?:\\s+is)?|balance(?:\\s+is)?|bal)[\\s:.]*(?:TZS|TShs?|Tsh)\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)")
+    /** Balance stated in a provider message, in whole TZS, or null. Display only. */
+    fun balance(sender: String, text: String): Pair<String, Long>? {
+        val provider = provider(sender, text) ?: return null
+        val value = balanceRegex.find(text)?.groupValues?.get(1) ?: return null
+        val amount = runCatching { java.math.BigDecimal(value.replace(",", "")).setScale(0, java.math.RoundingMode.DOWN).longValueExact() }.getOrNull() ?: return null
+        return if (amount >= 0) provider to amount else null
+    }
+    fun parse(sender: String, text: String): ParsedFinance? {
+        val provider = provider(sender, text) ?: return null
         if (Regex("(?i)\\b(failed|unsuccessful|declined|imeshindwa|haijafanikiwa|pending)\\b").containsMatchIn(text)) return null
         val kind = when {
             Regex("(?i)\\b(reversal|reversed|imebatilishwa|refund|returned|umerejeshewa)\\b").containsMatchIn(text) -> "REFUND"

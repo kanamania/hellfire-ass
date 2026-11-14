@@ -32,7 +32,7 @@ class PortableBackup(private val app: HellFireApp) {
                     val output = PipedOutputStream(pipe)
                     val producer = async(Dispatchers.IO) { output.use { ZipOutputStream(it).use { zip ->
                         var media = emptyList<MediaItem>()
-                        zip.putNextEntry(ZipEntry("manifest.json")); zip.write(JSONObject().put("format", 1).put("schema", 8).toString().toByteArray()); zip.closeEntry()
+                        zip.putNextEntry(ZipEntry("manifest.json")); zip.write(JSONObject().put("format", 1).put("schema", BackupTables.SCHEMA).toString().toByteArray()); zip.closeEntry()
                         val counts = app.database.withTransaction {
                             media = app.database.media().all()
                             require(media.none { it.state == "DELETING" })
@@ -89,11 +89,12 @@ class PortableBackup(private val app: HellFireApp) {
                 ZipInputStream(BufferedInputStream(reader.stream())).use { zip ->
                     require(zip.nextEntry?.name == "manifest.json")
                     val manifest = JSONObject(readSmall(zip))
-                    require(manifest.getInt("format") == 1 && manifest.getInt("schema") == 8) { "Backup schema requires a matching app version" }
+                    require(manifest.getInt("format") == 1) { "Backup format requires a matching app version" }
+                    val backupTables = BackupTables.tablesFor(manifest.getInt("schema"))
                     val counts = linkedMapOf<String, Long>()
                     val budget = BackupTables.Budget()
                     db.withTransaction {
-                        for (table in BackupTables.tables) {
+                        for (table in backupTables) {
                             require(zip.nextEntry?.name == "tables/$table.jsonl") { "Backup tables are missing or reordered" }
                             counts[table] = BackupTables.readTable(db.openHelper.writableDatabase, zip, table, app.cipher, budget)
                         }
