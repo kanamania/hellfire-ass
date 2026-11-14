@@ -6,8 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.hellfire.ass.HellFireApp
@@ -27,8 +27,8 @@ class BackupPassphraseState : ViewModel() {
 @Composable
 fun BackupScreen(app: HellFireApp) {
     val scope = rememberCoroutineScope()
-    val activity = LocalContext.current as ComponentActivity
-    val pending = remember(activity) { ViewModelProvider(activity)[BackupPassphraseState::class.java] }
+    val owner = requireNotNull(LocalActivity.current) as ViewModelStoreOwner
+    val pending = remember(owner) { ViewModelProvider(owner)[BackupPassphraseState::class.java] }
     var password by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<String?>(null) }

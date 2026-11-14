@@ -392,7 +392,7 @@ API contracts checked against official documentation on 2026-11-13:
 
 ## Fingerprint login and daily Google Drive recovery
 
-In Android Settings, enroll a fingerprint in Android Settings, set a device screen lock,
+In Android Settings, enroll a fingerprint and set a device screen lock,
 then open **HellFire Settings** and choose **Enable fingerprint app lock…**. Android authenticates both enabling
 and disabling the lock. The app locks after leaving the foreground and after
 activity/process recreation; authentication is never restored from saved state.

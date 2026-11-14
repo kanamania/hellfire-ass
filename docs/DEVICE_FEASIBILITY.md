@@ -17,7 +17,18 @@ No device-dependent phase is fully accepted solely because its host checks pass.
 | Restore on replacement installation | Connect original account, list/select backup, enter original passphrase, confirm restore into empty database | NOT TESTED (native/live Google/device) | Bounded ciphertext download, existing authenticated archive/schema/table/media validation and empty-database guard; device-key re-encryption, stale send approvals cleared | Perform full SQLCipher/Keystore/media round trip, wrong-password/corrupt-download/insufficient-space tests, regrant access afterward |
 | Large archive scheduling | Upload representative original-media archive on actual Wi-Fi | NOT TESTED | Existing 7 GiB originals/1 GiB table limits; 9 GiB transfer ceiling. Normal WorkManager execution window applies; upload sessions are not persisted across process death | Measure timing/disk use; use manual archive upload when transfer cannot fit the worker window |
 
-Host checks for this change are recorded after running the test/build commands.
+Host verification for the feature branch (2026-11-14): **PASS** — APK assembly,
+lint (**0 errors, 244 warnings**), and **196 tests: 192 passed, four opt-in live AI
+tests skipped, zero failures/errors**. All eight `DriveBackupTest` cases passed:
+confirmed upload/checksum, token-safe upload destination, checksum mismatch,
+app-specific listing/ID validation, short/oversized/cancelled download cleanup,
+expired authorization, background/recreated lock session and fail-closed preferences.
+Command from `android/`: `./gradlew :app:assembleDebug :app:lintDebug
+:app:testDebugUnitTest --console=plain --max-workers=1
+'-Dorg.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8'`.
+The native build reused the existing pinned whisper 1.9.5 archive after a repeat
+GitHub download stalled; its SHA-256 matched the source's configured hash. No
+checksum, lint gate or dependency version was bypassed.
 No physical fingerprint, live Google authorization, cloud upload or native restore
 success is inferred from host tests. Existing OS backup exclusions remain enabled;
 Google Drive receives only the owner-approved encrypted portable archive.

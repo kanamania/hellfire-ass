@@ -39,6 +39,7 @@ fun DriveBackupScreen(app: HellFireApp) {
     var token by remember { mutableStateOf<String?>(null) }
     var passphrase by remember { mutableStateOf("") }
     var enabled by remember { mutableStateOf(false) }
+    var dailyAccount by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("") }
@@ -49,6 +50,7 @@ fun DriveBackupScreen(app: HellFireApp) {
         try {
             val config = withContext(Dispatchers.IO) { app.secrets.read(DriveBackupWork.CONFIG) }
             enabled = config?.optBoolean("enabled") == true
+            dailyAccount = config?.optString("account").orEmpty()
             if (account.isBlank()) account = config?.optString("account").orEmpty()
         } catch (_: Exception) { message = "Saved Drive settings unavailable. Reconnect to configure backups." }
     }
@@ -80,7 +82,7 @@ fun DriveBackupScreen(app: HellFireApp) {
         } else message = "Google account selection cancelled."
     }
     Text("Daily Google Drive backup", style = MaterialTheme.typography.titleLarge)
-    Text(if (enabled) "Daily backups enabled" else "Daily backups disabled")
+    Text(if (enabled) "Daily backups enabled for $dailyAccount" else "Daily backups disabled")
     Text(status, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
     Text("After you enable backups, HellFire uploads an encrypted archive about every 24 hours over unmetered Wi-Fi, with sufficient battery and storage. Android/ColorOS may delay jobs. Backup now uses the same conditions. Registered originals are included; backups count against your Drive storage and existing backups are retained.")
     Text("The backup passphrase is saved encrypted on this device for unattended backup. Keep a separate copy: a replacement phone needs it to restore. Google never receives it. Account credentials, app lock settings and model weights are excluded from the archive.")
@@ -90,10 +92,10 @@ fun DriveBackupScreen(app: HellFireApp) {
         catch (_: Exception) { message = "Google account chooser unavailable. This device needs Google Play services and a Google account." }
     }) { Text("Connect / reconnect Google Drive…") }
     OutlinedTextField(passphrase, { passphrase = it }, modifier = Modifier.fillMaxWidth(),
-        label = { Text("Drive backup / restore passphrase · at least 12 characters") },
+        label = { Text("Drive backup / restore passphrase · 12–1024 characters") },
         singleLine = true, visualTransformation = PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false))
-    Button(enabled = !busy && token != null && passphrase.length >= 12, onClick = {
+    Button(enabled = !busy && token != null && account.isNotBlank() && passphrase.length in 12..1024, onClick = {
         val secret = passphrase; passphrase = ""; busy = true
         scope.launch {
             try {
@@ -102,7 +104,7 @@ fun DriveBackupScreen(app: HellFireApp) {
                         .put("enabled", true).put("generation", UUID.randomUUID().toString()))
                     DriveBackupWork.schedule(app); DriveBackupWork.now(app)
                 }
-                enabled = true; message = "Daily backups enabled. First backup queued under Wi-Fi, battery and storage conditions."
+                enabled = true; dailyAccount = account; message = "Daily backups enabled. First backup queued under Wi-Fi, battery and storage conditions."
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) { message = "Could not enable daily backups. Check encrypted storage and try again." }
             finally { busy = false }
@@ -141,7 +143,7 @@ fun DriveBackupScreen(app: HellFireApp) {
     Text("Restore needs an empty installation. Disable SMS/notification capture and disconnect mail/gateway accounts first. Connect the same Google account and enter the backup’s original passphrase. Reconnect permissions and accounts after restore.")
     snapshots.forEach { snapshot ->
         Text("${snapshot.name}\n${snapshot.createdAt} · ${snapshot.size / (1024 * 1024)} MiB")
-        OutlinedButton(enabled = !busy && passphrase.length >= 12, onClick = { restore = snapshot }) { Text("Restore ${snapshot.createdAt}…") }
+        OutlinedButton(enabled = !busy && passphrase.length in 12..1024, onClick = { restore = snapshot }) { Text("Restore ${snapshot.createdAt}…") }
     }
     if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
     Text(message, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
@@ -156,6 +158,7 @@ fun DriveBackupScreen(app: HellFireApp) {
                     try {
                         withContext(Dispatchers.IO) {
                             DriveBackupWork.mutex.withLock {
+                                PortableBackup(app).checkRestoreAllowed()
                                 val coroutine = currentCoroutineContext()
                                 GoogleDriveBackup().download(selected, file, requireNotNull(token)) { coroutine.ensureActive() }
                                 PortableBackup(app).restore(file, password)

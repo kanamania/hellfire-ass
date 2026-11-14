@@ -80,44 +80,44 @@ class MainActivity : ComponentActivity() {
             val privateUi = rememberSaveableStateHolder()
             if (!locked) privateUi.SaveableStateProvider("private-ui") {
                 HellFireRoot(
-                app = application as HellFireApp,
-                permissions = permissions,
-                actions = PermissionActions(
-                    onAppLockChange = { authenticate(it) },
-                    onRole = ::selectAssistant,
-                    onSettings = ::openSettings,
-                    onMicrophone = {
-                        val needed = mutableListOf(Manifest.permission.RECORD_AUDIO)
-                        if (Build.VERSION.SDK_INT >= 33) needed += Manifest.permission.POST_NOTIFICATIONS
-                        requestPermissions.launch(needed.toTypedArray())
-                    },
-                    onNotifications = {
-                        if (Build.VERSION.SDK_INT >= 33) requestPermissions.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
-                        else openSettings(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                    },
-                    onSmsEnable = {
-                        requestSms.launch(arrayOf(Manifest.permission.READ_SMS, Manifest.permission.RECEIVE_SMS))
-                    },
-                    onSmsDisable = {
-                        val saved = SmsCaptureSettings.setEnabled(this, false)
-                        WorkManager.getInstance(this).cancelUniqueWork(SmsSyncWorker.WORK_NAME)
-                        (application as HellFireApp).refreshSmsCapture()
-                        refreshStatus()
-                        message = if (saved) "SMS capture disabled. Previously captured events are retained."
-                            else "SMS capture stopped for this session, but the preference could not be saved. Revoke SMS permission in app settings before restarting."
-                    },
-                    onSession = {
-                        if (permissions.voiceServiceActive) {
-                            try { startLocalVoiceInteraction(Bundle()) }
-                            catch (_: Exception) { message = "Assistant session unavailable. Try the system assistant gesture and record the device result." }
-                        } else message = "Select HellFire Ass as the digital assistant, then try again."
-                    },
-                ),
-                initialTab = MainTab.Home,
-                deepLink = deepLink,
-                onDeepLinkHandled = { deepLink = null },
-                message = message,
-                onMessageShown = { message = null },
+                    app = application as HellFireApp,
+                    permissions = permissions,
+                    actions = PermissionActions(
+                        onAppLockChange = { authenticate(it) },
+                        onRole = ::selectAssistant,
+                        onSettings = ::openSettings,
+                        onMicrophone = {
+                            val needed = mutableListOf(Manifest.permission.RECORD_AUDIO)
+                            if (Build.VERSION.SDK_INT >= 33) needed += Manifest.permission.POST_NOTIFICATIONS
+                            requestPermissions.launch(needed.toTypedArray())
+                        },
+                        onNotifications = {
+                            if (Build.VERSION.SDK_INT >= 33) requestPermissions.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
+                            else openSettings(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        },
+                        onSmsEnable = {
+                            requestSms.launch(arrayOf(Manifest.permission.READ_SMS, Manifest.permission.RECEIVE_SMS))
+                        },
+                        onSmsDisable = {
+                            val saved = SmsCaptureSettings.setEnabled(this, false)
+                            WorkManager.getInstance(this).cancelUniqueWork(SmsSyncWorker.WORK_NAME)
+                            (application as HellFireApp).refreshSmsCapture()
+                            refreshStatus()
+                            message = if (saved) "SMS capture disabled. Previously captured events are retained."
+                                else "SMS capture stopped for this session, but the preference could not be saved. Revoke SMS permission in app settings before restarting."
+                        },
+                        onSession = {
+                            if (permissions.voiceServiceActive) {
+                                try { startLocalVoiceInteraction(Bundle()) }
+                                catch (_: Exception) { message = "Assistant session unavailable. Try the system assistant gesture and record the device result." }
+                            } else message = "Select HellFire Ass as the digital assistant, then try again."
+                        },
+                    ),
+                    initialTab = MainTab.Home,
+                    deepLink = deepLink,
+                    onDeepLinkHandled = { deepLink = null },
+                    message = message,
+                    onMessageShown = { message = null },
                 )
             } else {
                 com.hellfire.ass.ui.theme.HellFireTheme {

@@ -62,11 +62,7 @@ class PortableBackup(private val app: HellFireApp) {
     }
     suspend fun restore(file: File, password: CharArray) { restore(password) { file.inputStream() } }
     private suspend fun restore(password: CharArray, source: () -> InputStream) = withContext(Dispatchers.IO) {
-        require(!com.hellfire.ass.audio.MicrophoneStatus.busy.value)
-        require(!com.hellfire.ass.sms.SmsCaptureSettings.enabled(app)) { "Disable SMS capture before restore" }
-        require(!androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(app).contains(app.packageName)) { "Disable notification access before restore" }
-        require(app.secrets.read("mail") == null && app.secrets.read("gateway") == null) { "Disconnect integrations before restore" }
-        requireEmpty()
+        checkRestoreAllowed()
         val stageId = "restore-${UUID.randomUUID()}"
         val folder = File(app.noBackupFilesDir, stageId).apply { mkdirs() }
         val encrypted = File(folder, "archive.hfm")
@@ -152,6 +148,13 @@ class PortableBackup(private val app: HellFireApp) {
             if (!committed) app.secrets.remove("restore-journal")
             folder.deleteRecursively()
         }
+    }
+    suspend fun checkRestoreAllowed() = withContext(Dispatchers.IO) {
+        require(!com.hellfire.ass.audio.MicrophoneStatus.busy.value)
+        require(!com.hellfire.ass.sms.SmsCaptureSettings.enabled(app)) { "Disable SMS capture before restore" }
+        require(!androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(app).contains(app.packageName)) { "Disable notification access before restore" }
+        require(app.secrets.read("mail") == null && app.secrets.read("gateway") == null) { "Disconnect integrations before restore" }
+        requireEmpty()
     }
     private suspend fun requireEmpty() {
         val db = app.database.openHelper.writableDatabase
