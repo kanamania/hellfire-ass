@@ -1,8 +1,10 @@
 # HellFire Ass — implementation and feasibility
 
 Evidence date: 2026-11-14, Africa/Dar_es_Salaam. The owner authorized remaining
-phases and explicitly kept physical device testing until last. No physical device,
-emulator, live account, personal message corpus, recording or model weights were used.
+phases and explicitly kept physical OPPO testing until last. Resource-use validation
+used host tests only; the separate UI checkpoint below records earlier emulator
+evidence. No live account, personal message corpus, recording or model weights were
+used for the resource-use changes.
 The existing optional cloud providers/settings were merged from main; their live
 tests remain opt-in and unconfigured.
 No device-dependent phase is fully accepted solely because its host checks pass.
@@ -27,16 +29,17 @@ From `android/`:
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --console=plain
 ```
 
-Final result: **165 tests (incl. resource-use regressions): 161 passed, 4 opt-in live AI tests skipped; 0 failures/errors. Lint: 0 errors,
-33 warnings. APK assembly passed.** Native whisper JNI compiled for
+Final result: **193 tests (merged redesign and resource-use regressions): 189 passed,
+4 opt-in live AI tests skipped; 0 failures/errors. Lint: 0 errors, 240 warnings and
+3 hints. APK assembly passed.** Native whisper JNI compiled for
 arm64-v8a and x86_64. Robolectric uses API 34 and ordinary SQLite/generated AES keys;
 it does not execute phone Keystore, native SQLCipher, MediaCodec, ML Kit or models.
-Warnings remain enabled: dependency/update notices, English resources, native API
-annotations/KTX suggestions and the existing deprecated Material tab API.
+Warnings remain enabled, including English widget resources, unused attributes,
+KTX suggestions, content descriptions and dependency/update notices.
 
 APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.4.0**, code 4,
 package `com.hellfire.ass`, min/target API 29/36, arm64-v8a and x86_64 only.
-SHA-256: `843ed659ad6dbad6ca9db5306ae41b5b225894680572fe2c92977cbf8a38a62e` (≈242 MB; uncompressed 16 KiB-aligned native libraries — ONNX Runtime adds ≈75 MB across arm64-v8a and x86_64).
+SHA-256: `0183db716798b22363128de5bf8f3d30d052f67f8ab7b96348ffcc41b2154e84` (248,694,596 bytes, ≈237 MiB; uncompressed 16 KiB-aligned native libraries — ONNX Runtime adds ≈75 MB across arm64-v8a and x86_64).
 HTML/XML reports are preserved under `android/app/build/reports/` and
 `android/app/build/test-results/testDebugUnitTest/` after integration.
 
@@ -104,6 +107,21 @@ speech/assistant model lock. No source/audio retention or permission is changed.
 
 Scheduling references: [unique work and chaining](https://developer.android.com/develop/background-work/background-tasks/persistent/how-to/manage-work),
 [work constraints](https://developer.android.com/develop/background-work/background-tasks/persistent/getting-started/define-work).
+
+Final combined verification (after incorporating the separately merged UI redesign):
+
+```bash
+./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --max-workers=1 \
+  '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8' --console=plain
+```
+
+PASS: 193 tests (189 passed, 4 opt-in live tests skipped), lint 0 errors / 240
+warnings / 3 hints, debug APK assembled, and `zipalign -c -P 16 4` passed. The run
+used one worker and a command-line heap limit after concurrent workstation builds
+caused memory pressure; no project/global build settings or checks were changed.
+The earlier 165-test pre-redesign suite also passed. No device profiling or model
+inference was performed. Source capture remains independent of automatic meaning
+indexing; battery and peak-memory improvements are still NOT TESTED on the OPPO.
 
 ## Capture quality checkpoint — 2026-11-13
 
@@ -203,7 +221,7 @@ listing separately from generation permissions. Do not use personal histories.
 
 ## UI redesign checkpoint — 2026-11-14
 
-Branch `feat/ui-redesign` (not merged). Redesign per the UI handoff: new theme, five-tab navigation, redesigned tabs, settings,
+Merged branch `feat/ui-redesign`. Redesign per the UI handoff: new theme, five-tab navigation, redesigned tabs, settings,
 reports, Room v10/v11 and Glance home screen widgets. Evidence below is host tests and the Android emulator only
 (Pixel 6 profile, API 34). **No physical OPPO/ColorOS device was connected; nothing here is a device result.**
 

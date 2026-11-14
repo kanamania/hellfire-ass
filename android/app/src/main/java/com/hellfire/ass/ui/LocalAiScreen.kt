@@ -57,10 +57,11 @@ fun LocalAiScreen(app: HellFireApp) {
     var semanticStatus by remember { mutableStateOf("") }
     LaunchedEffect(busy) { if (!busy) semanticStatus = try { app.semantic.status() } catch (_: Exception) { "Index status unavailable." } }
     Text(semanticStatus)
+    Text("Automatic indexing waits for charging and adequate battery. Use Index now to index on battery; new sources remain available to literal search.")
     val embedderLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             busy = true
-            result = try { app.semantic.import(uri); "Embedding model imported. Tap Index now or let background capture maintenance index sources." }
+            result = try { app.semantic.import(uri); "Embedding model imported. Tap Index now or let automatic indexing run while charging." }
                 catch (e: IllegalArgumentException) { e.message ?: "Embedding model import failed." }
                 catch (_: Exception) { "Embedding model import failed. Check free storage." }
             finally { busy = false }
