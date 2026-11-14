@@ -31,6 +31,18 @@ Command from `android/`: `./gradlew :app:assembleDebug :app:lintDebug
 The native build reused the existing pinned whisper 1.9.5 archive after a repeat
 GitHub download stalled; its SHA-256 matched the source's configured hash. No
 checksum, lint gate or dependency version was bypassed.
+
+Integrated-main verification (2026-11-14): `./gradlew :app:assembleDebug
+:app:testDebugUnitTest --console=plain --max-workers=1
+'-Dorg.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8'` — **PASS**.
+Includes the independently merged resource-use changes: **201 tests,
+197 passed, 4 opt-in live AI tests skipped, zero failures/errors**.
+Current APK: `android/app/build/outputs/apk/debug/app-debug.apk`
+(249,353,969 bytes), SHA-256 `b161484f6a3c1155201d52d353d0aa378bf505339292a2cb49d8c61b0bef05b4`.
+Feature lint and synthetic test reports are retained under
+`android/app/build/reports/device-auth-backup/`; merged-main test reports use
+the normal `test-results/testDebugUnitTest/` and `reports/tests/` paths.
+
 No physical fingerprint, live Google authorization, cloud upload or native restore
 success is inferred from host tests. Existing OS backup exclusions remain enabled;
 Google Drive receives only the owner-approved encrypted portable archive.
