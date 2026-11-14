@@ -9,7 +9,7 @@ Decisions made where `HANDOFF.md` was unclear or a screen was marked *not drawn*
 - **Icons.** The design's outline SVG icons are ported to `ImageVector`s (`ui/theme/Icons.kt`) instead of adding an icon library.
 - **Dark theme.** Derived from the §3 tokens (not designed). Same roles, dark surfaces `#0E1013` / `#181B20`, lighter accents so text keeps at least 4.5:1.
 - **No navigation library.** A saveable route stack (`Route`) plus `BackHandler` covers 5 tabs and the pushed screens. Avoids a new dependency for one use.
-- **Glance.** `androidx.glance:glance-appwidget` is the only new dependency, because §8 names Jetpack Glance.
+- **Glance.** `androidx.glance:glance-appwidget` and `glance-material3` 1.1.1 are the only new dependencies, because §8 names Jetpack Glance and `GlanceTheme` colour providers. Both are the same library family.
 
 ## Step 1 · Theme and components
 
@@ -88,3 +88,43 @@ Decisions made where `HANDOFF.md` was unclear or a screen was marked *not drawn*
 - **`ai_usage` table.** One row per finished request attempt: request ID, time, task, provider, model, result, input/output tokens, estimated micro-USD. Written through a new `onRecord` hook on `AiRouter`; prompts and answers are never passed to it. On first start after upgrade, the router's existing encrypted audit (the last 100 attempts) is copied once so earlier usage appears in reports.
 - **Migration** is additive only (two `ADD COLUMN`s, one `CREATE TABLE` and index), with no destructive fallback. Tested from a real v9 database built from the exported schema, and run on the emulator against the existing encrypted v9 data.
 - **Backups.** New archives are written as schema 10 and include `ai_usage`. **Schema 8 archives still restore**: their tables lack only the columns added after schema 8 (which restore as NULL), and `ai_usage` is simply absent. Archives with unknown columns, or missing any other column, are still refused. Before this change, adding columns would have made every existing backup unrestorable.
+
+## Step 7 · Home screen widgets (Room v10 → v11)
+
+- **New data (v11 migration, tested):**
+  - **Tasks** gain `direction` (I_OWE / OWED_TO_ME / NONE), an optional display-only `amount`, `kind` (TASK / BILL) and `repeatMonthly`. Existing commitments extracted from messages get a direction from who the extractor said does it (owner → I owe, other → owed to me); owner-typed tasks stay NONE. Owners set direction, amount, bill and monthly repeat in the task edit sheet. A done repeating bill schedules next month's bill from the same evidence (audited `OWNER_BILL_REPEAT`).
+  - **`category_budget`** (category, month, amount), edited in Money › Accounts › Monthly budgets.
+  - **`provider_balance`**: the newest balance stated in a provider SMS ("Salio jipya ni…", "New balance…"). An older or replayed SMS never overwrites a newer one. Display only; never in ledger totals.
+- **Backups** move to schema 11 and still restore schema 8 and 10 archives (new columns take their defaults).
+- **Widget data:**
+  - "Bills coming up" are active BILL tasks due within 14 days.
+  - "Replies waiting" are email/WhatsApp threads whose latest message is incoming (last 7 days), plus SMS senders whose latest message is incoming. A tap opens the waiting draft's approval if one exists, else the message.
+  - Nightly review counts payments waiting for review, broken down as unknown merchants (Lipa namba without a saved name), entries with no reference, and unfinished nightly-review days ("cash gaps").
+  - Capture health counts the sources the owner turned on (notifications always, then SMS, email and WhatsApp if set up): all working = green, some = amber, none = red.
+  - Budget pace compares the share of the limit used with the share of the month gone: more than 5 points ahead = "Ahead of pace".
+  - Wallets show the SMS balance per provider account; cash accounts show their ledger balance.
+- **Privacy:**
+  - Every amount and preview starts hidden. Settings › Home screen widgets has a per-widget "show" switch (per widget type, not per placed instance) and a global "Hide all amounts" that wins.
+  - Wallet balances additionally need a tap and hide again after a minute (a one-shot WorkManager job, not a timer).
+  - The Ask widget's last question and answer are stored in the encrypted secret store.
+- **Nothing sends from a widget.** The only in-widget actions are the promise checkbox (marks done; audited, same path as the app) and Wallets reveal/hide. Name, Reply, Review and "+ Cash" open the app on the approval screen.
+- **Recording from the widget** always opens a small activity. It stops a running recording, or starts one through the same consent and exclusion check as Recordings (MicrophoneService re-checks saved exclusions). Consent is asked the first time in a session (60 minutes in this process; never stored). It runs as the existing visible foreground service with its notification, never auto-restarts, and queues local transcription once saved. Glance can't run a live timer, so the widget shows "Recording since HH:mm" instead of a ticking clock.
+- **Freshness:**
+  - Widgets update from a Room invalidation observer on ledger, candidates, accounts, tasks, reviews, messages, drafts, media, budgets, balances, merchant names and integration state, debounced to one refresh. That catches every write path, which is the same effect as calling `update` from each repository.
+  - The 21:00 nightly alarm triggers a refresh so the briefing switches to evening.
+  - There is no periodic timer (`updatePeriodMillis = 0`), and each widget shows "as of HH:mm".
+- **Look:**
+  - §3 tokens through `GlanceTheme` (light and dark), 22 dp corners, system sans as §8 says.
+  - The stack bar, sparkline and budget ring are drawn to bitmaps, because Glance can't draw shapes.
+  - Category colours follow §8.
+- **Previews (owner request).** Every widget has an Android 12+ `previewLayout` that draws its real layout with sample content and masked amounts, themed light/dark, instead of the app icon in the widget picker. Android 10–11 launchers still show the icon.
+- **Large sizes (owner request).** Widgets render at their exact placed size and fill it:
+  - Lists grow with height.
+  - Daily briefing shows both morning and evening sections when tall.
+  - Money today adds the category breakdown and today's confirmed payments.
+  - Nightly review lists each item.
+  - Budget shows every category's progress.
+  - Capture health lists each source.
+  - Wallets add a total.
+- **Add to home screen.** Settings › Home screen widgets can pin any widget through Android's `requestPinAppWidget`; Android asks for confirmation first.
+- **Merchant names (owner request).** Naming a merchant is a type-ahead field suggesting merchants already named; picking one also fills its usual category.

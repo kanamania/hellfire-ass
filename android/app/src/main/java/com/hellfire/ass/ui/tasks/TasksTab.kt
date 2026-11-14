@@ -43,7 +43,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** A task the sheet should edit: an existing proposal or task, or a new one typed by the owner. */
-data class TaskDraft(val id: String?, val title: String, val dueAt: Long, val party: String)
+data class TaskDraft(val id: String?, val title: String, val dueAt: Long, val party: String, val direction: String = "NONE",
+    val amount: Long? = null, val kind: String = "TASK", val repeatMonthly: Boolean = false) {
+    companion object { fun of(t: AssistantTask) = TaskDraft(t.id, t.title, t.dueAt, t.party, t.direction, t.amount, t.kind, t.repeatMonthly) }
+}
 
 @Composable
 fun TasksTab() {
@@ -93,7 +96,7 @@ fun TasksTab() {
                             banner = runCatching { withContext(Dispatchers.IO) { TaskScheduler.activate(app, t.id, t.title, t.dueAt, t.party) } }
                                 .fold({ "Task added. Reminder set for ${Fmt.weekdayDayTime(t.dueAt)}." }, { "Not added. Check the date and reminder access." })
                         } })
-                        SecondaryButton("Edit", { editing = TaskDraft(t.id, t.title, t.dueAt, t.party) })
+                        SecondaryButton("Edit", { editing = TaskDraft.of(t) })
                         QuietButton("Not a task", { scope.launch { withContext(Dispatchers.IO) { TaskScheduler.action(app, t.id, "REJECTED") } } })
                     },
                 ) {
@@ -207,6 +210,10 @@ fun TaskEditSheet(draft: TaskDraft, onDone: (String?) -> Unit) {
     var title by remember { mutableStateOf(draft.title) }
     var due by remember { mutableStateOf(TaskTime.display(draft.dueAt)) }
     var party by remember { mutableStateOf(draft.party) }
+    var direction by remember { mutableStateOf(draft.direction) }
+    var amount by remember { mutableStateOf(draft.amount?.toString().orEmpty()) }
+    var kind by remember { mutableStateOf(draft.kind) }
+    var repeat by remember { mutableStateOf(draft.repeatMonthly) }
     var error by remember { mutableStateOf<String?>(null) }
     HfBottomSheet({ onDone(null) }) {
         Text(if (draft.id == null) "New task" else "Edit task", style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
@@ -220,6 +227,12 @@ fun TaskEditSheet(draft: TaskDraft, onDone: (String?) -> Unit) {
         }
         GroupLabel("Who does it")
         com.hellfire.ass.ui.money.ChipPicker(listOf("OWNER", "OTHER", "UNKNOWN"), party, { when (it) { "OWNER" -> "Me"; "OTHER" -> "Someone else"; else -> "Not sure" } }) { party = it }
+        GroupLabel("Kind")
+        com.hellfire.ass.ui.money.ChipPicker(listOf("TASK", "BILL"), kind, { if (it == "BILL") "Bill to pay" else "Task" }) { kind = it }
+        GroupLabel("Promise")
+        com.hellfire.ass.ui.money.ChipPicker(listOf("I_OWE", "OWED_TO_ME", "NONE"), direction, { when (it) { "I_OWE" -> "I owe"; "OWED_TO_ME" -> "Owed to me"; else -> "Neither" } }) { direction = it }
+        if (kind == "BILL" || direction != "NONE") HfTextField(amount, { amount = it.filter(Char::isDigit) }, "Amount TZS (optional, not added to Money)", number = true)
+        if (kind == "BILL") CheckRow("Repeats every month", repeat, onChange = { repeat = it })
         error?.let { Banner(it, Tone.Danger, null) }
         PrimaryButton(if (draft.id == null) "Add task" else "Save and schedule", {
             scope.launch {
@@ -238,6 +251,7 @@ fun TaskEditSheet(draft: TaskDraft, onDone: (String?) -> Unit) {
                             }
                         }
                         TaskScheduler.activate(app, id, title.trim(), at, party)
+                        TaskScheduler.updateDetails(app, id, direction, amount.toLongOrNull()?.takeIf { it > 0 }, kind, repeat)
                     }
                     onDone("Task scheduled for ${Fmt.weekdayDayTime(at)}.")
                 } catch (_: Exception) { error = "Not saved. Use yyyy-MM-dd HH:mm and remove any security codes." }

@@ -58,6 +58,7 @@ interface CommunicationDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun integration(value: IntegrationState)
     @Query("SELECT * FROM integration_state ORDER BY adapter") fun integrations(): Flow<List<IntegrationState>>
     @Query("SELECT * FROM communication_message WHERE id = :id") suspend fun message(id: String): CommunicationMessage?
+    @Query("SELECT * FROM integration_state ORDER BY adapter") suspend fun integrationsNow(): List<IntegrationState>
     @Query("SELECT * FROM communication_message WHERE occurredAt >= :start AND occurredAt < :end") suspend fun messagesIn(start: Long, end: Long): List<CommunicationMessage>
     @Query("SELECT * FROM outbound_draft") suspend fun allDrafts(): List<OutboundDraft>
     @Query("SELECT * FROM action_audit WHERE action = :action") suspend fun audits(action: String): List<ActionAudit>

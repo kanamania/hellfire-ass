@@ -147,11 +147,12 @@ fun SourcePage(id: String) {
     var event by remember { mutableStateOf<SourceEvent?>(null) }
     var text by remember { mutableStateOf("") }
     var raw by remember { mutableStateOf<String?>(null) }
+    var sender by remember { mutableStateOf<String?>(null) }
     var linked by remember { mutableStateOf<List<Pair<String, () -> Unit>>>(emptyList()) }
     LaunchedEffect(id) {
         withContext(Dispatchers.IO) {
             event = app.database.events().find(id)
-            event?.let { text = EventText.raw(app, it) }
+            event?.let { text = EventText.raw(app, it); sender = EventText.fields(app, it)["sender_hint"]?.firstOrNull()?.takeIf(String::isNotBlank) }
             val ledger = app.database.finances().entriesFor(id)
             val tasks = app.database.tasks().all().filter { it.sourceId == id }
             linked = ledger.filter { it.id == it.groupId }.map { e -> "Money · ${Fmt.signed(e.amount)} ${e.category}" to { nav.push(Screen.Transaction, e.id) } } +
@@ -161,8 +162,8 @@ fun SourcePage(id: String) {
     val e = event
     PushedPage("Source", breadcrumb = e?.let { EventText.sourceLabel(it) + " · " + Fmt.day(it.occurredAt) }) {
         if (e == null) { Note("This source record is no longer available."); return@PushedPage }
-        EvidenceCard("${EventText.sourceLabel(e)} · ${e.packageName} · ${Fmt.dayTime(e.occurredAt)}", text.ifBlank { "No readable text." }.take(4000))
-        KvList(listOf("Source" to EventText.sourceLabel(e), "From" to e.packageName, "Received" to Fmt.full(e.receivedAt),
+        EvidenceCard("${EventText.sourceLabel(e)} · ${sender ?: e.packageName} · ${Fmt.dayTime(e.occurredAt)}", text.ifBlank { "No readable text." }.take(4000))
+        KvList(listOf("Source" to EventText.sourceLabel(e), "From" to (sender ?: e.packageName), "Received" to Fmt.full(e.receivedAt),
             "Content" to when { e.securitySensitive -> "Redacted (security code)"; !e.contentAvailable -> "Not shared by Android"; e.contentRedacted -> "Partly redacted"; else -> "As delivered" },
             "Linked records" to if (linked.isEmpty()) "None" else linked.size.toString()))
         if (linked.isNotEmpty()) ListCard { linked.forEachIndexed { i, (label, open) -> if (i > 0) ListDivider(16.dp); ListRow(label, chevron = true, onClick = open) } }

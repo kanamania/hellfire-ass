@@ -125,7 +125,7 @@ interface EventDao {
 
 data class LabelledEvent(@Embedded val event: SourceEvent, val label: String?, val state: String)
 
-@Database(entities = [SourceEvent::class, EventProcessing::class, CaptureAudit::class, NotificationPolicy::class, FinanceAccount::class, FinanceCandidate::class, LedgerEntry::class, LedgerEvidence::class, MerchantAlias::class, CommunicationMessage::class, MailCursor::class, OutboundDraft::class, ActionAudit::class, IntegrationState::class, AssistantTask::class, DailyReview::class, MediaItem::class, TranscriptSegment::class, SpeechSpan::class, MemoryItem::class, com.hellfire.ass.memory.SemanticVector::class, AiUsage::class], version = 10, exportSchema = true)
+@Database(entities = [SourceEvent::class, EventProcessing::class, CaptureAudit::class, NotificationPolicy::class, FinanceAccount::class, FinanceCandidate::class, LedgerEntry::class, LedgerEvidence::class, MerchantAlias::class, CommunicationMessage::class, MailCursor::class, OutboundDraft::class, ActionAudit::class, IntegrationState::class, AssistantTask::class, DailyReview::class, MediaItem::class, TranscriptSegment::class, SpeechSpan::class, MemoryItem::class, com.hellfire.ass.memory.SemanticVector::class, AiUsage::class, CategoryBudget::class, ProviderBalance::class], version = 11, exportSchema = true)
 abstract class EventDatabase : RoomDatabase() {
     abstract fun events(): EventDao
     abstract fun finances(): FinanceDao
@@ -135,6 +135,7 @@ abstract class EventDatabase : RoomDatabase() {
     abstract fun memory(): MemoryDao
     abstract fun semantic(): com.hellfire.ass.memory.SemanticDao
     abstract fun aiUsage(): AiUsageDao
+    abstract fun widgetData(): WidgetDataDao
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -177,7 +178,20 @@ abstract class EventDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_ai_usage_at ON ai_usage(at)")
             }
         }
-        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+        /** v11 (widgets §8): promise direction and amount, bills, category budgets, last SMS balance per provider. */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE assistant_task ADD COLUMN direction TEXT NOT NULL DEFAULT 'NONE'")
+                db.execSQL("ALTER TABLE assistant_task ADD COLUMN amount INTEGER")
+                db.execSQL("ALTER TABLE assistant_task ADD COLUMN kind TEXT NOT NULL DEFAULT 'TASK'")
+                db.execSQL("ALTER TABLE assistant_task ADD COLUMN repeatMonthly INTEGER NOT NULL DEFAULT 0")
+                // Commitments extracted from messages already say who does it; owner-typed tasks stay NONE.
+                db.execSQL("UPDATE assistant_task SET direction = CASE party WHEN 'OWNER' THEN 'I_OWE' WHEN 'OTHER' THEN 'OWED_TO_ME' ELSE 'NONE' END WHERE sourceId IN (SELECT id FROM source_event WHERE source NOT IN ('owner_entry', 'owner_memory'))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS category_budget (category TEXT NOT NULL, month TEXT NOT NULL, amount INTEGER NOT NULL, PRIMARY KEY(category, month))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS provider_balance (provider TEXT NOT NULL, amount INTEGER NOT NULL, observedAt INTEGER NOT NULL, sourceId TEXT NOT NULL, PRIMARY KEY(provider))")
+            }
+        }
+        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
         fun open(context: Context): EventDatabase = Room.databaseBuilder(
             context.applicationContext, EventDatabase::class.java, "hellfire.db"
         ).openHelperFactory(EncryptedDatabase.factory(context)).addMigrations(*ALL_MIGRATIONS).build()

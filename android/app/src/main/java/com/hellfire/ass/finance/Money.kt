@@ -38,6 +38,14 @@ object FinanceParser {
         val lower = "$sender $text".lowercase(Locale.ROOT)
         return providers.entries.firstOrNull { (_, aliases) -> aliases.any(lower::contains) }?.key
     }
+    private val balanceRegex = Regex("(?i)\\b(?:salio(?:\\s+jipya)?(?:\\s+(?:ni|la|lako))?|new\\s+balance(?:\\s+is)?|available\\s+balance(?:\\s+is)?|balance(?:\\s+is)?|bal)[\\s:.]*(?:TZS|TShs?|Tsh)\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)")
+    /** Balance stated in a provider message, in whole TZS, or null. Display only. */
+    fun balance(sender: String, text: String): Pair<String, Long>? {
+        val provider = provider(sender, text) ?: return null
+        val value = balanceRegex.find(text)?.groupValues?.get(1) ?: return null
+        val amount = runCatching { java.math.BigDecimal(value.replace(",", "")).setScale(0, java.math.RoundingMode.DOWN).longValueExact() }.getOrNull() ?: return null
+        return if (amount >= 0) provider to amount else null
+    }
     fun parse(sender: String, text: String): ParsedFinance? {
         val provider = provider(sender, text) ?: return null
         if (Regex("(?i)\\b(failed|unsuccessful|declined|imeshindwa|haijafanikiwa|pending)\\b").containsMatchIn(text)) return null

@@ -9,18 +9,20 @@ import java.util.zip.*
 /** Fixed table/column allowlists; archives cannot supply executable SQL. */
 object BackupTables {
     /** Backup schema written by this version. Schema 8 archives (before the v10 database) still restore. */
-    const val SCHEMA = 10
+    const val SCHEMA = 11
     private val schema8 = listOf("source_event", "event_processing", "capture_audit", "notification_policy", "finance_account",
         "finance_candidate", "ledger_entry", "ledger_evidence", "merchant_alias", "communication_message", "outbound_draft",
         "action_audit", "assistant_task", "daily_review", "media_item", "transcript_segment", "speech_span", "memory_item")
-    val tables = schema8 + "ai_usage"
+    private val schema10 = schema8 + "ai_usage"
+    val tables = schema10 + listOf("category_budget", "provider_balance")
     fun tablesFor(schema: Int): List<String> = when (schema) {
         8 -> schema8
+        10 -> schema10
         SCHEMA -> tables
         else -> throw IllegalArgumentException("Backup schema requires a matching app version")
     }
-    /** Columns added after schema 8. Older archives may omit exactly these; they restore as the column default (NULL). */
-    val addedColumns = mapOf("assistant_task" to setOf("completedAt"), "media_item" to setOf("durationMs"))
+    /** Columns added after schema 8. Older archives may omit exactly these; they restore as the column default (NULL, NONE, TASK, 0). */
+    val addedColumns = mapOf("assistant_task" to setOf("completedAt", "direction", "amount", "kind", "repeatMonthly"), "media_item" to setOf("durationMs"))
     fun write(db: SupportSQLiteDatabase, zip: ZipOutputStream, cipher: PayloadCipher): Map<String, Long> {
         val counts = linkedMapOf<String, Long>()
         var bytesWritten = 0L

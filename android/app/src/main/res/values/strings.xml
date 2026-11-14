@@ -1,1 +1,27 @@
-<resources><string name="app_name">HellFire Ass</string></resources>
+<resources><string name="app_name">HellFire Ass</string>    <string name="widget_briefing_label">Daily briefing</string>
+    <string name="widget_briefing_desc">Today, bills and spending; switches to the evening review at 21:00</string>
+    <string name="widget_capture_label">Capture health</string>
+    <string name="widget_capture_desc">How many capture sources are working</string>
+    <string name="widget_ask_shortcut_label">Ask by voice</string>
+    <string name="widget_ask_shortcut_desc">Opens Ask and starts voice</string>
+    <string name="widget_cash_shortcut_label">Add cash</string>
+    <string name="widget_cash_shortcut_desc">Opens the cash expense sheet</string>
+    <string name="widget_note_shortcut_label">Quick note</string>
+    <string name="widget_note_shortcut_desc">Opens a new memory note</string>
+    <string name="widget_money_label">Money today</string>
+    <string name="widget_money_desc">Spent, received and the last 7 days</string>
+    <string name="widget_promises_label">Promises</string>
+    <string name="widget_promises_desc">What you owe and what is owed to you</string>
+    <string name="widget_ask_label">Ask HellFire</string>
+    <string name="widget_ask_desc">Your last question and answer</string>
+    <string name="widget_record_label">Record</string>
+    <string name="widget_record_desc">Start or stop a visible, encrypted recording</string>
+    <string name="widget_wallets_label">Wallets</string>
+    <string name="widget_wallets_desc">Balances from SMS, hidden until you tap</string>
+    <string name="widget_replies_label">Replies waiting</string>
+    <string name="widget_replies_desc">Messages waiting for your reply</string>
+    <string name="widget_review_label">Nightly review</string>
+    <string name="widget_review_desc">Payments and days to check</string>
+    <string name="widget_budget_label">Budget</string>
+    <string name="widget_budget_desc">One category\'s spending against its limit</string>
+</resources>

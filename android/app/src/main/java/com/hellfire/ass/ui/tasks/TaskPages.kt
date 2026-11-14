@@ -61,7 +61,7 @@ fun TaskPage(id: String) {
         }
         QuietButton("Show source", { nav.push(Screen.Source, t.sourceId) })
     }
-    if (editing && t != null) TaskEditSheet(TaskDraft(t.id, t.title, t.dueAt, t.party)) { msg -> editing = false; if (msg != null) message = msg }
+    if (editing && t != null) TaskEditSheet(TaskDraft.of(t)) { msg -> editing = false; if (msg != null) message = msg }
 }
 
 /** Settings › Reminders (not drawn): the reminder controls that used to sit on the Tasks tab. */

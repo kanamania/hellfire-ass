@@ -179,6 +179,7 @@ fun AskTab() {
 private fun rememberLast(app: com.hellfire.ass.HellFireApp, question: String, answer: String) {
     app.captureScope.launch {
         runCatching { app.secrets.save("ask-last", org.json.JSONObject().put("q", question.take(200)).put("a", answer.take(400)).put("at", System.currentTimeMillis())) }
+        app.requestWidgetRefresh()
     }
 }
 

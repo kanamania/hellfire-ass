@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -84,6 +85,29 @@ fun HfTextField(
             focusedLabelColor = Hf.colors.primary, unfocusedLabelColor = Hf.colors.muted,
         ),
     )
+}
+
+/**
+ * Text field with type-ahead suggestions shown inline below it (popups fight the keyboard inside bottom sheets).
+ * Matches anywhere in a suggestion, case-insensitive; free text is always allowed.
+ */
+@Composable
+fun AutocompleteField(value: String, onValueChange: (String) -> Unit, label: String, suggestions: List<String>, onPick: (String) -> Unit,
+    modifier: Modifier = Modifier, max: Int = 5) {
+    var focused by remember { mutableStateOf(false) }
+    val query = value.trim()
+    val matches = suggestions.distinct().filter { s -> !s.equals(query, ignoreCase = true) && (query.isEmpty() || s.contains(query, ignoreCase = true)) }
+        .sortedWith(compareBy({ !it.startsWith(query, ignoreCase = true) }, { it.lowercase() })).take(max)
+    Column(modifier.fillMaxWidth()) {
+        HfTextField(value, onValueChange, label, Modifier.onFocusChanged { focused = it.isFocused })
+        if (focused && matches.isNotEmpty()) HfCard(Modifier.padding(top = 4.dp), radius = 14.dp) {
+            matches.forEachIndexed { i, m ->
+                if (i > 0) ListDivider(14.dp)
+                Text(m, Modifier.fillMaxWidth().clickable(role = Role.Button) { onPick(m) }.heightIn(min = 44.dp).padding(horizontal = 14.dp, vertical = 12.dp),
+                    style = Hf.type.body, color = Hf.colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
 }
 
 /** Rounded "Group: Category ▾" style dropdown (`.dd`). */

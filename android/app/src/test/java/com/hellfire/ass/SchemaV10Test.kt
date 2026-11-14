@@ -46,7 +46,7 @@ class SchemaV10Test {
             assertEquals("Call", db.media().item("m")!!.name)
             db.aiUsage().insert(AiUsage(requestId = "r", at = 5, task = "Chat", provider = "OpenAI", model = "m", result = "SUCCESS", inputTokens = 10, outputTokens = 2, microUsd = 30))
             assertEquals(1, db.aiUsage().period(0, 10).size)
-            assertEquals(10, db.openHelper.writableDatabase.version)
+            assertEquals(EventDatabase.ALL_MIGRATIONS.last().endVersion, db.openHelper.writableDatabase.version)
         } finally { db.close(); context.deleteDatabase(name) }
     }
 

@@ -137,6 +137,9 @@ fun SettingsHub() {
             ListRow("Reminders", subtitle = when (states.firstOrNull { it.adapter == "REMINDERS" }?.state) {
                 "EXACT_ALLOWED" -> "On time"; "BEST_EFFORT" -> "Best effort"; "PERMISSION_MISSING" -> "Notifications blocked"; else -> "Nightly review, overdue repeats" },
                 icon = HfIcons.Alarm, chevron = true, onClick = { nav.push(Screen.Reminders) })
+            ListDivider()
+            ListRow("Home screen widgets", subtitle = if (com.hellfire.ass.widgets.WidgetPrefs.hideAll(app)) "All amounts hidden" else "Amounts hidden unless you allow them",
+                icon = HfIcons.Home, chevron = true, onClick = { nav.push(Screen.Widgets) })
         }
         Group("AI") {
             val providers = ai?.providers?.count { it.value.enabled && it.value.apiKey.isNotBlank() } ?: 0

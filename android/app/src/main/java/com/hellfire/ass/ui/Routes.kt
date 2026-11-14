@@ -50,6 +50,8 @@ fun RouteContent(route: Route) {
         Screen.Source -> SourcePage(route.arg)
         Screen.Task -> TaskPage(route.arg)
         Screen.Message -> MessagePage(route.arg)
+        Screen.Budgets -> BudgetsPage()
+        Screen.Widgets -> com.hellfire.ass.ui.settings.WidgetsPage()
         Screen.Reports -> com.hellfire.ass.ui.reports.ReportsHub()
         Screen.ReportMoney -> com.hellfire.ass.ui.reports.MoneyReport(route.arg)
         Screen.ReportCategory -> com.hellfire.ass.ui.reports.CategoryReport(route.arg)

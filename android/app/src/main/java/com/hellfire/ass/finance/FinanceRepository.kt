@@ -104,6 +104,7 @@ class FinanceRepository(private val db: EventDatabase) {
     }
 
     suspend fun collect(sourceId: String, occurredAt: Long, sender: String, text: String) {
+        FinanceParser.balance(sender, text)?.let { (provider, amount) -> db.widgetData().observeBalance(ProviderBalance(provider, amount, occurredAt, sourceId)) }
         FinanceParser.parse(sender, text)?.let { parsed ->
             val duplicate = parsed.reference != null && dao.hasReference(parsed.provider, parsed.reference)
             dao.candidate(FinanceCandidate(NotificationNormalizer.sha256("finance:$sourceId:0"), sourceId,

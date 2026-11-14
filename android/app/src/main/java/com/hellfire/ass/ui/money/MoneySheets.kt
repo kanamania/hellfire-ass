@@ -6,6 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hellfire.ass.events.NotificationNormalizer
 import com.hellfire.ass.events.NotificationSnapshot
 import com.hellfire.ass.finance.*
@@ -68,7 +69,10 @@ fun CandidateReviewSheet(c: FinanceCandidate, accounts: List<FinanceAccount>, al
         HfTextField(occurred, { occurred = it }, "Date and time · yyyy-MM-dd HH:mm")
         HfTextField(description, { description = it }, "Description")
         if (c.merchant != null) {
-            HfTextField(merchantName, { merchantName = it }, "Name for Lipa namba ${c.merchant}")
+            AutocompleteField(merchantName, { merchantName = it; rememberName = it.isNotBlank() }, "Name for Lipa namba ${c.merchant}", aliases.map { it.name }, onPick = { picked ->
+                merchantName = picked; rememberName = true
+                aliases.firstOrNull { it.name == picked }?.let { category = it.category; description = it.name }
+            })
             CheckRow("Remember this name and category", rememberName, onChange = { rememberName = it })
         }
         error?.let { Banner(it, Tone.Danger, null) }
@@ -103,10 +107,13 @@ fun MerchantSheet(provider: String, number: String, alias: MerchantAlias?, onDon
     val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf(alias?.name.orEmpty()) }
     var category by remember { mutableStateOf(alias?.category ?: "Other") }
+    val known by remember { app.database.finances().aliases() }.collectAsStateWithLifecycle(emptyList())
     HfBottomSheet(onDismiss = { onDone(null) }) {
         Text("Name this merchant", style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
         Text("Lipa namba $number · ${Fmt.provider(provider)}", style = Hf.type.rowSubtitle, color = Hf.colors.muted)
-        HfTextField(name, { name = it }, "Merchant name")
+        AutocompleteField(name, { name = it }, "Merchant name", known.map { it.name }, onPick = { picked ->
+            name = picked; known.firstOrNull { it.name == picked }?.let { category = it.category }
+        })
         GroupLabel("Usual category")
         ChipPicker(Categories, category) { category = it }
         Note("Future payments to this number use this name and category. You still confirm each payment.")
