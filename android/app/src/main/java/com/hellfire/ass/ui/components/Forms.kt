@@ -15,6 +15,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.hellfire.ass.tasks.TaskTime
+import com.hellfire.ass.ui.Fmt
+import java.time.LocalDate
+import java.time.LocalTime
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -327,5 +333,37 @@ fun SectionCard(title: String? = null, modifier: Modifier = Modifier, content: @
             if (title != null) Text(title, style = Hf.type.cardTitle, color = Hf.colors.onSurface)
             content()
         }
+    }
+}
+
+/** Date and time are picked separately and always interpreted in East Africa Time. */
+@Composable
+fun DateTimeField(value: String, onValueChange: (String) -> Unit, label: String = "Date and time · East Africa Time") {
+    val context = LocalContext.current
+    var picking by rememberSaveable { mutableIntStateOf(0) }
+    val current = Fmt.zoned(TaskTime.parse(value))
+    val onChange by rememberUpdatedState(onValueChange)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        GroupLabel(label)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { picking = 1 }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                Text(current.toLocalDate().toString(), Modifier.semantics { contentDescription = "Choose date: ${current.toLocalDate()}" })
+            }
+            OutlinedButton(onClick = { picking = 2 }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                Text(Fmt.time(current.toInstant().toEpochMilli()), Modifier.semantics { contentDescription = "Choose time: ${Fmt.time(current.toInstant().toEpochMilli())} East Africa Time" })
+            }
+        }
+    }
+    if (picking != 0) DisposableEffect(picking) {
+        val dialog = if (picking == 1) android.app.DatePickerDialog(context, { _, year, month, day ->
+            onChange(TaskTime.display(LocalDate.of(year, month + 1, day).atTime(current.toLocalTime()).atZone(TaskTime.zone).toInstant().toEpochMilli()))
+        }, current.year, current.monthValue - 1, current.dayOfMonth).apply {
+            datePicker.minDate = 0
+        } else android.app.TimePickerDialog(context, { _, hour, minute ->
+            onChange(TaskTime.display(current.toLocalDate().atTime(LocalTime.of(hour, minute)).atZone(TaskTime.zone).toInstant().toEpochMilli()))
+        }, current.hour, current.minute, true)
+        dialog.setOnDismissListener { picking = 0 }
+        dialog.show()
+        onDispose { dialog.setOnDismissListener(null); dialog.dismiss() }
     }
 }

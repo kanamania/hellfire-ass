@@ -16,7 +16,6 @@ class FinanceRepository(private val db: EventDatabase) {
         val account = requireNotNull(dao.account(accountId))
         require(account.currency == "TZS" && candidate.amount > 0 && candidate.fee >= 0)
         Math.addExact(candidate.amount, candidate.fee)
-        require(candidate.provider == "MANUAL" || candidate.provider == account.provider) { "Choose an account for this provider" }
         val key = NotificationNormalizer.sha256("$accountId|${candidate.provider}|${candidate.reference ?: candidate.id}")
         val existing = dao.byKey(key)
         if (existing != null) {

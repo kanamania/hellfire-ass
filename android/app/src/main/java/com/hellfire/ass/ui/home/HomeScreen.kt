@@ -71,9 +71,8 @@ fun HomeScreen() {
             @Composable fun divider() { if (!first) ListDivider(); first = false }
             if (candidates.isNotEmpty()) {
                 divider()
-                val providers = candidates.map { Fmt.provider(it.provider) }.distinct()
                 ListRow(if (candidates.size == 1) "Confirm 1 payment" else "Confirm ${candidates.size} payments",
-                    subtitle = "From " + providers.take(2).joinToString(" and ") + if (providers.size > 2) " and others" else "",
+                    subtitle = "Review the account, category and amount",
                     icon = HfIcons.Money, tone = Tone.Info, chevron = true, onClick = { nav.tab(MainTab.Money, "review") })
             }
             if (pendingDrafts.isNotEmpty()) {

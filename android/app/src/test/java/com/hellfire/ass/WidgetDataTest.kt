@@ -50,7 +50,7 @@ class WidgetDataTest {
             db.widgetData().budget(com.hellfire.ass.finance.CategoryBudget("Food", "2026-11", 400_000))
             assertEquals(400_000L, db.widgetData().budgetsFor("2026-11").single().amount)
             db.widgetData().observeBalance(ProviderBalance("MPESA", 100, 10, "sms"))
-            assertEquals(11, db.openHelper.writableDatabase.version)
+            assertEquals(EventDatabase.ALL_MIGRATIONS.last().endVersion, db.openHelper.writableDatabase.version)
         } finally { db.close(); context.deleteDatabase(name) }
     }
 
@@ -120,7 +120,7 @@ class WidgetDataTest {
             BackupTables.readTable(db.openHelper.writableDatabase, zip, "assistant_task", PayloadCipher(KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()))
             db.tasks().task("t")!!.let { assertEquals("NONE", it.direction); assertEquals("TASK", it.kind); assertFalse(it.repeatMonthly) }
             assertEquals(listOf("category_budget", "provider_balance"), BackupTables.tables - BackupTables.tablesFor(10).toSet())
-            assertEquals(11, BackupTables.SCHEMA)
+            assertEquals(12, BackupTables.SCHEMA)
         } finally { db.close() }
     }
 }
