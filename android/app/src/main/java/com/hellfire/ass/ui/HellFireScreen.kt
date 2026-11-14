@@ -3,15 +3,30 @@ package com.hellfire.ass.ui
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import com.hellfire.ass.ui.components.*
+import com.hellfire.ass.ui.theme.Hf
+import com.hellfire.ass.ui.theme.HellFireTheme
+import com.hellfire.ass.ui.theme.HfIcons
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -37,7 +52,7 @@ import java.time.format.DateTimeFormatter
 fun HellFireScreen(
     app: HellFireApp,
     permissions: PermissionStatus,
-    initialTab: String,
+    initialTab: MainTab,
     message: String?,
     onRole: () -> Unit,
     onSettings: (String) -> Unit,
@@ -48,53 +63,149 @@ fun HellFireScreen(
     onSmsDisable: () -> Unit,
 ) {
     val storage by app.storageStatus.collectAsStateWithLifecycle()
-    if (storage != "READY") {
-        MaterialTheme {
-            Surface(Modifier.fillMaxSize()) {
+    HellFireTheme {
+        if (storage != "READY") {
+            Surface(Modifier.fillMaxSize(), color = Hf.colors.background) {
                 Column(Modifier.safeDrawingPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text("HellFire Ass", style = MaterialTheme.typography.headlineMedium)
-                    Text(if (storage == "STARTING") "Opening encrypted local storage…" else "Encrypted storage is unavailable. Check free storage and device unlock/key availability. Existing files have been retained; no plaintext fallback or automatic reset was used.")
-                    if (storage != "STARTING") Button(onClick = { app.initializeStorage() }) { Text("Retry local storage") }
+                    Text("HellFire Ass", style = Hf.type.screenTitle)
+                    Text(if (storage == "STARTING") "Opening encrypted local storage…" else "Encrypted storage is unavailable. Check free storage and device unlock/key availability. Existing files have been retained; no plaintext fallback or automatic reset was used.",
+                        style = Hf.type.body)
+                    if (storage != "STARTING") PrimaryButton("Retry local storage", { app.initializeStorage() })
+                }
+            }
+            return@HellFireTheme
+        }
+        var tab by rememberSaveable { mutableStateOf(initialTab) }
+        val stack = rememberSaveable(saver = listSaver<MutableList<Page>, String>({ it.map(Page::name) }, { it.map(Page::valueOf).toMutableStateList() })) {
+            mutableStateListOf()
+        }
+        val page = stack.lastOrNull()
+        BackHandler(enabled = page != null) { stack.removeAt(stack.lastIndex) }
+        BackHandler(enabled = page == null && tab != MainTab.Home) { tab = MainTab.Home }
+        val open: (Page) -> Unit = { stack.add(it) }
+        Scaffold(
+            containerColor = Hf.colors.background,
+            contentWindowInsets = WindowInsets.safeDrawing,
+            bottomBar = { if (page == null) HellFireBottomBar(tab) { tab = it } },
+        ) { inner ->
+            key(tab, page) {
+                Column(
+                    Modifier.fillMaxSize().padding(inner).consumeWindowInsets(inner).imePadding()
+                        .verticalScroll(rememberScrollState()).padding(horizontal = ScreenPadding, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    if (page != null) PushedTopBar(page.title, onBack = { stack.removeAt(stack.lastIndex) })
+                    if (message != null) Banner(message, Tone.Info, HfIcons.Info)
+                    when (page) {
+                        null -> when (tab) {
+                            MainTab.Home -> Home(onOpen = open)
+                            MainTab.Money -> { ScreenHeader("Money"); FinanceScreen(app) }
+                            MainTab.Ask -> { ScreenHeader("Ask"); AssistantScreen(app, onSession); HorizontalDivider(); Assistant(app, onSession) }
+                            MainTab.Tasks -> { ScreenHeader("Tasks"); TasksScreen(app, onSettings, onNotifications) }
+                            MainTab.Inbox -> { ScreenHeader("Inbox"); CommunicationsScreen(app) }
+                        }
+                        Page.Settings -> SettingsHub(onOpen = open)
+                        Page.Permissions -> {
+                            Setup(permissions, onRole, onSettings, onMicrophonePermission, onSmsEnable, onSmsDisable)
+                            HorizontalDivider()
+                            Capture(app, permissions, onMicrophonePermission, onSettings)
+                        }
+                        Page.CloudAi -> AiSettingsScreen(app)
+                        Page.LocalModels -> LocalAiScreen(app)
+                        Page.Recordings -> MediaScreen(app, permissions, onMicrophonePermission)
+                        Page.Backup -> BackupScreen(app)
+                        Page.Device -> Diagnostics(permissions)
+                    }
                 }
             }
         }
-        return
     }
-    val colors = if (isSystemInDarkTheme()) darkColorScheme(primary = Color(0xFFFFB595))
-        else lightColorScheme(primary = Color(0xFF9A3412), secondary = Color(0xFF675044))
-    MaterialTheme(colorScheme = colors) {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            var tab by rememberSaveable { mutableStateOf(initialTab) }
-            Column(Modifier.safeDrawingPadding().imePadding()) {
-                Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
-                    Text("HellFire Ass", style = MaterialTheme.typography.headlineMedium)
-                    Text("Local capture · finance · assistant", style = MaterialTheme.typography.bodyMedium)
-                }
-                ScrollableTabRow(selectedTabIndex = listOf("Setup", "Assistant", "AI chat", "AI settings", "Capture", "Finance", "Messages", "Tasks", "Media", "Local AI", "Backup", "Device").indexOf(tab), edgePadding = 8.dp) {
-                    listOf("Setup", "Assistant", "AI chat", "AI settings", "Capture", "Finance", "Messages", "Tasks", "Media", "Local AI", "Backup", "Device").forEach { name ->
-                        Tab(selected = tab == name, onClick = { tab = name }, text = { Text(name) })
+}
+
+enum class MainTab(val label: String, val icon: ImageVector) {
+    Home("Home", HfIcons.Home), Money("Money", HfIcons.Money), Ask("Ask", HfIcons.Spark),
+    Tasks("Tasks", HfIcons.Task), Inbox("Inbox", HfIcons.Inbox),
+}
+
+/** Screens pushed over the tabs (back arrow, no bottom bar). */
+enum class Page(val title: String) {
+    Settings("Settings"), Permissions("Permissions and capture"), CloudAi("Cloud AI"), LocalModels("On-device models"),
+    Recordings("Recordings"), Backup("Encrypted backup"), Device("This device"),
+}
+
+@Composable
+private fun HellFireBottomBar(current: MainTab, onSelect: (MainTab) -> Unit) {
+    val c = Hf.colors
+    val navInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    Column(
+        Modifier.fillMaxWidth().background(c.surface).drawBehind {
+            drawLine(c.outline, androidx.compose.ui.geometry.Offset(0f, 0f), androidx.compose.ui.geometry.Offset(size.width, 0f), 1.dp.toPx())
+        },
+    ) {
+        Row(
+            Modifier.fillMaxWidth().height(64.dp).padding(start = 6.dp, end = 6.dp, top = 6.dp).selectableGroup(),
+            horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.Top,
+        ) {
+            MainTab.entries.forEach { t ->
+                val on = t == current
+                val tint = if (on) c.primary else c.muted
+                Column(
+                    Modifier.width(68.dp).heightIn(min = 52.dp)
+                        .selectable(selected = on, role = Role.Tab, interactionSource = null, indication = null) { onSelect(t) },
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    // The 54 dp Ask button is raised 20 dp: it occupies a 34 dp slot and overflows above the bar.
+                    if (t == MainTab.Ask) Box(Modifier.size(width = 56.dp, height = 34.dp)) {
+                        Box(
+                            Modifier.align(Alignment.BottomCenter).offset(y = (-10).dp).requiredSize(54.dp)
+                                .shadow(14.dp, CircleShape, ambientColor = c.primary, spotColor = c.primary)
+                                .clip(CircleShape).background(c.primary),
+                            contentAlignment = Alignment.Center,
+                        ) { Icon(t.icon, null, Modifier.size(22.dp), tint = c.onPrimary) }
                     }
-                }
-                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    if (message != null) Text(message, color = MaterialTheme.colorScheme.primary)
-                    when (tab) {
-                        "Setup" -> Setup(permissions, onRole, onSettings, onMicrophonePermission, onSmsEnable, onSmsDisable)
-                        "Assistant" -> AssistantScreen(app, onSession)
-                        "AI chat" -> Assistant(app, onSession)
-                        "AI settings" -> AiSettingsScreen(app)
-                        "Capture" -> Capture(app, permissions, onMicrophonePermission, onSettings)
-                        "Finance" -> FinanceScreen(app)
-                        "Messages" -> CommunicationsScreen(app)
-                        "Tasks" -> TasksScreen(app, onSettings, onNotifications)
-                        "Media" -> MediaScreen(app, permissions, onMicrophonePermission)
-                        "Local AI" -> LocalAiScreen(app)
-                        "Backup" -> BackupScreen(app)
-                        "Device" -> Diagnostics(permissions)
-                    }
+                    else Box(
+                        Modifier.size(width = 56.dp, height = 30.dp).clip(CircleShape).background(if (on) c.primaryContainer else Color.Transparent),
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(t.icon, null, Modifier.size(22.dp), tint = tint) }
+                    Text(t.label, style = Hf.type.caption, color = tint)
                 }
             }
         }
+        Spacer(Modifier.height(maxOf(navInset, 20.dp)))
+    }
+}
+
+@Composable
+private fun Home(onOpen: (Page) -> Unit) {
+    val now = remember { java.time.ZonedDateTime.now(ZoneId.of("Africa/Dar_es_Salaam")) }
+    val greeting = when (now.hour) { in 5..11 -> "Good morning"; in 12..16 -> "Good afternoon"; else -> "Good evening" }
+    ScreenHeader(greeting, overline = DateTimeFormatter.ofPattern("EEEE, d MMMM").format(now)) {
+        IconCircleButton(HfIcons.Settings, "Settings", { onOpen(Page.Settings) })
+    }
+    Text("Your summary and the “Needs you” queue will appear here.", style = Hf.type.body, color = Hf.colors.muted)
+}
+
+@Composable
+private fun SettingsHub(onOpen: (Page) -> Unit) {
+    ListCard {
+        ListRow("Permissions and capture", subtitle = "Assistant, notifications, SMS, microphone", icon = HfIcons.Lock, chevron = true,
+            onClick = { onOpen(Page.Permissions) })
+        ListDivider()
+        ListRow("Cloud AI", subtitle = "Consent, providers, routes and budget", icon = HfIcons.Cloud, tone = Tone.Info, chevron = true,
+            onClick = { onOpen(Page.CloudAi) })
+        ListDivider()
+        ListRow("On-device models", subtitle = "Import and test local models", icon = HfIcons.Chip, tone = Tone.Success, chevron = true,
+            onClick = { onOpen(Page.LocalModels) })
+        ListDivider()
+        ListRow("Recordings", subtitle = "Media import, exclusions, conversations", icon = HfIcons.Waveform, tone = Tone.Neutral, chevron = true,
+            onClick = { onOpen(Page.Recordings) })
+    }
+    ListCard {
+        ListRow("Encrypted backup", subtitle = "Export and restore", icon = HfIcons.Key, tone = Tone.Neutral, chevron = true,
+            onClick = { onOpen(Page.Backup) })
+        ListDivider()
+        ListRow("This device", subtitle = "Android, assistant role, timezone", icon = HfIcons.Phone, tone = Tone.Neutral, chevron = true,
+            onClick = { onOpen(Page.Device) })
     }
 }
 

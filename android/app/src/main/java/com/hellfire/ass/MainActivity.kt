@@ -15,11 +15,13 @@ import android.provider.Settings
 import android.service.voice.VoiceInteractionService
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import com.hellfire.ass.assistant.HellFireVoiceService
 import com.hellfire.ass.notifications.HellFireNotificationListener
 import com.hellfire.ass.ui.HellFireScreen
+import com.hellfire.ass.ui.MainTab
 import com.hellfire.ass.sms.SmsCaptureSettings
 import com.hellfire.ass.sms.SmsSyncWorker
 import androidx.work.WorkManager
@@ -49,11 +51,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent {
             HellFireScreen(
                 app = application as HellFireApp,
                 permissions = permissions,
-                initialTab = if (intent.data?.host == "tasks") "Tasks" else if (intent.action == Intent.ACTION_ASSIST) "Assistant" else "Setup",
+                initialTab = if (intent.data?.host == "tasks") MainTab.Tasks else if (intent.action == Intent.ACTION_ASSIST) MainTab.Ask else MainTab.Home,
                 message = message,
                 onRole = ::selectAssistant,
                 onSettings = ::openSettings,
