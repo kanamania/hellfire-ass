@@ -7,6 +7,21 @@ The existing optional cloud providers/settings were merged from main; their live
 tests remain opt-in and unconfigured.
 No device-dependent phase is fully accepted solely because its host checks pass.
 
+## Fingerprint and Google Drive checkpoint — 2026-11-14
+
+| Question | Test | Result | Evidence | Next action |
+|---|---|---|---|---|
+| Fingerprint login | Enroll fingerprint and device PIN; enable app lock; cancel/wrong/correct fingerprint; use PIN fallback; background/recreate/restart; disable lock after authentication | NOT TESTED (physical) | Platform `BiometricPrompt`; API 30+ strong biometric or device credential, API 29 platform credential fallback; no fingerprint data stored. Only `emulator-5554` was listed by read-only `adb devices -l`; it was not used for authentication testing | Run on the physical OPPO; verify ColorOS sensor/lockout/PIN behavior and revoking enrollment |
+| Private UI and assistant access | Open task deep link, assistant role entry, recents, account/document picker; return locked; unlock and consume pending result | NOT TESTED (device) | Main activity gates private Compose content and uses secure-window flag. Assistant session redirects to app when lock is enabled. Saveable UI holder preserves result-registration keys; manual archive passphrase survives only in an in-memory ViewModel | Verify no private content/dialog/voice response is exposed while locked; verify picker return, rotation, screen-off and process death |
+| Daily encrypted Google Drive backup | Register Cloud Android OAuth client/certificate, enable Drive API, connect Google account, enable schedule, inspect Drive file and reported success | NOT TESTED (live Google/device) | `drive.file` authorization, existing passphrase archive, unique 24-hour WorkManager job, unmetered/battery/storage constraints, streamed upload, server size/checksum confirmation | Configure actual Cloud project and signing certificates; test first/manual/overnight upload, offline/reboot/Doze/quota/consent revocation; no live Google account used |
+| Restore on replacement installation | Connect original account, list/select backup, enter original passphrase, confirm restore into empty database | NOT TESTED (native/live Google/device) | Bounded ciphertext download, existing authenticated archive/schema/table/media validation and empty-database guard; device-key re-encryption, stale send approvals cleared | Perform full SQLCipher/Keystore/media round trip, wrong-password/corrupt-download/insufficient-space tests, regrant access afterward |
+| Large archive scheduling | Upload representative original-media archive on actual Wi-Fi | NOT TESTED | Existing 7 GiB originals/1 GiB table limits; 9 GiB transfer ceiling. Normal WorkManager execution window applies; upload sessions are not persisted across process death | Measure timing/disk use; use manual archive upload when transfer cannot fit the worker window |
+
+Host checks for this change are recorded after running the test/build commands.
+No physical fingerprint, live Google authorization, cloud upload or native restore
+success is inferred from host tests. Existing OS backup exclusions remain enabled;
+Google Drive receives only the owner-approved encrypted portable archive.
+
 ## Current phase gates
 
 | Phase | Software evidence | Status | Remaining gate |

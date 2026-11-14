@@ -390,6 +390,76 @@ API contracts checked against official documentation on 2026-11-13:
 [DeepSeek Chat Completions](https://api-docs.deepseek.com/api/create-chat-completion/),
 [DeepSeek errors](https://api-docs.deepseek.com/quick_start/error_codes/).
 
+## Fingerprint login and daily Google Drive recovery
+
+In **Setup**, enroll a fingerprint in Android Settings, set a device screen lock,
+and choose **Enable fingerprint app lock…**. Android authenticates both enabling
+and disabling the lock. The app locks after leaving the foreground and after
+activity/process recreation; authentication is never restored from saved state.
+Strong biometrics or the device PIN/pattern/password are accepted on API 30+;
+API 29 uses the platform biometric/device-credential prompt. Android chooses which
+enrolled sensor to offer. Private assistant-session queries redirect to the
+unlocked application while app lock is enabled. Background capture and backup
+continue. App windows exclude screenshots/recent-task previews. Removing the
+screen lock while app lock is enabled requires restoring a screen lock in Android
+Settings before opening private data. This is an application UI lock; background
+capture keys remain available to authorized app services.
+
+Google Drive setup requires a Google Cloud project with **Google Drive API enabled**,
+an OAuth consent screen (add your account as a test user if applicable), and an
+**Android OAuth client** registered for `com.hellfire.ass` and the actual APK's
+SHA-1 signing certificate. Register debug and private release certificates separately
+as needed; retain the app/Cloud project identity for recovery. No client secret or
+service-account key belongs in the APK. `./gradlew :app:signingReport` displays
+certificate fingerprints. Devices need Google Play services and a Google account.
+Google account policy or incomplete Cloud setup may block authorization; no live
+account has been connected by this implementation.
+
+In **Backup**, choose **Connect / reconnect Google Drive…**, select your Google
+account, and approve `drive.file` access. Enter a strong passphrase (12–1024
+characters), keep a separate copy, and choose **Enable daily encrypted backups**.
+The first upload is queued immediately; subsequent uploads use a persisted
+24-hour WorkManager schedule. Both daily and **Back up now** jobs require an
+unmetered network, sufficient battery and free storage. Android/ColorOS, force-stop,
+recording or network loss can delay them. Backups use the existing encrypted
+portable format, including registered originals, and remain visible as timestamped
+`.hfb` files in My Drive. Upload success is recorded only after Drive confirms
+archive size and checksum. The last result/time is shown in Backup. Existing
+snapshots are retained and count against the account's storage; manage retention
+in Drive. The app requests access only to files it creates/opens, not the whole Drive.
+
+The passphrase/account configuration is encrypted with the existing device key in
+`noBackupFilesDir`; it is excluded from portable/OS backups. Short-lived access
+tokens remain in memory and are reacquired through Google's authorization API.
+A worker never opens a consent screen: revoked/expired authorization that needs
+interaction reports **Reconnect Google Drive**. **Disable daily backups** cancels
+scheduled/manual jobs and removes the saved passphrase, retaining cloud archives.
+
+To recover on a replacement phone or empty app installation:
+
+1. Install the matching HellFire Ass app/version with the registered signing identity.
+2. Leave notification/SMS capture off, disconnect mail/gateway accounts, and stop recording.
+3. Open **Backup**, connect the original Google account and choose **Find Google Drive backups to restore**.
+4. Enter the archive's original passphrase, select a dated backup and confirm **Download and restore**.
+5. Regrant Android permissions, reconnect accounts, import models and re-enable app lock/daily backup as desired.
+
+The list shows the 100 newest matching app archives. Older visible `.hfb` files
+can be selected with the manual restore picker. Restore downloads only ciphertext
+into private storage, authenticates the archive and validates it before importing;
+wrong passphrases, incomplete/corrupt archives and nonempty local data are rejected.
+Accounts/credentials, permissions, app lock and scheduling settings, models and
+Phase 0 test samples are excluded. There is no passphrase recovery. A process kill
+can leave an encrypted staging file; full native/Google/device round trips remain
+NOT TESTED. Jobs use WorkManager's normal execution window (roughly ten minutes);
+very large archives or slow connections may require manual export/upload/restore.
+The resumable upload protocol is used for a single streamed transfer; this slice
+does not persist upload sessions across worker/process restarts.
+
+References: [Android biometric prompt](https://developer.android.com/reference/android/hardware/biometrics/BiometricPrompt.Builder),
+[Google authorization](https://developer.android.com/identity/authorization),
+[Drive upload protocol](https://developers.google.com/workspace/drive/api/guides/manage-uploads),
+[Drive file scope](https://developers.google.com/workspace/drive/api/guides/api-specific-auth).
+
 ## Storage, recovery and boundaries
 
 Room schema **8** has non-destructive migrations from schema 1. Production uses
@@ -444,6 +514,9 @@ Exact host results, artifact checksum and the final physical checklist are in
 ordinary SQLite/Robolectric and generated AES/RSA keys; they do not prove native
 SQLCipher/Keystore, actual model execution, live accounts or Android/OEM behavior.
 
+- 2026-11-14, device security/recovery: opt-in platform fingerprint/device-credential
+  app lock, encrypted daily Google Drive upload and confirmed backup selection/restore.
+  Live Google/OEM verification remains pending.
 - 2026-11-13, Phase 0: skeleton, assistant/session, notification capture, encrypted
   prototypes and access/status screens; 34 host tests.
 - 2026-11-13, Phase 1: durable processing/recovery, audit/policy, authorized SMS history

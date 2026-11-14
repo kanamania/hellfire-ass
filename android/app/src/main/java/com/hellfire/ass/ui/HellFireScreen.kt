@@ -37,6 +37,8 @@ import java.time.format.DateTimeFormatter
 fun HellFireScreen(
     app: HellFireApp,
     permissions: PermissionStatus,
+    appLockEnabled: Boolean,
+    onAppLockChange: (Boolean) -> Unit,
     initialTab: String,
     message: String?,
     onRole: () -> Unit,
@@ -79,7 +81,13 @@ fun HellFireScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     if (message != null) Text(message, color = MaterialTheme.colorScheme.primary)
                     when (tab) {
-                        "Setup" -> Setup(permissions, onRole, onSettings, onMicrophonePermission, onSmsEnable, onSmsDisable)
+                        "Setup" -> {
+                            Text("Fingerprint app lock", style = MaterialTheme.typography.titleLarge)
+                            Text(if (appLockEnabled) "Enabled · fingerprint or device screen lock is required when reopening HellFire Ass." else "Disabled · enable to protect the app when you leave it.")
+                            Text("Enroll fingerprints in Android Settings. Background capture and scheduled backups continue while the app is locked.")
+                            OutlinedButton(onClick = { onAppLockChange(!appLockEnabled) }) { Text(if (appLockEnabled) "Disable app lock…" else "Enable fingerprint app lock…") }
+                            Setup(permissions, onRole, onSettings, onMicrophonePermission, onSmsEnable, onSmsDisable)
+                        }
                         "Assistant" -> AssistantScreen(app, onSession)
                         "AI chat" -> Assistant(app, onSession)
                         "AI settings" -> AiSettingsScreen(app)
