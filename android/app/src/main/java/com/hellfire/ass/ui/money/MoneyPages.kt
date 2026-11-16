@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.room.withTransaction
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hellfire.ass.data.SourceEvent
 import com.hellfire.ass.finance.FinanceAccount
@@ -167,11 +168,17 @@ fun TransactionPage(id: String) {
     var merchant by remember { mutableStateOf<String?>(null) }
     var confirmReverse by remember { mutableStateOf(false) }
     var pickCategory by remember { mutableStateOf(false) }
+    var person by remember(id) { mutableStateOf("") }
+    var pickedPerson by remember(id) { mutableStateOf<com.hellfire.ass.contacts.ContactChoice?>(null) }
+    var personLoaded by remember(id) { mutableStateOf(false) }
     var debt by remember { mutableStateOf<com.hellfire.ass.ui.insights.DebtPrefill?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(entry) {
         val e = entry ?: return@LaunchedEffect
         withContext(Dispatchers.IO) {
+            person = e.personKey?.let { app.database.contacts().find(it)?.displayName }.orEmpty()
+            pickedPerson = null
+            personLoaded = true
             account = dao.account(e.accountId)
             fee = dao.group(e.groupId).filter { it.kind == "FEE" }.sumOf { -it.amount }
             reversed = dao.reversed(e.id)
@@ -201,6 +208,22 @@ fun TransactionPage(id: String) {
             "Confirmed by you" to Fmt.dayTime(e.createdAt),
             "Ledger" to when { e.reversesId != null -> "Correction entry"; reversed -> "Reversed"; else -> "1 entry · not reversed" },
         ))
+        SectionCard("Person") {
+            if (personLoaded) ContactPersonField(person, { person = it; pickedPerson = null }, "Person (optional)", onPick = { pickedPerson = it; person = it.displayName })
+            SavedContactStatus(e.personKey)
+            PrimaryButton("Save person", {
+                scope.launch {
+                    message = try {
+                        withContext(Dispatchers.IO) { app.database.withTransaction {
+                            val links = com.hellfire.ass.contacts.ContactLinks(app.database)
+                            links.ledger(id, if (person.isBlank()) null else links.save(pickedPerson ?: com.hellfire.ass.contacts.ContactChoice(person)))
+                        } }
+                        "Person saved. Balances are unchanged."
+                    } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Person could not be saved." }
+                }
+            }, enabled = personLoaded)
+            e.personKey?.let { key -> QuietButton("Open person", { nav.push(Screen.Person, key) }) }
+        }
         source?.let { s ->
             EvidenceCard("Source · ${EventText.sourceLabel(s)} · ${Fmt.dayTime(s.occurredAt)}", sourceText.ifBlank { "No readable text in the source." }.take(1200))
         }

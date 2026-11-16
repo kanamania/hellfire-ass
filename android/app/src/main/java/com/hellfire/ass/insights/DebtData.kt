@@ -22,6 +22,8 @@ data class DebtEntry(@PrimaryKey val id: String, val person: String, val amount:
 
 @Dao
 interface DebtDao {
+    @Query("UPDATE debt_entry SET person = :name WHERE LOWER(TRIM(person)) = LOWER(TRIM(:oldName))") suspend fun rename(oldName: String, name: String)
+
     @Insert suspend fun insert(value: DebtEntry)
     @Query("SELECT * FROM debt_entry ORDER BY occurredAt DESC, createdAt DESC") fun entries(): Flow<List<DebtEntry>>
     @Query("SELECT * FROM debt_entry ORDER BY occurredAt DESC, createdAt DESC") suspend fun all(): List<DebtEntry>

@@ -111,7 +111,12 @@ fun PeoplePage() {
     var people by remember { mutableStateOf<List<Person>?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(Unit) {
-        people = io { People.build(loadInteractions(app, System.currentTimeMillis() - 180L * 86_400_000), loadAliases(app)) } ?: emptyList()
+        people = io {
+            val conversations = People.build(loadInteractions(app, System.currentTimeMillis() - 180L * 86_400_000), loadAliases(app))
+            val saved = app.database.contacts().all().filter { c -> conversations.none { it.key == c.personKey } }
+                .map { Person(it.personKey, it.displayName, true, emptyMap(), 0, 0, 0, emptySet()) }
+            conversations + saved
+        } ?: emptyList()
     }
     PushedPage("People", breadcrumb = "Home") {
         val all = people
@@ -123,7 +128,7 @@ fun PeoplePage() {
         } else ListCard {
             shown.forEachIndexed { i, p ->
                 if (i > 0) ListDivider()
-                ListRow(p.name, subtitle = "${p.channels.sorted().joinToString()} · last ${Fmt.relativeDay(p.lastAt)} · ${p.incoming} in, ${p.outgoing} out",
+                ListRow(p.name, subtitle = if (p.lastAt == 0L) "Linked person · no saved conversations" else "${p.channels.sorted().joinToString()} · last ${Fmt.relativeDay(p.lastAt)} · ${p.incoming} in, ${p.outgoing} out",
                     tileText = p.name.firstOrNull { it.isLetter() }?.uppercase() ?: "#", tone = if (p.named) Tone.Primary else Tone.Neutral, chevron = true,
                     onClick = { nav.push(Screen.Person, p.key) })
             }
@@ -132,7 +137,8 @@ fun PeoplePage() {
     }
 }
 
-private class PersonView(val person: Person, val timeline: List<Interaction>, val tasks: List<AssistantTask>, val debt: DebtBalance?, val media: List<MediaItem>)
+private class PersonView(val person: Person, val timeline: List<Interaction>, val tasks: List<AssistantTask>, val debt: DebtBalance?, val media: List<MediaItem>,
+    val payments: List<com.hellfire.ass.finance.LedgerEntry>, val debts: List<DebtEntry>)
 
 /** One person: every message across channels, what was promised, money between you, and matching recordings. */
 @Composable
@@ -143,19 +149,24 @@ fun PersonPage(key: String) {
     var view by remember { mutableStateOf<PersonView?>(null) }
     var loaded by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
+    var picked by remember { mutableStateOf<com.hellfire.ass.contacts.ContactChoice?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(key) {
         view = io {
             val aliases = loadAliases(app)
             val all = loadInteractions(app, System.currentTimeMillis() - 365L * 86_400_000)
             val mine = all.filter { People.personKey(it.handle, aliases) == key }
-            val person = People.build(mine, aliases).firstOrNull() ?: return@io null
+            val saved = app.database.contacts().find(key)
+            val person = People.build(mine, aliases).firstOrNull()
+                ?: saved?.let { Person(key, it.displayName, true, emptyMap(), 0, 0, 0, emptySet()) } ?: return@io null
             val sources = mine.map { it.sourceId }.toSet()
             val digits = person.handles.keys.filter { it.startsWith("tel:") }.map { it.removePrefix("tel:") }
             PersonView(person, mine.sortedByDescending { it.at }.take(60),
-                app.database.tasks().all().filter { it.sourceId in sources && it.state in setOf("ACTIVE", "REVIEW") }.sortedBy { it.dueAt },
+                app.database.tasks().all().filter { it.personKey == key || (it.personKey == null && it.sourceId in sources && it.state in setOf("ACTIVE", "REVIEW")) }.sortedBy { it.dueAt },
                 Debts.balances(app.database.debts().all()).firstOrNull { Debts.key(it.person) == Debts.key(person.name) },
-                app.database.media().all().filter { m -> (person.named && m.name.contains(person.name, true)) || digits.any { m.name.contains(it) } }.take(10))
+                app.database.media().all().filter { m -> (person.named && m.name.contains(person.name, true)) || digits.any { m.name.contains(it) } }.take(10),
+                app.database.finances().allEntries().filter { it.personKey == key }.sortedByDescending { it.occurredAt },
+                app.database.debts().all().filter { People.namedKey(it.person) == key })
         }
         name = view?.person?.takeIf { it.named }?.name.orEmpty()
         loaded = true
@@ -167,28 +178,47 @@ fun PersonPage(key: String) {
         message?.let { Banner(it) }
         KvList(listOfNotNull(
             "Reachable on" to p.handles.values.distinct().joinToString(),
-            "Last contact" to Fmt.dayTime(p.lastAt),
+            "Last contact" to if (p.lastAt == 0L) "No saved messages" else Fmt.dayTime(p.lastAt),
             "Messages" to "${p.incoming} from them · ${p.outgoing} from you",
             v.debt?.let { "Money" to if (it.balance > 0) "Owes you TZS ${Fmt.amount(it.balance)}" else "You owe TZS ${Fmt.amount(-it.balance)}" },
         ))
+        SavedContactStatus(key)
         SectionCard(if (p.named) "Name" else "Give this person a name") {
-            HfTextField(name, { name = it }, "Name", supporting = "The same name on another number or address joins them into one person.")
+            ContactPersonField(name, { name = it; picked = null }, "Name", onPick = { picked = it; name = it.displayName })
+            Note("A contact joins all its numbers and email addresses into this person. The same typed name also joins saved handles.")
             PrimaryButton("Save name", {
                 val chosen = name.trim()
                 scope.launch {
-                    val saved = io { val now = System.currentTimeMillis(); p.handles.keys.forEach { app.database.people().save(PersonAlias(it, chosen, now)) } }
+                    val saved = io { com.hellfire.ass.contacts.ContactLinks(app.database).namePerson(key,
+                        picked ?: com.hellfire.ass.contacts.ContactChoice(chosen), p.handles.keys, p.name) }
                     if (saved == null) message = "The name could not be saved."
-                    else { nav.pop(); nav.push(Screen.Person, People.personKey(p.handles.keys.first(), mapOf(p.handles.keys.first() to chosen))) }
+                    else { nav.pop(); nav.push(Screen.Person, saved) }
                 }
-            }, Modifier.fillMaxWidth(), enabled = name.isNotBlank() && name.length <= 80)
+            }, Modifier.fillMaxWidth(), enabled = name.isNotBlank() && name.trim().length <= 200)
         }
         if (v.tasks.isNotEmpty()) {
-            SectionHeader("Open between you", trailing = v.tasks.size.toString())
+            SectionHeader("Tasks", trailing = v.tasks.size.toString())
             ListCard { v.tasks.forEachIndexed { i, t ->
                 if (i > 0) ListDivider()
-                ListRow(t.title.take(100), subtitle = (if (t.state == "REVIEW") "Found in a message · not added yet" else "Due ${Fmt.dayTime(t.dueAt)}") +
+                ListRow(t.title.take(100), subtitle = (when (t.state) { "REVIEW" -> "Found in a message · not added yet"; "DONE" -> "Done"; "DISMISSED" -> "Dismissed"; else -> "Due ${Fmt.dayTime(t.dueAt)}" }) +
                     when (t.direction) { "I_OWE" -> " · you promised"; "OWED_TO_ME" -> " · they promised"; else -> "" },
                     icon = HfIcons.Task, tone = if (t.dueAt < System.currentTimeMillis()) Tone.Warning else Tone.Primary, chevron = true, onClick = { nav.push(Screen.Task, t.id) })
+            } }
+        }
+        if (v.payments.isNotEmpty()) {
+            SectionHeader("Payments", trailing = v.payments.size.toString())
+            ListCard { v.payments.forEachIndexed { i, payment ->
+                if (i > 0) ListDivider()
+                ListRow("${Fmt.signed(payment.amount)} · ${payment.description}", subtitle = Fmt.dayTime(payment.occurredAt), chevron = true,
+                    onClick = { nav.push(Screen.Transaction, payment.id) })
+            } }
+        }
+        if (v.debts.isNotEmpty()) {
+            SectionHeader("Loans and repayments", trailing = v.debts.size.toString())
+            ListCard { v.debts.forEachIndexed { i, debt ->
+                if (i > 0) ListDivider()
+                ListRow("${Debts.label(debt.kind)} · TZS ${Fmt.amount(kotlin.math.abs(debt.amount))}", subtitle = Fmt.dayTime(debt.occurredAt) + " · " + debt.note,
+                    onClick = { debt.ledgerId?.let { nav.push(Screen.Transaction, it) } ?: nav.push(Screen.Debts) })
             } }
         }
         if (v.debt != null) ListCard { ListRow("Loans and repayments", subtitle = "Open the debt record", icon = HfIcons.Money, chevron = true, onClick = { nav.push(Screen.Debts) }) }

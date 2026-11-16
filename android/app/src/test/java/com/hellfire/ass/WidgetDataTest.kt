@@ -120,7 +120,7 @@ class WidgetDataTest {
             BackupTables.readTable(db.openHelper.writableDatabase, zip, "assistant_task", PayloadCipher(KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()))
             db.tasks().task("t")!!.let { assertEquals("NONE", it.direction); assertEquals("TASK", it.kind); assertFalse(it.repeatMonthly) }
             assertEquals(listOf("category_budget", "provider_balance"), BackupTables.tablesFor(13) - BackupTables.tablesFor(10).toSet())
-            assertEquals(14, BackupTables.SCHEMA)
+            assertEquals(15, BackupTables.SCHEMA)
         } finally { db.close() }
     }
 }

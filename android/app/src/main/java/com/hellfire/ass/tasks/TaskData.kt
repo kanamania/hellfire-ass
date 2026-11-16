@@ -19,13 +19,15 @@ data class AssistantTask(@PrimaryKey val id: String, val sourceId: String, val t
     /** TASK or BILL (v11). */
     @ColumnInfo(defaultValue = "TASK") val kind: String = "TASK",
     /** Bills only: when done, the next month's bill is scheduled (v11). */
-    @ColumnInfo(defaultValue = "0") val repeatMonthly: Boolean = false)
+    @ColumnInfo(defaultValue = "0") val repeatMonthly: Boolean = false, val personKey: String? = null)
 
 @Entity(tableName = "daily_review")
 data class DailyReview(@PrimaryKey val day: String, val state: String = "PENDING", val createdAt: Long, val completedAt: Long? = null)
 
 @Dao
 interface TaskDao {
+    @Query("UPDATE assistant_task SET personKey = :key, updatedAt = :now WHERE id = :id") suspend fun setPerson(id: String, key: String?, now: Long)
+
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insert(task: AssistantTask): Long
     @Query("SELECT * FROM assistant_task ORDER BY CASE state WHEN 'REVIEW' THEN 0 WHEN 'ACTIVE' THEN 1 ELSE 2 END, dueAt") fun tasks(): Flow<List<AssistantTask>>
     @Query("SELECT * FROM assistant_task WHERE id = :id") suspend fun task(id: String): AssistantTask?

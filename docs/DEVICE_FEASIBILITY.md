@@ -1,8 +1,49 @@
 # HellFire Ass — implementation and feasibility
 
-Latest update: 2026-11-16 (daily outputs and action templates, directly below). Earlier
+Latest update: 2026-11-16 (local contacts and person links, directly below). Earlier
 checkpoints keep the test counts and APK checksums that were true when they were
 written; the newest checkpoint has the current ones.
+
+## Local contacts and person links — 2026-11-16
+
+Branch `feat/contact-links`. Version 0.7.0 (code 7), Room and backup schema 15.
+Migration 14 → 15 adds `person_contact` and nullable `personKey` columns on
+`assistant_task` and `ledger_entry`; the exported Room schema is committed.
+Backups still restore schemas 8 and 10–14. No dependencies or network integrations
+were added. All fixtures are synthetic. No phone, real contacts, live account or
+physical permission dialog was used.
+
+The owner opens **Choose contact** from a person/vendor field, then sees why access
+is needed before choosing **Allow contacts**. Android's local ContactsContract
+provider supplies contacts already synced on the phone; no People API or OAuth is
+used. Blank searches read nothing, and background searches read at most 30 matching
+data rows. Only saved picks and their normalized phone/email aliases are persisted.
+Free text continues to work without access or a match. Settings › Permissions and
+capture displays the actual Contacts grant; returning from App settings refreshes it.
+
+| Check | Command | Result |
+|---|---|---|
+| Android tests, lint and APK | From `android/`: `./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'` | PASS: 263 tests, 259 passed, 4 existing opt-in live AI tests skipped, 0 failures/errors; 16 new synthetic tests. Lint: 0 errors, 267 warnings, 6 hints. APK assembled successfully |
+| Debug APK | `sha256sum app/build/outputs/apk/debug/app-debug.apk` | 0.7.0 (code 7), arm64-v8a only, 151,378,091 bytes; SHA-256 `4ae6e17a299d8ba9dee89bef0bc3ea90db36f4098a1bfeb1fa00d56a58e5d7e7`. Not installed on any device |
+
+| Question | Test | Result | Evidence | Next action |
+|---|---|---|---|---|
+| Populated schema 14 database upgrades? | `ContactLinksTest` | PASS (host) / NOT TESTED (phone SQLCipher) | Amounts, balance, task and aliases survive; new links start NULL | Upgrade the owner's encrypted database on the phone |
+| Backup compatibility? | `ContactLinksTest`, existing backup tests | PASS (host) / NOT TESTED (phone) | Schema 15 round-trip retains selected contact, aliases and task/payment links; populated schema 14 rows restore without the new columns/table; schemas 8 and 10–14 remain allowed; restore requires `person_contact` empty too | Encrypted export/restore on an empty phone install |
+| Search, denial and free text? | `PhoneContactsTest`, `ContactLinksTest` | PASS (synthetic provider/data layer) / NOT TESTED (Compose interaction) | Name, normalized/local number and email searches; bounded cursor, no query on blank/denied access, mid-query revocation; typed names save without provider access | Exercise each picker by touch and TalkBack |
+| Numbers join across channels? | `ContactLinksTest` | PASS (synthetic) | Two numbers plus an explicitly selected vendor email (`info@…`) produce one person across SMS, WhatsApp and email using `Handles.key()` | Verify the owner's actual message sender formats |
+| Link changes affect money? | `ContactLinksTest` | PASS (host) | Edit, replace and clear task/payment links; ledger row and balance unchanged; action_audit counts actual changes; duplicate payment review retains its person without another debit | Compare real balances before/after a link edit |
+| Naming an existing conversation? | `ContactLinksTest` | PASS (host) | All known handles, explicit tasks/payments and debt names follow the new name; no orphan old person link | Rename a picked person on the phone |
+| New contact data reaches web copy? | `WebSyncTest` | PASS (host) | Selected display name, lookup key, phone/email aliases and personKey absent from fake server payload; WebSync allowlist unchanged | Keep excluded unless the owner authorizes web contacts |
+| Contacts permission prompt, denial and later grant? | Owner opens picker → explanation → Allow; deny, type name, then App settings → Permissions → Contacts | **NOT TESTED (phone)** | No Android/ColorOS permission dialog was displayed; no permission claimed granted | Verify prompt timing, denial fallback and Settings state after resume |
+| Real Google-synced contacts on ColorOS? | Search name/number/email in each requested screen | **NOT TESTED (phone)** | Only SQLite-backed synthetic ContactsContract provider exercised | Check sync visibility, search latency and each field's saved result |
+| Real contact with several numbers? | Pick one contact with multiple phones/emails, then open its SMS/WhatsApp/email person page | **NOT TESTED (phone)** | Synthetic cross-channel test passes; no real contact was read | Confirm all identities and linked tasks, payments and debts appear |
+| Deleted or unresolved contact? | Save a pick, delete it in Contacts, return to HellFire | **NOT TESTED (phone)** | Synthetic deletion returns MISSING; stored name kept; unavailable/revoked provider distinguished; screens compile | Confirm “not in contacts” on person, debt/vendor, task and transaction fields |
+
+Names retain the existing shared identity rule: identical saved names join into
+one person. Contact matching does not resolve WhatsApp `@lid` identifiers without
+an owner-confirmed handle. Selected contact links participate in the already
+configured encrypted backup, and are excluded from the read-only web copy.
 
 ## Daily outputs and action templates — 2026-11-16
 

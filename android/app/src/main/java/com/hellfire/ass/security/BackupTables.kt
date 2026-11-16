@@ -9,22 +9,24 @@ import java.util.zip.*
 /** Fixed table/column allowlists; archives cannot supply executable SQL. */
 object BackupTables {
     /** Backup schema written by this version. Schema 8 archives (before the v10 database) still restore. The full-text index is rebuilt, not backed up. */
-    const val SCHEMA = 14
+    const val SCHEMA = 15
     private val schema8 = listOf("source_event", "event_processing", "capture_audit", "notification_policy", "finance_account",
         "finance_candidate", "ledger_entry", "ledger_evidence", "merchant_alias", "communication_message", "outbound_draft",
         "action_audit", "assistant_task", "daily_review", "media_item", "transcript_segment", "speech_span", "memory_item")
     private val schema10 = schema8 + "ai_usage"
     private val schema11 = schema10 + listOf("category_budget", "provider_balance")
-    val tables = schema11 + listOf("action_template", "debt_entry", "person_alias")
+    private val schema14 = schema11 + listOf("action_template", "debt_entry", "person_alias")
+    val tables = schema14 + "person_contact"
     fun tablesFor(schema: Int): List<String> = when (schema) {
         8 -> schema8
         10 -> schema10
         11, 12, 13 -> schema11
+        14 -> schema14
         SCHEMA -> tables
         else -> throw IllegalArgumentException("Backup schema requires a matching app version")
     }
     /** Columns added after schema 8. Older archives may omit exactly these; they restore as the column default (NULL, NONE, TASK, 0). */
-    val addedColumns = mapOf("assistant_task" to setOf("completedAt", "direction", "amount", "kind", "repeatMonthly"), "media_item" to setOf("durationMs"),
+    val addedColumns = mapOf("assistant_task" to setOf("completedAt", "direction", "amount", "kind", "repeatMonthly", "personKey"), "ledger_entry" to setOf("personKey"), "media_item" to setOf("durationMs"),
         "finance_candidate" to setOf("accountId", "category", "duplicateOf"))
     fun write(db: SupportSQLiteDatabase, zip: ZipOutputStream, cipher: PayloadCipher): Map<String, Long> {
         val counts = linkedMapOf<String, Long>()
