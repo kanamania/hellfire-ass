@@ -192,7 +192,7 @@ Decisions made where `HANDOFF.md` was unclear or a screen was marked *not drawn*
 - **Updates** (owner choice): a daily Wi-Fi check records a newer published file; downloading needs a tap on **Update**. The old model stays in use until the new one is verified, so an update briefly needs room for both.
 - **Owner control:** removing the model stops automatic downloads; "Download now" undoes that. An imported model of the owner's own is never replaced by an update; "Switch to Gemma 4 E2B" is explicit.
 
-## Project review implementation — 2026-11-16 (in progress)
+## Project review implementation — 2026-11-16 (completed)
 
 Owner authorized implementation of the review and asked to continue to completion.
 Work stays in existing packages, with no new runtime dependencies. Physical OPPO,
@@ -209,4 +209,10 @@ live account and real-corpus checks remain the final stage.
 - [x] Flexible reminders and calendar handoff.
 - [x] English/Kiswahili main workflows and speech locale.
 - [x] Recovery readiness and backups beyond the previous 7 GiB originals ceiling.
-- [ ] Regression tests, lint/build, existing feasibility docs, integration and cleanup.
+- [x] Regression tests, lint/build, existing feasibility docs, integration and cleanup.
+
+Merged to `main`; the feature worktree and branch were removed. Host checks: 282
+Android tests passed, 4 live-AI tests skipped; lint has no errors. Debug and signed
+release APKs verify. Primary-checkout frontend typecheck/Turbopack build pass; the
+local systemd frontend was restarted and its HTTPS login/CSS checked. Physical
+phone, live account/model, real-corpus and hosted CI checks remain NOT TESTED.

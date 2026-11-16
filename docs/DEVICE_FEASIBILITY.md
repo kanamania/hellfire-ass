@@ -75,9 +75,14 @@ Implemented:
 | Android lint | `./gradlew :app:lintDebug` with the same worker/heap limits | PASS: 0 errors, 275 warnings, 6 hints; advanced/dynamic English remains documented |
 | Debug APK | `./gradlew :app:assembleDebug`; `apksigner verify --verbose`; `zipalign -c -P 16 4` | PASS: version 0.8.0/code 8, 150,856,321 bytes; signature and alignment verify. SHA-256 `f6b79bf799f67fab73e83de9ff8b871530de7c1544b774b898c31280aaeba47e` |
 | Signed release APK | `./gradlew :app:assembleRelease`; `apksigner verify --verbose`; `zipalign -c -P 16 4` | PASS: version 0.8.0/code 8, 104,539,808 bytes; v2 signature verifies, alignment check passes. SHA-256 `ad6dc13d09a3f0d58c38f1b42032ed59dd08ae8006357e456eb98a6e8d6c14d9` |
-| Web frontend (worktree) | `npm run typecheck`; `npm run build -- --webpack` | PASS. Default Turbopack build rejects worktree dependency symlinks outside its root; primary-checkout build/restart follows integration |
+| Web frontend | `npm run typecheck`; `npm run build` in primary checkout after merge | PASS: default Turbopack production build, all 10 routes. Worktree webpack build also passed; its default build rejected dependency symlinks outside the worktree root |
+| Local web service | `sudo systemctl restart hellfire-web-frontend.service`; HTTPS GET `/login` and compiled stylesheet | PASS: frontend/API active, login HTTP 200; served CSS contains and uses the corrected dark button foreground token. Local self-signed certificate bypass was limited to this health probe; product TLS checks are unchanged. No browser/rendering test |
 | Device/account/model/real-corpus behavior | ADB / actual owner-authorized integrations | NOT TESTED; no connected device or live accounts used |
 | Hosted CI | Push/PR in GitHub | NOT TESTED; workflow is added, not executed remotely |
+
+Integration: merged to `main`; only the primary worktree and `main` branch remain.
+Verified APKs and host reports are in the primary checkout’s Android build outputs.
+No personal data, signing material or dependency symlinks were committed.
 
 Final phone checks: upgrade populated encrypted schema 15 data; use two same-name
 contacts, merge and separate selected records; rotate/unlock during review; share
