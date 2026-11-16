@@ -11,7 +11,7 @@ object ChunkedMedia {
     const val HEADER = 41L
     data class Written(val id: String, val size: Long, val interrupted: Boolean, val pcm: Boolean = false)
     fun write(input: InputStream, file: File, id: String, pcm: Boolean, cipher: PayloadCipher,
-        retainInterrupted: Boolean = false): Written {
+        retainInterrupted: Boolean = false, maxBytes: Long = 8L * 1024 * 1024 * 1024): Written {
         val uuid = UUID.fromString(id)
         var total = 0L
         var interrupted = false
@@ -31,7 +31,7 @@ object ChunkedMedia {
                     used += count
                 }
                 if (used > 0) {
-                    require(total + used <= 8L * 1024 * 1024 * 1024) { "Media exceeds the 8 GiB import limit" }
+                    require(total + used <= maxBytes) { "Encrypted stream exceeds its size limit" }
                     val encrypted = cipher.encrypt(buffer.copyOf(used), aad(id, index, used))
                     out.writeInt(used); out.write(encrypted)
                     total += used; index++
@@ -46,7 +46,7 @@ object ChunkedMedia {
     fun aad(id: String, index: Int, size: Int): ByteArray = "hellfire-media-v2:$id:$index:$size".toByteArray(Charsets.UTF_8)
 
     class Reader(private val file: File, private val cipher: PayloadCipher,
-        expectedId: String? = null, expectedSize: Long? = null) : Closeable {
+        expectedId: String? = null, expectedSize: Long? = null, maxBytes: Long = 8L * 1024 * 1024 * 1024) : Closeable {
         private val input = RandomAccessFile(file, "r")
         val id: String
         val pcm: Boolean
@@ -60,7 +60,7 @@ object ChunkedMedia {
             pcm = input.readInt() == 1
             require(input.readInt() == CHUNK)
             size = input.readLong()
-            require(size in 0..(8L * 1024 * 1024 * 1024)) { "Incomplete encrypted media" }
+            require(size in 0..maxBytes) { "Incomplete encrypted media" }
             require(expectedId == null || id == expectedId)
             require(expectedSize == null || size == expectedSize)
             } catch (error: Exception) { input.close(); throw error }

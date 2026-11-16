@@ -107,6 +107,36 @@ object TaskScheduler {
         require(app.database.tasks().details(id, direction, amount, kind, repeatMonthly && kind == "BILL", System.currentTimeMillis()) == 1)
     }
 
+    suspend fun updateReminderOptions(app: HellFireApp, id: String, repeat: String, profile: String, snooze: Int) = lock.withLock {
+        require(repeat in setOf("NONE", "DAILY", "WEEKLY", "MONTHLY") && profile in setOf("GENTLE", "NORMAL", "PERSISTENT") && snooze in 5..1440)
+        app.database.tasks().reminderOptions(id, repeat, profile, snooze)
+        arm(app)
+    }
+    fun nextOccurrence(task: AssistantTask, now: Long): AssistantTask? {
+        val rule = task.repeatRule.takeIf { it != "NONE" } ?: if (task.kind == "BILL" && task.repeatMonthly) "MONTHLY" else return null
+        if (task.state != "ACTIVE") return null
+        var date = Instant.ofEpochMilli(task.dueAt).atZone(TaskTime.zone)
+        val current = Instant.ofEpochMilli(now).atZone(TaskTime.zone)
+        val original = date
+        val count = when (rule) {
+            "DAILY" -> java.time.temporal.ChronoUnit.DAYS.between(date.toLocalDate(), current.toLocalDate()).coerceAtLeast(1)
+            "WEEKLY" -> (java.time.temporal.ChronoUnit.DAYS.between(date.toLocalDate(), current.toLocalDate()) / 7).coerceAtLeast(1)
+            else -> java.time.temporal.ChronoUnit.MONTHS.between(java.time.YearMonth.from(date), java.time.YearMonth.from(current)).coerceAtLeast(1)
+        }
+        fun advance(n: Long) = when (rule) { "DAILY" -> original.plusDays(n); "WEEKLY" -> original.plusWeeks(n); else -> original.plusMonths(n) }
+        date = advance(count)
+        if (date.toInstant().toEpochMilli() <= now) date = advance(count + 1)
+        val next = date.toInstant().toEpochMilli()
+        return task.copy(id = com.hellfire.ass.events.NotificationNormalizer.sha256("repeat:${task.id}:$next"), dueAt = next, state = "ACTIVE",
+            createdAt = now, updatedAt = now, nextAlertAt = TaskTime.firstAlert(next, now), lastAlertAt = null, alertCount = 0, completedAt = null)
+    }
+    internal suspend fun retainNext(dao: TaskDao, task: AssistantTask, now: Long): AssistantTask? {
+        val next = nextOccurrence(task, now) ?: return null
+        if (dao.insert(next) == -1L) dao.reactivateRepeat(next.id, next.nextAlertAt, now)
+        return next
+    }
+    fun repeatInterval(task: AssistantTask, default: Int) = when (task.alertProfile) { "GENTLE" -> 1440; "NORMAL" -> 60; else -> default.coerceIn(5, 1440) }
+
     suspend fun action(app: HellFireApp, id: String, action: String) = lock.withLock {
         val now = System.currentTimeMillis()
         app.database.withTransaction {
@@ -114,12 +144,11 @@ object TaskScheduler {
                 "DONE", "REJECTED" -> {
                     val task = app.database.tasks().task(id)
                     app.database.tasks().close(id, action, now)
-                    if (action == "DONE" && task != null) nextBill(task, now)?.let { next ->
-                        app.database.tasks().insert(next)
-                        app.database.communications().audit(ActionAudit(UUID.randomUUID().toString(), next.id, "OWNER_BILL_REPEAT", "ACTIVE", now))
+                    if (action == "DONE" && task != null) retainNext(app.database.tasks(), task, now)?.let { next ->
+                        app.database.communications().audit(ActionAudit(UUID.randomUUID().toString(), next.id, "OWNER_TASK_REPEAT", task.id, now))
                     }
                 }
-                "SNOOZE" -> app.database.tasks().snooze(id, Math.addExact(now, 10 * 60_000), now)
+                "SNOOZE" -> app.database.tasks().snooze(id, Math.addExact(now, (app.database.tasks().task(id)?.snoozeMinutes ?: 10) * 60_000L), now)
                 else -> error("Unsupported task action")
             }
             app.database.communications().audit(ActionAudit(UUID.randomUUID().toString(), id, "OWNER_TASK_$action", action, now))
@@ -132,6 +161,11 @@ object TaskScheduler {
         val now = System.currentTimeMillis()
         app.database.withTransaction {
             val task = requireNotNull(app.database.tasks().task(id))
+            val children = app.database.communications().audits("OWNER_TASK_REPEAT").filter { it.state == id }
+            require(children.none { app.database.tasks().task(it.draftId)?.state == "DONE" }) { "A later occurrence is already complete. Edit the current occurrence instead." }
+            children.forEach { child ->
+                if (app.database.tasks().task(child.draftId)?.state == "ACTIVE") app.database.tasks().close(child.draftId, "REJECTED", now)
+            }
             require(app.database.tasks().reopen(id, TaskTime.nextAlert(task.dueAt, now), now) == 1)
             app.database.communications().audit(ActionAudit(UUID.randomUUID().toString(), id, "OWNER_TASK_REOPEN", "ACTIVE", now))
         }
@@ -151,7 +185,7 @@ object TaskScheduler {
                 .setContentTitle(task.title).setContentText(if (task.dueAt <= now) "Overdue · open HellFire Ass to choose Done, Snooze or Reschedule" else "Upcoming commitment · review in HellFire Ass")
                 .setVisibility(Notification.VISIBILITY_PRIVATE).setContentIntent(open).setAutoCancel(false)
                 .setCategory(Notification.CATEGORY_ALARM).build())
-            app.database.tasks().alerted(task.id, now, TaskTime.nextAlert(task.dueAt, now, app.getSharedPreferences("capture", 0).getInt("overdue_minutes", 10).coerceIn(5, 1440)))
+            app.database.tasks().alerted(task.id, now, TaskTime.nextAlert(task.dueAt, now, repeatInterval(task, app.getSharedPreferences("capture", 0).getInt("overdue_minutes", 10))))
         }
         val local = Instant.ofEpochMilli(now).atZone(TaskTime.zone)
         val day = local.toLocalDate().toString()

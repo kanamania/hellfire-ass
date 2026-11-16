@@ -54,7 +54,7 @@ fun HomeScreen() {
     val greeting = when (now.hour) { in 5..11 -> "Good morning"; in 12..16 -> "Good afternoon"; else -> "Good evening" }
 
     ScrollPage(gap = 18.dp) {
-        ScreenHeader(greeting, overline = DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.ENGLISH).format(now)) {
+        ScreenHeader(tr(greeting), overline = DateTimeFormatter.ofPattern("EEEE, d MMMM", UiLanguage.locale).format(now)) {
             IconCircleButton(HfIcons.Reports, "Reports", { nav.push(Screen.Reports) })
             IconCircleButton(HfIcons.Settings, "Settings", { nav.push(Screen.Settings) })
         }
@@ -74,17 +74,21 @@ fun HomeScreen() {
                 onClick = { nav.push(Screen.Brief) })
         }
         FlowRow(Modifier.offset(y = (-6).dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            HfChip("Templates", { nav.push(Screen.Templates) })
-            HfChip("Waiting on", { nav.push(Screen.Waiting) })
-            HfChip("People", { nav.push(Screen.People) })
-            HfChip("Debts", { nav.push(Screen.Debts) })
-            HfChip("Bills", { nav.push(Screen.Bills) })
+            HfChip(com.hellfire.ass.ui.tr("Record"), { nav.push(Screen.Recordings) })
+            HfChip(com.hellfire.ass.ui.tr("Review"), { nav.push(Screen.Review) })
+            HfChip(com.hellfire.ass.ui.tr("Templates"), { nav.push(Screen.Templates) })
+            HfChip(com.hellfire.ass.ui.tr("Waiting on"), { nav.push(Screen.Waiting) })
+            HfChip(com.hellfire.ass.ui.tr("People"), { nav.push(Screen.People) })
+            HfChip(com.hellfire.ass.ui.tr("Debts"), { nav.push(Screen.Debts) })
+            HfChip(com.hellfire.ass.ui.tr("Bills"), { nav.push(Screen.Bills) })
         }
 
         val pendingDrafts = drafts.filter { it.state == "DRAFT" }
         val proposals = tasks.filter { it.state == "REVIEW" }
         val needs = candidates.size + pendingDrafts.size + proposals.size + reviews.size
         if (needs > 0) ListCard(title = "Needs you", count = needs) {
+            ListRow(com.hellfire.ass.ui.tr("Review next"), subtitle = "One queue for payments, tasks and replies", chevron = true, onClick = { nav.push(Screen.Review) })
+            ListDivider()
             var first = true
             @Composable fun divider() { if (!first) ListDivider(); first = false }
             if (candidates.isNotEmpty()) {
@@ -108,7 +112,7 @@ fun HomeScreen() {
             }
             if (reviews.isNotEmpty()) {
                 divider()
-                ListRow("Finish the nightly review", subtitle = reviews.joinToString { it.day } + " · not reviewed yet",
+                ListRow(com.hellfire.ass.ui.tr("Finish the nightly review"), subtitle = reviews.joinToString { it.day } + " · not reviewed yet",
                     icon = HfIcons.Alarm, tone = Tone.Warning, chevron = true, onClick = { nav.tab(MainTab.Money, "review") })
             }
             Spacer(Modifier.height(6.dp))
@@ -122,14 +126,14 @@ fun HomeScreen() {
                 "TZS · " + todayEntries.count { it.kind == "INCOME" && it.reversesId == null }.let { if (it == 1) "1 transfer" else "$it transfers" },
                 Hf.colors.success.takeIf { (received ?: 0) > 0 }, m) { nav.tab(MainTab.Money) } },
         ))
-        Note("Only payments you confirmed count here.", Modifier.offset(y = (-8).dp))
+        Note(com.hellfire.ass.ui.tr("Only payments you confirmed count here."), Modifier.offset(y = (-8).dp))
 
         val nowMs = System.currentTimeMillis()
         val horizon = Fmt.startOf(today.plusDays(2))
         val upNext = tasks.filter { it.state == "ACTIVE" && it.dueAt < horizon }.sortedBy { it.dueAt }.take(4)
         val nightly = app.getSharedPreferences("capture", 0).getBoolean("nightly_review", true)
         if (upNext.isNotEmpty() || nightly) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SectionHeader("Up next", action = "All tasks", onAction = { nav.tab(MainTab.Tasks) })
+            SectionHeader(com.hellfire.ass.ui.tr("Up next"), action = "All tasks", onAction = { nav.tab(MainTab.Tasks) })
             HfCard {
                 upNext.forEachIndexed { i, t ->
                     if (i > 0) ListDivider(72.dp)

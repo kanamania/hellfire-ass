@@ -86,7 +86,7 @@ fun MicTestSection(app: HellFireApp, permissions: PermissionStatus, onPermission
     }) { Text("Stop recording") }
     TextButton(onClick = { onSettings(Settings.ACTION_APP_NOTIFICATION_SETTINGS) }) { Text("Recording notification settings") }
     result?.let { Text(it) }
-    if (playback != null) OutlinedButton(onClick = { playback?.cancel(); playback = null }) { Text("Stop playback") }
+    if (playback != null) OutlinedButton(onClick = { playback?.cancel(); playback = null }) { Text(com.hellfire.ass.ui.tr("Stop playback")) }
     Text("${files.size} encrypted samples retained", style = MaterialTheme.typography.titleMedium)
     files.forEach { file ->
         Text("Sample · ${formatTime(file.lastModified())}")

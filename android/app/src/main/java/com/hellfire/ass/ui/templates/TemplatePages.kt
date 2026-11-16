@@ -51,7 +51,7 @@ fun TemplatesPage() {
     val accounts by remember { app.database.finances().accounts() }.collectAsStateWithLifecycle(emptyList())
     var using by remember { mutableStateOf<ActionTemplate?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
-    PushedPage("Templates", breadcrumb = "Home") {
+    PushedPage(com.hellfire.ass.ui.tr("Templates"), breadcrumb = "Home") {
         message?.let { Banner(it, modifier = Modifier.clickableRow { message = null }) }
         PrimaryButton("New template", { nav.push(Screen.TemplateEdit, "new") }, Modifier.fillMaxWidth(), icon = HfIcons.Plus, height = 52.dp)
         if (templates.isEmpty()) HfCard(padding = PaddingValues(16.dp)) {
@@ -67,7 +67,7 @@ fun TemplatesPage() {
             val income = items.filter { it.type == "INCOME" }.sumOf { it.amount ?: 0 }
             ActionCard(context = counts(items) + (t.lastUsedAt?.let { " · used ${Fmt.relativeDay(it)}" } ?: ""), contextIcon = HfIcons.Bolt, contextTone = Tone.Primary, actions = {
                 PrimaryButton("Use", { using = t }, enabled = items.isNotEmpty())
-                SecondaryButton("Edit", { nav.push(Screen.TemplateEdit, t.id) })
+                SecondaryButton(com.hellfire.ass.ui.tr("Edit"), { nav.push(Screen.TemplateEdit, t.id) })
             }) {
                 Text(t.name, style = Hf.type.cardTitle.copy(fontSize = 16.sp), color = Hf.colors.onSurface)
                 val totals = listOfNotNull(out.takeIf { it > 0 }?.let { "Out TZS ${Fmt.amount(it)}" }, income.takeIf { it > 0 }?.let { "In TZS ${Fmt.amount(it)}" }).joinToString(" · ")
@@ -130,7 +130,7 @@ fun TemplateEditPage(id: String) {
                     HfTextField(days, { days = it.filter(Char::isDigit).take(4) }, "Due after days", Modifier.weight(1f), number = true)
                     HfTextField(time, { time = it.take(5) }, "At HH:mm", Modifier.weight(1f))
                 }
-                CheckRow("Bill to pay", bill, onChange = { bill = it })
+                CheckRow(com.hellfire.ass.ui.tr("Bill to pay"), bill, onChange = { bill = it })
                 Note("0 days means the day you use the template.")
             } else {
                 ChoiceField("Category", category, Categories, { it }, { category = it })

@@ -65,7 +65,7 @@ fun ReportsHub() {
     }
     var pickDates by remember { mutableStateOf(false) }
     if (pickDates) RangeSheet(startCustom = true) { pickDates = false }
-    PushedPage("Reports") {
+    PushedPage(com.hellfire.ass.ui.tr("Reports")) {
         SegmentedControl(listOf("Today", "Week", "Month", "Custom"), ReportRange.preset, { p -> if (p == "Custom") pickDates = true else ReportRange.set(p) })
         Note("${range.label} · East Africa Time")
         ListCard {
@@ -178,7 +178,7 @@ private fun MoneyFilterSheet(initial: MoneyFilter, accounts: List<FinanceAccount
         QuietButton("Reset", { f = MoneyFilter(); min = ""; max = "" })
     }
     FilterGroup("Type", listOf("Expense", "Income", "Transfer", "Fee", "Refund"), f.types) { f = f.copy(types = it) }
-    GroupLabel("Accounts")
+    GroupLabel(com.hellfire.ass.ui.tr("Accounts"))
     FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         accounts.forEach { a -> CheckRow(a.label, a.id in f.accounts, onChange = { on -> f = f.copy(accounts = if (on) f.accounts + a.id else f.accounts - a.id) }) }
     }

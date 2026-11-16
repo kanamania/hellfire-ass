@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">HellFire Ass</string>
+    <string name="widget_briefing_label">Muhtasari wa siku</string>
+    <string name="widget_briefing_desc">Majukumu, bili na matumizi; mapitio ya jioni saa 21:00</string>
+    <string name="widget_capture_label">Hali ya ukusanyaji</string>
+    <string name="widget_capture_desc">Idadi ya vyanzo vinavyofanya kazi</string>
+    <string name="widget_ask_shortcut_label">Uliza kwa sauti</string>
+    <string name="widget_ask_shortcut_desc">Fungua Uliza na anza sauti</string>
+    <string name="widget_cash_shortcut_label">Weka matumizi taslimu</string>
+    <string name="widget_cash_shortcut_desc">Fungua sehemu ya matumizi taslimu</string>
+    <string name="widget_note_shortcut_label">Dokezo la haraka</string>
+    <string name="widget_note_shortcut_desc">Fungua dokezo jipya la kumbukumbu</string>
+    <string name="widget_money_label">Fedha za leo</string>
+    <string name="widget_money_desc">Matumizi, mapato na siku 7 zilizopita</string>
+    <string name="widget_promises_label">Ahadi</string>
+    <string name="widget_promises_desc">Unachodaiwa na unachodai</string>
+    <string name="widget_ask_label">Uliza HellFire</string>
+    <string name="widget_ask_desc">Swali na jibu lako la mwisho</string>
+    <string name="widget_record_label">Rekodi</string>
+    <string name="widget_record_desc">Anza au simamisha rekodi iliyo wazi na iliyosimbwa</string>
+    <string name="widget_wallets_label">Salio za akaunti</string>
+    <string name="widget_wallets_desc">Salio kutoka SMS, hufichwa hadi uguse</string>
+    <string name="widget_replies_label">Majibu yanayosubiri</string>
+    <string name="widget_replies_desc">Ujumbe unaosubiri jibu lako</string>
+    <string name="widget_review_label">Mapitio ya usiku</string>
+    <string name="widget_review_desc">Malipo na matumizi taslimu yanayohitaji mapitio</string>
+    <string name="widget_budget_label">Bajeti</string>
+    <string name="widget_budget_desc">Matumizi kulingana na bajeti ya mwezi</string>
+</resources>

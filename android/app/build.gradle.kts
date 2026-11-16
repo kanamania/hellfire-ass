@@ -1,8 +1,15 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+}
+
+val ownerSigning = Properties().apply {
+    val source = rootProject.file("signing.properties")
+    if (source.isFile) source.inputStream().use { load(it) }
 }
 
 android {
@@ -15,10 +22,26 @@ android {
         targetSdk = 36
         ndk { abiFilters += listOf("arm64-v8a") }
         externalNativeBuild { cmake { cppFlags += "-std=c++17" } }
-        versionCode = 7
-        versionName = "0.7.0"
+        versionCode = 8
+        versionName = "0.8.0"
     }
     externalNativeBuild { cmake { path = file("src/main/cpp/CMakeLists.txt"); version = "3.22.1" } }
+    signingConfigs {
+        if (ownerSigning.isNotEmpty()) create("ownerRelease") {
+            storeFile = rootProject.file(ownerSigning.getProperty("storeFile"))
+            storePassword = ownerSigning.getProperty("storePassword")
+            keyAlias = ownerSigning.getProperty("keyAlias")
+            keyPassword = ownerSigning.getProperty("keyPassword")
+        }
+    }
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (ownerSigning.isNotEmpty()) signingConfig = signingConfigs.getByName("ownerRelease")
+        }
+    }
     buildFeatures { compose = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

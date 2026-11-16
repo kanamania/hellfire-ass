@@ -1,0 +1,61 @@
+name: Checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: hellfire_test
+          POSTGRES_PASSWORD: synthetic-ci-only
+          POSTGRES_DB: hellfire_test
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Android SDK components
+        run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager 'platforms;android-36' 'build-tools;35.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+      - name: Android tests, lint and APKs
+        working-directory: android
+        run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'
+      - name: Relay tests
+        working-directory: server
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install -r requirements-dev.txt
+          .venv/bin/python -m pytest -q
+      - name: WhatsApp capture tests
+        working-directory: server/whatsapp-web
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+        run: |
+          npm ci --omit=optional --ignore-scripts
+          npm test
+      - name: Web API tests
+        working-directory: web/api
+        env:
+          TEST_DATABASE_URL: postgresql://hellfire_test:synthetic-ci-only@127.0.0.1:5432/hellfire_test
+        run: |
+          npm ci
+          npm test
+      - name: Web frontend
+        working-directory: web/frontend
+        run: |
+          npm ci
+          npm run typecheck
+          npm run build

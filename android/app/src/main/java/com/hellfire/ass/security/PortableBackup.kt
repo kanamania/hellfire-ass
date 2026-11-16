@@ -36,7 +36,9 @@ class PortableBackup(private val app: HellFireApp) {
                         val counts = app.database.withTransaction {
                             media = app.database.media().all()
                             require(media.none { it.state == "DELETING" })
-                            require(media.fold(0L) { total, item -> Math.addExact(total, item.size) } <= 7L * 1024 * 1024 * 1024) { "Originals exceed the 7 GiB backup limit" }
+                            val originalBytes = media.fold(0L) { total, item -> Math.addExact(total, item.size) }
+                            val dbBytes = app.getDatabasePath("hellfire.db").length().coerceAtMost(1024L * 1024 * 1024)
+                            require(app.noBackupFilesDir.usableSpace >= BackupReadiness.stagingBytes(originalBytes, dbBytes)) { "Insufficient free space for encrypted backup staging" }
                             BackupTables.write(app.database.openHelper.writableDatabase, zip, app.cipher)
                         }
                         for (item in media) {
@@ -47,13 +49,13 @@ class PortableBackup(private val app: HellFireApp) {
                         }
                         zip.putNextEntry(ZipEntry("complete.json")); zip.write(JSONObject().put("tables", JSONObject(counts)).put("media", JSONArray(media.map { it.id })).toString().toByteArray()); zip.closeEntry()
                     } } }
-                    try { pipe.use { ChunkedMedia.write(it, encrypted, UUID.randomUUID().toString(), false, portable) }; producer.await() }
+                    try { pipe.use { ChunkedMedia.write(it, encrypted, UUID.randomUUID().toString(), false, portable, maxBytes = BackupReadiness.MAX_ARCHIVE) }; producer.await() }
                     finally { runCatching { pipe.close() }; runCatching { output.close() } }
                 }
             }
             destination().use { output ->
                 output.write(prefix); output.write(salt)
-                encrypted.inputStream().use { copyBounded(it, output, 9L * 1024 * 1024 * 1024) }
+                encrypted.inputStream().use { copyBounded(it, output, BackupReadiness.MAX_ARCHIVE) }
             }
         } finally { encrypted.delete() }
     }
@@ -61,8 +63,11 @@ class PortableBackup(private val app: HellFireApp) {
         restore(password) { app.contentResolver.openInputStream(uri) ?: error("Backup unavailable") }
     }
     suspend fun restore(file: File, password: CharArray) { restore(password) { file.inputStream() } }
-    private suspend fun restore(password: CharArray, source: () -> InputStream) = withContext(Dispatchers.IO) {
-        checkRestoreAllowed()
+    suspend fun verify(uri: Uri, password: CharArray) {
+        restore(password, verifyOnly = true) { app.contentResolver.openInputStream(uri) ?: error("Backup unavailable") }
+    }
+    private suspend fun restore(password: CharArray, verifyOnly: Boolean = false, source: () -> InputStream) = withContext(Dispatchers.IO) {
+        if (!verifyOnly) checkRestoreAllowed()
         val stageId = "restore-${UUID.randomUUID()}"
         val folder = File(app.noBackupFilesDir, stageId).apply { mkdirs() }
         val encrypted = File(folder, "archive.hfm")
@@ -74,14 +79,14 @@ class PortableBackup(private val app: HellFireApp) {
                 val header = ByteArray(24); DataInputStream(input).readFully(header)
                 require(header.copyOfRange(0, 8).contentEquals(prefix)) { "Unsupported backup format" }
                 val key = try { BackupCrypto.derive(password, header.copyOfRange(8, 24)) } finally { password.fill('\u0000') }
-                encrypted.outputStream().use { copyBounded(input, it, 9L * 1024 * 1024 * 1024) }; key
+                encrypted.outputStream().use { copyBounded(input, it, BackupReadiness.MAX_ARCHIVE) }; key
             }
             val stageKey = Base64.getEncoder().encode(SecureRandom().generateSeed(32))
             staging = try { Room.databaseBuilder(app, EventDatabase::class.java, File(folder, "stage.db").path)
                 .openHelperFactory(SupportOpenHelperFactory(stageKey)).build().also { it.openHelper.writableDatabase } }
                 finally { stageKey.fill(0) }
             val db = staging
-            ChunkedMedia.Reader(encrypted, portable).use { reader ->
+            ChunkedMedia.Reader(encrypted, portable, maxBytes = BackupReadiness.MAX_ARCHIVE).use { reader ->
                 ZipInputStream(BufferedInputStream(reader.stream())).use { zip ->
                     require(zip.nextEntry?.name == "manifest.json")
                     val manifest = JSONObject(readSmall(zip))
@@ -97,7 +102,7 @@ class PortableBackup(private val app: HellFireApp) {
                     }
                     val items = db.media().all()
                     require(items.size <= 100000)
-                    require(items.all { it.size > 0 } && items.fold(0L) { total, item -> Math.addExact(total, item.size) } <= 7L * 1024 * 1024 * 1024)
+                    require(items.all { it.size > 0 } && items.fold(0L) { total, item -> Math.addExact(total, item.size) } <= BackupReadiness.MAX_ORIGINALS)
                     val restored = linkedSetOf<String>()
                     repeat(items.size) {
                         val entry = zip.nextEntry ?: error("Original missing from backup")
@@ -119,6 +124,11 @@ class PortableBackup(private val app: HellFireApp) {
                     require(mediaIds.toSet() == restored && mediaIds.size == restored.size)
                     require(zip.nextEntry == null) { "Unexpected backup data" }
                 }
+            }
+            com.hellfire.ass.contacts.ContactSchema.backfill(db.openHelper.writableDatabase)
+            if (verifyOnly) {
+                app.getSharedPreferences("ui", 0).edit().putLong("last_backup_verified_at", System.currentTimeMillis()).apply()
+                return@withContext
             }
             BackupTables.revokeRestoredApprovals(db.openHelper.writableDatabase)
             db.openHelper.writableDatabase.query("PRAGMA foreign_key_check").use { require(!it.moveToFirst()) }
@@ -145,7 +155,7 @@ class PortableBackup(private val app: HellFireApp) {
             password.fill('\u0000')
             runCatching { staging?.close() }
             if (!committed) moved.forEach { app.media.file(it).delete() }
-            if (!committed) app.secrets.remove("restore-journal")
+            if (!committed && !verifyOnly) app.secrets.remove("restore-journal")
             folder.deleteRecursively()
         }
     }

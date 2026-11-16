@@ -190,6 +190,6 @@ fun DriveBackupScreen(app: HellFireApp) {
                     finally { password.fill('\u0000'); file.delete(); busy = false }
                 }
             }) { Text("Download and restore") } },
-            dismissButton = { TextButton(onClick = { restore = null }) { Text("Cancel") } })
+            dismissButton = { TextButton(onClick = { restore = null }) { Text(com.hellfire.ass.ui.tr("Cancel")) } })
     }
 }

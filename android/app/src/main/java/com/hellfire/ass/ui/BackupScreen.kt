@@ -5,6 +5,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.activity.compose.LocalActivity
 import androidx.lifecycle.ViewModelStoreOwner
@@ -32,6 +33,7 @@ fun BackupScreen(app: HellFireApp) {
     var password by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<String?>(null) }
+    var verifyOnly by rememberSaveable { mutableStateOf(false) }
     var confirmRestore by remember { mutableStateOf(false) }
     val backup = remember { PortableBackup(app) }
     val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
@@ -45,7 +47,7 @@ fun BackupScreen(app: HellFireApp) {
                     result = "Encrypted portable backup saved. Keep its passphrase separately; there is no recovery without it. Test restore on an empty installation before relying on this backup."
                 }
                 catch (e: CancellationException) { result = "Backup interrupted; the selected destination may contain an incomplete encrypted file."; throw e }
-                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); result = "Backup failed. Check free storage, destination, passphrase length and the 7 GiB originals / 1 GiB database limits. Partial output is incomplete." }
+                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); result = "Backup failed. Check free storage, destination, passphrase length and encrypted staging space and the 1 GiB database limit. Partial output is incomplete." }
                 finally { secret.fill('\u0000'); busy = false }
             }
         } else pending.clear()
@@ -55,22 +57,37 @@ fun BackupScreen(app: HellFireApp) {
             val secret = pending.take(); password = ""
             scope.launch {
                 busy = true
-                try { backup.restore(uri, secret); result = "Backup authenticated and restored. Reconnect accounts, regrant Android permissions and reimport model files as needed. No message was sent." }
+                try { if (verifyOnly) { backup.verify(uri, secret); result = "Backup authenticated: all tables and original hashes verified. Current data was unchanged. A replacement-phone restore still needs its own device test." }
+                    else { backup.restore(uri, secret); result = "Backup authenticated and restored. Reconnect accounts, regrant Android permissions and reimport model files as needed. No message was sent." } }
                 catch (e: CancellationException) { result = "Restore interrupted. Reopen the app to recover any pending import."; throw e }
                 catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); result = "Restore failed: wrong passphrase, invalid/incomplete backup, unavailable storage, or local data/access still present. Existing data is retained. Restore needs an empty database with SMS, notifications and account integrations disconnected." }
                 finally { secret.fill('\u0000'); busy = false }
             }
         } else pending.clear()
     }
-    SectionCard("Daily Google Drive backup and restore") { DriveBackupScreen(app) }
+    var readiness by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    LaunchedEffect(busy) {
+        if (!busy) readiness = withContext(Dispatchers.IO) {
+            val originals = app.database.media().all().fold(0L) { n, m -> Math.addExact(n, m.size) }
+            val bytes = app.getDatabasePath("hellfire.db").length()
+            val required = runCatching { com.hellfire.ass.security.BackupReadiness.stagingBytes(originals, bytes) }.getOrNull()
+            val verified = app.getSharedPreferences("ui", 0).getLong("last_backup_verified_at", 0)
+            listOf("Originals" to "${originals / (1024 * 1024)} MiB", "Free space" to "${app.noBackupFilesDir.usableSpace / (1024 * 1024)} MiB",
+                "Estimated staging space" to (required?.let { "${it / (1024 * 1024)} MiB" } ?: "Exceeds archive limits"),
+                "Backup verification" to if (verified == 0L) "No archive verified on this installation" else Fmt.full(verified))
+        }
+    }
+    SectionCard(com.hellfire.ass.ui.tr("Recovery readiness")) { KvList(readiness); Note("A backup includes registered originals. Archives are streamed with bounded memory, up to 500 GiB of originals; free storage and destination limits still apply.") }
+    SectionCard(com.hellfire.ass.ui.tr("Daily Google Drive backup and restore")) { DriveBackupScreen(app) }
     result?.let { Banner(it, Tone.Info, null) }
-    SectionCard("Back up or restore") {
+    SectionCard(com.hellfire.ass.ui.tr("Back up or restore")) {
         HfTextField(password, { password = it }, "Backup passphrase · at least 12 characters", password = true)
-        PrimaryButton("Export encrypted backup…", { pending.set(password); password = ""; exporter.launch("HellFire-Ass-backup.hfb") }, Modifier.fillMaxWidth(), enabled = !busy && password.length >= 12)
-        SecondaryButton("Restore into empty local database…", { confirmRestore = true }, Modifier.fillMaxWidth(), enabled = !busy && password.length >= 12)
+        PrimaryButton(com.hellfire.ass.ui.tr("Export encrypted backup…"), { pending.set(password); password = ""; exporter.launch("HellFire-Ass-backup.hfb") }, Modifier.fillMaxWidth(), enabled = !busy && password.length >= 12)
+        SecondaryButton(com.hellfire.ass.ui.tr("Restore into empty local database…"), { verifyOnly = false; confirmRestore = true }, Modifier.fillMaxWidth(), enabled = !busy && password.length >= 12)
+        SecondaryButton(com.hellfire.ass.ui.tr("Verify an archive without restoring…"), { verifyOnly = true; pending.set(password); password = ""; importer.launch(arrayOf("*/*")) }, Modifier.fillMaxWidth(), enabled = !busy && password.length >= 12)
         if (busy) { LinearProgressIndicator(Modifier.fillMaxWidth(), color = Hf.colors.primary); Note("Working with encrypted storage. Keep this screen open until finished.") }
     }
-    SectionCard("What is included") {
+    SectionCard(com.hellfire.ass.ui.tr("What is included")) {
         Note("Portable backups include source events, finance, tasks, messages and drafts, memory, transcripts and registered media originals. Payloads and originals are re-encrypted for your passphrase and protected with authenticated chunks. Restore re-encrypts them with this phone's key.")
         Note("Account passwords and tokens, Android permissions, the gateway private key, model weights, folder grants and microphone test samples are left out. Restore needs an empty database. It clears stale send approvals and marks interrupted sends unconfirmed.")
         Note("Choose any Android document destination you trust. Manual export is separate from the daily Google Drive option above. Stop recording before export; turn off notification and SMS capture and disconnect mail and gateway accounts before restore.")

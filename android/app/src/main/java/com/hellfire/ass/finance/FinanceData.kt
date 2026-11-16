@@ -33,8 +33,16 @@ data class LedgerEvidence(val ledgerId: String, val sourceId: String)
 @Entity(tableName = "merchant_alias", primaryKeys = ["provider", "number"])
 data class MerchantAlias(val provider: String, val number: String, val name: String, val category: String, val confirmedAt: Long)
 
+data class EvidenceGroup(val sourceId: String, val groupId: String)
+
 @Dao
 interface FinanceDao {
+    @Query("SELECT DISTINCT e.sourceId, l.groupId FROM ledger_evidence e JOIN ledger_entry l ON l.id = e.ledgerId WHERE e.sourceId IN (:ids) AND l.reversesId IS NULL")
+    suspend fun evidenceGroups(ids: List<String>): List<EvidenceGroup>
+
+    @Query("UPDATE finance_candidate SET accountId = COALESCE(:account, accountId), category = COALESCE(:category, category) WHERE id = :id AND state = 'REVIEW'")
+    suspend fun suggestReview(id: String, account: String?, category: String?)
+
     @Query("UPDATE ledger_entry SET personKey = :key WHERE id = :id") suspend fun setPerson(id: String, key: String?)
 
     @Insert suspend fun addAccount(account: FinanceAccount)

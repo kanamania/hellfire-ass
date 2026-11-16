@@ -35,11 +35,11 @@ suspend fun ownerStatement(app: com.hellfire.ass.HellFireApp, text: String, at: 
  * BALANCE ledger entry for the difference, after an explicit confirmation.
  */
 @Composable
-fun BalanceSheet(account: FinanceAccount, onDone: (String?) -> Unit) {
+fun BalanceSheet(account: FinanceAccount, initialAmount: String = "", initialAt: String? = null, onDone: (String?) -> Unit) {
     val app = LocalEnv.current.app
     val scope = rememberCoroutineScope()
-    var amount by remember { mutableStateOf("") }
-    var at by remember { mutableStateOf(com.hellfire.ass.tasks.TaskTime.display(System.currentTimeMillis())) }
+    var amount by remember { mutableStateOf(initialAmount) }
+    var at by remember { mutableStateOf(initialAt ?: com.hellfire.ass.tasks.TaskTime.display(System.currentTimeMillis())) }
     var current by remember { mutableStateOf<Long?>(null) }
     var sms by remember { mutableStateOf<com.hellfire.ass.finance.ProviderBalance?>(null) }
     var useSms by remember { mutableStateOf(false) }
@@ -107,7 +107,7 @@ fun AccountsPage(focusAdd: Boolean = false) {
             } else confirmAdd = true }, Modifier.fillMaxWidth(), enabled = label.isNotBlank())
         }
     }
-    PushedPage("Accounts", breadcrumb = "Money") {
+    PushedPage(com.hellfire.ass.ui.tr("Accounts"), breadcrumb = "Money") {
         message?.let { Banner(it) }
         val formFirst = focusAdd || accounts.isEmpty()
         if (formFirst) AddAccountCard()
@@ -126,6 +126,8 @@ fun AccountsPage(focusAdd: Boolean = false) {
         }
         Note("Balances come from confirmed ledger entries only. An opening balance needs its own evidence and review.")
         ListCard {
+            ListRow(com.hellfire.ass.ui.tr("Check account balance"), subtitle = "Compare evidence before adjusting", chevron = true, onClick = { nav.push(Screen.Reconcile) })
+            ListDivider()
             ListRow("Monthly budgets", subtitle = "Limits per category for the Budget widget", icon = HfIcons.Reports, tone = Tone.Primary, chevron = true,
                 onClick = { nav.push(Screen.Budgets) })
         }
@@ -208,7 +210,7 @@ fun TransactionPage(id: String) {
             "Confirmed by you" to Fmt.dayTime(e.createdAt),
             "Ledger" to when { e.reversesId != null -> "Correction entry"; reversed -> "Reversed"; else -> "1 entry · not reversed" },
         ))
-        SectionCard("Person") {
+        SectionCard(com.hellfire.ass.ui.tr("Person")) {
             if (personLoaded) ContactPersonField(person, { person = it; pickedPerson = null }, "Person (optional)", onPick = { pickedPerson = it; person = it.displayName })
             SavedContactStatus(e.personKey)
             PrimaryButton("Save person", {
@@ -216,7 +218,7 @@ fun TransactionPage(id: String) {
                     message = try {
                         withContext(Dispatchers.IO) { app.database.withTransaction {
                             val links = com.hellfire.ass.contacts.ContactLinks(app.database)
-                            links.ledger(id, if (person.isBlank()) null else links.save(pickedPerson ?: com.hellfire.ass.contacts.ContactChoice(person)))
+                            links.ledger(id, if (person.isBlank()) null else links.save(pickedPerson ?: com.hellfire.ass.contacts.ContactChoice(person, personKey = e.personKey?.takeIf { app.database.contacts().find(it)?.displayName == person })))
                         } }
                         "Person saved. Balances are unchanged."
                     } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Person could not be saved." }
@@ -228,7 +230,7 @@ fun TransactionPage(id: String) {
             EvidenceCard("Source · ${EventText.sourceLabel(s)} · ${Fmt.dayTime(s.occurredAt)}", sourceText.ifBlank { "No readable text in the source." }.take(1200))
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (e.reversesId == null && e.kind != "FEE") SecondaryButton("Change category", { pickCategory = true })
+            if (e.reversesId == null && e.kind != "FEE") SecondaryButton(com.hellfire.ass.ui.tr("Change category"), { pickCategory = true })
             source?.let { s -> SecondaryButton("Full source", { nav.push(Screen.Source, s.id) }) }
             if (e.reversesId == null && e.id == e.groupId && e.kind in setOf("EXPENSE", "INCOME")) SecondaryButton("Record as debt", {
                 debt = com.hellfire.ass.ui.insights.DebtPrefill(kind = if (e.amount < 0) "LENT" else "REPAID_TO_ME", amount = kotlin.math.abs(e.amount), occurredAt = e.occurredAt, ledgerId = e.id)
@@ -244,7 +246,7 @@ fun TransactionPage(id: String) {
             scope.launch { message = try { withContext(Dispatchers.IO) { app.finances.reverse(id) }; "Reversal entries posted." } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Reversal rejected: already corrected or a correction entry." } }
         }, onDismiss = { confirmReverse = false }, destructive = true)
     if (pickCategory && e != null) HfBottomSheet({ pickCategory = false }) {
-        Text("Change category", style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
+        Text(com.hellfire.ass.ui.tr("Change category"), style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
         Note("Only the label changes. The amount, account and balances stay the same.")
         ChipPicker(Categories, e.category) { chosen ->
             pickCategory = false
@@ -274,13 +276,14 @@ fun SourcePage(id: String) {
         }
     }
     val e = event
-    PushedPage("Source", breadcrumb = e?.let { EventText.sourceLabel(it) + " · " + Fmt.day(it.occurredAt) }) {
+    PushedPage(com.hellfire.ass.ui.tr("Source"), breadcrumb = e?.let { EventText.sourceLabel(it) + " · " + Fmt.day(it.occurredAt) }) {
         if (e == null) { Note("This source record is no longer available."); return@PushedPage }
         EvidenceCard("${EventText.sourceLabel(e)} · ${sender ?: e.packageName} · ${Fmt.dayTime(e.occurredAt)}", text.ifBlank { "No readable text." }.take(4000))
         KvList(listOf("Source" to EventText.sourceLabel(e), "From" to (sender ?: e.packageName), "Received" to Fmt.full(e.receivedAt),
             "Content" to when { e.securitySensitive -> "Redacted (security code)"; !e.contentAvailable -> "Not shared by Android"; e.contentRedacted -> "Partly redacted"; else -> "As delivered" },
             "Linked records" to if (linked.isEmpty()) "None" else linked.size.toString()))
         if (linked.isNotEmpty()) ListCard { linked.forEachIndexed { i, (label, open) -> if (i > 0) ListDivider(16.dp); ListRow(label, chevron = true, onClick = open) } }
+        if (!e.securitySensitive && e.contentAvailable) SourceActions(e.id, text)
         if (raw == null) QuietButton("Show raw record", { raw = "loading" })
         else {
             LaunchedEffect(Unit) { raw = withContext(Dispatchers.IO) { com.hellfire.ass.assistant.AssistantEngine(app).source(id) } }

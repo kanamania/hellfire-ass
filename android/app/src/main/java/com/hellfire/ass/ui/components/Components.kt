@@ -343,7 +343,7 @@ fun SegmentedControl(
                     .padding(horizontal = 16.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(option, style = Hf.type.label.copy(fontSize = if (compact) 13.sp else 13.5.sp, fontWeight = FontWeight.SemiBold),
+                Text(com.hellfire.ass.ui.tr(option), style = Hf.type.label.copy(fontSize = if (compact) 13.sp else 13.5.sp, fontWeight = FontWeight.SemiBold),
                     color = if (on) Hf.colors.onSurface else Hf.colors.muted)
             }
         }

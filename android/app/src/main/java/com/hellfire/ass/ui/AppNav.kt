@@ -46,7 +46,7 @@ enum class Screen {
     Setup, Settings, Permissions, CloudAi, LocalModels, Email, WhatsApp, Backup, Device, Recordings, Reminders, Memory, Widgets, WebAccess,
     Accounts, Budgets, Transaction, Source, Task, Message, MediaItem,
     Reports, ReportMoney, ReportCategory, ReportAccounts, ReportStatement, ReportCapture, FixSms, ReportTasks, ReportMessages, ReportMedia, ReportAi,
-    Brief, Waiting, People, Person, Debts, Bills, Templates, TemplateEdit,
+    Brief, Waiting, People, Person, Debts, Bills, Templates, TemplateEdit, Review, Share, Reconcile, Language,
 }
 
 /** A pushed screen plus one string argument (an id, or an encoded filter). */
@@ -78,6 +78,8 @@ class Nav(private val stack: SnapshotStateList<Route>, private val tabState: Mut
         val parts = uri.pathSegments.orEmpty()
         when (uri.host) {
             "home" -> tab(MainTab.Home)
+            "review" -> { tab(MainTab.Home); push(Screen.Review) }
+            "share" -> { tab(MainTab.Home); push(Screen.Share) }
             "brief" -> { tab(MainTab.Home); push(Screen.Brief) }
             "templates" -> { tab(MainTab.Home); push(Screen.Templates) }
             "people" -> { tab(MainTab.Home); push(Screen.People) }
@@ -217,7 +219,7 @@ private fun HellFireBottomBar(current: MainTab, onSelect: (MainTab) -> Unit) {
                         Modifier.size(width = 56.dp, height = 30.dp).clip(CircleShape).background(if (on) c.primaryContainer else Color.Transparent),
                         contentAlignment = Alignment.Center,
                     ) { Icon(t.icon, null, Modifier.size(22.dp), tint = tint) }
-                    Text(t.label, style = Hf.type.caption, color = tint)
+                    Text(tr(t.label), style = Hf.type.caption, color = tint)
                 }
             }
         }

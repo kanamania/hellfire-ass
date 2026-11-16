@@ -30,11 +30,11 @@ object Fmt {
     fun zoned(millis: Long): ZonedDateTime = Instant.ofEpochMilli(millis).atZone(TaskTime.zone)
     fun today(): LocalDate = LocalDate.now(TaskTime.zone)
     fun startOf(day: LocalDate): Long = day.atStartOfDay(TaskTime.zone).toInstant().toEpochMilli()
-    fun time(millis: Long): String = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH).format(zoned(millis))
-    fun day(millis: Long): String = DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH).format(zoned(millis))
-    fun dayTime(millis: Long): String = DateTimeFormatter.ofPattern("d MMM, HH:mm", Locale.ENGLISH).format(zoned(millis))
-    fun weekdayDayTime(millis: Long): String = DateTimeFormatter.ofPattern("EEE d MMM · HH:mm", Locale.ENGLISH).format(zoned(millis))
-    fun full(millis: Long): String = DateTimeFormatter.ofPattern("EEE d MMM yyyy, HH:mm", Locale.ENGLISH).format(zoned(millis))
+    fun time(millis: Long): String = DateTimeFormatter.ofPattern("HH:mm", UiLanguage.locale).format(zoned(millis))
+    fun day(millis: Long): String = DateTimeFormatter.ofPattern("d MMM", UiLanguage.locale).format(zoned(millis))
+    fun dayTime(millis: Long): String = DateTimeFormatter.ofPattern("d MMM, HH:mm", UiLanguage.locale).format(zoned(millis))
+    fun weekdayDayTime(millis: Long): String = DateTimeFormatter.ofPattern("EEE d MMM · HH:mm", UiLanguage.locale).format(zoned(millis))
+    fun full(millis: Long): String = DateTimeFormatter.ofPattern("EEE d MMM yyyy, HH:mm", UiLanguage.locale).format(zoned(millis))
     /** "13:10" today, "Yesterday", otherwise "30 Oct". */
     fun relativeDay(millis: Long): String {
         val d = zoned(millis).toLocalDate(); val t = today()

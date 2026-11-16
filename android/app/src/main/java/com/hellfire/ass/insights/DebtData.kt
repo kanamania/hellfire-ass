@@ -18,10 +18,15 @@ data class DebtEntry(@PrimaryKey val id: String, val person: String, val amount:
     /** LENT, BORROWED, REPAID_TO_ME or I_REPAID. */
     val kind: String, val note: String, val occurredAt: Long,
     /** When the money was promised back; null if no date was agreed. */
-    val dueAt: Long? = null, val ledgerId: String? = null, val createdAt: Long)
+    val dueAt: Long? = null, val ledgerId: String? = null, val createdAt: Long, val personKey: String? = null)
 
 @Dao
 interface DebtDao {
+    @Query("UPDATE debt_entry SET personKey = :key WHERE personKey IS NULL AND LOWER(TRIM(person)) = LOWER(TRIM(:name))") suspend fun linkLegacy(name: String, key: String)
+    @Query("UPDATE debt_entry SET personKey = :key, person = :name WHERE id = :id") suspend fun setPerson(id: String, key: String, name: String)
+
+    @Query("UPDATE debt_entry SET person = :name, personKey = :into WHERE personKey = :from") suspend fun renamePerson(from: String, into: String, name: String)
+
     @Query("UPDATE debt_entry SET person = :name WHERE LOWER(TRIM(person)) = LOWER(TRIM(:oldName))") suspend fun rename(oldName: String, name: String)
 
     @Insert suspend fun insert(value: DebtEntry)
@@ -31,7 +36,7 @@ interface DebtDao {
 }
 
 /** Net position with one person. [balance] > 0: they owe the owner; < 0: the owner owes them. */
-data class DebtBalance(val person: String, val balance: Long, val lastAt: Long, val dueAt: Long?) {
+data class DebtBalance(val person: String, val balance: Long, val lastAt: Long, val dueAt: Long?, val personKey: String? = null) {
     fun overdue(now: Long) = balance != 0L && dueAt != null && dueAt < now
 }
 
@@ -48,11 +53,11 @@ object Debts {
     fun key(person: String) = person.trim().lowercase(Locale.ROOT)
 
     /** Open positions, largest first. People who are settled (zero balance) are left out. */
-    fun balances(entries: List<DebtEntry>): List<DebtBalance> = entries.groupBy { key(it.person) }.values.map { list ->
+    fun balances(entries: List<DebtEntry>): List<DebtBalance> = entries.groupBy { it.personKey ?: key(it.person) }.values.map { list ->
         val balance = list.fold(0L) { sum, e -> Math.addExact(sum, e.amount) }
         // The agreed date that still matters is the one on the side that is open.
         val due = list.filter { it.dueAt != null && (if (balance > 0) it.kind == "LENT" else it.kind == "BORROWED") }.maxOfOrNull { it.dueAt!! }
-        DebtBalance(list.maxBy { it.createdAt }.person.trim(), balance, list.maxOf { it.occurredAt }, due)
+        DebtBalance(list.maxBy { it.createdAt }.person.trim(), balance, list.maxOf { it.occurredAt }, due, list.first().personKey)
     }.filter { it.balance != 0L }.sortedByDescending { kotlin.math.abs(it.balance) }
 
     /**

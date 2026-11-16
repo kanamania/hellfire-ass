@@ -27,7 +27,7 @@ import java.util.UUID
 
 /** Starting values for the debt sheet, e.g. from a transaction or a repayment suggestion. */
 data class DebtPrefill(val person: String = "", val kind: String = "LENT", val amount: Long? = null,
-    val occurredAt: Long = System.currentTimeMillis(), val ledgerId: String? = null)
+    val occurredAt: Long = System.currentTimeMillis(), val ledgerId: String? = null, val personKey: String? = null)
 
 /** Record a loan or repayment. This is the owner's own note; it never changes the ledger. */
 @Composable
@@ -62,14 +62,14 @@ fun DebtSheet(prefill: DebtPrefill, onDone: (String?) -> Unit) {
         }
         HfTextField(note, { note = it.take(300) }, "Note (optional)")
         error?.let { Banner(it, Tone.Danger, null) }
-        PrimaryButton("Save", {
+        PrimaryButton(com.hellfire.ass.ui.tr("Save"), {
             scope.launch {
                 val saved = io {
                     val now = System.currentTimeMillis()
                     app.database.withTransaction {
-                        com.hellfire.ass.contacts.ContactLinks(app.database).save(picked ?: com.hellfire.ass.contacts.ContactChoice(person))
+                        val personKey = com.hellfire.ass.contacts.ContactLinks(app.database).save(picked ?: com.hellfire.ass.contacts.ContactChoice(person, personKey = prefill.personKey))
                         app.database.debts().insert(DebtEntry(UUID.randomUUID().toString(), person.trim(), Debts.signed(kind, Money.tzs(amount)), kind, note.trim(),
-                            TaskTime.parse(occurred), if (hasDue && (kind == "LENT" || kind == "BORROWED")) TaskTime.parse(due) else null, prefill.ledgerId, now))
+                            TaskTime.parse(occurred), if (hasDue && (kind == "LENT" || kind == "BORROWED")) TaskTime.parse(due) else null, prefill.ledgerId, now, personKey))
                     }
                 }
                 if (saved == null) error = "Not saved. Use a whole-shilling amount and a valid date." else onDone("Saved: ${Debts.label(kind).lowercase()} TZS ${Fmt.amount(amount.toLong())} · ${person.trim()}.")
@@ -89,7 +89,7 @@ private fun ReminderSheet(balance: DebtBalance, onDone: (String?) -> Unit) {
     var email by remember { mutableStateOf<Pair<String, String>?>(null) }
     LaunchedEffect(balance.person) {
         email = io {
-            val address = app.database.people().all().firstOrNull { Debts.key(it.name) == Debts.key(balance.person) && it.handle.startsWith("mail:") }?.handle?.removePrefix("mail:")
+            val address = app.database.people().all().firstOrNull { (it.personKey ?: People.namedKey(it.name)) == (balance.personKey ?: People.namedKey(balance.person)) && it.handle.startsWith("mail:") }?.handle?.removePrefix("mail:")
             val account = Accounts.list(app.secrets, Accounts.MAIL).firstOrNull()?.getString("id")
             if (address != null && account != null) account to address else null
         }
@@ -143,7 +143,7 @@ fun DebtsPage() {
             Debts.suggestRepayments(balances, dao.allCandidates(), now - 60L * 86_400_000, linked + dismissed)
         } ?: emptyList()
     }
-    PushedPage("Debts", breadcrumb = "Money") {
+    PushedPage(com.hellfire.ass.ui.tr("Debts"), breadcrumb = "Money") {
         message?.let { Banner(it, modifier = Modifier.clickableRow { message = null }) }
         TwoColumnGrid(listOf(
             { m -> KpiTile("Owed to you", Fmt.amount(balances.filter { it.balance > 0 }.sumOf { it.balance }), m, "TZS", Hf.colors.success) },
@@ -168,7 +168,7 @@ fun DebtsPage() {
                 else "Everyone is settled.", style = Hf.type.body, color = Hf.colors.muted)
         }
         balances.forEach { b ->
-            val mine = entries.filter { Debts.key(it.person) == Debts.key(b.person) }
+            val mine = entries.filter { (it.personKey ?: Debts.key(it.person)) == (b.personKey ?: Debts.key(b.person)) }
             HfCard(padding = PaddingValues(16.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -190,7 +190,7 @@ fun DebtsPage() {
                     }
                     if (mine.size > 6) Note("${mine.size - 6} older entries not shown.")
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SecondaryButton("Add entry", { sheet = DebtPrefill(b.person, if (b.balance > 0) "REPAID_TO_ME" else "I_REPAID", kotlin.math.abs(b.balance)) })
+                        SecondaryButton("Add entry", { sheet = DebtPrefill(b.person, if (b.balance > 0) "REPAID_TO_ME" else "I_REPAID", kotlin.math.abs(b.balance), personKey = b.personKey) })
                         if (b.balance > 0) SecondaryButton("Remind", { reminding = b })
                     }
                 }

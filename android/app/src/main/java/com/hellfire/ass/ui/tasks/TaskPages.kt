@@ -29,7 +29,7 @@ fun TaskPage(id: String) {
         message = runCatching { withContext(Dispatchers.IO) { block() } }.fold({ label }, { "Action failed. Check the date, permissions and storage." })
     }
     val t = task
-    PushedPage("Task", breadcrumb = "Tasks") {
+    PushedPage(com.hellfire.ass.ui.tr("Task"), breadcrumb = "Tasks") {
         if (t == null) { Note("This task is no longer available."); return@PushedPage }
         message?.let { Banner(it) }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -47,19 +47,28 @@ fun TaskPage(id: String) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             when (t.state) {
                 "REVIEW" -> {
-                    PrimaryButton("Add task", { act("Task added and reminder set.") { TaskScheduler.activate(app, t.id, t.title, t.dueAt, t.party) } })
-                    SecondaryButton("Edit", { editing = true })
-                    QuietButton("Not a task", { act("Marked as not a task.") { TaskScheduler.action(app, t.id, "REJECTED") } })
+                    PrimaryButton(com.hellfire.ass.ui.tr("Add task"), { act("Task added and reminder set.") { TaskScheduler.activate(app, t.id, t.title, t.dueAt, t.party) } })
+                    SecondaryButton(com.hellfire.ass.ui.tr("Edit"), { editing = true })
+                    QuietButton(com.hellfire.ass.ui.tr("Not a task"), { act("Marked as not a task.") { TaskScheduler.action(app, t.id, "REJECTED") } })
                 }
                 "ACTIVE" -> {
-                    PrimaryButton("Done", { act("Marked done.") { TaskScheduler.action(app, t.id, "DONE") } })
-                    SecondaryButton("Snooze 10 min", { act("Snoozed for 10 minutes.") { TaskScheduler.action(app, t.id, "SNOOZE") } })
-                    SecondaryButton("Reschedule", { editing = true })
+                    PrimaryButton(com.hellfire.ass.ui.tr("Done"), { act("Marked done.") { TaskScheduler.action(app, t.id, "DONE") } })
+                    SecondaryButton("Snooze ${t.snoozeMinutes} min", { act("Snoozed for ${t.snoozeMinutes} minutes.") { TaskScheduler.action(app, t.id, "SNOOZE") } })
+                    SecondaryButton(com.hellfire.ass.ui.tr("Reschedule"), { editing = true })
                 }
-                "DONE" -> SecondaryButton("Not done yet", { act("Task is active again.") { TaskScheduler.reopen(app, t.id) } })
+                "DONE" -> SecondaryButton(com.hellfire.ass.ui.tr("Not done yet"), { act("Task is active again.") { TaskScheduler.reopen(app, t.id) } })
             }
         }
-        QuietButton("Show source", { nav.push(Screen.Source, t.sourceId) })
+        SecondaryButton(com.hellfire.ass.ui.tr("Add to calendar…"), {
+            val intent = android.content.Intent(android.content.Intent.ACTION_INSERT, android.provider.CalendarContract.Events.CONTENT_URI)
+                .putExtra(android.provider.CalendarContract.Events.TITLE, t.title)
+                .putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, t.dueAt)
+                .putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME, t.dueAt + 3_600_000L)
+                .putExtra(android.provider.CalendarContract.Events.DESCRIPTION, "From HellFire Ass. Confirm in your calendar; the HellFire reminder remains separate.")
+            try { app.startActivity(intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            catch (_: android.content.ActivityNotFoundException) { message = "No calendar app is available." }
+        })
+        QuietButton(com.hellfire.ass.ui.tr("Show source"), { nav.push(Screen.Source, t.sourceId) })
     }
     if (editing && t != null) TaskEditSheet(TaskDraft.of(t)) { msg -> editing = false; if (msg != null) message = msg }
 }
@@ -78,25 +87,25 @@ fun RemindersPage() {
     var gapAlerts by remember { mutableStateOf(prefs.getBoolean("gap_alerts", true)) }
     var repeat by remember { mutableStateOf(prefs.getInt("overdue_minutes", 10).toString()) }
     var status by remember { mutableStateOf<String?>(null) }
-    PushedPage("Reminders", breadcrumb = "Settings") {
+    PushedPage(com.hellfire.ass.ui.tr("Reminders"), breadcrumb = "Settings") {
         status?.let { Banner(it, Tone.Info, null) }
         val reminder = states.firstOrNull { it.adapter == "REMINDERS" }
         KvList(listOf("Delivery" to when (reminder?.state) {
             "EXACT_ALLOWED" -> "On time (exact alarms)"; "BEST_EFFORT" -> "Best effort"; "PERMISSION_MISSING" -> "Notifications blocked"
             "FAILED" -> "Last alarm failed"; null -> "Not checked yet"; else -> reminder.state }))
-        SectionCard("Access") {
-            SecondaryButton("Allow reminder notifications", env.actions.onNotifications, Modifier.fillMaxWidth())
-            if (Build.VERSION.SDK_INT >= 31) SecondaryButton("Manage exact-alarm access", { env.actions.onSettings(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM) }, Modifier.fillMaxWidth())
+        SectionCard(com.hellfire.ass.ui.tr("Access")) {
+            SecondaryButton(com.hellfire.ass.ui.tr("Allow reminder notifications"), env.actions.onNotifications, Modifier.fillMaxWidth())
+            if (Build.VERSION.SDK_INT >= 31) SecondaryButton(com.hellfire.ass.ui.tr("Manage exact-alarm access"), { env.actions.onSettings(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM) }, Modifier.fillMaxWidth())
             Note("Without exact access reminders use best-effort Android alarms. Doze, Do Not Disturb, battery restrictions and force-stop can still delay or block delivery.")
         }
         HfCard {
-            SwitchRow("Nightly cash review", nightly, { enabled ->
+            SwitchRow(com.hellfire.ass.ui.tr("Nightly cash review"), nightly, { enabled ->
                 nightly = enabled
                 prefs.edit().putBoolean("nightly_review", enabled).apply()
                 scope.launch { runCatching { TaskScheduler.restore(app) } }
             }, subtitle = "21:00 East Africa Time")
             ListDivider(16.dp)
-            SwitchRow("Morning brief", morning, { enabled ->
+            SwitchRow(com.hellfire.ass.ui.tr("Morning brief"), morning, { enabled ->
                 morning = enabled
                 prefs.edit().putBoolean("morning_brief", enabled).apply()
                 scope.launch { runCatching { TaskScheduler.restore(app) } }
@@ -109,14 +118,14 @@ fun RemindersPage() {
                 }
             }
             ListDivider(16.dp)
-            SwitchRow("Capture problem alerts", gapAlerts, { enabled ->
+            SwitchRow(com.hellfire.ass.ui.tr("Capture problem alerts"), gapAlerts, { enabled ->
                 gapAlerts = enabled
                 prefs.edit().putBoolean("gap_alerts", enabled).apply()
             }, subtitle = "Tell me when notifications, SMS, email or WhatsApp stop being saved")
         }
-        SectionCard("Overdue reminders") {
+        SectionCard(com.hellfire.ass.ui.tr("Overdue reminders")) {
             HfTextField(repeat, { repeat = it }, "Repeat every · 5–1440 minutes", number = true)
-            PrimaryButton("Save interval", {
+            PrimaryButton(com.hellfire.ass.ui.tr("Save interval"), {
                 val minutes = repeat.toIntOrNull()
                 status = if (minutes == null || minutes !in 5..1440) "Choose a whole interval from 5 to 1440 minutes."
                 else { prefs.edit().putInt("overdue_minutes", minutes).apply(); "Saved. Applies after the next reminder. Android delivery limits still apply." }
