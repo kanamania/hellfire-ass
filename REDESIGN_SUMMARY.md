@@ -1,8 +1,14 @@
 # HellFire Ass redesign: summary
 
-Branch `feat/ui-redesign`, worktree `.worktrees/feat/ui-redesign`. Nothing is pushed or merged into main. Every decision is logged in [DECISIONS.md](DECISIONS.md); device evidence is in `docs/DEVICE_FEASIBILITY.md` → "UI redesign checkpoint".
+Built on branch `feat/ui-redesign` (worktree `.worktrees/feat/ui-redesign`). Every decision is logged in [DECISIONS.md](DECISIONS.md); device evidence is in `docs/DEVICE_FEASIBILITY.md` → "UI redesign checkpoint".
 
-**State at handover:**
+**Status on 2026-11-16:**
+- The redesign and the Money entry follow-up are merged into `main` (merges `49f2722` and `566a291`) and pushed. The worktree and branch have been removed.
+- On merged `main`: 205 unit tests, 201 passed, 4 opt-in live-AI tests skipped, 0 failures. Lint passes with 0 errors (244 warnings), which closes the incomplete lint run noted below. Database and backup schema are both 12.
+- Still not run on the OPPO. The hand-test checklist below is unchanged and still open.
+- The 2026-11-16 project review found defects outside the redesign (capture, recording recovery, relay). They are listed in `docs/DEVICE_FEASIBILITY.md` → "Project review checkpoint".
+
+**State at handover (2026-11-14, before the merge):**
 - Debug build passes.
 - 192 unit tests: 188 passed, 4 opt-in live-AI tests skipped, 0 failures.
 - Lint: the earlier redesign passed with 0 errors; the Money follow-up lint run is incomplete under host memory pressure.
@@ -49,8 +55,8 @@ Also from your mid-run requests (inside `f3d5ebf`): real widget previews in the 
 - **Money "Expenses" excludes fees** (fees are a separate KPI); own transfers are left out. This matches the mockup's arithmetic.
 - **"Not understood" SMS** means a message that looked financial but produced nothing to confirm. It feeds Capture "needs attention" and Fix SMS, whose fixes create normal candidates to confirm.
 - **Backups:**
-  - New archives are schema 11.
-  - Archives from schema 8 and 10 still restore.
+  - New archives are schema 12 (schema 11 at the end of step 7; the Money entry follow-up moved it to 12).
+  - Archives from schema 8, 10 and 11 still restore.
   - Unknown columns are still refused.
 - **Widgets:**
   - Refresh is driven by database changes, not a timer.
@@ -70,7 +76,7 @@ Also from your mid-run requests (inside `f3d5ebf`): real widget previews in the 
 - **Dark theme** is derived from the tokens, not designed, and was only spot-checked.
 - **"Not drawn" screens** (Cloud AI provider editor, Recordings, on-device models) are grouped into cards but still use some older form controls.
 - **English only.** Text is hard-coded in English, as before.
-- **Not merged.** `docs/DEVICE_FEASIBILITY.md` is updated on this branch only.
+- **Merged since handover.** See the status block at the top; `docs/DEVICE_FEASIBILITY.md` on `main` now carries the redesign checkpoint.
 
 ## Test by hand on the OPPO
 

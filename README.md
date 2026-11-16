@@ -10,6 +10,24 @@ The owner authorized the remaining phases on 2026-11-13 and kept physical device
 testing until last. No phone, live account, personal corpus or model weights were
 used to establish host results. No message has been sent and no gateway deployed.
 
+## Current status — 2026-11-16
+
+- **Code:** `main` holds every merged slice: Phases 0–6 software, the UI redesign
+  (five tabs, reports, 13 home screen widgets), money entry pickers, fingerprint app
+  lock, daily encrypted Google Drive backup and the resource-use changes. Debug
+  version **0.4.0** (code 4), Room schema **12**, backup schema **12**.
+- **Host checks on this tree:** 205 Android unit tests (201 passed, 4 opt-in live AI
+  tests skipped, 0 failures), 21 relay tests and 6 WhatsApp Web worker tests pass.
+  The debug APK assembles and lint passes with 0 errors (244 warnings). Commands and
+  the APK checksum are in [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md).
+- **Not done:** nothing has run on the physical OPPO, with a real model file, a live
+  mail/WhatsApp/Google account or a real SMS corpus. Every phase stays **PARTIAL**.
+- **Known defects and risks** from the 2026-11-16 code review are listed in
+  [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md) → "Project review checkpoint".
+  Read them before importing real SMS history or relying on recordings and backups.
+- **Repository:** `main` is pushed and no feature branches remain. There is no
+  release build type (signing, shrinking) and no CI yet.
+
 ## Build and verify
 
 Required: JDK 17/21, Android SDK platform 36, Build Tools 35.0.0, NDK
@@ -30,7 +48,9 @@ this build. This is a debug artifact, without private release signing.
 Pinned stack: Gradle 8.13 (checksummed wrapper), AGP 8.13.2, Kotlin/Compose compiler
 2.2.21, KSP 2.2.21-2.0.4, Compose BOM 2025.10.00, Room 2.8.4, coroutines 1.10.2,
 WorkManager 2.10.5, LiteRT-LM 0.12.0, bundled ML Kit Latin OCR 16.0.1, SQLCipher
-Android 4.20.0, JavaMail Android/activation 1.6.8, whisper.cpp v1.9.5. Native source
+Android 4.20.0, JavaMail Android/activation 1.6.8, Glance 1.1.1, Play services auth
+22.0.0, ML Kit image labeling 17.0.9, MediaPipe tasks-text 0.10.26, ONNX Runtime
+1.31.1, whisper.cpp v1.9.5. Native source
 SHA-256: `ff1a9053feb509ff9d7729703355541ae9690073a6b1c40eb692c962e0dc1720`.
 The whisper MIT notice is bundled in app assets. LiteRT-LM is pinned to the runtime
 that compiles with this Kotlin toolchain; a newer AAR required newer Kotlin metadata.
@@ -41,6 +61,13 @@ ledger calculations, task review and bundled OCR work without account credential
 Optional network adapters remain disconnected until configured by the owner.
 
 ## App controls
+
+Since the 2026-11-14 redesign the app has five tabs (Home, Money, Tasks, Inbox, Ask)
+plus Settings. The headings below are feature areas, not tab names: capture controls
+are in Settings › Permissions and capture; Finance is the Money tab; Messages is the
+Inbox tab with account setup in Settings › Email / WhatsApp; Media, Local AI and
+Backup are in Settings › Recordings, On-device models and Encrypted backup; the
+assistant is the Ask tab. [DECISIONS.md](DECISIONS.md) records where each control moved.
 
 - **Setup / Capture:** actual assistant, notification, SMS and microphone grants;
   source counters, processing jobs and per-app processing policy. SMS capture starts
@@ -75,7 +102,8 @@ Optional network adapters remain disconnected until configured by the owner.
   Contact identities are not merged automatically. Typed JSON proposals accept only
   `create_task` and `prepare_reply`; they create review items, never approved sends
   or recording starts. Model text cannot run shell commands.
-- **Finance:** add provider-scoped accounts; preview English/Kiswahili cash entries
+- **Finance:** add accounts by name with an optional balance (the provider field was
+  removed on 2026-11-14); preview English/Kiswahili cash entries
   and historical dates. Review/edit amount, fee, account, kind, category and date
   before posting. Save confirmed Lipa Namba aliases. Own transfers balance debit and
   credit; fees are separate. Corrections append reversal entries and retain source
@@ -118,7 +146,7 @@ Optional network adapters remain disconnected until configured by the owner.
   placeholders (`AUTO SPEAKER 2 · Juma?`) when a self-introduction or repeated direct
   address supports them. Manual labels are never replaced; thresholds are uncalibrated.
   Monitoring is visible, capped at 30 minutes, retains
-  the complete PCM original, and never restarts automatically. Experimental energy
+  the complete compressed original, and never restarts automatically. Experimental energy
   intervals include up to 30 seconds of preceding audio; they are not reliable
   diarization or proof of participation. Speaker labels start UNKNOWN and are
   manually correctable. The separate 60-second Phase 0 sample control remains.
@@ -136,8 +164,8 @@ Optional network adapters remain disconnected until configured by the owner.
   Registered originals, source events, finance, messages/drafts, tasks, memory and
   transcripts are included. Limits: 7 GiB originals plus 1 GiB database rows.
   Passwords/tokens, gateway private key, Android grants, models, recording exclusions,
-  folder grants and Phase 0 samples are excluded. Restore requires the same backup
-  schema, empty local data, stopped microphone, disabled notification/SMS capture
+  folder grants and Phase 0 samples are excluded. Restore accepts backup schemas 8,
+  10, 11 and 12 and requires empty local data, stopped microphone, disabled notification/SMS capture
   and disconnected integrations. It authenticates/stages before merging, re-encrypts
   payloads/media with the receiving device key, revokes stale send approvals and
   preserves uncertain sends. Reconnect accounts and review exclusions afterward.
@@ -467,7 +495,7 @@ References: [Android biometric prompt](https://developer.android.com/reference/a
 
 ## Storage, recovery and boundaries
 
-Room schema **8** has non-destructive migrations from schema 1. Production uses
+Room schema **12** has non-destructive migrations from schema 1. Production uses
 SQLCipher plus Android Keystore-wrapped database credentials; captured payloads
 also use Keystore-backed AES-GCM. Legacy plaintext database conversion exports to
 an encrypted copy, checks it and atomically replaces the original; errors do not
@@ -476,8 +504,11 @@ verified on a device. Startup storage failure shows a retry screen and retains f
 
 Registered media uses independently authenticated 64 KiB chunks for seeking through
 in-memory readers, including virtual WAV/PDF descriptors; no plaintext temporary
-original is created. An interrupted monitor can recover authenticated complete
-chunks; its unflushed tail can be lost. Phase 0 samples retain their legacy whole-file
+original is created. A monitor interrupted while the app keeps running (microphone
+taken, notice disabled) retains its authenticated complete chunks; the unflushed tail
+can be lost. **Known defect:** if the process dies mid-recording, startup recovery
+only handles the older PCM container, so a compressed (AAC) recording is not recovered
+and its encrypted file is left unregistered on disk. Phase 0 samples retain their legacy whole-file
 GCM format and reject incomplete streams. Originals are retained until owner deletion;
 automated retention deletion is not enabled. Portable backups use PBKDF2-HMAC-SHA256
 (600,000 iterations), a random salt, authenticated chunks and a completion manifest;
@@ -519,6 +550,14 @@ Exact host results, artifact checksum and the final physical checklist are in
 ordinary SQLite/Robolectric and generated AES/RSA keys; they do not prove native
 SQLCipher/Keystore, actual model execution, live accounts or Android/OEM behavior.
 
+- 2026-11-16, project review: full code and docs review; host suites re-run (205
+  Android, 21 relay, 6 worker tests, no failures; lint 0 errors). Findings and next actions are in
+  DEVICE_FEASIBILITY.md → "Project review checkpoint". No code changed.
+- 2026-11-14, money entry: date/time, category and account pickers for cash entry,
+  accounts without a provider field, Room v12; 192 host tests at that checkpoint.
+- 2026-11-14, UI redesign: new theme and five-tab navigation, redesigned Home, Money,
+  Tasks, Inbox and Ask, settings hub, reports with PDF/CSV export, Room v10–v11 and 13
+  Glance home screen widgets. Emulator-checked only; see REDESIGN_SUMMARY.md.
 - 2026-11-14, device security/recovery: opt-in platform fingerprint/device-credential
   app lock, encrypted daily Google Drive upload and confirmed backup selection/restore.
   Live Google/OEM verification remains pending.

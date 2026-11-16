@@ -1,5 +1,60 @@
 # HellFire Ass — implementation and feasibility
 
+Latest update: 2026-11-16 (project review checkpoint, directly below). Earlier
+checkpoints keep the test counts and APK checksums that were true when they were
+written; the review checkpoint has the current ones.
+
+## Project review checkpoint — 2026-11-16
+
+Full read of the Android app, relay, WhatsApp Web worker, tests and docs at `main`
+`566a291`, plus a re-run of the host suites. No code was changed. No phone, model
+file, live account or real message corpus was used; every "code review" result below
+is established by reading the source, not by reproducing it on a device.
+
+Host verification on this tree:
+
+| Check | Command | Result |
+|---|---|---|
+| Android unit tests | `./gradlew :app:testDebugUnitTest --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'` from `android/` | PASS: 205 tests, 201 passed, 4 opt-in live AI tests skipped, 0 failures or errors. Gradle reported the task up to date, so these are the results of the run made on this tree earlier the same day |
+| Relay | `python -m pytest -q` in a fresh Python 3.14.8 virtualenv from `requirements-dev.txt` | PASS: 21 passed, one Starlette/httpx deprecation warning |
+| WhatsApp Web worker | `npm ci --omit=optional --ignore-scripts` then `npm test`, Node 24.13.0 | PASS: 6 passed |
+| Room migrations | `DatabaseMigrationTest`, `SchemaV10Test`, `WidgetDataTest`, `FinanceTest` | PASS (host): schema 1 migrates through schema 12 |
+| Android lint | `./gradlew :app:lintDebug --max-workers=1` with the same heap limit | PASS: 0 errors, 244 warnings, 3 hints (mostly hard-coded English text, unused attributes, KTX suggestions and dependency update notices). This closes the lint run left NOT COMPLETED in the Money entry update below |
+| Debug APK | `android/app/build/outputs/apk/debug/app-debug.apk` | PASS: `./gradlew :app:assembleDebug` reports it up to date. 249,964,215 bytes, SHA-256 `2c93f66ebe77685d113924f3900fbdd63ecd0c6fc1a890eccf10f1c8c01a7778`, version 0.4.0 (code 4). Not installed on any device |
+
+Findings, in the order they should be handled. Result is the state of the code today.
+
+| Question | Test | Result | Evidence | Next action |
+|---|---|---|---|---|
+| Is a compressed conversation recording recovered after the process dies mid-recording? | Code review | **DEFECT** | `MicrophoneService` writes monitoring audio with the container's PCM flag off (AAC). `ChunkedMedia.recoverRecording` returns null unless that flag is on, so `MediaVault.recover` skips the file: up to 30 minutes of audio is not registered and the encrypted file stays on disk. `MediaTest` covers recovery for the PCM container only | Accept the AAC container in recovery, add a test, and remove or register orphan `.hfm` files |
+| Does each new SMS trigger a bounded import? | Code review | **DEFECT (cost)** | Every trigger (incoming SMS, provider change, app resume, the 15-minute maintenance job) starts `SmsSyncWorker` at row 0 and pages through the whole SMS store, normalizing and hashing each row before the duplicate check. No high-water mark is saved | Save the last imported row ID and rescan only a short look-back window (for outbox to sent changes); measure on the OPPO's real SMS count |
+| Is a captured event's identity stable if the redaction rules change? | Code review | **RISK** | The event ID and external ID are hashes of the *redacted* fields. Any later change to `NotificationNormalizer` gives already-imported SMS and mail new IDs, so the next sync re-imports them as new events and creates new review items unless a provider reference matches | Calibrate redaction on a real corpus **before** the first real history import, or derive SMS/mail identity from the provider row ID / IMAP UID instead of content |
+| Does redaction keep the money facts in real provider messages? | Code review | **RISK, NOT TESTED on real formats** | Any standalone 4–8 digit number is replaced unless it follows `TZS`/`TSh`, sits in an ISO date, or follows a reference keyword in a message that also has a marked amount. Amounts written without a leading currency mark (`5000`, `120000 TZS`), the year in `13/11/2026`, and till numbers in messages without a marked amount are removed before storage, permanently | Run an owner-approved real corpus through the normalizer and record what is lost per provider |
+| Does one payment seen as both an SMS and the SMS app's notification create one review item? | Code review | **RISK** | `FinanceRepository.collect` only detects a duplicate when both sources yield the same parsed reference. The reference pattern needs a `ref`/`kumbukumbu`/`muamala` keyword; a message that leads with a bare transaction ID yields no reference, so both sources go to review and both can be posted | Verify reference parsing per provider on a real corpus; add a fallback match (same provider, amount and time window) that links instead of posting twice |
+| Are review queues usable on real traffic? | Code review | **RISK** | `RuleClassifier` labels any text containing `paid`, `payment` or `received` as a finance candidate. `TaskExtractor` proposes a task for any text containing today/tomorrow/a weekday/an ISO date (or `leo`/`kesho`), with no commitment wording required; only one Swahili clock phrase (`saa nne asubuhi`) is understood | Measure candidate precision on real traffic before trusting the queues; tighten rules from the measured errors |
+| Does the relay drain a backlog larger than one batch? | Code review | **DEFECT** | The relay limits every caller to 120 requests per minute, counted per peer address and including the phone's own authenticated calls. One sync is 1 fetch plus up to 100 acknowledgments, so the follow-up batch is rejected with 429 and Android records the gateway as FAILED until a retry. Behind the required reverse proxy all callers share one address, so unauthenticated traffic can use up the same allowance | Exempt authenticated device calls or acknowledge a batch in one request; key the limit on the proxy-supplied client address |
+| Does the WhatsApp Web worker recover from a disconnect? | Code review | **GAP (documented)** | On `disconnected` the worker only updates status and keeps running, so Compose `restart: unless-stopped` never restarts it | Exit non-zero on disconnect so Compose restarts it with the saved session |
+| Does the first mail sync start with recent mail? | Code review | **RISK** | With no cursor the adapter asks for every UID in INBOX and Sent and imports oldest first, 100 per run. A large mailbox takes many runs and recent mail arrives last | Start from a recent window and backfill on request |
+| Do the cloud AI adapters accept normal answers? | Code review | **DEFECT (likely), NOT TESTED live** | Every request asks for at most 512 output tokens, and an answer that ends because of that limit is treated as a failed request: the estimated cost stays reserved and the next provider in the route is tried. The Claude adapter also rejects any response that contains a non-text content block, which current Claude models return when thinking is on by default | Accept truncated answers and mark them truncated, raise the limit, skip thinking blocks; then run the opt-in live tests once per provider |
+| Is long-term literal search available? | Code review | **GAP vs spec** | Search decrypts and scans only the 2,000 most recent events (a few days once all notifications are captured). The spec asks for SQLite FTS | Add an FTS table inside the already-encrypted database |
+| Are newly recorded calls found by the folder scan? | Code review | **RISK** | Each scan reads only the first 300 folder entries in the order the storage provider returns them. A call-recording folder that grows past 300 files may never show its newest files | Sort by last-modified or page through the folder |
+| Do daily Drive backups stay within the account's storage? | Code review | **RISK** | Every daily upload is a complete archive including all originals (up to 7 GiB). Nothing prunes old archives | Keep the newest N archives the app created, or back up originals less often |
+| Can device problems be diagnosed? | Code review | **GAP** | The app writes no log lines at all; about 95 `catch` blocks turn the exception into a generic status string | Add debug-build-only logging of exception class and stack trace, without message content, before the OPPO test pass |
+| Can another app steer the UI? | Code review | **LOW** | `MainActivity` is exported for the launcher and assist intents and accepts any `hellfire://` data URI from any caller. Links only navigate, and the app lock still applies | Accept deep links only from this app's own pending intents |
+
+Repository and build state on 2026-11-16:
+
+- `main` and `origin/main` are both at `566a291`. The merged `feat/ui-redesign`
+  worktree and branch have been removed; no feature branches remain.
+- Only a debug build type exists. There is no release signing configuration, code
+  shrinking or CI. The debug APK is about 238 MiB because it carries arm64-v8a and
+  x86_64 native libraries; a phone-only arm64 build would be much smaller.
+- `AGENTS.md` still tells agents to implement Phase 0 only and to use official
+  WhatsApp Coexistence; `docs/MASTER_SPEC.md` records the owner's later decisions that
+  supersede both. An agent that reads only `AGENTS.md` gets the old rules.
+
+## Earlier checkpoints
+
 Evidence date: 2026-11-14, Africa/Dar_es_Salaam. The owner authorized remaining
 phases and explicitly kept physical OPPO testing until last. Resource-use validation
 used host tests only; the separate UI checkpoint below records earlier emulator
@@ -291,10 +346,10 @@ backups retain these selections and schemas 8, 10 and 11 remain readable.
 | Do picker controls behave on ColorOS? | Select and cancel date/time; change category/account; rotate, reopen review, confirm multi-item cash entry; add an account without a provider | NOT TESTED | No phone test performed for this change | Verify timezone, retained selections and balances on the OPPO |
 
 Command: `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug --max-workers=1 --console=plain`
-from `android/`. Test and assemble tasks passed. Lint is **NOT COMPLETED**: its
-analysis was stopped after prolonged runtime under host memory pressure (about
-600 MiB RAM available, 35 GiB swap in use). No lint success is claimed for this change.
-Rerun `./gradlew :app:lintDebug --max-workers=1 --console=plain` when capacity is available.
+from `android/`. Test and assemble tasks passed. Lint was **NOT COMPLETED** at this
+checkpoint: its analysis was stopped after prolonged runtime under host memory pressure
+(about 600 MiB RAM available, 35 GiB swap in use). It was rerun on 2026-11-16 and
+passed with 0 errors; see the project review checkpoint at the top.
 APK SHA-256:
 `dc852ff89217f8ef380e84c736e87338e42954c5dd583950f99b4aa8d40c2c43`.
 

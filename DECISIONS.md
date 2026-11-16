@@ -4,7 +4,7 @@ Decisions made where `HANDOFF.md` was unclear or a screen was marked *not drawn*
 
 ## General
 
-- **Branch.** The brief says the worktree is on `ui-redesign`; the actual worktree branch is `feat/ui-redesign` (created for steps 1–2 earlier). Work stays on that branch; no new branch was created.
+- **Branch.** The brief says the worktree is on `ui-redesign`; the actual worktree branch is `feat/ui-redesign` (created for steps 1–2 earlier). Work stays on that branch; no new branch was created. **Status 2026-11-16:** the branch is merged into `main` (`49f2722`, then `566a291` for the Money entry pickers); the worktree and branch have since been removed.
 - **Fonts.** Inter and Space Grotesk are bundled as OFL variable fonts in `res/font` (licences in `assets/licenses`). Google downloadable fonts would add a runtime network call, which §1 forbids. Adds about 1 MB to the APK.
 - **Icons.** The design's outline SVG icons are ported to `ImageVector`s (`ui/theme/Icons.kt`) instead of adding an icon library.
 - **Dark theme.** Derived from the §3 tokens (not designed). Same roles, dark surfaces `#0E1013` / `#181B20`, lighter accents so text keeps at least 4.5:1.
@@ -148,3 +148,9 @@ Decisions made where `HANDOFF.md` was unclear or a screen was marked *not drawn*
   - Pie slices beyond six go into "Other".
   - Legend rows drill to that category's or account's payments.
   - The Money tab shows a "Where it went" pie for the selected month, with Calendar and Full report shortcuts.
+
+## Money entry follow-up (Room v11 → v12, 2026-11-14)
+
+- **Cash entry pickers.** Date and time (East Africa Time), category and account are chosen when logging cash, stored on the review item (`finance_candidate.accountId`, `category`) and prefilled in the confirmation sheet.
+- **Accounts have no provider.** Accounts are created by name and optional balance. Provider labels and the provider report grouping are gone. Receipt provider and reference stay internal for duplicate detection and merchant evidence.
+- **Backups** move to schema 12 and still restore schema 8, 10 and 11 archives.

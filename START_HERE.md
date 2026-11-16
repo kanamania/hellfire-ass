@@ -6,6 +6,13 @@ for exact host results, remaining model/account gates and the final device check
 The owner authorized remaining phases and deferred physical device testing until last.
 No physical, model or live-account success is claimed. The debug version is 0.4.0.
 
+Status on 2026-11-16: the UI redesign, home screen widgets, money entry pickers,
+fingerprint app lock and daily Google Drive backup are merged into `main` (Room schema
+12). Host suites pass (205 Android, 21 relay and 6 worker tests). Next work is the
+physical OPPO test pass and the defects listed in DEVICE_FEASIBILITY.md → "Project
+review checkpoint". [REDESIGN_SUMMARY.md](REDESIGN_SUMMARY.md) has the hand-test
+checklist and [DECISIONS.md](DECISIONS.md) the design decisions.
+
 The original starter instructions are retained below.
 
 1. Extract this ZIP into the root of an empty project/repository (or copy the `docs` folder and `AGENTS.md` into your existing repository).
