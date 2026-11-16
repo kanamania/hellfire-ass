@@ -43,7 +43,7 @@ enum class MainTab(val label: String, val icon: ImageVector) {
 
 /** Screens pushed over the tabs: back arrow, no bottom bar. */
 enum class Screen {
-    Setup, Settings, Permissions, CloudAi, LocalModels, Email, WhatsApp, Backup, Device, Recordings, Reminders, Memory, Widgets,
+    Setup, Settings, Permissions, CloudAi, LocalModels, Email, WhatsApp, Backup, Device, Recordings, Reminders, Memory, Widgets, WebAccess,
     Accounts, Budgets, Transaction, Source, Task, Message, MediaItem,
     Reports, ReportMoney, ReportCategory, ReportAccounts, ReportStatement, ReportCapture, FixSms, ReportTasks, ReportMessages, ReportMedia, ReportAi,
 }
