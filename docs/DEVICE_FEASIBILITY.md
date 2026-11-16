@@ -14,7 +14,7 @@ deployed, and no phone or real server was used.
 | Check | Command | Result |
 |---|---|---|
 | Android unit tests | `./gradlew :app:testDebugUnitTest` | PASS: 226 tests, 222 passed, 4 opt-in live AI tests skipped, 0 failures; 5 new in `WebSyncTest` |
-| Lint and debug APK | `./gradlew :app:lintDebug :app:assembleDebug` | PASS: lint 0 errors, 251 warnings (1 new: `UseKtx` in `WebSync.kt`, same pattern as `DriveBackupWork`). Debug APK 0.5.0, 249,648,933 bytes, SHA-256 `4f4e0a0f1833494b9ac88e2316aaffdd9e61deb190b64dea9cd36b784c6f15a9`. Not installed on any device |
+| Lint and debug APK | `./gradlew :app:lintDebug :app:assembleDebug` | PASS: lint 0 errors on the branch, 251 warnings (1 new: `UseKtx` in `WebSync.kt`, same pattern as `DriveBackupWork`). After merging into `main` (arm64-v8a only), tests re-run (226, 0 failures) and debug APK 0.5.0 rebuilt: 150,314,771 bytes, SHA-256 `60565a4a13e6a263b231447abc29a63357f366b332a1f39a110db6688fc61945`. Not installed on any device |
 | Web API | `cd web/api && TEST_DATABASE_URL='postgresql:///hellfire_test?host=/run/postgresql' npm test` (Node 24.13.0, local PostgreSQL 18.6) | PASS: 11 tests |
 | Website | `cd web/frontend && npm run typecheck && npm run build` | PASS |
 | systemd units | `systemd-analyze verify web/systemd/*.service` | PASS; not installed or started |
