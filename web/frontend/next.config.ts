@@ -1,10 +1,9 @@
 import type { NextConfig } from 'next';
 
 // Fixed at build time: the phone reaches the sync API through this site's own origin.
-const api = process.env.API_URL ?? 'http://localhost:3001';
+const api = process.env.API_URL ?? 'http://127.0.0.1:3911';
 
 const config: NextConfig = {
-  output: 'standalone',
   poweredByHeader: false,
   async rewrites() {
     return [{ source: '/api/sync/:path*', destination: `${api}/api/sync/:path*` }];

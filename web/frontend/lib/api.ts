@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 
 export const SESSION_COOKIE = 'hf_session';
-export const API_URL = process.env.API_URL ?? 'http://localhost:3001';
+export const API_URL = process.env.API_URL ?? 'http://127.0.0.1:3911';
 
 export interface Row<T = Record<string, any>> { kind: string; id: string; at: number; data: T }
 export interface Page<T = Record<string, any>> { rows: Row<T>[]; next: { afterAt: number; afterId: string } | null }

@@ -2,9 +2,9 @@
   "name": "hellfire-web-frontend",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "next dev -H 127.0.0.1 -p 3910",
     "build": "next build",
-    "start": "next start -p 3000",
+    "start": "next start -H 127.0.0.1 -p 3910",
     "typecheck": "tsc --noEmit"
   },
   "engines": { "node": ">=22" },

@@ -6,15 +6,15 @@ import { CONFIG, type Config } from './config.js';
 const SCRYPT = { N: 1 << 15, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 const SESSION_MS = 12 * 60 * 60 * 1000;
 
-/** Format: scrypt$<salt base64>$<key base64>. */
+/** Format: scrypt:<salt base64>:<key base64>. No `$`, which Compose would interpolate in .env. */
 export function hashPassword(password: string): string {
   const salt = randomBytes(16);
   const key = scryptSync(password, salt, 32, SCRYPT);
-  return `scrypt$${salt.toString('base64')}$${key.toString('base64')}`;
+  return ['scrypt', salt.toString('base64'), key.toString('base64')].join(':');
 }
 
 export function verifyPassword(password: string, stored: string): boolean {
-  const [scheme, salt, key] = stored.split('$');
+  const [scheme, salt, key] = stored.split(':');
   if (scheme !== 'scrypt' || !salt || !key) return false;
   const expected = Buffer.from(key, 'base64');
   const actual = scryptSync(password, Buffer.from(salt, 'base64'), expected.length, SCRYPT);

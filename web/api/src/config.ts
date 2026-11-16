@@ -5,6 +5,7 @@ export interface Config {
   sessionSecret: string;
   ownerPasswordHash: string;
   port: number;
+  host: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -14,13 +15,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     return value;
   };
   const ownerPasswordHash = required('OWNER_PASSWORD_HASH');
-  if (!ownerPasswordHash.startsWith('scrypt$')) throw new Error('OWNER_PASSWORD_HASH must come from `npm run hash-password`');
+  if (!ownerPasswordHash.startsWith('scrypt:')) throw new Error('OWNER_PASSWORD_HASH must come from `npm run hash-password`');
   return {
     databaseUrl: required('DATABASE_URL'),
     syncToken: required('SYNC_TOKEN', 32),
     sessionSecret: required('SESSION_SECRET', 32),
     ownerPasswordHash,
-    port: Number(env.PORT ?? 3001),
+    port: Number(env.PORT ?? 3911),
+    // Loopback only: the website on the same host is the API's only client.
+    host: env.HOST ?? '127.0.0.1',
   };
 }
 

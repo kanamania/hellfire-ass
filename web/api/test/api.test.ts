@@ -15,6 +15,7 @@ const config: Config = {
   sessionSecret: 'session-secret-for-tests-only-012345',
   ownerPasswordHash: hashPassword('correct horse battery'),
   port: 0,
+  host: '127.0.0.1',
 };
 
 let base = '';

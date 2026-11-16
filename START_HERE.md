@@ -9,7 +9,9 @@ No physical, model or live-account success is claimed. The debug version is 0.5.
 Status on 2026-11-16: the UI redesign, home screen widgets, money entry pickers,
 fingerprint app lock, daily Google Drive backup, the review fixes and multiple email
 inboxes and WhatsApp accounts are merged into `main` (version 0.5.0, Room schema 13).
-Host suites pass (221 Android, 23 relay and 6 worker tests). Next work is the physical
+An optional read-only web copy synced from the phone (`web/`, NestJS + Postgres +
+Next.js; README → "Web access") is added but not deployed. Host suites pass (226
+Android, 23 relay, 6 worker and 11 web API tests). Next work is the physical
 OPPO test pass; DEVICE_FEASIBILITY.md → "Review fixes and multiple accounts" lists the
 device checks each change still needs. [REDESIGN_SUMMARY.md](REDESIGN_SUMMARY.md) has the hand-test
 checklist and [DECISIONS.md](DECISIONS.md) the design decisions.

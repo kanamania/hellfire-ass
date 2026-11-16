@@ -1,0 +1,19 @@
+# HellFire web access: website on 127.0.0.1:3910; point the HTTPS reverse proxy here.
+# It calls the API on 127.0.0.1:3911 and forwards the phone's /api/sync/* requests to it.
+[Unit]
+Description=HellFire web access website
+After=network.target hellfire-web-api.service
+Wants=hellfire-web-api.service
+
+[Service]
+User=dev
+WorkingDirectory=/home/dev/Projects/hellfire-ass/web/frontend
+Environment=NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+ExecStart=/home/dev/.nvm/versions/node/v24.13.0/bin/node node_modules/next/dist/bin/next start -H 127.0.0.1 -p 3910
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
