@@ -1,8 +1,49 @@
 # HellFire Ass — implementation and feasibility
 
-Latest update: 2026-11-16 (project review checkpoint, directly below). Earlier
+Latest update: 2026-11-16 (review fixes and multiple accounts, directly below). Earlier
 checkpoints keep the test counts and APK checksums that were true when they were
 written; the review checkpoint has the current ones.
+
+## Review fixes and multiple accounts — 2026-11-16
+
+Branch `feat/multi-account`, merged into `main`. Version 0.5.0 (code 5), Room schema
+13, backup schema 13 (schemas 8, 10, 11 and 12 still restore). Synthetic data only; no
+phone, model file, live account or real SMS corpus was used.
+
+Host verification on the branch:
+
+| Check | Command | Result |
+|---|---|---|
+| Android unit tests | `./gradlew :app:testDebugUnitTest --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'` | PASS: 221 tests, 217 passed, 4 opt-in live AI tests skipped, 0 failures. 13 new tests in `ReviewFixesTest` and 3 in the AI provider and classifier tests; `DatabaseMigrationTest` migrates schema 1 through 13, including the FTS table |
+| Relay | `python -m pytest -q` (Python 3.14.8) | PASS: 23 passed (2 new: device rate allowance, batch acknowledgment) |
+| WhatsApp Web worker | `npm test`, Node 24.13.0; `node --check src/main.js` | PASS: 6 passed; restart wiring is not exercised without a browser |
+| Lint and debug APK | `./gradlew :app:lintDebug :app:assembleDebug` with the same limits | PASS: lint 0 errors, 250 warnings, 5 hints. Debug APK 0.5.0 (code 5), 249,567,013 bytes, SHA-256 `0cba7145a431cdbb5081c0c72c8c855c1dcd4a278e215a754f5635d30060df52`. Not installed on any device |
+
+| Question | Test | Result | Evidence | Next action |
+|---|---|---|---|---|
+| AAC recording recovered after process death? | `ReviewFixesTest` | PASS (host) | Recovery accepts the AAC and PCM containers and registers the right type; empty orphans are removed; recovery is skipped while the microphone is busy. Start time is the file creation time where the filesystem reports it | Kill the process mid-recording on the OPPO; check the recovered file plays |
+| SMS import bounded per trigger? | `ReviewFixesTest` | PASS (host) | The last imported provider row is saved; fresh triggers re-read from 200 rows before it (outbox → sent keeps its row ID). Settings › Sync SMS history runs a full check. First run after upgrade reads everything once; existing rows are matched, not duplicated | Measure the time and battery of a trigger on the real SMS store |
+| Identity independent of redaction rules? | `ReviewFixesTest` | PASS (host) | SMS, IMAP and relay events are identified by source, provider key, time and kind. Rows from earlier versions are found by their old content identity and reused. Notifications keep content identity on purpose | Upgrade over the owner's database; confirm a full SMS check adds no duplicates |
+| Money facts kept by redaction? | `ReviewFixesTest`, `NotificationNormalizerTest` | PASS (synthetic) / NOT TESTED (real formats) | Trailing-currency amounts, `/=`, day/month/year dates, and in finance messages amounts after finance words plus till/Lipa Namba/reference numbers are kept; bare codes are still removed | Run an owner-approved real corpus through the normalizer; record losses per provider |
+| SMS + notification posted once? | `ReviewFixesTest` | PASS (host) | Leading transaction IDs (`QK12ABC3D4 Confirmed.`) are references. Without a shared reference, the same provider, kind and amount from a *different* source type within 10 minutes is a duplicate: linked as evidence on approval, attached directly if already posted, rejected together. Two equal SMS payments both stay in review | Check with real paired SMS/notification deliveries |
+| Review queues usable? | `RuleClassifierTest`, `ReviewFixesTest` | PASS (synthetic) | Finance needs a provider/currency word, or a finance word plus an amount. Task proposals from messages need commitment wording (English or Swahili future tense, meeting, pay, send, tafadhali…). Swahili clock times (`saa saba na nusu mchana` = 13:30) are parsed. Owner-typed commands and quick add are exempt | Measure precision on real traffic |
+| Relay drains a large backlog? | `test_gateway.py` | PASS (host) | Device-token requests have their own 1,200/minute allowance; others are limited per forwarded client address (`--proxy-headers`, `FORWARDED_ALLOW_IPS` for the loopback-only port). Android acknowledges each batch with one `POST /device/events/ack` after the whole batch is stored | Verify behind the real reverse proxy |
+| Worker recovers from disconnect? | `node --check`; code review | PARTIAL | Worker exits non-zero on `disconnected` or `auth_failure`, so Compose restarts it | Disconnect a linked test account and watch the restart |
+| First mail sync starts with recent mail? | Code review, compile | PARTIAL | First sync (or a UIDVALIDITY reset) takes the 500 newest messages per folder, oldest of those first; later syncs continue by UID | Test against a real large mailbox |
+| Cloud AI answers accepted? | `AiProviderTest`, `AiRouterTest` | PASS (mocked) / NOT TESTED (live) | Output limit 2,048 tokens; answers stopped by the limit are kept and marked "Cut off" (Claude `max_tokens`, Responses `incomplete`/`max_output_tokens`, DeepSeek `length`); Claude thinking blocks are skipped; Claude refusals are their own error and fall back. The per-request budget reservation is about 4× larger | Run the opt-in live tests once per provider |
+| Long-term search? | `ReviewFixesTest`; migration tests | PASS (host) / NOT TESTED (SQLCipher) | FTS4 (unicode61) table inside the encrypted database; filled at capture and by a one-time resumable backfill; rebuilt after restore; not in backups; cleared with captured events. Sensitive and unavailable sources are never indexed | Confirm FTS4 works in SQLCipher on the phone; time the first backfill |
+| Call-folder scan finds new files? | Compile; code review | PARTIAL | Every folder entry is read; up to 25 new audio files are imported per scan, newest first | Test with the OPPO call-recording folder |
+| Drive storage bounded? | Compile; code review | PARTIAL | After a confirmed upload the app deletes its own older archives beyond the newest 3/7/14 (default 7), or keeps all | Verify on a live Drive account |
+| Device problems diagnosable? | `ReviewFixesTest` | PASS (host) | Debuggable builds log exception class and stack frames (tag `HellFire`), never messages, from the previously silent handlers | Collect with `adb logcat -s HellFire` during the OPPO pass |
+| Other apps steering the UI? | Compile; manifest review | PARTIAL | `MainActivity` is no longer exported; the launcher, assist gesture and assistant settings use the exported `.Launcher` alias, whose data is ignored. Widgets and reminders address `MainActivity` directly. Launchers may need the icon re-added after the update | Check launcher icon, assist gesture and widget links on ColorOS |
+
+Multiple accounts:
+
+| Question | Test | Result | Evidence | Next action |
+|---|---|---|---|---|
+| Several inboxes and WhatsApp accounts stored safely? | `ReviewFixesTest` | PASS (host) | Encrypted lists `mail-accounts` and `gateway-accounts` (up to 10 each). Earlier single-account settings become the first entry. Restore still requires every account disconnected | — |
+| Sync, status and sending per account? | Compile; code review | PARTIAL | Each account syncs independently with its own integration state (`EMAIL_IMAP:<id>`, `WHATSAPP_GATEWAY:<id>`, `IMAP_IDLE:<id>`; old single-account states are removed by the v13 migration). Sends resolve the draft's account. Replies default to the receiving account; new messages and edited drafts choose it; the approval dialog names it. Relay events are keyed by account, so one group message seen by two linked accounts is two events | Connect two test inboxes and two relays; send one approved test message from each |
+| Live mail for several inboxes? | Compile | NOT TESTED | One bounded IDLE connection per inbox inside the existing ten-minute foreground service | Verify on device with two inboxes |
 
 ## Project review checkpoint — 2026-11-16
 
@@ -22,7 +63,8 @@ Host verification on this tree:
 | Android lint | `./gradlew :app:lintDebug --max-workers=1` with the same heap limit | PASS: 0 errors, 244 warnings, 3 hints (mostly hard-coded English text, unused attributes, KTX suggestions and dependency update notices). This closes the lint run left NOT COMPLETED in the Money entry update below |
 | Debug APK | `android/app/build/outputs/apk/debug/app-debug.apk` | PASS: `./gradlew :app:assembleDebug` reports it up to date. 249,964,215 bytes, SHA-256 `2c93f66ebe77685d113924f3900fbdd63ecd0c6fc1a890eccf10f1c8c01a7778`, version 0.4.0 (code 4). Not installed on any device |
 
-Findings, in the order they should be handled. Result is the state of the code today.
+Findings, in the order they should be handled. Result is the state of the code at
+review time; every row was fixed the same day (see "Review fixes and multiple accounts" above).
 
 | Question | Test | Result | Evidence | Next action |
 |---|---|---|---|---|

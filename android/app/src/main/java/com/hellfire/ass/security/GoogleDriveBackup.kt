@@ -89,6 +89,13 @@ class GoogleDriveBackup(private val connect: (URL) -> HttpURLConnection = { it.o
             } }
         }
     }
+    /** Deletes one app-created archive (drive.file scope only reaches files this app created or opened). */
+    fun delete(id: String, token: String) {
+        request("$API/${validId(id)}", token, "DELETE") { c ->
+            if (c.responseCode == 404) return@request
+            requireSuccess(c)
+        }
+    }
     fun download(snapshot: DriveSnapshot, file: File, token: String, checkActive: () -> Unit = {}) {
         require(snapshot.size in 1..MAX_BYTES)
         try {

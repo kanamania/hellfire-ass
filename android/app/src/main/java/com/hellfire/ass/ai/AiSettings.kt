@@ -51,15 +51,15 @@ class EncryptedAiStore(private val file: AtomicFile, private val cipher: () -> P
     @Synchronized override fun read(): AiState = try {
         if (!file.baseFile.exists() && !File(file.baseFile.path + ".bak").exists()) AiState()
         else AiStateCodec.decode(cipher().decrypt(file.readFully()).toString(Charsets.UTF_8))
-    } catch (_: Exception) { throw AiException(AiError.STORAGE) }
+    } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); throw AiException(AiError.STORAGE) }
 
     @Synchronized override fun update(transform: (AiState) -> AiState): AiState {
         val next = transform(read())
         val bytes = try { cipher().encrypt(AiStateCodec.encode(next).toByteArray(Charsets.UTF_8)) }
-            catch (_: Exception) { throw AiException(AiError.STORAGE) }
-        val stream = try { file.startWrite() } catch (_: Exception) { throw AiException(AiError.STORAGE) }
+            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); throw AiException(AiError.STORAGE) }
+        val stream = try { file.startWrite() } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); throw AiException(AiError.STORAGE) }
         try { stream.write(bytes); file.finishWrite(stream) }
-        catch (_: Exception) { file.failWrite(stream); throw AiException(AiError.STORAGE) }
+        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); file.failWrite(stream); throw AiException(AiError.STORAGE) }
         return next
     }
 }

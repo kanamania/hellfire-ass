@@ -53,6 +53,10 @@ interface CommunicationDao {
     @Query("UPDATE outbound_draft SET state = :state WHERE channel = 'WHATSAPP_BUSINESS' AND externalId = :messageId AND ((:state = 'READ' AND state IN ('SUBMITTED', 'SENT_CONFIRMED', 'DELIVERED')) OR (:state = 'DELIVERED' AND state IN ('SUBMITTED', 'SENT_CONFIRMED')) OR (:state = 'SENT_CONFIRMED' AND state = 'SUBMITTED'))")
     suspend fun whatsappStatus(messageId: String, state: String)
     @Query("SELECT COUNT(*) FROM outbound_draft WHERE state='DRAFT'") suspend fun pendingCount(): Int
+    /** Owner edits apply only while a draft is unapproved; approval and sending use the edited row. */
+    @Query("UPDATE outbound_draft SET channel=:channel, accountId=:accountId, recipient=:recipient, subject=:subject, body=:body, replyToMessageId=:replyTo, error=NULL WHERE id=:id AND state='DRAFT'")
+    suspend fun editDraft(id: String, channel: String, accountId: String, recipient: String, subject: String, body: String, replyTo: String?): Int
+    @Query("DELETE FROM integration_state WHERE adapter = :adapter") suspend fun clearIntegration(adapter: String)
     @Insert suspend fun audit(value: ActionAudit)
     @Query("SELECT * FROM action_audit ORDER BY occurredAt DESC LIMIT 50") fun audit(): Flow<List<ActionAudit>>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun integration(value: IntegrationState)

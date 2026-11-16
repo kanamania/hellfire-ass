@@ -32,7 +32,7 @@ class HellFireRecognitionService : RecognitionService() {
                 })
                 startListening(recognizerIntent)
             }
-        } catch (_: Exception) { listener.error(SpeechRecognizer.ERROR_CLIENT) }
+        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); listener.error(SpeechRecognizer.ERROR_CLIENT) }
     }
     override fun onStopListening(listener: Callback) { recognizer?.stopListening() }
     override fun onCancel(listener: Callback) { recognizer?.cancel(); recognizer?.destroy(); recognizer = null }

@@ -75,7 +75,7 @@ fun BalanceSheet(account: FinanceAccount, onDone: (String?) -> Unit) {
                         app.finances.setBalance(account.id, target, time, source)
                     }
                     onDone(if (delta == 0L) "${account.label} already shows that balance. Nothing added." else "${account.label} balance set. Adjustment ${Fmt.signed(delta)} recorded.")
-                } catch (_: Exception) { error = "Balance not saved. Use whole shillings and yyyy-MM-dd HH:mm." }
+                } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); error = "Balance not saved. Use whole shillings and yyyy-MM-dd HH:mm." }
             }
         }, onDismiss = { confirm = false })
 }
@@ -102,7 +102,7 @@ fun AccountsPage(focusAdd: Boolean = false) {
                 supporting = "Leave empty to start at zero. You can set it later.")
             PrimaryButton("Add account", { if (opening.isBlank()) scope.launch {
                 message = try { withContext(Dispatchers.IO) { dao.addAccount(FinanceAccount(label = label.trim())) }; label = ""; "Account added." }
-                    catch (_: Exception) { "Account could not be saved." }
+                    catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Account could not be saved." }
             } else confirmAdd = true }, Modifier.fillMaxWidth(), enabled = label.isNotBlank())
         }
     }
@@ -145,7 +145,7 @@ fun AccountsPage(focusAdd: Boolean = false) {
                             ownerStatement(app, "Owner stated the ${account.label} opening balance as TZS ${Fmt.amount(opening.toLong())}", now))
                     }
                     label = ""; opening = ""; "Account added with its starting balance."
-                } catch (_: Exception) { "Account could not be saved." }
+                } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Account could not be saved." }
             }
         }, onDismiss = { confirmAdd = false })
 }
@@ -213,14 +213,14 @@ fun TransactionPage(id: String) {
     if (confirmReverse) ConfirmDialog("Correct with a reversal?", "Adds reversal entries for this payment, its fee and any transfer credit. The original entry and its evidence stay.",
         "Add reversal", onConfirm = {
             confirmReverse = false
-            scope.launch { message = try { withContext(Dispatchers.IO) { app.finances.reverse(id) }; "Reversal entries posted." } catch (_: Exception) { "Reversal rejected: already corrected or a correction entry." } }
+            scope.launch { message = try { withContext(Dispatchers.IO) { app.finances.reverse(id) }; "Reversal entries posted." } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Reversal rejected: already corrected or a correction entry." } }
         }, onDismiss = { confirmReverse = false }, destructive = true)
     if (pickCategory && e != null) HfBottomSheet({ pickCategory = false }) {
         Text("Change category", style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
         Note("Only the label changes. The amount, account and balances stay the same.")
         ChipPicker(Categories, e.category) { chosen ->
             pickCategory = false
-            scope.launch { message = try { withContext(Dispatchers.IO) { app.finances.recategorize(id, chosen) }; "Category changed to $chosen." } catch (_: Exception) { "Category could not be changed." } }
+            scope.launch { message = try { withContext(Dispatchers.IO) { app.finances.recategorize(id, chosen) }; "Category changed to $chosen." } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Category could not be changed." } }
         }
     }
 }

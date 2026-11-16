@@ -14,19 +14,19 @@ used to establish host results. No message has been sent and no gateway deployed
 
 - **Code:** `main` holds every merged slice: Phases 0–6 software, the UI redesign
   (five tabs, reports, 13 home screen widgets), money entry pickers, fingerprint app
-  lock, daily encrypted Google Drive backup and the resource-use changes. Debug
-  version **0.4.0** (code 4), Room schema **12**, backup schema **12**.
-- **Host checks on this tree:** 205 Android unit tests (201 passed, 4 opt-in live AI
-  tests skipped, 0 failures), 21 relay tests and 6 WhatsApp Web worker tests pass.
-  The debug APK assembles and lint passes with 0 errors (244 warnings). Commands and
-  the APK checksum are in [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md).
+  lock, daily encrypted Google Drive backup, the resource-use changes, the fixes for
+  the 2026-11-16 review findings and **multiple email inboxes and WhatsApp accounts**.
+  Debug version **0.5.0** (code 5), Room schema **13**, backup schema **13**.
+- **Host checks on this tree:** 221 Android unit tests (217 passed, 4 opt-in live AI
+  tests skipped, 0 failures), 23 relay tests and 6 WhatsApp Web worker tests pass.
+  Lint passes with 0 errors and the debug APK assembles; the checksum is in
+  [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md).
 - **Not done:** nothing has run on the physical OPPO, with a real model file, a live
   mail/WhatsApp/Google account or a real SMS corpus. Every phase stays **PARTIAL**.
-- **Known defects and risks** from the 2026-11-16 code review are listed in
-  [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md) → "Project review checkpoint".
-  Read them before importing real SMS history or relying on recordings and backups.
-- **Repository:** `main` is pushed and no feature branches remain. There is no
-  release build type (signing, shrinking) and no CI yet.
+- **Review findings:** all fixed in code and covered by host tests; each still needs
+  its device or real-data check. DEVICE_FEASIBILITY.md → "Review fixes and multiple
+  accounts" lists what changed and what remains to verify.
+- **Not added:** a release build type (signing, shrinking) and CI.
 
 ## Build and verify
 
@@ -40,7 +40,7 @@ cd android
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 ```
 
-APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.4.0**.
+APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.5.0**.
 It supports **arm64-v8a and x86_64**, Android API 29+, target/compile API 36.
 Confirm the phone ABI before installation; 32-bit-only devices are unsupported by
 this build. This is a debug artifact, without private release signing.
@@ -77,8 +77,10 @@ assistant is the Ask tab. [DECISIONS.md](DECISIONS.md) records where each contro
   `balances`, `tasks tomorrow`, `morning brief`, `evening brief`, `search <words>`.
   Date ranges use EAT; explicit `2026-11-01 to 2026-11-03` includes both days.
   Finance totals use integer ledger arithmetic; unapproved candidates and own
-  transfers are excluded from spending. Source search examines up to 2,000 recent
-  events, returns up to 20 literal matches, and offers source evidence links.
+  transfers are excluded from spending. Source search first uses a full-text word index of
+  every non-sensitive saved source (inside the encrypted database, rebuilt after a
+  restore), then an exact-phrase scan of the 2,000 most recent events; it returns up
+  to 20 matches with source evidence links.
   With an owner-imported MediaPipe text-embedder `.tflite` (Local AI → Meaning search),
   search also adds up to 10 meaning matches (`≈ score`) from an on-device vector index of
   non-sensitive sources. Scores are uncalibrated; it is not a general autonomous agent.
@@ -111,6 +113,15 @@ assistant is the Ask tab. [DECISIONS.md](DECISIONS.md) records where each contro
   fixtures; real provider-format accuracy and the 95% target remain unverified.
   Same-reference evidence links without double posting; unfamiliar/refund formats
   require review, including explicit reversal of an existing transaction when needed.
+- **Multiple accounts:** Settings › Email and Settings › WhatsApp each hold up to ten
+  accounts. Each inbox and each WhatsApp relay syncs on its own and shows its own
+  connection state; one failing account does not stop the others. Inbox messages name
+  their account when more than one exists. A reply is sent from the account the
+  message arrived on; a new message or an edited draft can pick the sending account,
+  and the approval dialog names it. Live mail (IMAP IDLE) opens one bounded connection
+  per inbox. A new inbox imports its 500 most recent messages per folder; older mail
+  stays on the server. Assistant `email …`/`whatsapp …` commands draft from the first
+  account and say which one. Settings saved by earlier versions become the first account.
 - **Messages:** encrypted IMAP/SMTP and gateway settings, inbox, local draft editing,
   optional local refinement, and explicit **Approve and send once**. Email replies
   retain a valid Message-ID parent in reply headers. Config changes need fresh
@@ -165,7 +176,7 @@ assistant is the Ask tab. [DECISIONS.md](DECISIONS.md) records where each contro
   transcripts are included. Limits: 7 GiB originals plus 1 GiB database rows.
   Passwords/tokens, gateway private key, Android grants, models, recording exclusions,
   folder grants and Phase 0 samples are excluded. Restore accepts backup schemas 8,
-  10, 11 and 12 and requires empty local data, stopped microphone, disabled notification/SMS capture
+  10, 11, 12 and 13 and requires empty local data, stopped microphone, disabled notification/SMS capture
   and disconnected integrations. It authenticates/stages before merging, re-encrypts
   payloads/media with the receiving device key, revokes stale send approvals and
   preserves uncertain sends. Reconnect accounts and review exclusions afterward.
@@ -255,10 +266,17 @@ limits can leave gaps. Edits/deletions/reactions and historical backfill are not
 captured in this first slice. No attachment bytes or inferred transcripts are
 fabricated.
 
+**Several WhatsApp accounts:** one relay (and one linked browser session) serves one
+WhatsApp account. For a second account run a second relay with its own Compose
+project, volumes, device token, store key and HTTPS URL, then add it in Android under
+Settings › WhatsApp › Add another WhatsApp account. All relays use the same phone
+public key. Never point two relays at the same browser profile or relay database.
+
 To revoke access, log out this session from WhatsApp's **Linked devices**, stop
 the worker, and disconnect the gateway in Android. Disconnecting Android alone
-does not revoke the linked server session. If the worker disconnects, inspect status
-and restart it / pair again as required; no custom reconnect loop is implemented.
+does not revoke the linked server session. If the linked session disconnects or its
+authentication fails, the worker exits and Compose restarts it with the saved session;
+if WhatsApp no longer accepts that session, the pairing page shows a new QR code.
 Changing the WhatsApp account or transport requires draining the old queue first
 and a separate relay database/profile; old queued evidence must not be relabeled
 as a new account. Never run Web and Meta capture against the same relay database.
@@ -309,10 +327,13 @@ actual account eligibility/Coexistence onboarding with Meta; app configuration a
 cannot prove eligibility. Enter the matching HTTPS URL/device token in Android.
 
 Endpoints: `GET /health`, `GET/POST /webhook`, `GET /device/events`,
+`POST /device/events/ack` (batch of up to 100 IDs; Android uses this),
 `POST /device/events/{id}/ack`, `POST /drafts`, `POST /drafts/{id}/approve`, and
 `POST /drafts/{id}/send`. Device endpoints require bearer auth; webhooks require
 verification/signatures and match configured business/phone IDs. Rate limit is
-120 requests/minute per peer IP. Access logs retain requests while redacting queries.
+120 requests/minute per client address, taken from the reverse proxy's
+`X-Forwarded-For` (Compose trusts it because the port is bound to 127.0.0.1 only).
+Requests carrying the valid device token have a separate allowance of 1,200/minute. Access logs retain requests while redacting queries.
 No raw webhook contents or credentials are logged.
 
 Incoming events use RSA-OAEP-wrapped AES-GCM envelopes for the paired device,
@@ -457,9 +478,11 @@ unmetered network, sufficient battery and free storage. Android/ColorOS, force-s
 recording or network loss can delay them. Backups use the existing encrypted
 portable format, including registered originals, and remain visible as timestamped
 `.hfb` files in My Drive. Upload success is recorded only after Drive confirms
-archive size and checksum. The last result/time is shown in Backup. Existing
-snapshots are retained and count against the account's storage; manage retention
-in Drive. The app requests access only to files it creates/opens, not the whole Drive.
+archive size and checksum. The last result/time is shown in Backup. Every
+archive is complete, so each counts against the account's storage. After each
+confirmed upload the app deletes its own older archives beyond the newest 7 (choose 3,
+7, 14 or All in Encrypted backup); it never deletes the archive it just uploaded or
+files it did not create. The app requests access only to files it creates/opens, not the whole Drive.
 
 The passphrase/account configuration is encrypted with the existing device key in
 `noBackupFilesDir`; it is excluded from portable/OS backups. Short-lived access
@@ -495,7 +518,7 @@ References: [Android biometric prompt](https://developer.android.com/reference/a
 
 ## Storage, recovery and boundaries
 
-Room schema **12** has non-destructive migrations from schema 1. Production uses
+Room schema **13** has non-destructive migrations from schema 1. Production uses
 SQLCipher plus Android Keystore-wrapped database credentials; captured payloads
 also use Keystore-backed AES-GCM. Legacy plaintext database conversion exports to
 an encrypted copy, checks it and atomically replaces the original; errors do not
@@ -506,9 +529,10 @@ Registered media uses independently authenticated 64 KiB chunks for seeking thro
 in-memory readers, including virtual WAV/PDF descriptors; no plaintext temporary
 original is created. A monitor interrupted while the app keeps running (microphone
 taken, notice disabled) retains its authenticated complete chunks; the unflushed tail
-can be lost. **Known defect:** if the process dies mid-recording, startup recovery
-only handles the older PCM container, so a compressed (AAC) recording is not recovered
-and its encrypted file is left unregistered on disk. Phase 0 samples retain their legacy whole-file
+can be lost. If the process dies mid-recording, the next start recovers the authenticated
+chunks of compressed (AAC) and older PCM recordings as "Interrupted conversation
+recording", dated from the file's creation time; files with no authenticated audio are
+removed. Recovery never runs while the microphone is recording. Phase 0 samples retain their legacy whole-file
 GCM format and reject incomplete streams. Originals are retained until owner deletion;
 automated retention deletion is not enabled. Portable backups use PBKDF2-HMAC-SHA256
 (600,000 iterations), a random salt, authenticated chunks and a completion manifest;
@@ -526,9 +550,11 @@ OTPs/security context are redacted before source persistence. Authentication con
 withholds the whole item. The everyday words code, PIN, token and verify remove only
 the code value that follows them, wherever it repeats, so payment SMS warning
 "Usitoe PIN yako", LUKU purchases and "code review" mail keep their content. Unmarked standalone
-4–8 digit code candidates are removed conservatively; explicitly marked TZS amounts,
-financial references and valid ISO dates are preserved when no security context is
-present. This is not a universal secret detector. Android-protected/missing fields
+4–8 digit code candidates are removed conservatively. Preserved when no security
+context is present: TZS amounts marked before or after the number (`TZS 5,000`,
+`5,000 TZS`, `5000/=`), ISO and day/month/year dates, and, in messages that name a
+money provider or currency, amounts after finance words (`umelipa 5000`, `kiasi`,
+`salio`) plus till, Lipa Namba and reference numbers. This is not a universal secret detector. Android-protected/missing fields
 remain unavailable. External sends require fresh owner approval. Cloud AI is restricted
 to explicitly submitted AI chat input under the owner’s privacy/budget settings. There is no automatic capture/media upload, analytics,
 stealth microphone, OS bypass, custom hotword engine,
@@ -550,6 +576,13 @@ Exact host results, artifact checksum and the final physical checklist are in
 ordinary SQLite/Robolectric and generated AES/RSA keys; they do not prove native
 SQLCipher/Keystore, actual model execution, live accounts or Android/OEM behavior.
 
+- 2026-11-16, review fixes and multiple accounts (0.5.0, Room v13): stable SMS/mail/relay
+  identity, SMS high-water mark, money-preserving redaction, cross-source payment
+  duplicates, tighter finance/task rules with Swahili clock times, full-text search,
+  AAC recording recovery, recent-window mail sync, whole-folder call import, Drive
+  retention, AI output-limit and thinking-block handling, relay rate-limit and batch
+  ack, worker restart, internal-only deep links, debug-build diagnostics, and several
+  email inboxes and WhatsApp accounts; 221 host tests.
 - 2026-11-16, project review: full code and docs review; host suites re-run (205
   Android, 21 relay, 6 worker tests, no failures; lint 0 errors). Findings and next actions are in
   DEVICE_FEASIBILITY.md → "Project review checkpoint". No code changed.

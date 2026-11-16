@@ -15,7 +15,7 @@ class SmsReceivedReceiver : BroadcastReceiver() {
         val app = context.applicationContext as HellFireApp
         app.captureScope.launch {
             try { SmsSyncWorker.schedule(app) }
-            catch (_: Exception) { runCatching { app.database.events().failure("android_sms", "SMS_SCHEDULING_FAILED") } }
+            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); runCatching { app.database.events().failure("android_sms", "SMS_SCHEDULING_FAILED") } }
             finally { result.finish() }
         }
     }

@@ -109,7 +109,7 @@ class MainActivity : ComponentActivity() {
                         onSession = {
                             if (permissions.voiceServiceActive) {
                                 try { startLocalVoiceInteraction(Bundle()) }
-                                catch (_: Exception) { message = "Assistant session unavailable. Try the system assistant gesture and record the device result." }
+                                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); message = "Assistant session unavailable. Try the system assistant gesture and record the device result." }
                             } else message = "Select HellFire Ass as the digital assistant, then try again."
                         },
                     ),
@@ -140,10 +140,13 @@ class MainActivity : ComponentActivity() {
         deepLink = linkFor(intent)
     }
 
-    /** Deep links come from widgets, reminder notifications and the assist gesture; all are explicit, unexported intents. */
+    /**
+     * Deep links come from widgets and reminder notifications, which address this (unexported) activity directly.
+     * Intents through the exported launcher alias come from other apps or the system, so their data is ignored.
+     */
     private fun linkFor(intent: Intent?): Uri? = when {
         intent?.action == Intent.ACTION_ASSIST -> Uri.parse("hellfire://ask")
-        intent?.data?.scheme == "hellfire" -> intent.data
+        intent?.data?.scheme == "hellfire" && intent.component?.className == MainActivity::class.java.name -> intent.data
         else -> null
     }
 
@@ -182,7 +185,7 @@ class MainActivity : ComponentActivity() {
                         locked = lockSession.requiresUnlock(lockEnabled)
                         lockMessage = ""
                         message = if (lockEnabled) "App lock enabled. HellFire locks when it leaves the foreground." else "App lock disabled."
-                    } catch (_: Exception) { lockMessage = "Could not save app lock. Try again."; message = lockMessage }
+                    } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); lockMessage = "Could not save app lock. Try again."; message = lockMessage }
                 }
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                     if (authentication !== signal) return
@@ -191,7 +194,7 @@ class MainActivity : ComponentActivity() {
                     message = lockMessage
                 }
             })
-        } catch (_: Exception) {
+        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
             authentication = null
             lockMessage = "Authentication could not start. Check your device screen lock and fingerprint enrollment."
             message = lockMessage
@@ -235,7 +238,7 @@ class MainActivity : ComponentActivity() {
         val roles = getSystemService(RoleManager::class.java)
         if (roles.isRoleAvailable(RoleManager.ROLE_ASSISTANT) && !roles.isRoleHeld(RoleManager.ROLE_ASSISTANT)) {
             try { requestRole.launch(roles.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT)); return }
-            catch (_: Exception) { message = "Role chooser unavailable. Use digital assistant settings." }
+            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); message = "Role chooser unavailable. Use digital assistant settings." }
         }
         openSettings(Settings.ACTION_VOICE_INPUT_SETTINGS)
     }
@@ -246,7 +249,7 @@ class MainActivity : ComponentActivity() {
                 if (action == Settings.ACTION_APPLICATION_DETAILS_SETTINGS || action == Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM) data = Uri.parse("package:$packageName")
                 if (action == Settings.ACTION_APP_NOTIFICATION_SETTINGS) putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
             })
-        } catch (_: Exception) {
+        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
             message = "This settings page is unavailable on this device. Open Android Settings manually."
         }
     }

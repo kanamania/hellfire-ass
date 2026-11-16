@@ -14,7 +14,9 @@ data class FinanceAccount(@PrimaryKey val id: String = UUID.randomUUID().toStrin
 data class FinanceCandidate(@PrimaryKey val id: String, val sourceId: String, val position: Int = 0,
     val provider: String, val reference: String?, val kind: String, val amount: Long, val fee: Long,
     val merchant: String?, val evidence: String, val occurredAt: Long, val state: String = "REVIEW",
-    val accountId: String? = null, val category: String? = null)
+    val accountId: String? = null, val category: String? = null,
+    /** v13: the candidate this one repeats (same payment seen in another source); linked as evidence on approval. */
+    val duplicateOf: String? = null)
 
 @Entity(tableName = "ledger_entry", indices = [Index(value = ["dedupeKey"], unique = true), Index(value = ["reversesId"], unique = true), Index("accountId")],
     foreignKeys = [ForeignKey(entity = FinanceAccount::class, parentColumns = ["id"], childColumns = ["accountId"], onDelete = ForeignKey.RESTRICT)])
@@ -45,6 +47,11 @@ interface FinanceDao {
     @Query("SELECT sourceId FROM finance_candidate WHERE provider = :provider AND reference = :reference AND state = 'DUPLICATE'") suspend fun duplicateSources(provider: String, reference: String): List<String>
     @Query("UPDATE finance_candidate SET state = 'DUPLICATE_LINKED' WHERE provider = :provider AND reference = :reference AND state = 'DUPLICATE'") suspend fun linkDuplicates(provider: String, reference: String)
     @Query("UPDATE finance_candidate SET state = :state WHERE id = :id") suspend fun candidateState(id: String, state: String)
+    /** Same payment already seen by a different kind of source (SMS vs notification) within the window. */
+    @Query("SELECT c.* FROM finance_candidate c JOIN source_event e ON e.id = c.sourceId WHERE c.provider = :provider AND c.kind = :kind AND c.amount = :amount AND c.occurredAt BETWEEN :from AND :to AND e.source != :source AND c.state IN ('REVIEW', 'APPROVED') ORDER BY ABS(c.occurredAt - :at) LIMIT 1")
+    suspend fun crossSourceMatch(provider: String, kind: String, amount: Long, at: Long, from: Long, to: Long, source: String): FinanceCandidate?
+    @Query("SELECT * FROM finance_candidate WHERE duplicateOf = :id AND state = 'DUPLICATE'") suspend fun duplicatesOf(id: String): List<FinanceCandidate>
+    @Query("UPDATE finance_candidate SET state = :state WHERE duplicateOf = :id AND state = 'DUPLICATE'") suspend fun resolveDuplicatesOf(id: String, state: String)
     @Query("SELECT * FROM ledger_entry ORDER BY occurredAt DESC, createdAt DESC LIMIT 100") fun entries(): Flow<List<LedgerEntry>>
     @Query("SELECT * FROM ledger_entry WHERE dedupeKey = :key") suspend fun byKey(key: String): LedgerEntry?
     @Query("SELECT * FROM ledger_entry WHERE id = :id") suspend fun entry(id: String): LedgerEntry?

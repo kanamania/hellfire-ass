@@ -16,12 +16,14 @@ data class ModelInfo(val id: String, val capabilities: Set<Capability> = setOf(C
 data class ModelRef(val provider: ProviderId, val model: String)
 data class TokenUsage(val input: Long, val output: Long)
 class GenerationRequest(
-    val model: String, val text: String, val maxOutputTokens: Int = 512,
+    val model: String, val text: String, val maxOutputTokens: Int = DEFAULT_MAX_OUTPUT,
     val required: Set<Capability> = setOf(Capability.TEXT),
 ) {
     override fun toString() = "GenerationRequest(model=$model, text=[REDACTED])"
+    companion object { const val DEFAULT_MAX_OUTPUT = 2048 }
 }
-data class Generation(val text: String, val model: String, val usage: TokenUsage? = null)
+/** [truncated]: the provider stopped at the output limit; the text is kept and shown as cut off. */
+data class Generation(val text: String, val model: String, val usage: TokenUsage? = null, val truncated: Boolean = false)
 
 enum class AiError(val message: String) {
     DISABLED("Provider disabled. Enable it in AI settings."),
@@ -38,7 +40,8 @@ enum class AiError(val message: String) {
     PRIVACY("Cloud use is disabled or this input category must stay on-device."),
     BUDGET("Monthly estimated spending cap reached, or pricing/cap is not configured."),
     STORAGE("Encrypted AI settings are unavailable. Cloud access is blocked."),
-    CANCELLED("Request cancelled. The provider may still bill work already started.")
+    CANCELLED("Request cancelled. The provider may still bill work already started."),
+    REFUSED("The provider declined this request.")
 }
 class AiException(val error: AiError) : Exception(error.message)
 

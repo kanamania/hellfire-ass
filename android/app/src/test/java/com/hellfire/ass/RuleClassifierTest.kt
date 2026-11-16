@@ -7,7 +7,12 @@ import org.junit.Test
 class RuleClassifierTest {
     @Test fun `finance terms produce candidates only`() {
         assertEquals("FINANCE_CANDIDATE", RuleClassifier.classify("Umepokea TZS", "msg", "android_notification"))
-        assertEquals("FINANCE_CANDIDATE", RuleClassifier.classify("Payment received", null, "android_sms"))
+        assertEquals("FINANCE_CANDIDATE", RuleClassifier.classify("Payment received 25,000", null, "android_sms"))
+        assertEquals("FINANCE_CANDIDATE", RuleClassifier.classify("M-PESA: confirmed", null, "android_notification"))
+    }
+    @Test fun `finance words without an amount or provider are not payment candidates`() {
+        assertEquals("MESSAGE", RuleClassifier.classify("Payment received, thanks!", "msg", "android_notification"))
+        assertEquals("UNCLASSIFIED", RuleClassifier.classify("Your order has been paid", null, "android_notification"))
     }
     @Test fun `courier promotion system and message have deterministic labels`() {
         assertEquals("DELIVERY_CANDIDATE", RuleClassifier.classify("Your parcel", null, "android_notification"))

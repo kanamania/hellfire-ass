@@ -1,5 +1,7 @@
 package com.hellfire.ass.widgets
 
+import com.hellfire.ass.communications.Accounts
+
 import android.content.ComponentName
 import android.content.Context
 import android.app.NotificationManager
@@ -115,10 +117,12 @@ suspend fun loadCaptureSources(app: HellFireApp): List<SourceStatus> {
     val states = app.database.communications().integrationsNow().associateBy { it.adapter }
     val list = mutableListOf(SourceStatus("Notifications", notifications))
     if (SmsCaptureSettings.enabled(app)) list += SourceStatus("SMS", SmsCaptureSettings.canRead(app))
-    if (runCatching { app.secrets.read("mail") != null }.getOrDefault(false))
-        list += SourceStatus("Email", states["EMAIL_IMAP"]?.let { it.error == null && it.state !in setOf("FAILED", "AUTH_FAILED", "ERROR") } ?: true)
-    if (runCatching { app.secrets.read("gateway") != null }.getOrDefault(false))
-        list += SourceStatus("WhatsApp", states.filterKeys { it.startsWith("WHATSAPP") }.values.all { it.error == null })
+    val mail = runCatching { Accounts.list(app.secrets, Accounts.MAIL) }.getOrDefault(emptyList())
+    for (account in mail) list += SourceStatus(if (mail.size > 1) "Email · ${account.optString("address")}" else "Email",
+        states[Accounts.mailState(account.getString("id"))]?.let { it.error == null && it.state !in setOf("FAILED", "AUTH_FAILED", "ERROR") } ?: true)
+    val gateways = runCatching { Accounts.gateways(app.secrets) }.getOrDefault(emptyList())
+    for (gateway in gateways) list += SourceStatus(if (gateways.size > 1) "WhatsApp · ${Accounts.label(gateway)}" else "WhatsApp",
+        states[Accounts.gatewayState(gateway.getString("id"))]?.let { it.error == null && it.state != "FAILED" } ?: true)
     return list
 }
 

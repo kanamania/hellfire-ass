@@ -82,6 +82,7 @@ class GatewayAdapter(private val app: HellFireApp) {
         val response = request(config, "/device/events")
         require(response.optString("transport", "meta") == transport) { "GATEWAY_TRANSPORT_MISMATCH" }
         val events = response.getJSONArray("events")
+        val acknowledged = mutableListOf<String>()
         for (index in 0 until events.length()) {
             val envelope = events.getJSONObject(index)
             val id = envelope.getString("id").also { require(it.matches(Regex("[a-f0-9]{64}"))) }
@@ -92,23 +93,25 @@ class GatewayAdapter(private val app: HellFireApp) {
                 ?: Math.multiplyExact(envelope.getLong("created"), 1000)
             val snapshot = GatewayEvents.snapshot(event, id, config.getString("id"), transport, timestamp, System.currentTimeMillis())
             val safe = NotificationNormalizer.normalize(snapshot, app.packageName)!!
-            app.events.capture(snapshot, app.packageName)
+            val stored = requireNotNull(app.events.store(snapshot, app.packageName))
             if (item != null && collection in setOf("messages", "message_echoes")) {
                 val external = item.optString("id").ifBlank { id }
                 val identity = if (transport == "web") "wa-web:${config.getString("id")}:$external" else "wa:$external"
                 app.database.communications().message(CommunicationMessage(NotificationNormalizer.sha256(identity),
-                    channel, config.getString("id"), external, safe.id, GatewayEvents.thread(item, collection, transport),
+                    channel, config.getString("id"), external, stored.id, GatewayEvents.thread(item, collection, transport),
                     safe.snapshot.fields["sender_hint"]?.firstOrNull().orEmpty(), safe.snapshot.fields["recipient_hint"]?.firstOrNull().orEmpty(), "",
                     safe.snapshot.fields["text"]?.firstOrNull().orEmpty(), timestamp, if (collection == "messages") "INCOMING" else "OUTGOING"))
             } else if (transport == "meta" && item != null && collection == "statuses") {
                 val state = when (item.optString("status")) { "read" -> "READ"; "delivered" -> "DELIVERED"; "sent" -> "SENT_CONFIRMED"; else -> null }
                 if (state != null) app.database.communications().whatsappStatus(item.optString("id"), state)
             }
-            // Only acknowledge after local durable capture/normalization succeeds.
-            request(config, "/device/events/$id/ack", JSONObject())
+            acknowledged += id
         }
+        // Acknowledge only after every event in the batch is durably captured; a crash before this replays the
+        // batch, and replayed events are deduplicated by their relay identity.
+        if (acknowledged.isNotEmpty()) request(config, "/device/events/ack", JSONObject().put("ids", org.json.JSONArray(acknowledged)))
         val capture = response.optJSONObject("capture_status")
-        app.database.communications().integration(IntegrationState("WHATSAPP_GATEWAY",
+        app.database.communications().integration(IntegrationState(Accounts.gatewayState(config.getString("id")),
             if (transport == "web") capture?.optString("state", "WORKER_UNAVAILABLE") ?: "WORKER_UNAVAILABLE" else "CONNECTED",
             System.currentTimeMillis(), capture?.optString("error")?.takeUnless { it.isBlank() || it == "null" }))
         return response.optBoolean("has_more", events.length() == 100)

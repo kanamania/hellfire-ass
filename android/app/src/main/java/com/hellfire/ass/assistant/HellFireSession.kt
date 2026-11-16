@@ -97,7 +97,7 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
                     pending = result.command
                     if (pending != null) confirm.visibility = View.VISIBLE
                 } catch (e: CancellationException) { throw e }
-                catch (_: Exception) { answer.text = "Local evidence unavailable. Open HellFire Ass to check storage, dates and source access." }
+                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); answer.text = "Local evidence unavailable. Open HellFire Ass to check storage, dates and source access." }
             }
         }
         confirm.setOnClickListener {
@@ -109,7 +109,7 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
                     withContext(Dispatchers.IO) { AssistantCommands.execute(sessionContext.applicationContext as HellFireApp, command) }
                 } catch (e: CancellationException) { throw e }
                 catch (e: IllegalArgumentException) { e.message ?: "Command could not be applied." }
-                catch (_: Exception) { "Command could not be fully applied. Open HellFire Ass to check; nothing was sent." }
+                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Command could not be fully applied. Open HellFire Ass to check; nothing was sent." }
                 answer.text = lastAnswer
             }
         }
@@ -160,7 +160,7 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
                                 .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                                 .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true))
                         }
-                    } catch (_: Exception) { voiceStatus?.text = "Offline speech could not start. Type your question instead." }
+                    } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); voiceStatus?.text = "Offline speech could not start. Type your question instead." }
                 }
             }
         })

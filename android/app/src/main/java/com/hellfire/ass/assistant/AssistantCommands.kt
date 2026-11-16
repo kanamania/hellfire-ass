@@ -1,5 +1,7 @@
 package com.hellfire.ass.assistant
 
+import com.hellfire.ass.communications.Accounts
+
 import androidx.room.withTransaction
 import com.hellfire.ass.HellFireApp
 import com.hellfire.ass.communications.ActionAudit
@@ -61,7 +63,7 @@ object AssistantCommands {
         val input = text.trim()
         remind.find(input)?.let { m ->
             val rest = m.groupValues[1].trim()
-            val due = requireNotNull(TaskExtractor.extract(rest, now.toEpochMilli(), outgoing = true)) { WHEN_HINT }.dueAt
+            val due = requireNotNull(TaskExtractor.extract(rest, now.toEpochMilli(), outgoing = true, requireCommitment = false)) { WHEN_HINT }.dueAt
             require(due >= now.toEpochMilli() - 60_000) { "That time has already passed (${TaskTime.display(due)} EAT)." }
             val title = stripWhen(rest).also { require(it.isNotEmpty() && it.length <= 300) { "Say what to be reminded about (up to 300 characters)." } }
             return OwnerCommand.Remind(input, title, due)
@@ -92,7 +94,7 @@ object AssistantCommands {
         }
         done.find(input)?.let { m -> return taskAction(input, m.groupValues[1].ifEmpty { m.groupValues[2] }, "DONE", null) }
         reschedule.find(input)?.let { m ->
-            val due = requireNotNull(TaskExtractor.extract(m.groupValues[2], now.toEpochMilli(), outgoing = true)) { WHEN_HINT }.dueAt
+            val due = requireNotNull(TaskExtractor.extract(m.groupValues[2], now.toEpochMilli(), outgoing = true, requireCommitment = false)) { WHEN_HINT }.dueAt
             require(due > now.toEpochMilli()) { "The new time must be in the future." }
             return taskAction(input, m.groupValues[1], "RESCHEDULE", due)
         }
@@ -143,17 +145,21 @@ object AssistantCommands {
                 }
             }
             is OwnerCommand.Draft -> {
-                val config = requireNotNull(app.secrets.read(if (command.channel == "EMAIL_IMAP") "mail" else "gateway")) {
-                    "Set up the ${if (command.channel == "EMAIL_IMAP") "email account" else "WhatsApp gateway"} in Messages first."
+                // With several accounts the first one sends; the draft names it and the owner can change it before approving.
+                val email = command.channel == "EMAIL_IMAP"
+                val config = requireNotNull(if (email) Accounts.list(app.secrets, Accounts.MAIL).firstOrNull()
+                    else Accounts.sendingGateways(app.secrets).firstOrNull()) {
+                    if (email) "Set up an email account in Settings › Email first."
+                    else "WhatsApp sending needs a Business API connection in Settings › WhatsApp. WhatsApp Web is capture-only."
                 }
-                if (command.channel == "EMAIL_IMAP") javax.mail.internet.InternetAddress(command.recipient, true).validate()
-                else require(config.optString("transport", "meta") == "meta") { "WhatsApp Web is capture-only. Reply in WhatsApp." }
+                if (email) javax.mail.internet.InternetAddress(command.recipient, true).validate()
+                val from = if (email) config.getString("address") else Accounts.label(config)
                 val id = UUID.randomUUID().toString()
                 app.database.withTransaction {
                     app.database.communications().draft(OutboundDraft(id, command.channel, config.getString("id"), command.recipient, command.subject, command.body, now))
                     app.database.communications().audit(ActionAudit(UUID.randomUUID().toString(), id, "OWNER_COMMAND_DRAFT", "DRAFT", now))
                 }
-                "Draft saved. Review and approve it in Messages to send; nothing was sent."
+                "Draft saved from $from. Review and approve it in Inbox to send; nothing was sent."
             }
             is OwnerCommand.Cash -> {
                 app.database.withTransaction {

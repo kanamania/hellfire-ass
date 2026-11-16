@@ -30,8 +30,13 @@ object FinanceParser {
         "MIXX" to listOf("mixx", "tigo pesa", "tigopesa"), "HALOPESA" to listOf("halopesa"),
         "CRDB" to listOf("crdb"), "NMB" to listOf("nmb"), "NBC" to listOf("nbc"),
     )
-    private val amount = Regex("(?i)\\b(?:TZS|TShs?|Tsh)\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)")
+    // "TZS 5,000" or "5,000 TZS" / "5000/=".
+    private val amount = Regex("(?i)\\b(?:TZS|TShs?|Tsh)\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)|(?<![\\p{L}\\p{N}])([0-9][0-9,]*(?:\\.[0-9]{1,2})?)\\s*(?:TZS|TShs?|Tsh|/=)")
     private val reference = Regex("(?i)\\b(?:ref(?:erence)?|kumbukumbu|muamala(?:\\s+no)?)[ :#.-]+([A-Z0-9-]{5,40})\\b")
+    // M-Pesa style "QK12ABC3D4 Confirmed." where the transaction ID leads the message without a keyword.
+    private val leadingId = Regex("^\\s*([A-Z0-9]{8,12})\\.?\\s+(?i:confirmed|imethibitishwa|imekamilika)")
+    private fun reference(text: String): String? = reference.find(text)?.groupValues?.get(1)
+        ?: leadingId.find(text)?.groupValues?.get(1)?.takeIf { id -> id.any(Char::isLetter) && id.any(Char::isDigit) }
     private val merchant = Regex("(?i)\\b(?:lipa\\s+namba|merchant(?:\\s+id)?)[ :#-]*([0-9]{3,12})\\b")
     /** Provider named in the sender or text, or null. */
     fun provider(sender: String, text: String): String? {
@@ -58,9 +63,9 @@ object FinanceParser {
         val feeMatch = Regex("(?i)\\b(?:fee|charge|ada)(?:\\s+ya\\s+muamala)?[ :]*?(?:TZS|TShs?)?\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)").find(text)
         val main = amount.findAll(text).firstOrNull { hit -> feeMatch == null || hit.range.first !in feeMatch.range } ?: return null
         return runCatching {
-            val total = Money.tzs(main.groupValues[1])
+            val total = Money.tzs(main.groups[1]?.value ?: main.groups[2]!!.value)
             val fee = feeMatch?.groupValues?.get(1)?.let { if (BigDecimal(it.replace(",", "")).signum() == 0) 0 else Money.tzs(it) } ?: 0
-            ParsedFinance(provider, reference.find(text)?.groupValues?.get(1)?.uppercase(Locale.ROOT), kind,
+            ParsedFinance(provider, reference(text)?.uppercase(Locale.ROOT), kind,
                 total, fee, merchant.find(text)?.groupValues?.get(1), text)
         }.getOrNull()
     }

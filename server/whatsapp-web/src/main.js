@@ -23,6 +23,15 @@ async function stop() {
   capture.stop();
   try { await client.destroy(); } finally { process.exit(0); }
 }
+// A lost or rejected session exits non-zero so Compose restarts the worker with its saved session
+// (or shows a new pairing QR). Status is already published by attachCapture.
+async function restart() {
+  clearInterval(timer);
+  try { await client.destroy(); } catch { /* The browser may already be gone. */ }
+  process.exit(1);
+}
+client.on('disconnected', restart);
+client.on('auth_failure', restart);
 process.once('SIGTERM', stop);
 process.once('SIGINT', stop);
 // Never print QR tokens, message bodies, browser errors or authentication profiles.

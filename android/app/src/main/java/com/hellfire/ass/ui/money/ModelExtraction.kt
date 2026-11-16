@@ -49,7 +49,7 @@ fun ModelExtractionSection() {
                             merchant = parsed.merchant, evidence = text, occurredAt = event.occurredAt))
                     }
                     "Validated candidate added to Money › To confirm; no ledger entry was posted."
-                } catch (_: Exception) { "No valid finance candidate accepted. Check the source and model; unsupported or invented values are rejected." }
+                } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "No valid finance candidate accepted. Check the source and model; unsupported or invented values are rejected." }
                 finally { extracting = false }
             }
         }, Modifier.fillMaxWidth(), enabled = !extracting && modelSource != null && app.localModel.configured)

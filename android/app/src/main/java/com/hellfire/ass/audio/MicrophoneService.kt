@@ -79,7 +79,7 @@ class MicrophoneService : Service() {
             } else {
                 startForeground(41, notification)
             }
-        } catch (_: Exception) {
+        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
             MicrophoneStatus.state.value = "Recording unavailable: Android denied the foreground microphone service."
             stopSelf()
             return START_NOT_STICKY
@@ -159,13 +159,13 @@ class MicrophoneService : Service() {
             MicrophoneStatus.state.value = if (written > 0) "Saved encrypted ${if (monitoring) "conversation in Media" else "sample"} · ${written / (SAMPLE_RATE * 2)} seconds"
                 else "Stopped before audio was captured"
             if (written == 0) file.delete()
-        } catch (_: Exception) {
+        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
             // A failed GCM stream is not a playable sample; never report it as saved.
             if (!monitoring) file?.delete()
             MicrophoneStatus.state.value = "Error: microphone interrupted, silenced, permission denied, or storage unavailable. Start again from the app."
         } finally {
             capturing = false
-            try { recorder?.stop() } catch (_: Exception) { }
+            try { recorder?.stop() } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); }
             recorder?.release()
             MicrophoneStatus.active.value = false
             MicrophoneStatus.busy.value = false

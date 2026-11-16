@@ -128,7 +128,7 @@ class FinanceTest {
             assertEquals("Synthetic cash", saved.evidence)
             assertNull(saved.accountId); assertNull(saved.category)
             assertEquals("Wallet", migrated.finances().account("a")!!.label)
-            assertEquals(12, migrated.openHelper.writableDatabase.version)
+            assertEquals(EventDatabase.ALL_MIGRATIONS.last().endVersion, migrated.openHelper.writableDatabase.version)
         } finally { migrated.close(); context.deleteDatabase(name) }
     }
 
