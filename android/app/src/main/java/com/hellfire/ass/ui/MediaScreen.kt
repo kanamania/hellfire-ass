@@ -43,7 +43,7 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
         busy = true
         try { result = withContext(Dispatchers.IO) { block() } }
         catch (e: CancellationException) { throw e }
-        catch (_: Exception) { result = "Operation failed. Check storage, format and model configuration." }
+        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); result = "Operation failed. Check storage, format and model configuration." }
         finally { busy = false }
     } }
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -82,7 +82,7 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
     Text("Speaker separation (experimental)", style = MaterialTheme.typography.titleMedium)
     Text("Import an ONNX speaker-embedding model that takes 80-bin filterbank input (for example WeSpeaker or 3D-Speaker). Transcript segments are grouped by voice as AUTO SPEAKER n; an enrolled owner voice may be marked AUTO OWNER?, and names heard in the conversation (introductions or direct address) are added as placeholders like AUTO SPEAKER 2 · Juma? when evidence is strong enough. Labels are unverified guesses and never replace your manual labels.")
     var speakerStatus by remember { mutableStateOf("") }
-    LaunchedEffect(busy) { if (!busy) speakerStatus = try { withContext(Dispatchers.IO) { app.speakers.status() } } catch (_: Exception) { "Speaker status unavailable." } }
+    LaunchedEffect(busy) { if (!busy) speakerStatus = try { withContext(Dispatchers.IO) { app.speakers.status() } } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Speaker status unavailable." } }
     Text(speakerStatus)
     OutlinedButton(enabled = !busy, onClick = { speakerModel.launch(arrayOf("*/*")) }) { Text("Import speaker model (.onnx)") }
     OutlinedButton(enabled = !busy && app.speakers.configured, onClick = { action {
@@ -125,7 +125,7 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
     Button(enabled = notice && !recording && permissions.microphone && permissions.notificationPosting, onClick = {
         try { app.startForegroundService(Intent(app, MicrophoneService::class.java).setAction(MicrophoneService.ACTION_START).putExtra("monitoring", true).putExtra("notice", notice).putExtra("participants", participants).putExtra("place", place))
             notice = false }
-        catch (_: Exception) { result = "Android blocked monitoring. Keep the app visible and check permissions." }
+        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); result = "Android blocked monitoring. Keep the app visible and check permissions." }
     }) { Text("Start visible monitoring") }
     OutlinedButton(enabled = recording, onClick = { app.startService(Intent(app, MicrophoneService::class.java).setAction(MicrophoneService.ACTION_STOP)) }) { Text("Stop monitoring") }
     Text("Monitoring never restarts automatically after boot or interruption.")
@@ -153,7 +153,7 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
         if (item.mime.startsWith("audio/") || item.mime.startsWith("video/")) OutlinedButton(enabled = playback == null && !recording, onClick = {
             playback = scope.launch { try { playOriginal(app, item, 0) }
                 catch (e: CancellationException) { throw e }
-                catch (_: Exception) { result = "Playback unavailable for this format or encrypted file." }
+                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); result = "Playback unavailable for this format or encrypted file." }
                 finally { playback = null } }
         }) { Text("Play original audio") }
         OutlinedButton(enabled = !busy, onClick = { exporting = item; exporter.launch(when (item.mime) { "audio/pcm" -> "${item.name}.wav"; "audio/aac" -> "${item.name}.aac"; else -> item.name }) }) { Text("Export decrypted original…") }
@@ -180,7 +180,7 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
             if (item.mime.startsWith("audio/") || item.mime.startsWith("video/")) TextButton(enabled = playback == null && !recording, onClick = {
                 playback = scope.launch { try { playOriginal(app, item, segment.startMs) }
                     catch (e: CancellationException) { throw e }
-                    catch (_: Exception) { result = "Playback failed." }
+                    catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); result = "Playback failed." }
                     finally { playback = null } }
             }) { Text("Play from timestamp") }
         }

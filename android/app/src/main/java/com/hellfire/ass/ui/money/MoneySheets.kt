@@ -91,12 +91,12 @@ fun CandidateReviewSheet(c: FinanceCandidate, accounts: List<FinanceAccount>, al
                         result
                     }
                     onDone(msg)
-                } catch (_: Exception) { error = "Not posted. Check the account, amounts (whole shillings), date and duplicate status." }
+                } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); error = "Not posted. Check the account, amounts (whole shillings), date and duplicate status." }
                 finally { busy = false }
             }
         }, Modifier.fillMaxWidth(), enabled = ready, height = 52.dp)
         QuietButton("Not a payment", {
-            scope.launch { withContext(Dispatchers.IO) { app.database.finances().candidateState(c.id, "REJECTED") }; onDone("Marked as not a payment. Nothing was posted.") }
+            scope.launch { withContext(Dispatchers.IO) { app.finances.reject(c.id) }; onDone("Marked as not a payment. Nothing was posted.") }
         }, Modifier.fillMaxWidth())
         Note("Only confirmed payments count toward your totals.")
     }
@@ -174,7 +174,7 @@ fun CashSheet(onDone: (String?) -> Unit) {
                         }
                     }
                     onDone("Cash items added to To confirm. They count once you confirm them.")
-                } catch (_: Exception) { error = "Could not save. Check the account and use a description + amount for each item." }
+                } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); error = "Could not save. Check the account and use a description + amount for each item." }
                 finally { busy = false }
             }
         }, Modifier.fillMaxWidth(), enabled = preview != null && accounts.any { it.id == accountId } && !busy, height = 52.dp)

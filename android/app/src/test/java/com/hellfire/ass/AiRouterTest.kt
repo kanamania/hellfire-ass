@@ -130,7 +130,7 @@ class AiRouterTest {
         assertFalse(metadata.contains("private-prompt")); assertFalse(metadata.contains("private-answer")); assertFalse(metadata.contains("synthetic-key"))
     }
     @Test fun `spending survives a new router and blocks subsequent requests`() = runBlocking {
-        val store = MemoryStore(state(listOf(first, OfflineProvider.ref)).copy(monthlyCap = 1_541))
+        val store = MemoryStore(state(listOf(first, OfflineProvider.ref)).copy(monthlyCap = 4_613))  // exactly one reservation: (5 + 512) input + 2 x 2,048 output micro-USD
         router(store, provider(first.provider) { throw AiException(AiError.NETWORK) }).generate(AiTask.CHAT, "Hello")
         assertEquals(ProviderId.LOCAL, router(store).generate(AiTask.CHAT, "Hello").provider)
         assertEquals(1, calls.size)

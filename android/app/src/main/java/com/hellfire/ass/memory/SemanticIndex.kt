@@ -210,6 +210,6 @@ class SemanticIndexWorker(context: Context, params: WorkerParameters) : Coroutin
             (applicationContext as HellFireApp).semantic.indexPending()
             Result.success()
         } catch (e: kotlinx.coroutines.CancellationException) { throw e }
-        catch (_: Exception) { Result.retry() }
+        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); Result.retry() }
     }
 }

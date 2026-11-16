@@ -21,6 +21,7 @@ class FinanceRepository(private val db: EventDatabase) {
         if (existing != null) {
             dao.evidence(LedgerEvidence(existing.id, candidate.sourceId))
             linkReferenceDuplicates(existing.id, candidate)
+            linkCrossSourceDuplicates(existing.id, candidate.id)
             dao.candidateState(candidateId, "DUPLICATE_LINKED")
             return@withTransaction "Duplicate reference linked to existing evidence; no transaction added."
         }
@@ -46,6 +47,7 @@ class FinanceRepository(private val db: EventDatabase) {
             dao.evidence(LedgerEvidence(feeId, candidate.sourceId))
         }
         linkReferenceDuplicates(id, candidate)
+        linkCrossSourceDuplicates(id, candidate.id)
         dao.candidateState(candidateId, "APPROVED")
         db.communications().audit(com.hellfire.ass.communications.ActionAudit(UUID.randomUUID().toString(), id, "OWNER_LEDGER_APPROVAL", "POSTED", now))
         "Transaction posted with source evidence."
@@ -124,16 +126,41 @@ class FinanceRepository(private val db: EventDatabase) {
         dao.linkDuplicates(candidate.provider, reference)
     }
 
-    suspend fun collect(sourceId: String, occurredAt: Long, sender: String, text: String) {
+    /** "Not a payment": the candidate and the copies of it seen in other sources leave the review queue. */
+    suspend fun reject(candidateId: String): Unit = db.withTransaction {
+        dao.candidateState(candidateId, "REJECTED")
+        dao.resolveDuplicatesOf(candidateId, "REJECTED")
+    }
+
+    /** Copies of one payment seen in another source become evidence of the posted entry. */
+    private suspend fun linkCrossSourceDuplicates(ledgerId: String, candidateId: String) {
+        dao.duplicatesOf(candidateId).forEach { dao.evidence(LedgerEvidence(ledgerId, it.sourceId)) }
+        dao.resolveDuplicatesOf(candidateId, "DUPLICATE_LINKED")
+    }
+
+    suspend fun collect(sourceId: String, occurredAt: Long, sender: String, text: String): Unit = db.withTransaction {
         FinanceParser.balance(sender, text)?.let { (provider, amount) -> db.widgetData().observeBalance(ProviderBalance(provider, amount, occurredAt, sourceId)) }
-        FinanceParser.parse(sender, text)?.let { parsed ->
-            val duplicate = parsed.reference != null && dao.hasReference(parsed.provider, parsed.reference)
-            dao.candidate(FinanceCandidate(NotificationNormalizer.sha256("finance:$sourceId:0"), sourceId,
-                provider = parsed.provider, reference = parsed.reference, kind = parsed.kind,
-                amount = parsed.amount, fee = parsed.fee, merchant = parsed.merchant,
-                evidence = parsed.evidence, occurredAt = occurredAt, state = if (duplicate) "DUPLICATE" else "REVIEW"))
+        val parsed = FinanceParser.parse(sender, text) ?: return@withTransaction
+        val id = NotificationNormalizer.sha256("finance:$sourceId:0")
+        if (dao.findCandidate(id) != null) return@withTransaction
+        val referenced = parsed.reference != null && dao.hasReference(parsed.provider, parsed.reference)
+        // An SMS and the SMS app's notification about it rarely share a parsed reference. Only a different kind of
+        // source counts, so two genuine equal payments arriving as two SMS both stay in review.
+        val source = db.events().find(sourceId)?.source
+        val match = if (referenced || source == null) null else dao.crossSourceMatch(parsed.provider, parsed.kind, parsed.amount,
+            occurredAt, occurredAt - CROSS_SOURCE_WINDOW, occurredAt + CROSS_SOURCE_WINDOW, source)
+        val candidate = FinanceCandidate(id, sourceId, provider = parsed.provider, reference = parsed.reference, kind = parsed.kind,
+            amount = parsed.amount, fee = parsed.fee, merchant = parsed.merchant, evidence = parsed.evidence, occurredAt = occurredAt,
+            state = if (referenced || match != null) "DUPLICATE" else "REVIEW", duplicateOf = match?.id)
+        dao.candidate(candidate)
+        if (match?.state == "APPROVED") {
+            // Already posted: attach this source to the posted entry now.
+            dao.entriesFor(match.sourceId).filter { it.reversesId == null }.forEach { dao.evidence(LedgerEvidence(it.id, sourceId)) }
+            dao.candidateState(id, "DUPLICATE_LINKED")
         }
     }
+
+    companion object { const val CROSS_SOURCE_WINDOW = 10 * 60_000L }
 }
 
 data class FinanceSummary(val income: Long, val expenses: Long, val sourceIds: List<String>)

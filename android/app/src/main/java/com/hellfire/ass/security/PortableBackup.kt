@@ -140,7 +140,7 @@ class PortableBackup(private val app: HellFireApp) {
                 committed = true
                 app.secrets.remove("restore-journal")
             } }
-            runCatching { com.hellfire.ass.tasks.TaskScheduler.restore(app); MediaWork.recover(app) }
+            runCatching { com.hellfire.ass.tasks.TaskScheduler.restore(app); MediaWork.recover(app); com.hellfire.ass.data.SearchBackfill.reset(app) }
         } finally {
             password.fill('\u0000')
             runCatching { staging?.close() }
@@ -153,7 +153,7 @@ class PortableBackup(private val app: HellFireApp) {
         require(!com.hellfire.ass.audio.MicrophoneStatus.busy.value)
         require(!com.hellfire.ass.sms.SmsCaptureSettings.enabled(app)) { "Disable SMS capture before restore" }
         require(!androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(app).contains(app.packageName)) { "Disable notification access before restore" }
-        require(app.secrets.read("mail") == null && app.secrets.read("gateway") == null) { "Disconnect integrations before restore" }
+        require(!com.hellfire.ass.communications.Accounts.any(app.secrets)) { "Disconnect email and WhatsApp accounts before restore" }
         requireEmpty()
     }
     private suspend fun requireEmpty() {

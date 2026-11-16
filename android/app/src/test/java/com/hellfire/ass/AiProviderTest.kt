@@ -24,7 +24,7 @@ class AiProviderTest {
         val result = OpenAiProvider { sent = it; HttpResponse(200, responses) }.generate(key, GenerationRequest("gpt-fixture", "Hello"))
         assertEquals("https://api.openai.com/v1/responses", sent!!.url)
         val body = JSONObject(sent!!.body!!)
-        assertEquals("Hello", body.getString("input")); assertEquals(512, body.getInt("max_output_tokens"))
+        assertEquals("Hello", body.getString("input")); assertEquals(GenerationRequest.DEFAULT_MAX_OUTPUT, body.getInt("max_output_tokens"))
         assertFalse(body.getBoolean("store")); assertFalse(body.has("messages")); assertFalse(body.has("tools"))
         assertEquals("Bearer $key", sent!!.headers["Authorization"])
         assertEquals("Synthetic answer", result.text); assertEquals(TokenUsage(12, 4), result.usage)
@@ -43,7 +43,7 @@ class AiProviderTest {
             assertEquals("2026-10-21", request.headers["anthropic-version"])
             assertEquals("Bearer $key", request.headers["Authorization"])
             val body = JSONObject(request.body!!)
-            assertEquals(512, body.getInt("max_tokens")); assertFalse(body.has("max_output_tokens"))
+            assertEquals(GenerationRequest.DEFAULT_MAX_OUTPUT, body.getInt("max_tokens")); assertFalse(body.has("max_output_tokens"))
             assertEquals("Hello", body.getJSONArray("messages").getJSONObject(0).getString("content"))
             HttpResponse(200, claude)
         }.generate(key, GenerationRequest("claude-fixture", "Hello"))
@@ -53,7 +53,7 @@ class AiProviderTest {
         val result = DeepSeekProvider { request ->
             assertEquals("https://api.deepseek.com/chat/completions", request.url)
             assertTrue(JSONObject(request.body!!).has("messages"))
-            assertEquals(512, JSONObject(request.body!!).getInt("max_tokens"))
+            assertEquals(GenerationRequest.DEFAULT_MAX_OUTPUT, JSONObject(request.body!!).getInt("max_tokens"))
             HttpResponse(200, deepseek)
         }.generate(key, GenerationRequest("deepseek-fixture", "Hello"))
         assertEquals("Synthetic answer", result.text); assertEquals(TokenUsage(9, 6), result.usage)
@@ -111,8 +111,23 @@ class AiProviderTest {
     @Test fun `missing keys fail before transmission`() = runBlocking {
         expect(AiError.MISSING_CREDENTIALS) { ClaudeProvider { error("No network") }.generate("", GenerationRequest("claude-fixture", "Hello")) }
     }
+    @Test fun `answers cut off at the output limit are kept and marked`() = runBlocking {
+        val deep = DeepSeekProvider { HttpResponse(200, deepseek.replace("\"stop\"", "\"length\"")) }.generate(key, GenerationRequest("deepseek-fixture", "Hello"))
+        assertEquals("Synthetic answer", deep.text); assertTrue(deep.truncated)
+        val cut = ClaudeProvider { HttpResponse(200, claude.replace("end_turn", "max_tokens")) }.generate(key, GenerationRequest("claude-fixture", "Hello"))
+        assertEquals("Habari!", cut.text); assertTrue(cut.truncated)
+        val open = OpenAiProvider { HttpResponse(200, responses.replace("\"completed\"", "\"incomplete\",\"incomplete_details\":{\"reason\":\"max_output_tokens\"}")) }
+            .generate(key, GenerationRequest("gpt-fixture", "Hello"))
+        assertTrue(open.truncated)
+        assertFalse(ClaudeProvider { HttpResponse(200, claude) }.generate(key, GenerationRequest("claude-fixture", "Hello")).truncated)
+    }
+    @Test fun `Claude thinking blocks are skipped and refusals fail`() = runBlocking {
+        val thinking = claude.replace("\"content\":[", "\"content\":[{\"type\":\"thinking\",\"thinking\":\"\",\"signature\":\"sig\"},")
+        assertEquals("Habari!", ClaudeProvider { HttpResponse(200, thinking) }.generate(key, GenerationRequest("claude-fixture", "Hello")).text)
+        expect(AiError.REFUSED) { ClaudeProvider { HttpResponse(200, claude.replace("end_turn", "refusal")) }.generate(key, GenerationRequest("claude-fixture", "Hello")) }
+    }
     @Test fun `malformed truncated and tool responses fail closed`() = runBlocking {
-        expect(AiError.INVALID_RESPONSE) { DeepSeekProvider { HttpResponse(200, deepseek.replace("\"stop\"", "\"length\"")) }
+        expect(AiError.INVALID_RESPONSE) { DeepSeekProvider { HttpResponse(200, deepseek.replace("\"stop\"", "\"content_filter\"")) }
             .generate(key, GenerationRequest("deepseek-fixture", "Hello")) }
         expect(AiError.INVALID_RESPONSE) { ClaudeProvider { HttpResponse(200, "not JSON") }.generate(key, GenerationRequest("claude-fixture", "Hello")) }
         expect(AiError.INVALID_RESPONSE) { OpenAiProvider { HttpResponse(200, responses.replace("completed", "incomplete")) }.generate(key, GenerationRequest("gpt-fixture", "Hello")) }

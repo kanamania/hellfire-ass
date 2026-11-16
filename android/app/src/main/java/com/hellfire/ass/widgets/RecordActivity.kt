@@ -93,7 +93,7 @@ class RecordActivity : ComponentActivity() {
         try {
             startForegroundService(Intent(this, MicrophoneService::class.java).setAction(MicrophoneService.ACTION_START)
                 .putExtra("monitoring", true).putExtra("notice", true).putExtra("participants", people).putExtra("place", place).putExtra("queue", true))
-        } catch (_: Exception) {
+        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
             Toast.makeText(this, "Android blocked recording. Open HellFire and try from Settings › Recordings.", Toast.LENGTH_LONG).show()
         }
         app.captureScope.launch { Widgets.refreshRecord(app) }

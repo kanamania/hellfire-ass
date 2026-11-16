@@ -131,7 +131,7 @@ private fun ExportSheet(spec: ExportSpec, onDone: () -> Unit) {
                     }
                 }
                 "Saved where you chose. Nothing was uploaded."
-            } catch (_: Exception) { "Export failed. Check the destination and free space." }
+            } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Export failed. Check the destination and free space." }
         }
     }
     HfBottomSheet(onDone) {

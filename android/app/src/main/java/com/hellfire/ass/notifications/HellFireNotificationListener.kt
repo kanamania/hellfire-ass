@@ -32,7 +32,7 @@ class HellFireNotificationListener : NotificationListenerService() {
                 for (snapshot in batch) {
                     try { captured = app.events.capture(snapshot, packageName) || captured }
                     catch (e: CancellationException) { throw e }
-                    catch (_: Exception) {
+                    catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
                         NotificationCaptureStatus.error.value = "Notification storage failed. Check local storage."
                         runCatching { app.database.events().failure("android_notification", "NOTIFICATION_STORAGE_FAILED") }
                     }
@@ -42,7 +42,7 @@ class HellFireNotificationListener : NotificationListenerService() {
                 if (!captured) continue
                 try { CaptureWork.process(app) }
                 catch (e: CancellationException) { throw e }
-                catch (_: Exception) {
+                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
                     NotificationCaptureStatus.error.value = "Processing delayed; saved events will resume during recovery."
                     runCatching { app.database.events().failure("processing", "WORK_SCHEDULING_FAILED") }
                 }
@@ -55,7 +55,7 @@ class HellFireNotificationListener : NotificationListenerService() {
         NotificationCaptureStatus.error.value = null
         try {
             activeNotifications?.forEach { enqueue(it, "POSTED", null, currentRanking) }
-        } catch (_: Exception) {
+        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
             NotificationCaptureStatus.error.value = "Could not read active notifications. Check notification access."
         }
     }
@@ -81,7 +81,7 @@ class HellFireNotificationListener : NotificationListenerService() {
                 NotificationCaptureStatus.dropped.value += 1
                 NotificationCaptureStatus.error.value = "Capture queue full; some notifications were not saved."
             }
-        } catch (_: Exception) {
+        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
             NotificationCaptureStatus.error.value = "A notification could not be read. Android may restrict its fields."
         }
     }

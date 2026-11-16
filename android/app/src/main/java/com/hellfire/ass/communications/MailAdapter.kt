@@ -72,6 +72,11 @@ object MailMime {
 }
 
 class MailAdapter(private val app: HellFireApp) {
+    companion object {
+        /** Messages per folder considered on the first sync of an inbox. Older mail is not imported. */
+        const val INITIAL_WINDOW = 500
+        const val BATCH = 100
+    }
     private fun properties() = Properties().apply {
         setProperty("mail.imaps.ssl.checkserveridentity", "true")
         setProperty("mail.imaps.ssl.protocols", "TLSv1.2 TLSv1.3")
@@ -102,11 +107,18 @@ class MailAdapter(private val app: HellFireApp) {
                     val uidFolder = folder as UIDFolder
                     val validity = uidFolder.uidValidity
                     val previous = app.database.communications().cursor(config.id, folder.fullName)
+                    val candidates = if (previous?.uidValidity == validity) uidFolder.getMessagesByUID(previous.lastUid + 1, UIDFolder.LASTUID).filterNotNull()
+                        else {
+                            // First sync (or a UIDVALIDITY reset) starts with the most recent mail, not the whole mailbox.
+                            val count = folder.messageCount
+                            if (count <= 0) emptyList() else folder.getMessages(maxOf(1, count - INITIAL_WINDOW + 1), count).toList()
+                        }
+                    folder.fetch(candidates.toTypedArray(), FetchProfile().apply { add(UIDFolder.FetchProfileItem.UID) })
                     val after = if (previous?.uidValidity == validity) previous.lastUid else 0L
-                    val messages = uidFolder.getMessagesByUID(after + 1, UIDFolder.LASTUID).filterNotNull()
-                    more = more || messages.size > 100
-                    for (message in messages.take(100)) {
-                        val uid = uidFolder.getUID(message)
+                    // "n:*" returns the newest message even when it is older than n, so filter on the UID itself.
+                    val messages = candidates.map { it to uidFolder.getUID(it) }.filter { it.second > after }.sortedBy { it.second }
+                    more = more || messages.size > BATCH
+                    for ((message, uid) in messages.take(BATCH)) {
                         require(uid > 0)
                         val messageId = message.getHeader("Message-ID")?.firstOrNull()?.trim()?.takeIf { it.length <= 500 }
                             ?: "${folder.fullName}:$validity:$uid"
@@ -120,9 +132,9 @@ class MailAdapter(private val app: HellFireApp) {
                             provenance = mapOf("account_id" to config.id, "folder" to folder.fullName, "uid_validity" to validity.toString(), "uid" to uid.toString()),
                             fields = mapOf("title" to listOf(subject), "text" to listOf(body), "sender_hint" to listOf(sender), "recipient" to listOf(recipient), "attachment_metadata" to runCatching { MailMime.attachments(message) }.getOrDefault(emptyList())))
                         val safe = NotificationNormalizer.normalize(snapshot, app.packageName)!!
-                        app.events.capture(snapshot, app.packageName)
+                        val stored = requireNotNull(app.events.store(snapshot, app.packageName))
                         app.database.communications().message(CommunicationMessage(NotificationNormalizer.sha256("email:${config.id}:$messageId"),
-                            "EMAIL_IMAP", config.id, messageId, safe.id,
+                            "EMAIL_IMAP", config.id, messageId, stored.id,
                             message.getHeader("In-Reply-To")?.firstOrNull() ?: messageId,
                             safe.snapshot.fields["sender_hint"]?.joinToString().orEmpty(), safe.snapshot.fields["recipient"]?.joinToString().orEmpty(),
                             safe.snapshot.fields["title"]?.joinToString().orEmpty(), safe.snapshot.fields["text"]?.joinToString("\n").orEmpty(),
@@ -132,7 +144,7 @@ class MailAdapter(private val app: HellFireApp) {
                     }
                 } finally { folder.close(false) }
             }
-            app.database.communications().integration(IntegrationState("EMAIL_IMAP", if (sent == null) "PARTIAL" else "CONNECTED",
+            app.database.communications().integration(IntegrationState(Accounts.mailState(config.id), if (sent == null) "PARTIAL" else "CONNECTED",
                 System.currentTimeMillis(), if (sent == null) "SENT_FOLDER_NOT_FOUND" else null))
         } finally { store.close() }
         return more

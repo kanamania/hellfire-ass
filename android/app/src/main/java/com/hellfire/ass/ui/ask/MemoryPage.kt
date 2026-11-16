@@ -40,7 +40,7 @@ fun MemoryPage(arg: String) {
     fun run(block: suspend () -> String) { scope.launch {
         busy = true
         result = try { withContext(Dispatchers.IO) { block() } } catch (e: CancellationException) { throw e }
-            catch (e: IllegalArgumentException) { e.message ?: "Not saved." } catch (_: Exception) { "Not saved. Check the source ID and remove security codes." }
+            catch (e: IllegalArgumentException) { e.message ?: "Not saved." } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Not saved. Check the source ID and remove security codes." }
         busy = false
     } }
     PushedPage(if (arg == "new") "New note" else "Memory", breadcrumb = "Settings") {

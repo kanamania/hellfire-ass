@@ -110,12 +110,12 @@ fun SettingsHub() {
     val media by remember { app.database.media().items() }.collectAsStateWithLifecycle(emptyList())
     val states by remember { app.database.communications().integrations() }.collectAsStateWithLifecycle(emptyList())
     var ai by remember { mutableStateOf<com.hellfire.ass.ai.AiState?>(null) }
-    var mail by remember { mutableStateOf(false) }
-    var gateway by remember { mutableStateOf<String?>(null) }
+    var mail by remember { mutableStateOf(0) }
+    var gateways by remember { mutableStateOf<List<String>>(emptyList()) }
     LaunchedEffect(Unit) { withContext(Dispatchers.IO) {
         ai = runCatching { app.ai.store.read() }.getOrNull()
-        mail = runCatching { app.secrets.read("mail") != null }.getOrDefault(false)
-        gateway = runCatching { app.secrets.read("gateway")?.optString("transport", "meta") }.getOrNull()
+        mail = runCatching { com.hellfire.ass.communications.Accounts.list(app.secrets, com.hellfire.ass.communications.Accounts.MAIL).size }.getOrDefault(0)
+        gateways = runCatching { com.hellfire.ass.communications.Accounts.gateways(app.secrets).map(com.hellfire.ass.communications.Accounts::transport) }.getOrDefault(emptyList())
     } }
     val steps = setupSteps(env.permissions, env.actions)
     val lastBackup = maxOf(app.getSharedPreferences("ui", 0).getLong("last_backup_at", 0),
@@ -162,10 +162,15 @@ fun SettingsHub() {
                 chevron = true, onClick = { nav.push(Screen.CloudAi, "budget") })
         }
         Group("Connected accounts") {
-            ListRow("Email", subtitle = if (!mail) "Not connected" else states.firstOrNull { it.adapter == "EMAIL_IMAP" }?.state?.lowercase()?.replace('_', ' ') ?: "Connected",
+            val mailFailing = states.count { it.adapter.startsWith("EMAIL_IMAP:") && it.state == "FAILED" }
+            ListRow("Email", subtitle = when (mail) { 0 -> "Not connected"; 1 -> "1 inbox"; else -> "$mail inboxes" } + if (mailFailing > 0) " · $mailFailing failing" else "",
                 icon = HfIcons.Mail, tone = Tone.Info, chevron = true, onClick = { nav.push(Screen.Email) })
             ListDivider()
-            ListRow("WhatsApp", subtitle = when (gateway) { null -> "Not connected"; "web" -> "WhatsApp Web · capture only"; else -> "Business API" },
+            ListRow("WhatsApp", subtitle = when {
+                    gateways.isEmpty() -> "Not connected"
+                    gateways.size == 1 -> if (gateways[0] == "web") "WhatsApp Web · capture only" else "Business API"
+                    else -> "${gateways.size} accounts"
+                },
                 icon = HfIcons.Chat, tone = Tone.Success, chevron = true, onClick = { nav.push(Screen.WhatsApp) })
         }
         Group("Your data") {
@@ -227,10 +232,10 @@ fun PermissionsPage() {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SecondaryButton("Resume processing", { scope.launch {
                 message = try { withContext(Dispatchers.IO) { dao.retryFailed() }; CaptureWork.process(app); "Pending and failed events scheduled for processing." }
-                    catch (_: Exception) { "Processing could not be scheduled. Saved events stay in the database." }
+                    catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Processing could not be scheduled. Saved events stay in the database." }
             } })
             if (p.smsEnabled && p.smsRead) SecondaryButton("Sync SMS history", { scope.launch {
-                message = try { SmsSyncWorker.schedule(app); "SMS sync scheduled." } catch (_: Exception) { "SMS sync could not be scheduled." }
+                message = try { SmsSyncWorker.schedule(app, 0); "Full SMS history check scheduled. Already saved messages are skipped." } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "SMS sync could not be scheduled." }
             } })
         }
         if (policies.isNotEmpty()) {
@@ -242,7 +247,7 @@ fun PermissionsPage() {
                     SwitchRow(policy.packageName, policy.processEnabled, { enabled -> scope.launch {
                         message = try { withContext(Dispatchers.IO) { dao.setPolicy(NotificationPolicy(policy.packageName, enabled)) }
                             if (enabled) "Processing on for ${policy.packageName}." else "Capture only for ${policy.packageName}." }
-                            catch (_: Exception) { "Setting could not be saved." }
+                            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Setting could not be saved." }
                     } })
                 }
             }
@@ -255,7 +260,7 @@ fun PermissionsPage() {
                         source = "synthetic_notification", fields = mapOf("title" to listOf("Synthetic Phase 0 fixture"), "text" to listOf("Offline capture test"))), app.packageName) }
                     CaptureWork.process(app)
                     if (inserted) "Synthetic event stored." else "Synthetic event already stored; duplicate ignored."
-                } catch (_: Exception) { "Local storage test failed. Check storage and encryption." }
+                } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Local storage test failed. Check storage and encryption." }
             } }, Modifier.fillMaxWidth())
             Note("This tests normalising, encryption and the database. It does not prove Android delivers notifications.")
             QuietButton("Delete captured events…", { confirmClear = true }, Modifier.fillMaxWidth(), enabled = !p.notificationAccess && !p.smsEnabled)
@@ -264,7 +269,7 @@ fun PermissionsPage() {
     }
     if (confirmClear) ConfirmDialog("Delete all captured events?", "This removes stored captured events and their processing jobs from this phone.", "Delete events",
         onConfirm = { confirmClear = false; scope.launch {
-            message = try { withContext(Dispatchers.IO) { dao.deleteAll() }; "Captured events deleted." } catch (_: Exception) { "Could not delete: some events are evidence for Money, Tasks or Media." }
+            message = try { withContext(Dispatchers.IO) { dao.deleteAll() }; "Captured events deleted." } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Could not delete: some events are evidence for Money, Tasks or Media." }
         } }, onDismiss = { confirmClear = false }, destructive = true)
 }
 

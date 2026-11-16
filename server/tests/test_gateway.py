@@ -127,3 +127,31 @@ def test_access_logging_redacts_verification_query():
         ("fixture", "GET", "/webhook?hub.verify_token=synthetic-secret", "HTTP/1.1", 200), None)
     assert SafeAccessFilter().filter(record)
     assert "synthetic-secret" not in record.getMessage()
+
+
+def test_device_has_its_own_rate_allowance(gateway):
+    client, settings, _, _, _ = gateway
+    # Unauthenticated callers exhaust the shared per-address allowance...
+    assert 429 in [client.get("/health").status_code for _ in range(125)]
+    # ...but the paired phone can still fetch and acknowledge a full backlog.
+    results = [client.get("/device/events", headers=auth(settings)).status_code for _ in range(150)]
+    assert set(results) == {200}
+    # A wrong token does not get the device allowance.
+    assert client.get("/device/events", headers={"Authorization": "Bearer wrong"}).status_code == 429
+
+
+def test_batch_acknowledgment_removes_only_listed_events(gateway):
+    client, settings, _, _, _ = gateway
+    for index in range(3):
+        value = payload()
+        value["entry"][0]["changes"][0]["value"]["messages"][0]["id"] = f"synthetic-{index}"
+        assert post(client, settings, value).status_code == 200
+    events = client.get("/device/events", headers=auth(settings)).json()["events"]
+    assert len(events) == 3
+    ids = [event["id"] for event in events[:2]]
+    assert client.post("/device/events/ack", headers=auth(settings), json={"ids": ids}).json() == {"acknowledged": 2}
+    remaining = client.get("/device/events", headers=auth(settings)).json()["events"]
+    assert [event["id"] for event in remaining] == [events[2]["id"]]
+    assert client.post("/device/events/ack", headers=auth(settings), json={"ids": ["not-an-id"]}).status_code == 400
+    assert client.post("/device/events/ack", headers=auth(settings), json={"ids": []}).status_code == 422
+    assert client.post("/device/events/ack", json={"ids": ids}).status_code == 401

@@ -23,7 +23,7 @@ object VisualReader {
         val bitmap = app.media.reader(item).use { BitmapFactory.decodeStream(it.stream(), null, options) } ?: error("UNSUPPORTED_IMAGE")
         // Labels run first because OCR recycles the bitmap; a labeling failure never blocks OCR.
         val labels = try { LocalImageLabels.describe(LocalImageLabels.read(bitmap)) }
-            catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
+            catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); null }
         return ImageText(LocalOcr.read(bitmap), labels)
     }
     suspend fun pdf(app: HellFireApp, item: MediaItem, start: Int, accept: suspend (Int, String) -> Unit): Boolean {

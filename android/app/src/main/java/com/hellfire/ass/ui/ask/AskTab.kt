@@ -77,14 +77,15 @@ fun AskTab() {
                     rememberLast(app, q, answer.text)
                 } else {
                     val result = withContext(Dispatchers.IO) { app.ai.generate(route.task, q, route.model) }
-                    items += ChatItem.Reply(AssistantEngine.Answer(result.generation.text),
+                    items += ChatItem.Reply(AssistantEngine.Answer(result.generation.text +
+                        if (result.generation.truncated) "\n\n[Cut off at the output limit]" else ""),
                         "${result.provider.label} · ${result.generation.model} · suggestion only · USD ${usd(result.estimatedMicroUsd)} est." +
                             result.attempts.joinToString("") { "\n${it.ref.provider.label}: ${it.error.message}" })
                     rememberLast(app, q, result.generation.text)
                 }
             } catch (e: CancellationException) { items += ChatItem.Status(AiError.CANCELLED.message); throw e }
             catch (e: AiException) { items += ChatItem.Status(e.error.message) }
-            catch (_: Exception) { items += ChatItem.Status("That request failed. Offline answers still work. Nothing was changed or sent.") }
+            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); items += ChatItem.Status("That request failed. Offline answers still work. Nothing was changed or sent.") }
             finally { running = null }
         }
     }
@@ -95,7 +96,7 @@ fun AskTab() {
         try {
             voice.launch(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true).putExtra(RecognizerIntent.EXTRA_PROMPT, "Ask HellFire"))
-        } catch (_: Exception) { items += ChatItem.Status("No speech recogniser is available on this phone. Type your question instead.") }
+        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); items += ChatItem.Status("No speech recogniser is available on this phone. Type your question instead.") }
     }
     LaunchedEffect(Unit) { if (nav.consume("voice")) listen() }
 
@@ -137,7 +138,7 @@ fun AskTab() {
                             val text = withContext(Dispatchers.IO) {
                                 try { AssistantCommands.execute(app, item.command) }
                                 catch (e: IllegalArgumentException) { e.message ?: "Command could not be applied." }
-                                catch (_: Exception) { "Command could not be fully applied. Check Tasks, Inbox or Money; nothing was sent." }
+                                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Command could not be fully applied. Check Tasks, Inbox or Money; nothing was sent." }
                             }
                             items += ChatItem.Reply(AssistantEngine.Answer(text), "On this phone")
                         }

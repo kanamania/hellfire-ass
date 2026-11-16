@@ -67,7 +67,7 @@ fun AiSettingsScreen(app: HellFireApp, budgetOnly: Boolean = false) {
             state = withContext(Dispatchers.IO) { app.ai.store.read() }
             cap = usd(state!!.monthlyCap)
             message = "Cloud is off by default. Keys stay encrypted on this device."
-        } catch (_: Exception) { message = AiError.STORAGE.message }
+        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); message = AiError.STORAGE.message }
     }
     val current = state
     if (current == null) { Text(message, Modifier.semantics { liveRegion = LiveRegionMode.Polite }); return }
@@ -184,7 +184,7 @@ private fun ProviderEditor(
             val price = if (inputPrice.isBlank() && outputPrice.isBlank()) null else ModelPrice(microUsd(inputPrice), microUsd(outputPrice))
             onSave(enabled, credential.trim(), model.trim(), price, clear)
             credential = ""; clear = false; error = ""
-        } catch (_: Exception) { error = "Enter nonnegative USD prices with at most six decimal places." }
+        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); error = "Enter nonnegative USD prices with at most six decimal places." }
     }) { Text("Save provider") }
     TextButton(enabled = !busy, onClick = onTest) { Text("Test saved connection and discover models") }
     if (error.isNotEmpty()) Text(error, Modifier.semantics { liveRegion = LiveRegionMode.Polite })

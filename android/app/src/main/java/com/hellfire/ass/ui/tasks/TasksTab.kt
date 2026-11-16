@@ -134,7 +134,7 @@ fun TasksTab() {
         }
         QuickAdd(quick, { quick = it }, Modifier.align(Alignment.BottomCenter)) {
             val text = quick.trim()
-            val parsed = TaskExtractor.extract(text, System.currentTimeMillis(), outgoing = true)
+            val parsed = TaskExtractor.extract(text, System.currentTimeMillis(), outgoing = true, requireCommitment = false)
             val fallback = java.time.ZonedDateTime.now(TaskTime.zone).plusHours(1).withMinute(0).withSecond(0).withNano(0).toInstant().toEpochMilli()
             editing = TaskDraft(null, text, parsed?.dueAt ?: fallback, "OWNER")
             quick = ""
@@ -254,7 +254,7 @@ fun TaskEditSheet(draft: TaskDraft, onDone: (String?) -> Unit) {
                         TaskScheduler.updateDetails(app, id, direction, amount.toLongOrNull()?.takeIf { it > 0 }, kind, repeat)
                     }
                     onDone("Task scheduled for ${Fmt.weekdayDayTime(at)}.")
-                } catch (_: Exception) { error = "Not saved. Use yyyy-MM-dd HH:mm and remove any security codes." }
+                } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); error = "Not saved. Use yyyy-MM-dd HH:mm and remove any security codes." }
             }
         }, Modifier.fillMaxWidth(), enabled = title.isNotBlank(), height = 52.dp)
     }

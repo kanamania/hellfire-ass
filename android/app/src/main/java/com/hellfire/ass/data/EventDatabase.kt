@@ -30,6 +30,13 @@ data class SourceEvent(
     val processingStatus: String = "captured",
 )
 
+/** Full-text index of capturable, non-sensitive source text (v13). Rebuildable; excluded from backups. */
+@Fts4(tokenizer = FtsOptions.TOKENIZER_UNICODE61, notIndexed = ["eventId"])
+@Entity(tableName = "source_search")
+data class SourceSearch(val eventId: String, val text: String)
+
+data class SearchHit(val eventId: String, val text: String)
+
 data class EventSummary(
     val id: String, val source: String, val packageName: String, val receivedAt: Long,
     val kind: String, val contentAvailable: Boolean, val contentRedacted: Boolean,
@@ -65,9 +72,21 @@ interface EventDao {
     @Query("UPDATE capture_audit SET lastCapturedAt = :time, captured = captured + 1 WHERE source = :source")
     suspend fun captured(source: String, time: Long)
 
+    @Insert suspend fun insertSearch(row: SourceSearch)
+
+    @Query("DELETE FROM source_search") suspend fun clearSearch()
+
+    /** Newest matching sources first; [query] must come from SearchText.query. */
+    @Query("SELECT s.eventId AS eventId, MIN(s.text) AS text FROM source_search s JOIN source_event e ON e.id = s.eventId WHERE s.text MATCH :query GROUP BY s.eventId ORDER BY MAX(e.receivedAt) DESC LIMIT :limit")
+    suspend fun search(query: String, limit: Int): List<SearchHit>
+
+    @Query("SELECT * FROM source_event WHERE receivedAt < :before AND (receivedAt > :afterAt OR (receivedAt = :afterAt AND id > :afterId)) ORDER BY receivedAt, id LIMIT :limit")
+    suspend fun olderThan(before: Long, afterAt: Long, afterId: String, limit: Int): List<SourceEvent>
+
     @Transaction
-    suspend fun insertCaptured(event: SourceEvent): Boolean {
+    suspend fun insertCaptured(event: SourceEvent, searchText: String? = null): Boolean {
         if (insert(event) == -1L) return false
+        if (searchText != null) insertSearch(SourceSearch(event.id, searchText))
         insertJob(EventProcessing(event.id, updatedAt = event.receivedAt))
         insertAudit(CaptureAudit(event.source))
         captured(event.source, event.receivedAt)
@@ -114,7 +133,10 @@ interface EventDao {
     fun appPolicies(): Flow<List<AppProcessingPolicy>>
 
     @Query("DELETE FROM source_event")
-    suspend fun deleteAll()
+    suspend fun deleteSources()
+
+    @Transaction
+    suspend fun deleteAll() { deleteSources(); clearSearch() }
 
     @Query("SELECT e.*, p.label AS label, COALESCE(p.state, 'PENDING') AS state FROM source_event e LEFT JOIN event_processing p ON p.eventId = e.id WHERE e.source IN (:sources) ORDER BY e.receivedAt DESC LIMIT :limit")
     fun recentFrom(sources: List<String>, limit: Int): Flow<List<LabelledEvent>>
@@ -125,7 +147,7 @@ interface EventDao {
 
 data class LabelledEvent(@Embedded val event: SourceEvent, val label: String?, val state: String)
 
-@Database(entities = [SourceEvent::class, EventProcessing::class, CaptureAudit::class, NotificationPolicy::class, FinanceAccount::class, FinanceCandidate::class, LedgerEntry::class, LedgerEvidence::class, MerchantAlias::class, CommunicationMessage::class, MailCursor::class, OutboundDraft::class, ActionAudit::class, IntegrationState::class, AssistantTask::class, DailyReview::class, MediaItem::class, TranscriptSegment::class, SpeechSpan::class, MemoryItem::class, com.hellfire.ass.memory.SemanticVector::class, AiUsage::class, CategoryBudget::class, ProviderBalance::class], version = 12, exportSchema = true)
+@Database(entities = [SourceEvent::class, EventProcessing::class, CaptureAudit::class, NotificationPolicy::class, FinanceAccount::class, FinanceCandidate::class, LedgerEntry::class, LedgerEvidence::class, MerchantAlias::class, CommunicationMessage::class, MailCursor::class, OutboundDraft::class, ActionAudit::class, IntegrationState::class, AssistantTask::class, DailyReview::class, MediaItem::class, TranscriptSegment::class, SpeechSpan::class, MemoryItem::class, com.hellfire.ass.memory.SemanticVector::class, AiUsage::class, CategoryBudget::class, ProviderBalance::class, SourceSearch::class], version = 13, exportSchema = true)
 abstract class EventDatabase : RoomDatabase() {
     abstract fun events(): EventDao
     abstract fun finances(): FinanceDao
@@ -197,7 +219,17 @@ abstract class EventDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE finance_candidate ADD COLUMN category TEXT")
             }
         }
-        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+        /** v13: cross-source payment duplicates, full-text source search, per-account integration states. */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE finance_candidate ADD COLUMN duplicateOf TEXT")
+                db.execSQL(SOURCE_SEARCH_SQL)
+                // Single-account states are replaced by per-account keys (EMAIL_IMAP:<id>, ...); the next sync writes them.
+                db.execSQL("DELETE FROM integration_state WHERE adapter IN ('EMAIL_IMAP', 'WHATSAPP_GATEWAY', 'IMAP_IDLE')")
+            }
+        }
+        const val SOURCE_SEARCH_SQL = "CREATE VIRTUAL TABLE IF NOT EXISTS `source_search` USING FTS4(`eventId` TEXT NOT NULL, `text` TEXT NOT NULL, tokenize=unicode61, notindexed=`eventId`)"
+        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
         fun open(context: Context): EventDatabase = Room.databaseBuilder(
             context.applicationContext, EventDatabase::class.java, "hellfire.db"
         ).openHelperFactory(EncryptedDatabase.factory(context)).addMigrations(*ALL_MIGRATIONS).build()

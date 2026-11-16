@@ -45,7 +45,7 @@ fun BackupScreen(app: HellFireApp) {
                     result = "Encrypted portable backup saved. Keep its passphrase separately; there is no recovery without it. Test restore on an empty installation before relying on this backup."
                 }
                 catch (e: CancellationException) { result = "Backup interrupted; the selected destination may contain an incomplete encrypted file."; throw e }
-                catch (_: Exception) { result = "Backup failed. Check free storage, destination, passphrase length and the 7 GiB originals / 1 GiB database limits. Partial output is incomplete." }
+                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); result = "Backup failed. Check free storage, destination, passphrase length and the 7 GiB originals / 1 GiB database limits. Partial output is incomplete." }
                 finally { secret.fill('\u0000'); busy = false }
             }
         } else pending.clear()
@@ -57,7 +57,7 @@ fun BackupScreen(app: HellFireApp) {
                 busy = true
                 try { backup.restore(uri, secret); result = "Backup authenticated and restored. Reconnect accounts, regrant Android permissions and reimport model files as needed. No message was sent." }
                 catch (e: CancellationException) { result = "Restore interrupted. Reopen the app to recover any pending import."; throw e }
-                catch (_: Exception) { result = "Restore failed: wrong passphrase, invalid/incomplete backup, unavailable storage, or local data/access still present. Existing data is retained. Restore needs an empty database with SMS, notifications and account integrations disconnected." }
+                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); result = "Restore failed: wrong passphrase, invalid/incomplete backup, unavailable storage, or local data/access still present. Existing data is retained. Restore needs an empty database with SMS, notifications and account integrations disconnected." }
                 finally { secret.fill('\u0000'); busy = false }
             }
         } else pending.clear()

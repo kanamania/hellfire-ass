@@ -50,10 +50,14 @@ fun InboxTab() {
     var sending by remember { mutableStateOf<OutboundDraft?>(null) }
     var sent by remember { mutableStateOf<String?>(null) }
     var editing by remember { mutableStateOf<ReplyDraft?>(null) }
+    var accountLabels by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    LaunchedEffect(drafts) { accountLabels = withContext(Dispatchers.IO) { runCatching { com.hellfire.ass.communications.Accounts.labels(app.secrets) }.getOrDefault(emptyMap()) } }
     val focusDraft = remember { nav.consumePrefix("draft:") }
 
-    LaunchedEffect(messages, events, media, candidates, tasks) {
+    LaunchedEffect(messages, events, media, candidates, tasks, accountLabels) {
         items = withContext(Dispatchers.IO) {
+            // With more than one account, each message names the inbox or WhatsApp account it belongs to.
+            fun via(accountId: String) = accountLabels[accountId]?.takeIf { accountLabels.size > 1 }?.let { " · $it" }.orEmpty()
             val review = candidates.map { it.sourceId }.toSet()
             val taskReview = tasks.filter { it.state == "REVIEW" }.map { it.sourceId }.toSet()
             val sourceIds = messages.map { it.sourceId } + events.map { it.event.id } + media.map { it.sourceId }
@@ -67,7 +71,7 @@ fun InboxTab() {
             val fromMessages = messages.map { m ->
                 val (t, tone) = tag(m.sourceId)
                 InboxItem("m:${m.id}", if (m.channel == "EMAIL_IMAP") Channel.EMAIL else Channel.WHATSAPP,
-                    if (m.direction == "OUTGOING") "You → ${m.recipient}" else m.sender, listOf(m.subject, m.body).filter(String::isNotBlank).joinToString(" · ").take(200),
+                    (if (m.direction == "OUTGOING") "You → ${m.recipient}" else m.sender) + via(m.accountId), listOf(m.subject, m.body).filter(String::isNotBlank).joinToString(" · ").take(200),
                     m.occurredAt, m.sourceId, t, tone, Route(Screen.Message, m.id))
             }
             val fromEvents = events.filter { it.event.source == "android_sms" || it.label == "MESSAGE" || it.label == "FINANCE_CANDIDATE" }.map { le ->
@@ -109,11 +113,11 @@ fun InboxTab() {
         pending.forEach { d ->
             ActionCard(highlighted = true, actions = {
                 PrimaryButton("Approve and send", { sending = d }, icon = HfIcons.Check)
-                SecondaryButton("Edit", { editing = ReplyDraft(d.channel, d.recipient, d.subject, d.body, d.replyToMessageId) })
+                SecondaryButton("Edit", { editing = ReplyDraft(d.channel, d.recipient, d.subject, d.body, d.replyToMessageId, d.accountId, d.id) })
             }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("DRAFT READY", Modifier.weight(1f), style = Hf.type.rowSubtitle.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.25.sp), color = Hf.colors.primary)
-                    Text("To ${d.recipient} · ${Fmt.channel(d.channel)}", style = Hf.type.rowSubtitle, color = Hf.colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("To ${d.recipient} · ${Fmt.channel(d.channel)}" + (accountLabels[d.accountId]?.let { " · from $it" } ?: ""), style = Hf.type.rowSubtitle, color = Hf.colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (d.subject.isNotBlank()) Text(d.subject, style = Hf.type.rowTitle, color = Hf.colors.onSurface)
                 Text(d.body.take(1200), style = Hf.type.body.copy(fontSize = 15.sp, lineHeight = 21.sp), color = Hf.colors.onSurface)
@@ -143,14 +147,14 @@ fun InboxTab() {
         Note("Email and WhatsApp accounts are set up in Settings. Nothing is sent without your approval.")
     }
     sending?.let { d ->
-        ConfirmDialog("Approve and send?", "${Fmt.channel(d.channel)} to ${d.recipient}\n${d.subject}\n\n${d.body.take(1500)}", "Approve and send once", onConfirm = {
+        ConfirmDialog("Approve and send?", "${Fmt.channel(d.channel)} to ${d.recipient}" + (accountLabels[d.accountId]?.let { "\nFrom $it" } ?: "") + "\n${d.subject}\n\n${d.body.take(1500)}", "Approve and send once", onConfirm = {
             sending = null
             scope.launch {
                 sent = try {
                     val approval = app.communications.approve(d.id)
                     app.communications.sendApproved(d.id, approval)
                     "Reply sent to ${d.recipient} on ${Fmt.channel(d.channel)}. Delivery confirmation is tracked separately."
-                } catch (_: Exception) { "Send rejected or delivery unconfirmed. Check the channel; this draft will not retry automatically." }
+                } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Send rejected or delivery unconfirmed. Check the channel; this draft will not retry automatically." }
             }
         }, onDismiss = { sending = null })
     }

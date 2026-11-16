@@ -26,7 +26,10 @@
         android:theme="@style/Theme.HellFire"
         android:usesCleartextTraffic="false">
         <service android:name=".communications.MailIdleService" android:exported="false" android:foregroundServiceType="dataSync" />
-        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop">
+        <!-- Not exported: only this app's own intents (widgets, reminders) reach it directly and may carry deep links. -->
+        <activity android:name=".MainActivity" android:exported="false" android:launchMode="singleTop" />
+        <!-- The launcher, assist gesture and system assistant settings enter through this alias; links sent to it are ignored. -->
+        <activity-alias android:name=".Launcher" android:targetActivity=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -35,7 +38,7 @@
                 <action android:name="android.intent.action.ASSIST" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-        </activity>
+        </activity-alias>
         <service android:name=".assistant.HellFireVoiceService" android:exported="true"
             android:permission="android.permission.BIND_VOICE_INTERACTION">
             <intent-filter><action android:name="android.service.voice.VoiceInteractionService" /></intent-filter>
