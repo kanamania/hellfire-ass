@@ -63,11 +63,13 @@ data class Person(val key: String, val name: String, val named: Boolean, val han
     val incoming: Int, val outgoing: Int, val channels: Set<String>)
 
 object People {
+    fun namedKey(name: String): String = "n:" + name.trim().lowercase(Locale.ROOT)
+
     /** Key of the person behind a handle: the owner's name for it when there is one, else the handle itself. */
-    fun personKey(handle: String, aliases: Map<String, String>): String = aliases[handle]?.let { "n:" + it.trim().lowercase(Locale.ROOT) } ?: handle
+    fun personKey(handle: String, aliases: Map<String, String>): String = aliases[handle]?.let { namedKey(it) } ?: handle
 
     fun build(interactions: List<Interaction>, aliases: Map<String, String>): List<Person> =
-        interactions.filter { Handles.person(it.handle) }.groupBy { personKey(it.handle, aliases) }.map { (key, list) ->
+        interactions.filter { Handles.person(it.handle) || it.handle in aliases }.groupBy { personKey(it.handle, aliases) }.map { (key, list) ->
             val latest = list.maxBy { it.at }
             val alias = aliases[latest.handle]
             Person(key, alias ?: Handles.display(latest.raw), alias != null, list.associate { it.handle to Handles.display(it.raw) }, latest.at,
@@ -92,7 +94,7 @@ object Waiting {
      * Groups and automated senders are ignored. [dismissed] maps a person key to the message time the owner cleared.
      */
     fun compute(interactions: List<Interaction>, aliases: Map<String, String>, now: Long, dismissed: Map<String, Long> = emptyMap()): WaitingOn {
-        val latest = interactions.filter { !it.group && Handles.person(it.handle) && it.at <= now && it.at > now - WINDOW }
+        val latest = interactions.filter { !it.group && (Handles.person(it.handle) || it.handle in aliases) && it.at <= now && it.at > now - WINDOW }
             .groupBy { People.personKey(it.handle, aliases) }.mapValues { (_, list) -> list.maxBy { it.at } }
             .filter { (key, last) -> (dismissed[key] ?: Long.MIN_VALUE) < last.at }
         fun item(key: String, last: Interaction) = WaitingItem(key, aliases[last.handle] ?: Handles.display(last.raw), last.channel, last.at, last.preview, last.sourceId, last.messageId)

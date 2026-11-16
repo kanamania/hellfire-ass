@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.room.withTransaction
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hellfire.ass.data.SourceEvent
 import com.hellfire.ass.tasks.AssistantTask
@@ -44,8 +45,8 @@ import kotlinx.coroutines.withContext
 
 /** A task the sheet should edit: an existing proposal or task, or a new one typed by the owner. */
 data class TaskDraft(val id: String?, val title: String, val dueAt: Long, val party: String, val direction: String = "NONE",
-    val amount: Long? = null, val kind: String = "TASK", val repeatMonthly: Boolean = false) {
-    companion object { fun of(t: AssistantTask) = TaskDraft(t.id, t.title, t.dueAt, t.party, t.direction, t.amount, t.kind, t.repeatMonthly) }
+    val amount: Long? = null, val kind: String = "TASK", val repeatMonthly: Boolean = false, val personKey: String? = null) {
+    companion object { fun of(t: AssistantTask) = TaskDraft(t.id, t.title, t.dueAt, t.party, t.direction, t.amount, t.kind, t.repeatMonthly, t.personKey) }
 }
 
 @Composable
@@ -208,6 +209,13 @@ fun TaskEditSheet(draft: TaskDraft, onDone: (String?) -> Unit) {
     val app = LocalEnv.current.app
     val scope = rememberCoroutineScope()
     var title by remember { mutableStateOf(draft.title) }
+    var person by remember { mutableStateOf("") }
+    var picked by remember { mutableStateOf<com.hellfire.ass.contacts.ContactChoice?>(null) }
+    var personLoaded by remember { mutableStateOf(draft.personKey == null) }
+    LaunchedEffect(draft.personKey) {
+        person = withContext(Dispatchers.IO) { draft.personKey?.let { app.database.contacts().find(it)?.displayName } }.orEmpty()
+        personLoaded = true
+    }
     var due by remember { mutableStateOf(TaskTime.display(draft.dueAt)) }
     var party by remember { mutableStateOf(draft.party) }
     var direction by remember { mutableStateOf(draft.direction) }
@@ -218,6 +226,8 @@ fun TaskEditSheet(draft: TaskDraft, onDone: (String?) -> Unit) {
     HfBottomSheet({ onDone(null) }) {
         Text(if (draft.id == null) "New task" else "Edit task", style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
         HfTextField(title, { title = it }, "Task", singleLine = false)
+        if (personLoaded) ContactPersonField(person, { person = it; picked = null }, "Person (optional)", onPick = { picked = it; person = it.displayName })
+        SavedContactStatus(draft.personKey)
         HfTextField(due, { due = it }, "Due · yyyy-MM-dd HH:mm · East Africa Time")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val base = Fmt.today()
@@ -252,10 +262,14 @@ fun TaskEditSheet(draft: TaskDraft, onDone: (String?) -> Unit) {
                         }
                         TaskScheduler.activate(app, id, title.trim(), at, party)
                         TaskScheduler.updateDetails(app, id, direction, amount.toLongOrNull()?.takeIf { it > 0 }, kind, repeat)
+                        val links = com.hellfire.ass.contacts.ContactLinks(app.database)
+                        app.database.withTransaction {
+                            links.task(id, if (person.isBlank()) null else links.save(picked ?: com.hellfire.ass.contacts.ContactChoice(person)))
+                        }
                     }
                     onDone("Task scheduled for ${Fmt.weekdayDayTime(at)}.")
                 } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); error = "Not saved. Use yyyy-MM-dd HH:mm and remove any security codes." }
             }
-        }, Modifier.fillMaxWidth(), enabled = title.isNotBlank(), height = 52.dp)
+        }, Modifier.fillMaxWidth(), enabled = title.isNotBlank() && personLoaded, height = 52.dp)
     }
 }

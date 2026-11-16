@@ -223,6 +223,7 @@ fun PermissionsPage() {
     PushedPage("Permissions and capture", breadcrumb = "Settings") {
         message?.let { Banner(it, Tone.Info, null) }
         SetupRows(setupSteps(p, env.actions))
+        ContactsPermissionRow()
         if (p.smsEnabled) QuietButton("Turn off SMS capture", env.actions.onSmsDisable)
         SectionHeader("Capture status")
         KvList(listOfNotNull(

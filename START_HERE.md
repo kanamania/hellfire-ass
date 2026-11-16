@@ -10,12 +10,20 @@ Status on 2026-11-16: the UI redesign, home screen widgets, money entry pickers,
 fingerprint app lock, daily Google Drive backup, the review fixes and multiple email
 inboxes and WhatsApp accounts, the Gemma 4 E2B first-launch download, and the daily
 brief, waiting-on, people, debts, bills, expiry, capture-alert and template features
-are merged into `main` (version 0.7.0, Room schema 14).
+and local contact picking with audited task/payment person links
+are merged into `main` (version 0.7.0, Room/backup schema 15).
 An optional read-only web copy synced from the phone (`web/`, NestJS + Postgres +
-Next.js; README → "Web access") is added but not deployed. Host suites pass (247
-Android, 23 relay, 6 worker and 11 web API tests). Next work is the physical
-OPPO test pass; DEVICE_FEASIBILITY.md → "Review fixes and multiple accounts" lists the
-device checks each change still needs. [REDESIGN_SUMMARY.md](REDESIGN_SUMMARY.md) has the hand-test
+Next.js; README → "Web access") is added but not deployed. Android host checks
+pass (263 tests: 259 passed, 4 opt-in live AI tests skipped). Earlier unchanged
+host results: 23 relay, 6 worker and 11 web API tests.
+
+Contacts use Android’s synced local provider with permission requested only from
+a picker; free text remains available, and contact links are excluded from the web copy.
+Backup schemas 8 and 10–14 still restore. The permission prompt, Google-synced contacts
+on ColorOS, several numbers on one contact and deleted contacts all remain NOT TESTED
+on the phone. Next work is the physical OPPO test pass; DEVICE_FEASIBILITY.md →
+"Local contacts and person links" and "Review fixes and multiple accounts" list
+the device checks each change still needs. [REDESIGN_SUMMARY.md](REDESIGN_SUMMARY.md) has the hand-test
 checklist and [DECISIONS.md](DECISIONS.md) the design decisions.
 
 The original starter instructions are retained below.

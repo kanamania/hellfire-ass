@@ -35,6 +35,7 @@ fun DebtSheet(prefill: DebtPrefill, onDone: (String?) -> Unit) {
     val app = LocalEnv.current.app
     val scope = rememberCoroutineScope()
     var person by remember { mutableStateOf(prefill.person) }
+    var picked by remember { mutableStateOf<com.hellfire.ass.contacts.ContactChoice?>(null) }
     var kind by remember { mutableStateOf(prefill.kind) }
     var amount by remember { mutableStateOf(prefill.amount?.toString().orEmpty()) }
     var occurred by remember { mutableStateOf(TaskTime.display(prefill.occurredAt)) }
@@ -49,7 +50,8 @@ fun DebtSheet(prefill: DebtPrefill, onDone: (String?) -> Unit) {
     HfBottomSheet({ onDone(null) }) {
         Text("Loan or repayment", style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
         if (prefill.ledgerId != null) Note("Linked to the payment you opened. Its amount and account stay as they are in Money.")
-        AutocompleteField(person, { person = it }, "Person", known, onPick = { person = it })
+        ContactPersonField(person, { person = it; picked = null }, "Person", known, onPick = { picked = it; person = it.displayName })
+        SavedContactStatus(com.hellfire.ass.insights.People.namedKey(person))
         GroupLabel("What happened")
         ChipPicker(Debts.kinds, kind, Debts::label) { kind = it }
         HfTextField(amount, { amount = it.filter(Char::isDigit) }, "Amount TZS", number = true)
@@ -64,12 +66,15 @@ fun DebtSheet(prefill: DebtPrefill, onDone: (String?) -> Unit) {
             scope.launch {
                 val saved = io {
                     val now = System.currentTimeMillis()
-                    app.database.debts().insert(DebtEntry(UUID.randomUUID().toString(), person.trim(), Debts.signed(kind, Money.tzs(amount)), kind, note.trim(),
-                        TaskTime.parse(occurred), if (hasDue && (kind == "LENT" || kind == "BORROWED")) TaskTime.parse(due) else null, prefill.ledgerId, now))
+                    app.database.withTransaction {
+                        com.hellfire.ass.contacts.ContactLinks(app.database).save(picked ?: com.hellfire.ass.contacts.ContactChoice(person))
+                        app.database.debts().insert(DebtEntry(UUID.randomUUID().toString(), person.trim(), Debts.signed(kind, Money.tzs(amount)), kind, note.trim(),
+                            TaskTime.parse(occurred), if (hasDue && (kind == "LENT" || kind == "BORROWED")) TaskTime.parse(due) else null, prefill.ledgerId, now))
+                    }
                 }
                 if (saved == null) error = "Not saved. Use a whole-shilling amount and a valid date." else onDone("Saved: ${Debts.label(kind).lowercase()} TZS ${Fmt.amount(amount.toLong())} · ${person.trim()}.")
             }
-        }, Modifier.fillMaxWidth(), enabled = person.isNotBlank() && person.length <= 80 && amount.isNotBlank(), height = 52.dp)
+        }, Modifier.fillMaxWidth(), enabled = person.isNotBlank() && person.trim().length <= 200 && amount.isNotBlank(), height = 52.dp)
     }
 }
 

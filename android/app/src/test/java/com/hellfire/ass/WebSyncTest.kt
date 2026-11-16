@@ -106,6 +106,21 @@ class WebSyncTest {
         assertFalse(server.rows.toString().contains("482910"))
     }
 
+    @Test fun `contact picks and person keys stay out of the web copy`() = runBlocking {
+        seed()
+        val server = FakeServer()
+        sync(server)
+        val links = com.hellfire.ass.contacts.ContactLinks(db)
+        val key = links.save(com.hellfire.ass.contacts.ContactChoice("Private contact fixture", "private-lookup", listOf("0691234567", "private@example.invalid")))
+        links.ledger("lunch", key); links.task("pay", key)
+        sync(server)
+        assertFalse(server.data("ledger", "lunch").has("personKey"))
+        assertFalse(server.data("task", "pay").has("personKey"))
+        for (privateValue in listOf("Private contact fixture", "private-lookup", "private@example.invalid", "691234567", "person_contact", "person_alias"))
+            assertFalse(privateValue, server.rows.toString().contains(privateValue))
+        assertEquals(1, db.contacts().all().size)
+    }
+
     @Test fun `later passes send only changes and deletions`() = runBlocking {
         seed()
         val server = FakeServer()

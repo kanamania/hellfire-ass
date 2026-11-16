@@ -49,6 +49,7 @@ fun CandidateReviewSheet(c: FinanceCandidate, accounts: List<FinanceAccount>, al
     var category by remember { mutableStateOf(c.category ?: alias?.category ?: if (c.kind == "INCOME") "Income" else "Other") }
     var description by remember { mutableStateOf(alias?.name ?: if (c.provider == "MANUAL") c.evidence.take(200) else Fmt.kind(c.kind) + (c.merchant?.let { " · Lipa namba $it" } ?: "")) }
     var merchantName by remember { mutableStateOf(alias?.name.orEmpty()) }
+    var picked by remember { mutableStateOf<com.hellfire.ass.contacts.ContactChoice?>(null) }
     var rememberName by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -71,10 +72,11 @@ fun CandidateReviewSheet(c: FinanceCandidate, accounts: List<FinanceAccount>, al
         DateTimeField(occurred, { occurred = it })
         HfTextField(description, { description = it }, "Description")
         if (c.merchant != null) {
-            AutocompleteField(merchantName, { merchantName = it; rememberName = it.isNotBlank() }, "Name for Lipa namba ${c.merchant}", aliases.map { it.name }, onPick = { picked ->
-                merchantName = picked; rememberName = true
-                aliases.firstOrNull { it.name == picked }?.let { category = it.category; description = it.name }
+            ContactPersonField(merchantName, { merchantName = it; picked = null; rememberName = it.isNotBlank()
+                aliases.firstOrNull { a -> a.name == it }?.let { a -> category = a.category; description = a.name } }, "Name for Lipa namba ${c.merchant}", aliases.map { it.name }, onPick = {
+                picked = it; merchantName = it.displayName; rememberName = true
             })
+            SavedContactStatus(com.hellfire.ass.insights.People.namedKey(merchantName))
             CheckRow("Remember this name and category", rememberName, onChange = { rememberName = it })
         }
         error?.let { Banner(it, Tone.Danger, null) }
@@ -84,11 +86,18 @@ fun CandidateReviewSheet(c: FinanceCandidate, accounts: List<FinanceAccount>, al
             scope.launch {
                 try {
                     val msg = withContext(Dispatchers.IO) {
-                        val result = app.finances.approve(c.id, accountId!!, kind, category, description.trim().ifBlank { Fmt.kind(kind) }, transferId,
-                            Money.tzs(amount), if (fee.trim() == "0") 0 else Money.tzs(fee), TaskTime.parse(occurred))
-                        if (rememberName && c.merchant != null && merchantName.isNotBlank())
-                            app.database.finances().merchant(MerchantAlias(c.provider, c.merchant, merchantName.trim(), category, System.currentTimeMillis()))
-                        result
+                        app.database.withTransaction {
+                            val personKey = when {
+                                merchantName.isBlank() -> null
+                                picked != null || rememberName -> com.hellfire.ass.contacts.ContactLinks(app.database).save(picked ?: com.hellfire.ass.contacts.ContactChoice(merchantName))
+                                else -> app.database.contacts().find(com.hellfire.ass.insights.People.namedKey(merchantName))?.personKey
+                            }
+                            val result = app.finances.approve(c.id, accountId!!, kind, category, description.trim().ifBlank { Fmt.kind(kind) }, transferId,
+                                Money.tzs(amount), if (fee.trim() == "0") 0 else Money.tzs(fee), TaskTime.parse(occurred), personKey = personKey)
+                            if (rememberName && c.merchant != null && merchantName.isNotBlank())
+                                app.database.finances().merchant(MerchantAlias(c.provider, c.merchant, merchantName.trim(), category, System.currentTimeMillis()))
+                            result
+                        }
                     }
                     onDone(msg)
                 } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); error = "Not posted. Check the account, amounts (whole shillings), date and duplicate status." }
@@ -108,23 +117,26 @@ fun MerchantSheet(provider: String, number: String, alias: MerchantAlias?, onDon
     val app = LocalEnv.current.app
     val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf(alias?.name.orEmpty()) }
+    var picked by remember { mutableStateOf<com.hellfire.ass.contacts.ContactChoice?>(null) }
     var category by remember { mutableStateOf(alias?.category ?: "Other") }
     val known by remember { app.database.finances().aliases() }.collectAsStateWithLifecycle(emptyList())
     HfBottomSheet(onDismiss = { onDone(null) }) {
         Text("Name this merchant", style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
         Text("Lipa namba $number", style = Hf.type.rowSubtitle, color = Hf.colors.muted)
-        AutocompleteField(name, { name = it }, "Merchant name", known.map { it.name }, onPick = { picked ->
-            name = picked; known.firstOrNull { it.name == picked }?.let { category = it.category }
-        })
+        ContactPersonField(name, { name = it; picked = null; known.firstOrNull { alias -> alias.name == it }?.let { category = it.category } }, "Merchant name", known.map { it.name }, onPick = { picked = it; name = it.displayName })
+        SavedContactStatus(com.hellfire.ass.insights.People.namedKey(name))
         GroupLabel("Usual category")
         ChipPicker(Categories, category) { category = it }
         Note("Future payments to this number use this name and category. You still confirm each payment.")
         PrimaryButton("Save name", {
             scope.launch {
-                withContext(Dispatchers.IO) { app.database.finances().merchant(MerchantAlias(provider, number, name.trim(), category, System.currentTimeMillis())) }
+                withContext(Dispatchers.IO) { app.database.withTransaction {
+                    com.hellfire.ass.contacts.ContactLinks(app.database).save(picked ?: com.hellfire.ass.contacts.ContactChoice(name))
+                    app.database.finances().merchant(MerchantAlias(provider, number, name.trim(), category, System.currentTimeMillis()))
+                } }
                 onDone("Saved ${name.trim()} for Lipa namba $number.")
             }
-        }, Modifier.fillMaxWidth(), enabled = name.isNotBlank(), height = 52.dp)
+        }, Modifier.fillMaxWidth(), enabled = name.isNotBlank() && name.trim().length <= 200, height = 52.dp)
     }
 }
 

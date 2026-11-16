@@ -8,7 +8,7 @@ import java.util.UUID
 class FinanceRepository(private val db: EventDatabase) {
     private val dao get() = db.finances()
     suspend fun approve(candidateId: String, accountId: String, kind: String, category: String,
-        description: String, transferTo: String? = null, amount: Long? = null, fee: Long? = null, occurredAt: Long? = null): String = db.withTransaction {
+        description: String, transferTo: String? = null, amount: Long? = null, fee: Long? = null, occurredAt: Long? = null, personKey: String? = null): String = db.withTransaction {
         val original = requireNotNull(dao.findCandidate(candidateId))
         val candidate = original.copy(amount = amount ?: original.amount, fee = fee ?: original.fee, occurredAt = occurredAt ?: original.occurredAt)
         require(candidate.occurredAt >= 0)
@@ -19,6 +19,7 @@ class FinanceRepository(private val db: EventDatabase) {
         val key = NotificationNormalizer.sha256("$accountId|${candidate.provider}|${candidate.reference ?: candidate.id}")
         val existing = dao.byKey(key)
         if (existing != null) {
+            if (personKey != null) com.hellfire.ass.contacts.ContactLinks(db).ledger(existing.id, personKey)
             dao.evidence(LedgerEvidence(existing.id, candidate.sourceId))
             linkReferenceDuplicates(existing.id, candidate)
             linkCrossSourceDuplicates(existing.id, candidate.id)
@@ -35,6 +36,7 @@ class FinanceRepository(private val db: EventDatabase) {
         } else null
         dao.post(LedgerEntry(id, accountId, key, kind, delta, category, description,
             candidate.occurredAt, now, id))
+        if (personKey != null) com.hellfire.ass.contacts.ContactLinks(db).ledger(id, personKey)
         dao.evidence(LedgerEvidence(id, candidate.sourceId))
         if (destination != null) {
             val credit = "$id:credit"

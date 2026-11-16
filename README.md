@@ -18,11 +18,11 @@ used to establish host results. No message has been sent and no gateway deployed
   the 2026-11-16 review findings, **multiple email inboxes and WhatsApp accounts**, and
   **Gemma 4 E2B downloaded on first launch with on-device update checks**, and the
   **daily brief, waiting-on, people, debts, bills, expiry reminders, capture alerts and
-  action templates**. Debug version **0.7.0** (code 7), Room schema **14**, backup schema **14**.
+  action templates**, plus **local contact picking and person links**. Debug version **0.7.0** (code 7), Room schema **15**, backup schema **15**.
 - **Web access:** an optional read-only web copy (NestJS API, Postgres, Next.js site
   in `web/`) synced from the phone; see [Web access](#web-access-read-only-mirror).
   Not deployed anywhere and not yet run against a real phone.
-- **Host checks on this tree:** 247 Android unit tests (243 passed, 4 opt-in live AI
+- **Host checks on this tree:** 263 Android unit tests (259 passed, 4 opt-in live AI
   tests skipped, 0 failures), 23 relay tests, 6 WhatsApp Web worker tests and 11 web
   API tests pass.
   Lint passes with 0 errors and the debug APK assembles; the checksum is in
@@ -43,10 +43,10 @@ dependencies and the checksummed whisper.cpp source archive, never model weights
 
 ```bash
 cd android
-./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'
 ```
 
-APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.6.0**.
+APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.7.0**.
 It is built for **arm64-v8a only** (since 2026-11-16), Android API 29+, target/compile
 API 36. Confirm the phone ABI before installation (`adb shell getprop ro.product.cpu.abilist`);
 32-bit-only phones and x86_64 PC emulators cannot run it. Size: about 149 MB
@@ -210,6 +210,27 @@ assistant is the Ask tab. [DECISIONS.md](DECISIONS.md) records where each contro
   morning notification (default 07:00 EAT, counts only) opens it; switch it off or
   change the hour in Settings › Reminders. `morning brief` / `evening brief` in Ask
   include the same replies, bills, debts and capture lines.
+- **People and contacts:** every person/vendor field offers **Choose contact**: loan/repayment,
+  a person's name, Lipa namba merchant and payment review, task editing and transaction
+  details. Type a name, number or email in the picker to search Android's local
+  `ContactsContract` provider on a background thread (up to 30 matching data rows).
+  Google contacts already synced to the phone appear there; there is no Google
+  People API, new OAuth flow or contact network call. A blank query reads nothing.
+  The picker explains `READ_CONTACTS` before its **Allow contacts** button; denying
+  access keeps free-text entry usable. To grant it later, use App settings ›
+  Permissions › Contacts; Settings › Permissions and capture shows the real state.
+  Only an explicitly saved choice is kept: lookup key, display name and normalized
+  phone/email aliases. No address-book import runs. Selecting a contact joins all
+  its numbers/emails across SMS, WhatsApp and email using the existing last-nine-digit
+  phone rule. Names remain the existing shared identity: identical saved names join.
+  Tasks and payments have optional person links; clearing the field removes the
+  link. Each link edit is audited and never changes money. PersonPage lists linked
+  tasks, payments and debt notes, including people without a saved conversation.
+  Deleted/unresolved contacts retain their saved name and show **not in contacts**;
+  denied access is shown separately. Contact tables, aliases and person keys stay
+  out of `WebSync`. Selected links are included in the existing encrypted backup;
+  backup schema 15 still restores schemas 8 and 10–14. All ColorOS contact and
+  permission interactions remain **NOT TESTED** on a phone.
 - **Waiting on:** Home or the Inbox header. "You owe a reply" lists people whose
   message has been the latest for 4 hours; "Waiting to hear back" lists people the
   owner asked something a day ago. It looks at the latest message per person across
@@ -721,6 +742,12 @@ Exact host results, artifact checksum and the final physical checklist are in
 ordinary SQLite/Robolectric and generated AES/RSA keys; they do not prove native
 SQLCipher/Keystore, actual model execution, live accounts or Android/OEM behavior.
 
+- 2026-11-16, local contacts (0.7.0, Room/backup v15): contact picker with explained
+  runtime access and free-text fallback; all existing person/vendor fields plus
+  optional task/payment links; multi-number/email message joins, audited link edits,
+  deleted-contact status, older-backup restores and no contact fields in WebSync;
+  263 host tests, including 16 new synthetic contact/link/privacy tests. Phone checks
+  remain NOT TESTED.
 - 2026-11-16, daily outputs and templates (0.7.0, Room v14): morning brief and evening
   wrap-up with a morning notification, waiting-on tracker, people pages, debts with
   repayment suggestions, recurring-bill detection and 30-day shortfall, expiry-date

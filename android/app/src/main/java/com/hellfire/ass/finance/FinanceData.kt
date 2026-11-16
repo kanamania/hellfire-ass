@@ -22,7 +22,7 @@ data class FinanceCandidate(@PrimaryKey val id: String, val sourceId: String, va
     foreignKeys = [ForeignKey(entity = FinanceAccount::class, parentColumns = ["id"], childColumns = ["accountId"], onDelete = ForeignKey.RESTRICT)])
 data class LedgerEntry(@PrimaryKey val id: String, val accountId: String, val dedupeKey: String,
     val kind: String, val amount: Long, val category: String, val description: String,
-    val occurredAt: Long, val createdAt: Long, val groupId: String, val reversesId: String? = null)
+    val occurredAt: Long, val createdAt: Long, val groupId: String, val reversesId: String? = null, val personKey: String? = null)
 
 @Entity(tableName = "ledger_evidence", primaryKeys = ["ledgerId", "sourceId"], indices = [Index("sourceId")], foreignKeys = [
     ForeignKey(entity = LedgerEntry::class, parentColumns = ["id"], childColumns = ["ledgerId"], onDelete = ForeignKey.RESTRICT),
@@ -35,6 +35,8 @@ data class MerchantAlias(val provider: String, val number: String, val name: Str
 
 @Dao
 interface FinanceDao {
+    @Query("UPDATE ledger_entry SET personKey = :key WHERE id = :id") suspend fun setPerson(id: String, key: String?)
+
     @Insert suspend fun addAccount(account: FinanceAccount)
     @Query("SELECT * FROM finance_account ORDER BY label") fun accounts(): Flow<List<FinanceAccount>>
     @Query("SELECT * FROM finance_account ORDER BY label") suspend fun allAccounts(): List<FinanceAccount>
