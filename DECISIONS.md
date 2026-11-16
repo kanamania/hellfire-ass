@@ -154,3 +154,18 @@ Decisions made where `HANDOFF.md` was unclear or a screen was marked *not drawn*
 - **Cash entry pickers.** Date and time (East Africa Time), category and account are chosen when logging cash, stored on the review item (`finance_candidate.accountId`, `category`) and prefilled in the confirmation sheet.
 - **Accounts have no provider.** Accounts are created by name and optional balance. Provider labels and the provider report grouping are gone. Receipt provider and reference stay internal for duplicate detection and merchant evidence.
 - **Backups** move to schema 12 and still restore schema 8, 10 and 11 archives.
+
+## Review fixes and multiple accounts (Room v12 → v13, 2026-11-16)
+
+- **Accounts are lists.** Email inboxes and WhatsApp gateways are stored as encrypted lists (up to 10 each). An earlier single-account setting becomes the first entry on first read. Each account keeps the id it already had, so messages, drafts and mail cursors stay attached.
+- **One relay per WhatsApp account.** A whatsapp-web.js session and a Meta phone number are both one account, so a second WhatsApp account is a second relay URL and token. All relays share the phone's public key. Relay events now include the account in their key, because two linked accounts in one group see the same message ID.
+- **Which account sends.** A reply uses the account the message arrived on. New messages and edited drafts choose from accounts that can send on that channel (WhatsApp Web cannot). Assistant commands use the first account and say which. The approval dialog names the account. "Edit" on a draft now updates it instead of saving a second draft.
+- **Per-account status.** Integration states are keyed `EMAIL_IMAP:<id>`, `WHATSAPP_GATEWAY:<id>` and `IMAP_IDLE:<id>`; the v13 migration deletes the old single-account rows. Capture health shows one row per account. Live mail opens one IDLE connection per inbox inside the same ten-minute service.
+- **Provider identity.** SMS, IMAP and relay events are identified by their provider key (row ID, UID, relay message), not by redacted content, so changing redaction rules cannot re-import history. Rows stored under the old content identity are found and reused. Notifications keep content identity, because an edited notification is new evidence.
+- **Cross-source payment duplicates** need a different source type (SMS vs notification), the same provider, kind and amount, within 10 minutes. Two equal SMS payments in a row are genuinely two payments and both stay in review. Stored as `finance_candidate.duplicateOf`.
+- **Full-text search** is an FTS4 table inside the SQLCipher database, so indexed text is protected by database encryption but not by the second payload-encryption layer. It holds only non-sensitive, available content, is rebuilt rather than backed up, and is cleared with captured events.
+- **Task proposals from messages need commitment wording.** Owner-typed commands and quick add are exempt because the owner is asking for a task.
+- **Drive retention** defaults to keeping the newest 7 app-created archives, deleting older ones only after a confirmed upload. "All" restores the earlier keep-everything behaviour.
+- **Deep links** are accepted only by the unexported `MainActivity`; the launcher, assist gesture and assistant settings enter through the exported `.Launcher` alias, whose data is ignored.
+- **Diagnostics** log only in debuggable builds, and only exception classes and stack frames.
+- **Not changed:** no release build type or CI was added; no backfill-on-request for older mail.

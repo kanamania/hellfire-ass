@@ -10,6 +10,9 @@ services:
       - ./device-public.pem:/app/device-public.pem:ro
     environment:
       DEVICE_PUBLIC_KEY_FILE: /app/device-public.pem
+      # The port is bound to 127.0.0.1 only, so every connection comes from the host's reverse proxy;
+      # trust its X-Forwarded-For so rate limits apply per real client.
+      FORWARDED_ALLOW_IPS: "*"
     security_opt:
       - no-new-privileges:true
     cap_drop:

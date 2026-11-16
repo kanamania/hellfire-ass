@@ -12,6 +12,7 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 object FolderImport {
+    const val MAX_IMPORTS_PER_SCAN = 25
     suspend fun select(app: HellFireApp, uri: Uri) = withContext(Dispatchers.IO) {
         app.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         app.secrets.save("media-folder", JSONObject().put("uri", uri.toString()).put("seen", JSONObject()))
@@ -32,24 +33,30 @@ object FolderImport {
         val tree = Uri.parse(config.getString("uri"))
         val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
         val seen = config.optJSONObject("seen") ?: JSONObject()
-        var count = 0; var skipped = false
+        data class Entry(val id: String, val signature: String, val modified: Long)
+        val entries = mutableListOf<Entry>()
         app.contentResolver.query(children, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID,
             DocumentsContract.Document.COLUMN_MIME_TYPE, DocumentsContract.Document.COLUMN_SIZE,
             DocumentsContract.Document.COLUMN_LAST_MODIFIED), null, null, null)?.use { cursor ->
+            // Read every entry: providers return them in their own order, so a fixed prefix can miss new recordings.
             while (cursor.moveToNext()) {
                 currentCoroutineContext().ensureActive()
-                if (++count > 300) { skipped = true; break }
-                val id = cursor.getString(0); val mime = cursor.getString(1).orEmpty()
-                if (!mime.startsWith("audio/")) continue
+                if (!cursor.getString(1).orEmpty().startsWith("audio/")) continue
+                val id = cursor.getString(0)
                 val signature = "${cursor.getLong(2)}:${cursor.getLong(3)}"
-                if (seen.optString(id) == signature) continue
-                val uri = DocumentsContract.buildDocumentUriUsingTree(tree, id)
-                app.media.import(uri, "CALL_RECORDING")
-                seen.put(id, signature)
-                config.put("seen", seen); app.secrets.save("media-folder", config)
+                if (seen.optString(id) != signature) entries += Entry(id, signature, cursor.getLong(3))
             }
         } ?: error("Folder unavailable")
-        app.database.communications().integration(IntegrationState("CALL_FOLDER", if (skipped) "PARTIAL_FIRST_300" else "CONNECTED", System.currentTimeMillis()))
+        // Newest first, a bounded number per run; the rest follow on the next scan.
+        val batch = entries.sortedByDescending { it.modified }.take(MAX_IMPORTS_PER_SCAN)
+        for (entry in batch) {
+            currentCoroutineContext().ensureActive()
+            app.media.import(DocumentsContract.buildDocumentUriUsingTree(tree, entry.id), "CALL_RECORDING")
+            seen.put(entry.id, entry.signature)
+            config.put("seen", seen); app.secrets.save("media-folder", config)
+        }
+        val skipped = entries.size > batch.size
+        app.database.communications().integration(IntegrationState("CALL_FOLDER", if (skipped) "IMPORTING_BACKLOG" else "CONNECTED", System.currentTimeMillis()))
     }
 }
 class FolderImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
@@ -57,6 +64,6 @@ class FolderImportWorker(context: Context, params: WorkerParameters) : Coroutine
         val app = applicationContext as HellFireApp
         return try { FolderImport.scan(app); Result.success() }
         catch (e: CancellationException) { throw e }
-        catch (_: Exception) { app.database.communications().integration(IntegrationState("CALL_FOLDER", "FAILED", System.currentTimeMillis(), "FOLDER_ACCESS_OR_STORAGE_UNAVAILABLE")); Result.retry() }
+        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); app.database.communications().integration(IntegrationState("CALL_FOLDER", "FAILED", System.currentTimeMillis(), "FOLDER_ACCESS_OR_STORAGE_UNAVAILABLE")); Result.retry() }
     }
 }

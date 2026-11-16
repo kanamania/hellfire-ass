@@ -65,6 +65,10 @@ class Settings:
                     and re.fullmatch(r"[0-9]+", self.phone_id))
 
 
+PEER_RATE = 120
+DEVICE_RATE = 1200
+
+
 def b64(value: bytes) -> str:
     return base64.b64encode(value).decode("ascii")
 
@@ -89,12 +93,12 @@ class Store:
         """)
         self.db.commit()
 
-    def rate(self, ip: str) -> bool:
+    def rate(self, key: str, limit: int = 120) -> bool:
         minute = int(time.time()) // 60
         with self.lock, self.db:
             self.db.execute("DELETE FROM rate WHERE minute < ?", (minute - 2,))
-            self.db.execute("INSERT INTO rate VALUES(?, ?, 1) ON CONFLICT(ip,minute) DO UPDATE SET count = count + 1", (ip, minute))
-            return self.db.execute("SELECT count FROM rate WHERE ip=? AND minute=?", (ip, minute)).fetchone()[0] <= 120
+            self.db.execute("INSERT INTO rate VALUES(?, ?, 1) ON CONFLICT(ip,minute) DO UPDATE SET count = count + 1", (key, minute))
+            return self.db.execute("SELECT count FROM rate WHERE ip=? AND minute=?", (key, minute)).fetchone()[0] <= limit
 
     def seal(self, payload: bytes) -> str:
         key, nonce = secrets.token_bytes(32), secrets.token_bytes(12)
@@ -152,6 +156,11 @@ class Draft(BaseModel):
     text: str = Field(min_length=1, max_length=4096)
 
 
+class AckBatch(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    ids: list[str] = Field(min_length=1, max_length=100)
+
+
 class Approval(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     nonce: str = Field(min_length=32, max_length=256)
@@ -164,8 +173,14 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
 
     @app.middleware("http")
     async def limit(request: Request, call_next):
-        if store and not store.rate(request.client.host if request.client else "unknown"):
-            return JSONResponse({"detail": "Rate limit exceeded"}, status_code=429)
+        if store:
+            # The paired phone has its own allowance: one sync is a fetch plus a batch acknowledgment, and
+            # behind a reverse proxy every other caller would otherwise share the phone's address.
+            device = bool(settings.device_token) and hmac.compare_digest(
+                request.headers.get("authorization", ""), "Bearer " + settings.device_token)
+            key, allowance = ("device", DEVICE_RATE) if device else (request.client.host if request.client else "unknown", PEER_RATE)
+            if not store.rate(key, allowance):
+                return JSONResponse({"detail": "Rate limit exceeded"}, status_code=429)
         response = await call_next(request)
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -256,6 +271,15 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
         if settings.whatsapp_transport == "web":
             result["capture_status"] = capture_status(settings.web_state_directory)
         return result
+
+    @app.post("/device/events/ack")
+    async def ack_batch(value: AckBatch, authorization: str | None = Header(default=None)):
+        authorized(authorization)
+        if not all(re.fullmatch(r"[a-f0-9]{64}", identity) for identity in value.ids):
+            raise HTTPException(400, "Invalid event identity")
+        with store.lock, store.db:
+            store.db.executemany("DELETE FROM inbox WHERE id=?", [(identity,) for identity in value.ids])
+        return {"acknowledged": len(value.ids)}
 
     @app.post("/device/events/{identity}/ack")
     async def ack(identity: str, authorization: str | None = Header(default=None)):

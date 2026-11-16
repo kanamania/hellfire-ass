@@ -42,12 +42,13 @@ class HellFireApp : Application() {
     private val syncSms = Runnable {
         if (SmsCaptureSettings.enabled(this) && SmsCaptureSettings.canRead(this)) captureScope.launch {
             try { SmsSyncWorker.schedule(this@HellFireApp) }
-            catch (_: Exception) { runCatching { database.events().failure("android_sms", "SMS_SCHEDULING_FAILED") } }
+            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); runCatching { database.events().failure("android_sms", "SMS_SCHEDULING_FAILED") } }
         }
     }
 
     override fun onCreate() {
         super.onCreate()
+        Diagnostics.init(this)
         initializeStorage()
         refreshSmsCapture()
     }
@@ -69,9 +70,10 @@ class HellFireApp : Application() {
                     com.hellfire.ass.tasks.TaskScheduler.restore(this@HellFireApp)
                     com.hellfire.ass.media.MediaWork.recover(this@HellFireApp)
                     seedAiUsage()
+                    com.hellfire.ass.data.SearchBackfill.schedule(this@HellFireApp)
                     watchForWidgets()
-                } catch (_: Exception) { runCatching { database.events().failure("processing", "WORK_RECOVERY_FAILED") } }
-            } catch (_: Exception) {
+                } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); runCatching { database.events().failure("processing", "WORK_RECOVERY_FAILED") } }
+            } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
                 storageStatus.value = "UNAVAILABLE"
             } finally { storageLock.unlock() }
         }

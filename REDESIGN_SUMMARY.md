@@ -4,9 +4,9 @@ Built on branch `feat/ui-redesign` (worktree `.worktrees/feat/ui-redesign`). Eve
 
 **Status on 2026-11-16:**
 - The redesign and the Money entry follow-up are merged into `main` (merges `49f2722` and `566a291`) and pushed. The worktree and branch have been removed.
-- On merged `main`: 205 unit tests, 201 passed, 4 opt-in live-AI tests skipped, 0 failures. Lint passes with 0 errors (244 warnings), which closes the incomplete lint run noted below. Database and backup schema are both 12.
+- On merged `main`: 205 unit tests, 201 passed, 4 opt-in live-AI tests skipped, 0 failures. Lint passes with 0 errors (244 warnings), which closes the incomplete lint run noted below. Database and backup schema were both 12 at the redesign merge; the later review-fixes and multi-account merge moved both to 13.
 - Still not run on the OPPO. The hand-test checklist below is unchanged and still open.
-- The 2026-11-16 project review found defects outside the redesign (capture, recording recovery, relay). They are listed in `docs/DEVICE_FEASIBILITY.md` → "Project review checkpoint".
+- The 2026-11-16 project review found defects outside the redesign (capture, recording recovery, relay). They are fixed; see `docs/DEVICE_FEASIBILITY.md` → "Review fixes and multiple accounts". Settings › Email and Settings › WhatsApp are now account lists, so the hand-test rows for those screens should add and remove a second account.
 
 **State at handover (2026-11-14, before the merge):**
 - Debug build passes.

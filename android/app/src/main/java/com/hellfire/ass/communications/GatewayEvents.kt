@@ -16,7 +16,8 @@ object GatewayEvents {
         require(if (web) event.optString("transport") == "whatsapp_web" else event.optString("transport") != "whatsapp_web")
         val item = event.optJSONObject("item")
         val collection = event.optString("collection")
-        return NotificationSnapshot("relay:$id", if (web) "web.whatsapp" else "meta.whatsapp.business", timestamp, receivedAt,
+        // The account is part of the key: two linked accounts in one group receive the same message ID.
+        return NotificationSnapshot("relay:$accountId:$id", if (web) "web.whatsapp" else "meta.whatsapp.business", timestamp, receivedAt,
             source = if (web) "whatsapp_web" else "whatsapp_business",
             kind = when (collection) { "messages" -> "INCOMING"; "message_echoes" -> "OUTGOING"; else -> collection.uppercase() },
             groupConversation = web && item?.optBoolean("is_group") == true,

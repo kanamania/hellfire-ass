@@ -159,7 +159,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val app = context.applicationContext as HellFireApp
         app.captureScope.launch {
             try { TaskScheduler.fire(app) }
-            catch (_: Exception) { runCatching { app.database.communications().integration(IntegrationState("REMINDERS", "FAILED", System.currentTimeMillis(), "ALARM_PROCESSING_FAILED")) } }
+            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); runCatching { app.database.communications().integration(IntegrationState("REMINDERS", "FAILED", System.currentTimeMillis(), "ALARM_PROCESSING_FAILED")) } }
             finally { result.finish() }
         }
     }
@@ -170,7 +170,7 @@ class ReminderRestoreReceiver : BroadcastReceiver() {
         val result = goAsync()
         val app = context.applicationContext as HellFireApp
         app.captureScope.launch { try { TaskScheduler.restore(app) }
-            catch (_: Exception) { runCatching { app.database.events().failure("reminders", "RESTORATION_FAILED") } }
+            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); runCatching { app.database.events().failure("reminders", "RESTORATION_FAILED") } }
             finally { result.finish() } }
     }
 }

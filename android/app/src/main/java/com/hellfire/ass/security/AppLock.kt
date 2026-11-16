@@ -6,7 +6,7 @@ object AppLock {
     private const val PREFS = "app-lock"
     fun enabled(context: Context): Boolean = try {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("enabled", false)
-    } catch (_: Exception) { true }
+    } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); true }
 
     fun setEnabled(context: Context, enabled: Boolean) {
         check(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("enabled", enabled).commit()) {

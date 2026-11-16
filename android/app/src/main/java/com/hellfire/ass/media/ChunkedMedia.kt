@@ -9,7 +9,7 @@ object ChunkedMedia {
     private val magic = "HFAMEDIA2".toByteArray(Charsets.US_ASCII)
     const val CHUNK = 64 * 1024
     const val HEADER = 41L
-    data class Written(val id: String, val size: Long, val interrupted: Boolean)
+    data class Written(val id: String, val size: Long, val interrupted: Boolean, val pcm: Boolean = false)
     fun write(input: InputStream, file: File, id: String, pcm: Boolean, cipher: PayloadCipher,
         retainInterrupted: Boolean = false): Written {
         val uuid = UUID.fromString(id)
@@ -99,14 +99,15 @@ object ChunkedMedia {
         @Synchronized override fun close() { cached.fill(0); input.close() }
     }
 
-    /** Only authenticated, fully written recording chunks are retained after a process interruption. */
+    /** Only authenticated, fully written recording chunks are retained after a process interruption. Works for AAC and legacy PCM. */
     fun recoverRecording(file: File, cipher: PayloadCipher): Written? {
         RandomAccessFile(file, "rw").use { input ->
             if (input.length() < HEADER) return null
             val header = ByteArray(magic.size); input.readFully(header)
             if (!header.contentEquals(magic)) return null
             val id = UUID(input.readLong(), input.readLong()).toString()
-            if (input.readInt() != 1 || input.readInt() != CHUNK) return null
+            val pcm = when (input.readInt()) { 1 -> true; 0 -> false; else -> return null }
+            if (input.readInt() != CHUNK) return null
             input.readLong()
             var total = 0L
             var index = 0
@@ -123,7 +124,7 @@ object ChunkedMedia {
             }
             if (total == 0L) return null
             input.setLength(end); input.seek(33); input.writeLong(total); input.fd.sync()
-            return Written(id, total, true)
+            return Written(id, total, true, pcm)
         }
     }
 }

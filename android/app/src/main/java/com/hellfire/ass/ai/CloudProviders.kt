@@ -71,7 +71,7 @@ abstract class CloudProvider(
         catch (e: CancellationException) { throw e }
         catch (e: AiException) { throw e }
         catch (_: IOException) { throw AiException(AiError.NETWORK) }
-        catch (_: Exception) { throw AiException(AiError.INVALID_RESPONSE) }
+        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); throw AiException(AiError.INVALID_RESPONSE) }
         val json = runCatching { JSONObject(response.body) }.getOrNull()
         if (response.status !in 200..299) {
             val error = json?.optJSONObject("error")
@@ -115,7 +115,7 @@ abstract class CloudProvider(
         return try { generateText(apiKey, request) }
         catch (e: CancellationException) { throw e }
         catch (e: AiException) { throw e }
-        catch (_: Exception) { throw AiException(AiError.INVALID_RESPONSE) }
+        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); throw AiException(AiError.INVALID_RESPONSE) }
     }
     protected abstract suspend fun generateText(key: String, request: GenerationRequest): Generation
     protected fun usage(json: JSONObject?, input: String, output: String): TokenUsage? {
@@ -130,7 +130,10 @@ abstract class ResponsesProvider(id: ProviderId, baseUrl: String, transport: AiT
     override suspend fun generateText(key: String, request: GenerationRequest): Generation {
         val response = call(key, "/responses", JSONObject().put("model", request.model).put("input", request.text)
             .put("max_output_tokens", request.maxOutputTokens).put("stream", false).put("store", false))
-        if (response.optString("status") != "completed") throw AiException(AiError.INVALID_RESPONSE)
+        // "incomplete" because of the output limit still carries usable text; any other incomplete reason does not.
+        val truncated = response.optString("status") == "incomplete" &&
+            response.optJSONObject("incomplete_details")?.optString("reason") == "max_output_tokens"
+        if (response.optString("status") != "completed" && !truncated) throw AiException(AiError.INVALID_RESPONSE)
         val text = buildString {
             val output = response.getJSONArray("output")
             for (i in 0 until output.length()) {
@@ -145,7 +148,7 @@ abstract class ResponsesProvider(id: ProviderId, baseUrl: String, transport: AiT
                 } else if (item.optString("type") != "reasoning") throw AiException(AiError.CAPABILITY)
             }
         }
-        return Generation(nonempty(text), response.optString("model", request.model), usage(response.optJSONObject("usage"), "input_tokens", "output_tokens"))
+        return Generation(nonempty(text), response.optString("model", request.model), usage(response.optJSONObject("usage"), "input_tokens", "output_tokens"), truncated)
     }
 }
 class OpenAiProvider(transport: AiTransport) : ResponsesProvider(ProviderId.OPENAI, "https://api.openai.com/v1", transport) {
@@ -164,16 +167,23 @@ class ClaudeProvider(transport: AiTransport) : CloudProvider(ProviderId.CLAUDE, 
     override suspend fun generateText(key: String, request: GenerationRequest): Generation {
         val response = call(key, "/messages", JSONObject().put("model", request.model).put("max_tokens", request.maxOutputTokens)
             .put("stream", false).put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", request.text))))
-        if (response.optString("stop_reason") != "end_turn") throw AiException(AiError.INVALID_RESPONSE)
+        val stop = response.optString("stop_reason")
+        if (stop == "refusal") throw AiException(AiError.REFUSED)
+        if (stop != "end_turn" && stop != "max_tokens") throw AiException(AiError.INVALID_RESPONSE)
         val content = response.getJSONArray("content")
         val text = buildString {
             for (i in 0 until content.length()) {
                 val part = content.getJSONObject(i)
-                if (part.optString("type") == "text") append(part.getString("text"))
-                else throw AiException(AiError.CAPABILITY)
+                when (part.optString("type")) {
+                    "text" -> append(part.getString("text"))
+                    // Current models return thinking blocks by default; they are not part of the answer.
+                    "thinking", "redacted_thinking" -> {}
+                    else -> throw AiException(AiError.CAPABILITY)
+                }
             }
         }
-        return Generation(nonempty(text), response.optString("model", request.model), usage(response.optJSONObject("usage"), "input_tokens", "output_tokens"))
+        return Generation(nonempty(text), response.optString("model", request.model), usage(response.optJSONObject("usage"), "input_tokens", "output_tokens"),
+            truncated = stop == "max_tokens")
     }
 }
 class DeepSeekProvider(transport: AiTransport) : CloudProvider(ProviderId.DEEPSEEK, "https://api.deepseek.com", transport) {
@@ -182,10 +192,11 @@ class DeepSeekProvider(transport: AiTransport) : CloudProvider(ProviderId.DEEPSE
         val response = call(key, "/chat/completions", JSONObject().put("model", request.model).put("max_tokens", request.maxOutputTokens)
             .put("stream", false).put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", request.text))))
         val choice = response.getJSONArray("choices").getJSONObject(0)
-        if (choice.optString("finish_reason") != "stop") throw AiException(AiError.INVALID_RESPONSE)
+        val finish = choice.optString("finish_reason")
+        if (finish != "stop" && finish != "length") throw AiException(AiError.INVALID_RESPONSE)
         val message = choice.getJSONObject("message")
         if (message.has("tool_calls") && !message.isNull("tool_calls")) throw AiException(AiError.CAPABILITY)
         return Generation(nonempty(message.getString("content")), response.optString("model", request.model),
-            usage(response.optJSONObject("usage"), "prompt_tokens", "completion_tokens"))
+            usage(response.optJSONObject("usage"), "prompt_tokens", "completion_tokens"), truncated = finish == "length")
     }
 }

@@ -4,7 +4,7 @@
 Read `docs/MASTER_SPEC.md` (the provided `HellFire_Ass_Codex_Master_Spec.md`) fully before starting. The project name is exactly **HellFire Ass**; use assistant invocation name **HellFire** and proposed package `com.hellfire.ass`.
 
 ## Execution rules
-- **Implement Phase 0 first; do not start later phases automatically.**
+- Phase 0 came first. The owner has since authorized all later phases (2026-11-13) and kept physical device testing for last; see the owner updates at the top of `docs/MASTER_SPEC.md`.
 - Inspect the existing repo, then propose a concise implementation plan and implement a compiling, testable vertical slice.
 - Android: Kotlin, Jetpack Compose, Room, coroutines, testable integration adapters. Consult installed SDK/tooling and official docs before choosing versions.
 - Do not invent API methods, fake demo integrations, successful device tests, or claim to have used a device that is not connected.
@@ -12,7 +12,7 @@ Read `docs/MASTER_SPEC.md` (the provided `HellFire_Ass_Codex_Master_Spec.md`) fu
 - Notifications: ingest every notification available to the permitted `NotificationListenerService`, not just bank/chat apps. Redact OTPs and honor Android-protected fields.
 - Assistant: implement real `VoiceInteractionService` and session metadata/role integration; OEM gesture and hotword support require physical verification.
 - Mic: create a visibly active, user-authorized recording prototype. Do not use stealth capture or OS-bypass tricks.
-- WhatsApp later: official Business Platform Coexistence and self-hosted webhook gateway. Do not rely on notification-only integration for eligible Business account.
+- WhatsApp: the owner selected whatsapp-web.js linked-device capture (capture-only, one self-hosted relay per WhatsApp account); official Business Platform Coexistence remains the alternative for sending. Do not rely on notification-only integration.
 - Gmail later: IMAP/SMTP with user-provided Gmail app password where allowed. Do not use Gmail API.
 - Calls later: import the OPPO's existing call recordings; never assume third-party call audio capture is possible.
 - In-person conversation audio later: retain encrypted original audio **and** transcript/summary until user chooses retention/deletion.

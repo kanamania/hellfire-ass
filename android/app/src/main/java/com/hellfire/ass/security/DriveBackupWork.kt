@@ -15,6 +15,13 @@ object DriveBackupWork {
     const val DAILY = "daily-google-drive-backup"
     const val NOW = "google-drive-backup-now"
     val mutex = Mutex()
+    /** Newest app-created archives kept on Drive; 0 keeps all. */
+    const val DEFAULT_KEEP = 7
+    fun setKeep(context: Context, keep: Int) {
+        require(keep >= 0)
+        val app = context.applicationContext as HellFireApp
+        app.secrets.read(CONFIG)?.let { app.secrets.save(CONFIG, it.put("keep", keep)) }
+    }
     private fun constraints() = Constraints.Builder().setRequiredNetworkType(NetworkType.UNMETERED)
         .setRequiresBatteryNotLow(true).setRequiresStorageNotLow(true).build()
     fun schedule(context: Context) {
@@ -69,6 +76,16 @@ class DriveBackupWorker(context: Context, params: WorkerParameters) : CoroutineW
                 val context = currentCoroutineContext()
                 val id = GoogleDriveBackup().upload(file, token) { context.ensureActive() }
                 DriveBackupWork.status(app, "Backup uploaded and size/checksum confirmed", id)
+                // Only after a confirmed upload; only archives this app created, never the one just uploaded.
+                val keep = config.optInt("keep", DriveBackupWork.DEFAULT_KEEP)
+                if (keep > 0) try {
+                    val drive = GoogleDriveBackup()
+                    drive.list(token).filter { it.id != id }.sortedByDescending { it.createdAt }.drop(keep - 1).forEach { drive.delete(it.id, token) }
+                } catch (e: CancellationException) { throw e }
+                catch (caught: Exception) {
+                    com.hellfire.ass.Diagnostics.warn(caught)
+                    DriveBackupWork.status(app, "Backup uploaded and confirmed; removing older backups failed and will be retried after the next upload", id)
+                }
                 Result.success()
             } catch (e: CancellationException) {
                 DriveBackupWork.status(app, "Backup interrupted; waiting for another scheduled attempt")
@@ -79,7 +96,7 @@ class DriveBackupWorker(context: Context, params: WorkerParameters) : CoroutineW
             } catch (e: DriveHttpError) {
                 DriveBackupWork.status(app, if (e.status == 403) "Drive access or storage quota denied; check Google account and reconnect" else "Drive upload failed (HTTP ${e.status}); no new success recorded")
                 if (e.status == 429 || e.status >= 500) Result.retry() else Result.failure()
-            } catch (_: Exception) {
+            } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
                 DriveBackupWork.status(app, "Backup failed; check connection, storage, Google setup and passphrase. Previous backups retained.")
                 Result.retry()
             } finally { password?.fill('\u0000'); file.delete() }

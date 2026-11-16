@@ -50,7 +50,8 @@ class MediaVault(private val app: HellFireApp) {
             register(id, name, mime, kind, hash, written.size, null, false, origin, durationMs)
         } catch (error: Exception) { temporary.delete(); throw error }
     }
-    suspend fun registerRecording(id: String, start: Long?, interrupted: Boolean, spans: List<Pair<Long, Long>>, durationMs: Long? = null): MediaItem = lock.withLock {
+    suspend fun registerRecording(id: String, start: Long?, interrupted: Boolean, spans: List<Pair<Long, Long>>, durationMs: Long? = null,
+        mime: String = "audio/aac"): MediaItem = lock.withLock {
         val path = file(id)
         val hash = MessageDigest.getInstance("SHA-256")
         var size = 0L
@@ -64,10 +65,15 @@ class MediaVault(private val app: HellFireApp) {
         val digest = hash.digest().joinToString("") { "%02x".format(it) }
         app.database.media().hash(digest)?.let { if (it.id != id) path.delete(); return@withLock it }
         val item = register(id, if (interrupted) "Interrupted conversation recording" else "Conversation recording",
-            "audio/aac", "IN_PERSON_AUDIO", digest, size, start, interrupted, "", durationMs)
+            mime, "IN_PERSON_AUDIO", digest, size, start, interrupted, "", durationMs)
         spans.forEachIndexed { index, span -> app.database.media().span(SpeechSpan("$id:vad:$index", id, span.first, span.second)) }
         item
     }
+    /** File creation time approximates when an interrupted recording started; unknown when the filesystem does not say. */
+    private fun recoveredStart(path: java.io.File): Long? = runCatching {
+        java.nio.file.Files.readAttributes(path.toPath(), java.nio.file.attribute.BasicFileAttributes::class.java).creationTime().toMillis()
+    }.getOrNull()?.takeIf { it > 0 }
+
     private suspend fun register(id: String, name: String, mime: String, kind: String, hash: String,
         size: Long, recordedAt: Long?, interrupted: Boolean, origin: String, durationMs: Long? = null): MediaItem = app.database.withTransaction {
         val now = System.currentTimeMillis()
@@ -108,12 +114,17 @@ class MediaVault(private val app: HellFireApp) {
             app.secrets.remove("restore-journal")
         }
         for (item in app.database.media().deleting()) runCatching { delete(item.id) }
+        // An unregistered file is the live recording while the microphone is busy; never touch it then.
+        if (com.hellfire.ass.audio.MicrophoneStatus.busy.value) return@withContext
         for (path in directory.listFiles().orEmpty().filter { it.extension == "hfm" }) {
             val id = path.nameWithoutExtension
             if (runCatching { UUID.fromString(id) }.isFailure || app.database.media().item(id) != null) continue
             runCatching {
-                ChunkedMedia.recoverRecording(path, app.cipher)?.let { registerRecording(id, null, true, emptyList()) }
-            }
+                val recovered = ChunkedMedia.recoverRecording(path, app.cipher)
+                // A recording with no authenticated audio is an empty orphan; remove it rather than leave ciphertext behind.
+                if (recovered == null) path.delete()
+                else registerRecording(id, recoveredStart(path), true, emptyList(), mime = if (recovered.pcm) "audio/pcm" else "audio/aac")
+            }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }
         }
     }
 }

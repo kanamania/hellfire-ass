@@ -46,7 +46,7 @@ class ProcessEventsWorker(context: Context, params: WorkerParameters) : Coroutin
             EventProcessor(app.database.events(), app.finances::collect, { id, time, text, outgoing -> com.hellfire.ass.tasks.TaskScheduler.collect(app, id, time, text, outgoing) }) { app.cipher }.drain()
             Result.success()
         } catch (e: CancellationException) { throw e }
-        catch (_: Exception) { Result.retry() }
+        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); Result.retry() }
     }
 }
 
@@ -59,6 +59,6 @@ class CaptureMaintenanceWorker(context: Context, params: WorkerParameters) : Cor
             if (SmsCaptureSettings.enabled(applicationContext)) SmsSyncWorker.schedule(applicationContext)
             Result.success()
         } catch (e: CancellationException) { throw e }
-        catch (_: Exception) { Result.retry() }
+        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); Result.retry() }
     }
 }

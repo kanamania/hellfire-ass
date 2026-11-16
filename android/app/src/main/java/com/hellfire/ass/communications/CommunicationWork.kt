@@ -20,9 +20,9 @@ class CommunicationRepository(private val app: HellFireApp) {
         val dao = app.database.communications()
         val draft = requireNotNull(dao.draft(id))
         val config = try { when (draft.channel) {
-            "EMAIL_IMAP" -> requireNotNull(app.secrets.read("mail")).also { require(it.getString("id") == draft.accountId) }
-            "WHATSAPP_BUSINESS" -> requireNotNull(app.secrets.read("gateway")).also {
-                require(it.getString("id") == draft.accountId && it.optString("transport", "meta") == "meta") { "WhatsApp Web is capture-only" }
+            "EMAIL_IMAP" -> requireNotNull(Accounts.find(app.secrets, Accounts.MAIL, draft.accountId)) { "Email account was disconnected" }
+            "WHATSAPP_BUSINESS" -> requireNotNull(Accounts.find(app.secrets, Accounts.GATEWAY, draft.accountId)) { "WhatsApp account was disconnected" }.also {
+                require(Accounts.transport(it) == "meta") { "WhatsApp Web is capture-only" }
             }
             else -> error("This channel does not support sending")
         }
@@ -36,7 +36,7 @@ class CommunicationRepository(private val app: HellFireApp) {
         } catch (e: CancellationException) {
             withContext(NonCancellable) { dao.delivery(id, "UNKNOWN", null, "DELIVERY_UNCONFIRMED") }
             throw e
-        } catch (_: Exception) {
+        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
             dao.delivery(id, "UNKNOWN", null, "DELIVERY_UNCONFIRMED")
             dao.audit(ActionAudit(UUID.randomUUID().toString(), id, "SEND", "UNKNOWN", System.currentTimeMillis(), "DELIVERY_UNCONFIRMED"))
             error("Delivery unconfirmed. Check the source channel before creating another send.")
@@ -60,18 +60,26 @@ class CommunicationSyncWorker(context: Context, params: WorkerParameters) : Coro
         val app = applicationContext as HellFireApp
         var retry = false
         var more = false
-        for ((name, adapter) in listOf("mail" to "EMAIL_IMAP", "gateway" to "WHATSAPP_GATEWAY")) {
-            try {
-                val config = app.secrets.read(name)
-                if (config == null) {
-                    app.database.communications().integration(IntegrationState(adapter, "NOT_CONFIGURED", System.currentTimeMillis()))
-                } else {
-                    more = (if (name == "mail") MailAdapter(app).sync(MailConfig.from(config)) else GatewayAdapter(app).sync(config)) || more
-                }
-            } catch (e: CancellationException) { throw e }
-            catch (_: Exception) {
+        val dao = app.database.communications()
+        // Each inbox and each WhatsApp relay syncs independently; one failing account does not stop the others.
+        val mail = try { Accounts.mail(app.secrets) } catch (e: CancellationException) { throw e } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); retry = true; emptyList() }
+        for (config in mail) {
+            try { more = MailAdapter(app).sync(config) || more }
+            catch (e: CancellationException) { throw e }
+            catch (caught: Exception) {
+                com.hellfire.ass.Diagnostics.warn(caught)
                 retry = true
-                app.database.communications().integration(IntegrationState(adapter, "FAILED", System.currentTimeMillis(), "CONNECTION_OR_CREDENTIALS_UNAVAILABLE"))
+                dao.integration(IntegrationState(Accounts.mailState(config.id), "FAILED", System.currentTimeMillis(), "CONNECTION_OR_CREDENTIALS_UNAVAILABLE"))
+            }
+        }
+        val gateways = try { Accounts.gateways(app.secrets) } catch (e: CancellationException) { throw e } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); retry = true; emptyList() }
+        for (config in gateways) {
+            try { more = GatewayAdapter(app).sync(config) || more }
+            catch (e: CancellationException) { throw e }
+            catch (caught: Exception) {
+                com.hellfire.ass.Diagnostics.warn(caught)
+                retry = true
+                dao.integration(IntegrationState(Accounts.gatewayState(config.getString("id")), "FAILED", System.currentTimeMillis(), "CONNECTION_OR_CREDENTIALS_UNAVAILABLE"))
             }
         }
         CaptureWork.process(app)
