@@ -4,7 +4,7 @@ Phase 0–1 and software slices across Phases 2–6 are implemented. See
 [README.md](README.md) for setup/use and [docs/DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md)
 for exact host results, remaining model/account gates and the final device checklist.
 The owner authorized remaining phases and deferred physical device testing until last.
-No physical, model or live-account success is claimed. The debug version is 0.4.0.
+No physical, model or live-account success is claimed. The debug version is 0.5.0.
 
 Status on 2026-11-16: the UI redesign, home screen widgets, money entry pickers,
 fingerprint app lock, daily Google Drive backup, the review fixes and multiple email
