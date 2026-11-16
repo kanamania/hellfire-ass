@@ -4,11 +4,12 @@ Phase 0–1 and software slices across Phases 2–6 are implemented. See
 [README.md](README.md) for setup/use and [docs/DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md)
 for exact host results, remaining model/account gates and the final device checklist.
 The owner authorized remaining phases and deferred physical device testing until last.
-No physical, model or live-account success is claimed. The debug version is 0.5.0.
+No physical, model or live-account success is claimed. The debug version is 0.6.0.
 
 Status on 2026-11-16: the UI redesign, home screen widgets, money entry pickers,
 fingerprint app lock, daily Google Drive backup, the review fixes and multiple email
-inboxes and WhatsApp accounts are merged into `main` (version 0.5.0, Room schema 13).
+inboxes and WhatsApp accounts, and the Gemma 4 E2B first-launch download are merged
+into `main` (version 0.6.0, Room schema 13).
 An optional read-only web copy synced from the phone (`web/`, NestJS + Postgres +
 Next.js; README → "Web access") is added but not deployed. Host suites pass (226
 Android, 23 relay, 6 worker and 11 web API tests). Next work is the physical

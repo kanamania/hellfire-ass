@@ -15,12 +15,13 @@ used to establish host results. No message has been sent and no gateway deployed
 - **Code:** `main` holds every merged slice: Phases 0–6 software, the UI redesign
   (five tabs, reports, 13 home screen widgets), money entry pickers, fingerprint app
   lock, daily encrypted Google Drive backup, the resource-use changes, the fixes for
-  the 2026-11-16 review findings and **multiple email inboxes and WhatsApp accounts**.
-  Debug version **0.5.0** (code 5), Room schema **13**, backup schema **13**.
+  the 2026-11-16 review findings, **multiple email inboxes and WhatsApp accounts**, and
+  **Gemma 4 E2B downloaded on first launch with on-device update checks**.
+  Debug version **0.6.0** (code 6), Room schema **13**, backup schema **13**.
 - **Web access:** an optional read-only web copy (NestJS API, Postgres, Next.js site
   in `web/`) synced from the phone; see [Web access](#web-access-read-only-mirror).
   Not deployed anywhere and not yet run against a real phone.
-- **Host checks on this tree:** 226 Android unit tests (222 passed, 4 opt-in live AI
+- **Host checks on this tree:** 232 Android unit tests (228 passed, 4 opt-in live AI
   tests skipped, 0 failures), 23 relay tests, 6 WhatsApp Web worker tests and 11 web
   API tests pass.
   Lint passes with 0 errors and the debug APK assembles; the checksum is in
@@ -44,7 +45,7 @@ cd android
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 ```
 
-APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.5.0**.
+APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.6.0**.
 It is built for **arm64-v8a only** (since 2026-11-16), Android API 29+, target/compile
 API 36. Confirm the phone ABI before installation (`adb shell getprop ro.product.cpu.abilist`);
 32-bit-only phones and x86_64 PC emulators cannot run it. Size: about 149 MB
@@ -169,7 +170,18 @@ assistant is the Ask tab. [DECISIONS.md](DECISIONS.md) records where each contro
   intervals include up to 30 seconds of preceding audio; they are not reliable
   diarization or proof of participation. Speaker labels start UNKNOWN and are
   manually correctable. The separate 60-second Phase 0 sample control remains.
-- **Local AI:** import an owner-selected, licensed `.litertlm` model and choose
+- **Gemma 4 E2B on first launch:** the app downloads Google's official
+  `gemma-4-E2B-it.litertlm` (2.59 GB, Apache-2.0) from the `litert-community`
+  repository on Hugging Face, pinned to a known commit and SHA-256. It waits for
+  Wi-Fi, battery and storage, shows a progress notification, resumes after
+  interruptions, then test-loads the file before using it; the APK stays small. A
+  daily Wi-Fi check compares the published file with the installed one and shows
+  **Update available** in Settings › On-device models; the update downloads only when
+  you tap **Update**, and the current model stays in use until the new one is verified
+  and loads. Removing the model stops automatic downloads. An owner-imported model is
+  never replaced by an update. These are the app's only Hugging Face requests; they
+  carry no personal data.
+- **Local AI:** optionally use your own licensed `.litertlm` model instead, and choose
   CPU/GPU. No NPU support or specific-model benchmark is asserted. Import a
   multilingual whisper.cpp GGML model for English/Kiswahili transcription. Large
   inference requests are serialized and bounded; media analysis defaults to charging,
@@ -651,6 +663,9 @@ SQLCipher/Keystore, actual model execution, live accounts or Android/OEM behavio
 - 2026-11-16, web access: optional read-only web copy (`web/`: NestJS API, Postgres,
   Next.js site) and Settings › Web access with an incremental WebSync worker on the phone;
   no Room change. 226 Android, 11 web API tests.
+- 2026-11-16, Gemma 4 E2B (0.6.0): pinned official model downloaded on first launch over
+  Wi-Fi with resume, SHA-256 check and load test; daily update check with owner-approved
+  updates; arm64-v8a-only build; 232 host tests.
 - 2026-11-16, review fixes and multiple accounts (0.5.0, Room v13): stable SMS/mail/relay
   identity, SMS high-water mark, money-preserving redaction, cross-source payment
   duplicates, tighter finance/task rules with Swahili clock times, full-text search,

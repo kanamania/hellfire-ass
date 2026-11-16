@@ -29,7 +29,25 @@ class LocalModel(private val context: Context) {
                 } }
                 require(temp.length() in 1024..(12L * 1024 * 1024 * 1024)) { "Select a compatible .litertlm model" }
                 java.nio.file.Files.move(temp.toPath(), modelFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                ModelUpdates.markImported(context)
             } finally { temp.delete() }
+        }
+    }
+
+    /** True when the runtime can open [file] on CPU. Used before a downloaded model replaces the current one. */
+    suspend fun loads(file: File): Boolean = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            runCatching {
+                Engine(EngineConfig(modelPath = file.path, backend = Backend.CPU(), cacheDir = context.cacheDir.path, maxNumTokens = 512)).use { it.initialize() }
+            }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }.isSuccess
+        }
+    }
+
+    /** Atomically replaces the model with a verified file; a running inference finishes on the old one first. */
+    suspend fun install(file: File) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            modelFile.parentFile!!.mkdirs()
+            java.nio.file.Files.move(file.toPath(), modelFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE)
         }
     }
     suspend fun generate(prompt: String, gpu: Boolean = false): ModelAnswer = withContext(Dispatchers.IO) {
@@ -49,7 +67,12 @@ class LocalModel(private val context: Context) {
             ModelAnswer(text, SystemClock.elapsedRealtime() - started, Debug.getPss(), if (gpu) "GPU" else "CPU")
         }
     }
-    suspend fun remove() = withContext(Dispatchers.IO) { mutex.withLock { modelFile.delete() } }
+    /** The owner removed the model: it is not downloaded again until they ask. */
+    suspend fun remove() = withContext(Dispatchers.IO) {
+        ModelUpdates.cancel(context)
+        mutex.withLock { modelFile.delete() }
+        ModelUpdates.markRemoved(context)
+    }
 }
 
 data class ModelAnswer(val text: String, val elapsedMs: Long, val pssKb: Long, val backend: String)

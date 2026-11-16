@@ -1,8 +1,53 @@
 # HellFire Ass — implementation and feasibility
 
-Latest update: 2026-11-16 (web access, directly below). Earlier
+Latest update: 2026-11-16 (Gemma 4 E2B download and dependency check, directly below). Earlier
 checkpoints keep the test counts and APK checksums that were true when they were
 written; the review checkpoint has the current ones.
+
+## Gemma 4 E2B download and updates — 2026-11-16
+
+Branch `feat/gemma-download`. Version 0.6.0 (code 6); no Room or backup schema change.
+No phone, model download or network request was made in testing.
+
+| Check | Command | Result |
+|---|---|---|
+| Android unit tests | `./gradlew :app:testDebugUnitTest --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'` | PASS: 232 tests, 228 passed, 4 opt-in live AI tests skipped, 0 failures; 6 new in `ModelUpdatesTest` |
+| Lint and debug APK | `./gradlew :app:lintDebug :app:assembleDebug` with the same limits | PASS: lint 0 errors, 254 warnings, 5 hints. Debug APK 0.6.0 (code 6), arm64-v8a only, 149,469,089 bytes, SHA-256 `d9b99631d1b2e260b271380986b608041d2120c0a98efa2e2623e658382e63bc`; the model is not in the APK. Not installed on any device |
+
+| Question | Test | Result | Evidence | Next action |
+|---|---|---|---|---|
+| Is the published model the expected one? | Hugging Face API, 2026-11-16 | PASS (metadata) | `litert-community/gemma-4-E2B-it-litert-lm`: Apache-2.0, not gated; `gemma-4-E2B-it.litertlm` 2,588,147,712 bytes, LFS SHA-256 `181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c`, uploaded 2026-05-04, listed at commit `2d74ac41`. LiteRT-LM release notes list Gemma 4 support from 0.10.1; the app uses 0.12.0 | — |
+| Download resumes and rejects bad files? | `ModelUpdatesTest` | PASS (host, synthetic bytes) | Metadata parsing; full download; resume with `Range` and a matching `Content-Range`; a server ignoring `Range` restarts the file; wrong checksum deletes it; HTTP redirects and 404 rejected | — |
+| Updates offered correctly? | `ModelUpdatesTest` | PASS (host) | Offered only when the published SHA-256 differs from the installed downloaded model; never for the owner's own model; removal stops automatic download | — |
+| Does the file load on the OPPO? | — | NOT TESTED | After download the worker opens the file on CPU before installing it; a failure leaves any previous model in place and reports it | Install 0.6.0 on Wi-Fi, wait for the download, then run a local question on CPU and GPU; record time, memory and heat |
+| Real 2.6 GB download behaviour | — | NOT TESTED | Foreground WorkManager job (dataSync) on unmetered network with storage/battery constraints and a progress notification | Test Wi-Fi drop, reboot and force-stop mid-download; confirm it resumes and the notification is visible |
+
+## Dependency update check — 2026-11-16
+
+Report only; nothing was upgraded. Sources: lint `GradleDependency`/`NewerVersionAvailable`,
+Google Maven and Maven Central metadata, `pip list --outdated`, `npm outdated`, `npm audit`.
+
+| Package | In use | Newest | Note |
+|---|---|---|---|
+| Gradle | 8.13 | 8.14.7 | Patch-level for this AGP |
+| Android Gradle Plugin | 8.13.2 | 9.5.1 | **Major**; 8.13.2 is the newest 8.x |
+| Kotlin (android, compose plugin) | 2.2.21 | 2.4.21 | Minor; KSP must move with it (2.3.14 available) |
+| KSP | 2.2.21-2.0.4 | 2.3.14 | Tied to the Kotlin version |
+| Compose BOM | 2025.10.00 | 2026.09.00 | Many UI library updates |
+| Room | 2.8.4 | 2.8.5 | Patch |
+| Lifecycle runtime compose | 2.9.4 | 2.11.0 | Minor |
+| Activity compose | 1.11.0 | 1.13.0 | Minor |
+| Core | 1.15.0 | 1.19.1 | Minor |
+| WorkManager | 2.10.5 | 2.12.0 | Minor |
+| Glance appwidget / material3 | 1.1.1 | 1.2.0 | Minor |
+| Coroutines | 1.10.2 | 1.11.0 | Minor |
+| LiteRT-LM | 0.12.0 | 0.19.1 | Model runtime; earlier note says newer versions need newer Kotlin metadata |
+| MediaPipe tasks-text | 0.10.26 | 1.2.3 | **Major** (0.x → 1.x) |
+| ONNX Runtime | 1.31.1 | 1.32.0 | Minor |
+| Robolectric (tests) | 4.16 | 4.17 | Minor |
+| FastAPI (relay) | 0.162.5 | 0.163.1 | Minor (0.x) |
+| Python base image (relay) | 3.14 slim (resolves to latest 3.14.x at build) | 3.14.10 | Unpinned patch tag |
+| Up to date | — | — | Play services auth 22.0.0, ML Kit text recognition 16.0.1 and image labeling 17.0.9, SQLCipher 4.20.0, JavaMail 1.6.8, JUnit 4.13.2, uvicorn, httpx, cryptography, pytest, whatsapp-web.js 1.34.8, qrcode 1.5.4, Puppeteer 25.17.0; `npm audit`: 0 vulnerabilities |
 
 ## Web access — 2026-11-16
 
