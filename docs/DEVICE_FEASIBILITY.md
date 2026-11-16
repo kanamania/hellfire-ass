@@ -1,8 +1,34 @@
 # HellFire Ass — implementation and feasibility
 
-Latest update: 2026-11-16 (review fixes and multiple accounts, directly below). Earlier
+Latest update: 2026-11-16 (web access, directly below). Earlier
 checkpoints keep the test counts and APK checksums that were true when they were
 written; the review checkpoint has the current ones.
+
+## Web access — 2026-11-16
+
+Branch `feat/web-sync` (based on `main` after the multiple-accounts merge). Adds the
+optional read-only web copy in `web/` and Settings › Web access on the phone. No Room
+or backup schema change; version unchanged at 0.5.0. Synthetic data only; nothing was
+deployed, and no phone or real server was used.
+
+| Check | Command | Result |
+|---|---|---|
+| Android unit tests | `./gradlew :app:testDebugUnitTest` | PASS: 226 tests, 222 passed, 4 opt-in live AI tests skipped, 0 failures; 5 new in `WebSyncTest` |
+| Lint and debug APK | `./gradlew :app:lintDebug :app:assembleDebug` | PASS: lint 0 errors, 251 warnings (1 new: `UseKtx` in `WebSync.kt`, same pattern as `DriveBackupWork`). Debug APK 0.5.0, 249,648,933 bytes, SHA-256 `4f4e0a0f1833494b9ac88e2316aaffdd9e61deb190b64dea9cd36b784c6f15a9`. Not installed on any device |
+| Web API | `cd web/api && TEST_DATABASE_URL='postgresql:///hellfire_test?host=/run/postgresql' npm test` (Node 24.13.0, local PostgreSQL 18.6) | PASS: 11 tests |
+| Website | `cd web/frontend && npm run typecheck && npm run build` | PASS |
+| systemd units | `systemd-analyze verify web/systemd/*.service` | PASS; not installed or started |
+| Local end-to-end | API and `next start` on 127.0.0.1:3911/3910 with the local `hellfire_test` database; rows pushed through the site's `/api/sync` forward, pages fetched with a session cookie | PASS: all seven pages rendered the pushed rows; `/api/overview` is not reachable through the site (404); signed-out pages redirect to `/login` |
+
+| Question | Test | Result | Evidence | Next action |
+|---|---|---|---|---|
+| Phone sends only changes and deletions? | `WebSyncTest` | PASS (host) | Second pass with no changes sends nothing; a closed task and a forgotten memory send one upsert and one delete | Watch the first full sync and a later pass on the OPPO with real volumes |
+| Security codes stay on the phone? | `WebSyncTest` | PASS (host) | Sensitive events and the messages and tasks captured from them are not sent; the code text appears nowhere in the fake server | Inspect the server copy after a real OTP arrives |
+| Wiped or new server repaired? | `WebSyncTest`, API tests | PASS (host) | A changed dataset id makes the phone reset the server and send a full copy; batches for an old dataset get 409 | — |
+| Large kinds bounded? | `WebSyncTest`, API tests | PASS (host) | 650 2 KB rows go in batches of ≤300 rows / ~1 MB; the API accepts 500 rows of ~1.5 MB and rejects 501 | Time a full sync over mobile data |
+| Access control | API tests | PASS (host) | Sync routes need `SYNC_TOKEN`, read routes an owner session; expired or forged sessions rejected; repeated wrong passwords get 429 | Verify through the real reverse proxy and HTTPS |
+| Sync over a real network | Compile only | NOT TESTED | HTTPS-only client, 15-minute WorkManager job (network connected, battery not low), status in Settings | Install the units, add the HTTPS proxy, connect the OPPO, check ColorOS background limits |
+| Sign-in form | Build; API login tested separately | PARTIAL | The server action sets the cookie from the API token; not exercised in a browser | Sign in once in a browser |
 
 ## Phone-only build — 2026-11-16
 

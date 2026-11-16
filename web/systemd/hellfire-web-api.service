@@ -1,0 +1,23 @@
+# HellFire web access: sync/read API on 127.0.0.1:3911, using the local PostgreSQL.
+# Install: sudo cp web/systemd/*.service /etc/systemd/system/ && sudo systemctl daemon-reload
+#          sudo systemctl enable --now hellfire-web-api hellfire-web-frontend
+# Adjust User, paths and the node binary if this checkout or Node install moves.
+[Unit]
+Description=HellFire web access API
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+User=dev
+WorkingDirectory=/home/dev/Projects/hellfire-ass/web/api
+# Private file (gitignored): DATABASE_URL, SYNC_TOKEN, SESSION_SECRET, OWNER_PASSWORD_HASH.
+EnvironmentFile=/home/dev/Projects/hellfire-ass/web/.env
+Environment=NODE_ENV=production
+ExecStart=/home/dev/.nvm/versions/node/v24.13.0/bin/node dist/src/main.js
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

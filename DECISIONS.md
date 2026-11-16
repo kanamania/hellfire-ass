@@ -169,3 +169,16 @@ Decisions made where `HANDOFF.md` was unclear or a screen was marked *not drawn*
 - **Deep links** are accepted only by the unexported `MainActivity`; the launcher, assist gesture and assistant settings enter through the exported `.Launcher` alias, whose data is ignored.
 - **Diagnostics** log only in debuggable builds, and only exception classes and stack frames.
 - **Not changed:** no release build type or CI was added; no backfill-on-request for older mail.
+
+## Web access (2026-11-16)
+
+- **Read-only mirror, phone as the only writer.** The owner asked for web access with all processing on the phone. The server only stores, filters, counts and pages what the phone sends; month totals and account balances come from `FinanceRepository` on the phone as a `summary` row. Confirming, sending and editing stay on the phone, so the web needs no conflict handling.
+- **Plain copy on the owner's server.** Rows are stored as JSON in Postgres so the site can filter, page and search them. This is a deliberate change from "everything encrypted on the phone": the Settings privacy line says so when web access is on, and the Web access page says what is and is not copied. End-to-end encryption to the browser was not chosen because server-side listing and search would then be impossible.
+- **One generic table.** `record(kind, id, at, data jsonb)`, not a copy of the Room schema, so Room migrations do not need server migrations. Filterable fields are an allow-list per kind; values are parameters.
+- **Change tracking on the phone, no Room migration.** The phone keeps an encrypted `web-sync-state` (dataset id + id → hash per kind) in the secret store and diffs it against current rows each pass. Hashes cover only the sent columns (plus `payloadHash` for events), so payloads are decrypted only for rows being uploaded. A mismatched dataset id resets the server and sends everything.
+- **What is copied.** Only listed columns. Events are SMS plus notifications classified MESSAGE or FINANCE_CANDIDATE (as in the Inbox), with only their text fields. Anything tied to a security-sensitive source is excluded. Budgets are not copied, because pace needs spending computed per category.
+- **Browser talks only to Next.js.** Next keeps the session token in an HttpOnly cookie and calls the API server-side. The site forwards only `/api/sync/*` (for the phone) to the API, so the read API is not exposed. Sessions are stateless HMAC tokens (12 h).
+- **No ORM, no Nest CLI, no Jest.** `pg` with SQL, `tsc` builds, and Node's test runner against a real Postgres. Nest 12 is ESM-only, which makes Jest awkward. `@nestjs/throttler` is the one extra dependency, for login and sync rate limits.
+- **No Docker (owner request).** The server runs on the host: local PostgreSQL 18 through the Unix socket with peer authentication (role `dev`, databases `hellfire` and `hellfire_test`), and two systemd units bound to 127.0.0.1 (website 3910, API 3911; 3000/3001 were already taken). Tests use the local `hellfire_test` database.
+- **Password hash uses `:` separators** (`scrypt:salt:key`), so it can sit in an env file without `$` escaping.
+

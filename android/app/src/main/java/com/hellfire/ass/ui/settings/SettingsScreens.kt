@@ -112,10 +112,12 @@ fun SettingsHub() {
     var ai by remember { mutableStateOf<com.hellfire.ass.ai.AiState?>(null) }
     var mail by remember { mutableStateOf(0) }
     var gateways by remember { mutableStateOf<List<String>>(emptyList()) }
+    var webAccess by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { withContext(Dispatchers.IO) {
         ai = runCatching { app.ai.store.read() }.getOrNull()
         mail = runCatching { com.hellfire.ass.communications.Accounts.list(app.secrets, com.hellfire.ass.communications.Accounts.MAIL).size }.getOrDefault(0)
         gateways = runCatching { com.hellfire.ass.communications.Accounts.gateways(app.secrets).map(com.hellfire.ass.communications.Accounts::transport) }.getOrDefault(emptyList())
+        webAccess = runCatching { app.secrets.read(com.hellfire.ass.sync.WebSync.CONFIG) != null }.getOrDefault(false)
     } }
     val steps = setupSteps(env.permissions, env.actions)
     val lastBackup = maxOf(app.getSharedPreferences("ui", 0).getLong("last_backup_at", 0),
@@ -128,8 +130,9 @@ fun SettingsHub() {
             }
             Column(Modifier.weight(1f)) {
                 Text("Private by default", style = Hf.type.rowTitle, color = Hf.colors.onSurfaceDark)
-                Text(if (ai?.cloudEnabled == true) "Everything is encrypted on this phone. Cloud AI is on for text you send from Ask."
-                    else "Everything is encrypted on this phone. Nothing goes to the cloud unless you turn it on.", style = Hf.type.rowSubtitle, color = Hf.colors.mutedOnDark)
+                Text((if (ai?.cloudEnabled == true) "Everything is encrypted on this phone. Cloud AI is on for text you send from Ask."
+                    else "Everything is encrypted on this phone. Nothing goes to the cloud unless you turn it on.") +
+                    if (webAccess) " Web access copies selected records to your own server." else "", style = Hf.type.rowSubtitle, color = Hf.colors.mutedOnDark)
             }
         }
         SectionCard("Fingerprint app lock") {
@@ -183,6 +186,9 @@ fun SettingsHub() {
             ListRow("Encrypted backup", subtitle = if (lastBackup == 0L) "Never backed up" else "Last backup ${Fmt.dayTime(lastBackup)}", icon = HfIcons.Download, tone = Tone.Neutral,
                 chevron = true, onClick = { nav.push(Screen.Backup) })
             ListDivider()
+            val webLast = com.hellfire.ass.sync.WebSync.lastSuccess(app)
+            ListRow("Web access", subtitle = if (!webAccess) "Off · read your data from a browser" else if (webLast == 0L) "On · not synced yet" else "On · synced ${Fmt.dayTime(webLast)}",
+                icon = HfIcons.Cloud, tone = Tone.Neutral, chevron = true, onClick = { nav.push(Screen.WebAccess) })
             ListRow("This device", subtitle = "Android, assistant role, timezone", icon = HfIcons.Phone, tone = Tone.Neutral, chevron = true, onClick = { nav.push(Screen.Device) })
         }
     }

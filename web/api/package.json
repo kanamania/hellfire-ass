@@ -1,0 +1,27 @@
+{
+  "name": "hellfire-web-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/src/main.js",
+    "hash-password": "node dist/src/hash-password.js",
+    "test": "tsc -p tsconfig.json && node --test --test-concurrency=1 \"dist/test/**/*.test.js\""
+  },
+  "engines": { "node": ">=22" },
+  "dependencies": {
+    "@nestjs/common": "12.3.2",
+    "@nestjs/core": "12.3.2",
+    "@nestjs/platform-express": "12.3.2",
+    "@nestjs/throttler": "6.7.1",
+    "pg": "8.23.1",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.5",
+    "@types/node": "24.19.2",
+    "@types/pg": "8.23.1",
+    "typescript": "6.0.3"
+  }
+}

@@ -17,8 +17,12 @@ used to establish host results. No message has been sent and no gateway deployed
   lock, daily encrypted Google Drive backup, the resource-use changes, the fixes for
   the 2026-11-16 review findings and **multiple email inboxes and WhatsApp accounts**.
   Debug version **0.5.0** (code 5), Room schema **13**, backup schema **13**.
-- **Host checks on this tree:** 221 Android unit tests (217 passed, 4 opt-in live AI
-  tests skipped, 0 failures), 23 relay tests and 6 WhatsApp Web worker tests pass.
+- **Web access:** an optional read-only web copy (NestJS API, Postgres, Next.js site
+  in `web/`) synced from the phone; see [Web access](#web-access-read-only-mirror).
+  Not deployed anywhere and not yet run against a real phone.
+- **Host checks on this tree:** 226 Android unit tests (222 passed, 4 opt-in live AI
+  tests skipped, 0 failures), 23 relay tests, 6 WhatsApp Web worker tests and 11 web
+  API tests pass.
   Lint passes with 0 errors and the debug APK assembles; the checksum is in
   [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md).
 - **Not done:** nothing has run on the physical OPPO, with a real model file, a live
@@ -520,6 +524,70 @@ References: [Android biometric prompt](https://developer.android.com/reference/a
 [Drive upload protocol](https://developers.google.com/workspace/drive/api/guides/manage-uploads),
 [Drive file scope](https://developers.google.com/workspace/drive/api/guides/api-specific-auth).
 
+## Web access (read-only mirror)
+
+`web/` is an optional website for reading your data away from the phone. The phone stays
+the only place anything is captured, parsed, classified, summarised or approved. It pushes
+a copy of selected records to your own server, and the site only displays that copy.
+Confirming payments, sending replies and changing tasks still happen on the phone.
+
+- **Copied:** accounts, confirmed ledger entries, account balances and this/last month's
+  totals (computed on the phone), payments waiting for review, SMS balances, tasks,
+  email/WhatsApp messages, drafts, media names/summaries/transcripts, memory, and SMS or
+  notifications classified as messages or payments.
+- **Never copied:** security-code (OTP) events and any message, task, memory or payment
+  candidate captured from one; recording originals, photos and video; passwords, tokens and
+  keys; models and search vectors. Only listed columns are sent, not whole rows.
+- **On the server** the copy is plain JSON in Postgres, readable by whoever controls that
+  server and its backups. Run it on a machine you trust, behind HTTPS.
+- **How sync works:** about every 15 minutes while online with battery not low (Android
+  may delay it), the phone sends rows that changed since the last pass and the ids that
+  disappeared, up to 300 rows / about 1 MB per request. It remembers what the server holds
+  as an encrypted id → hash list tied to the server's dataset id. A new or wiped server,
+  or **Copy everything again**, triggers a reset and a full copy.
+
+### Run the server
+
+Runs directly on the host, without Docker: the local PostgreSQL 18 (`postgresql.service`)
+and two systemd units in `web/systemd/`. Both Node services listen on 127.0.0.1 only
+(API 3911, website 3910). An HTTPS reverse proxy must point your domain at
+`127.0.0.1:3910`; the phone accepts only `https://` servers.
+
+1. Database (done on this machine on 2026-11-16): a login role `dev` matching the Linux
+   user, owning databases `hellfire` and `hellfire_test`, connecting over the Unix socket
+   with peer authentication, so there is no database password:
+   `sudo -u postgres psql -c "CREATE ROLE dev LOGIN" -c "CREATE DATABASE hellfire OWNER dev" -c "CREATE DATABASE hellfire_test OWNER dev"`.
+   The API creates its two tables on start.
+2. Build: `cd web/api && npm ci && npm run build`, and `cd web/frontend && npm ci && npm run build`.
+3. Password hash: `cd web/api && npm run hash-password`, type the site password (12+
+   characters), press Ctrl-D. The output starts with `scrypt:`.
+4. Create private `web/.env` (ignored by Git, mode 600) with
+   `DATABASE_URL=postgresql:///hellfire?host=/run/postgresql`, `SYNC_TOKEN` (32+ random
+   characters), `SESSION_SECRET` (32+ random characters) and `OWNER_PASSWORD_HASH` (the
+   `scrypt:` line). Generate secrets locally, for example with `openssl rand -base64 36`;
+   do not paste them into commands, docs or Git.
+5. Install and start the units (paths assume this checkout and Node 24.13.0 under nvm):
+   `sudo cp web/systemd/*.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now hellfire-web-api hellfire-web-frontend`.
+   After code changes rebuild both packages, then `sudo systemctl restart hellfire-web-api hellfire-web-frontend`.
+6. On the phone: **Settings › Web access**, enter `https://<your domain>` and the
+   `SYNC_TOKEN`, then **Save and turn on**. Open the site and sign in with the password.
+
+The website forwards only `/api/sync/*` to the API, for the phone; the read API is
+reachable only from the website's server. Sign-in sessions last 12 hours in an HttpOnly,
+Secure, SameSite=Strict cookie; changing `SESSION_SECRET` signs every browser out.
+Sign-in is limited to 5 attempts a minute (counted for the whole site, because all
+sign-ins reach the API from the website). **Turn off** keeps the server copy; **Turn off
+and delete the web copy** empties it first and stays on if the server cannot be reached.
+
+### Develop and test
+
+Node 24. API: `cd web/api && TEST_DATABASE_URL='postgresql:///hellfire_test?host=/run/postgresql' npm test`
+(the tests drop and recreate their tables in that database). Website: `cd web/frontend &&
+npm run typecheck && npm run build`; `npm run dev` serves it on 127.0.0.1:3910. `API_URL`
+(default `http://127.0.0.1:3911`) is fixed into the `/api/sync` forward at build time.
+Phone side: `WebSyncTest` in the Android unit tests. Pinned: NestJS 12.3.2,
+@nestjs/throttler 6.7.1, pg 8.23.1, Next.js 16.4.3, React 19.2.9, TypeScript 6.0.3.
+
 ## Storage, recovery and boundaries
 
 Room schema **13** has non-destructive migrations from schema 1. Production uses
@@ -580,6 +648,9 @@ Exact host results, artifact checksum and the final physical checklist are in
 ordinary SQLite/Robolectric and generated AES/RSA keys; they do not prove native
 SQLCipher/Keystore, actual model execution, live accounts or Android/OEM behavior.
 
+- 2026-11-16, web access: optional read-only web copy (`web/`: NestJS API, Postgres,
+  Next.js site) and Settings › Web access with an incremental WebSync worker on the phone;
+  no Room change. 226 Android, 11 web API tests.
 - 2026-11-16, review fixes and multiple accounts (0.5.0, Room v13): stable SMS/mail/relay
   identity, SMS high-water mark, money-preserving redaction, cross-source payment
   duplicates, tighter finance/task rules with Swahili clock times, full-text search,
