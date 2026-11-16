@@ -78,7 +78,7 @@ fun WaitingPage() {
     var waiting by remember { mutableStateOf<WaitingOn?>(null) }
     LaunchedEffect(version) {
         val now = System.currentTimeMillis()
-        waiting = io { Waiting.compute(loadInteractions(app, now - Waiting.WINDOW), loadAliases(app), now, WaitingPrefs.dismissed(app)) } ?: WaitingOn(emptyList(), emptyList())
+        waiting = io { Waiting.compute(loadInteractions(app, now - Waiting.WINDOW), loadAliases(app), now, WaitingPrefs.dismissed(app), loadIdentities(app)) } ?: WaitingOn(emptyList(), emptyList())
     }
     @Composable fun rows(items: List<WaitingItem>, empty: String) {
         if (items.isEmpty()) { HfCard(padding = PaddingValues(16.dp)) { Text(empty, style = Hf.type.body, color = Hf.colors.muted) }; return }
@@ -86,21 +86,24 @@ fun WaitingPage() {
             items.forEachIndexed { i, item ->
                 if (i > 0) ListDivider()
                 ListRow(item.name, subtitle = "${item.channel} · ${Fmt.age(item.at)} ago · ${item.preview.take(90)}", icon = channelIcon(item.channel), tone = Tone.Neutral,
-                    trailing = { QuietButton("Clear", { WaitingPrefs.dismiss(app, item.personKey, item.at); version++ }) },
+                    trailing = { Column {
+                        QuietButton(com.hellfire.ass.ui.tr("No reply needed"), { WaitingPrefs.dismiss(app, item.reviewKey, item.at); version++ })
+                        QuietButton(com.hellfire.ass.ui.tr("Tomorrow"), { WaitingPrefs.snooze(app, item.reviewKey, System.currentTimeMillis() + 86_400_000); version++ })
+                    } },
                     onClick = { item.messageId?.let { nav.push(Screen.Message, it) } ?: nav.push(Screen.Source, item.sourceId) })
             }
         }
     }
-    PushedPage("Waiting on", breadcrumb = "Inbox") {
+    PushedPage(com.hellfire.ass.ui.tr("Waiting on"), breadcrumb = "Inbox") {
         val w = waiting
         if (w == null) { Note("Reading your recent messages…"); return@PushedPage }
         SectionHeader("You owe a reply", trailing = w.iOwe.size.toString())
         rows(w.iOwe.sortedByDescending { it.at }, "Nobody is waiting on you.")
         SectionHeader("Waiting to hear back", trailing = w.theyOwe.size.toString())
         rows(w.theyOwe.sortedByDescending { it.at }, "Nothing you asked is unanswered.")
-        ListCard { ListRow("People", subtitle = "Everything with one person in one place", icon = HfIcons.Chat, chevron = true, onClick = { nav.push(Screen.People) }) }
-        Note("From the last 14 days. A reply is owed when their message is the latest for 4 hours; \"waiting\" means you asked something a day ago and got no answer. " +
-            "Groups, short codes and automated senders are left out. Clear hides a row until that person writes again.")
+        ListCard { ListRow(com.hellfire.ass.ui.tr("People"), subtitle = "Everything with one person in one place", icon = HfIcons.Chat, chevron = true, onClick = { nav.push(Screen.People) }) }
+        Note("From the last 14 days. An unanswered request appears after 4 hours; \"waiting\" means you asked something a day ago and got no answer. " +
+            "Groups, short codes and automated senders are left out. No reply needed clears that request. Tomorrow snoozes the thread; separate email threads stay independent.")
     }
 }
 
@@ -112,13 +115,13 @@ fun PeoplePage() {
     var query by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(Unit) {
         people = io {
-            val conversations = People.build(loadInteractions(app, System.currentTimeMillis() - 180L * 86_400_000), loadAliases(app))
+            val conversations = People.build(loadInteractions(app, System.currentTimeMillis() - 180L * 86_400_000), loadAliases(app), loadIdentities(app))
             val saved = app.database.contacts().all().filter { c -> conversations.none { it.key == c.personKey } }
                 .map { Person(it.personKey, it.displayName, true, emptyMap(), 0, 0, 0, emptySet()) }
             conversations + saved
         } ?: emptyList()
     }
-    PushedPage("People", breadcrumb = "Home") {
+    PushedPage(com.hellfire.ass.ui.tr("People"), breadcrumb = "Home") {
         val all = people
         if (all == null) { Note("Reading your messages from the last 6 months…"); return@PushedPage }
         HfTextField(query, { query = it }, "Search a name, number or address")
@@ -150,23 +153,37 @@ fun PersonPage(key: String) {
     var loaded by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
     var picked by remember { mutableStateOf<com.hellfire.ass.contacts.ContactChoice?>(null) }
+    var managing by remember { mutableStateOf(false) }
+    var mergeTarget by remember { mutableStateOf<com.hellfire.ass.contacts.PersonContact?>(null) }
+    var separateHandle by remember { mutableStateOf<String?>(null) }
+    var separateName by remember { mutableStateOf("") }
+    var moveTasks by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var movePayments by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var moveDebts by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var otherDetails by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var others by remember { mutableStateOf<List<com.hellfire.ass.contacts.PersonContact>>(emptyList()) }
+    LaunchedEffect(managing) { if (managing) {
+        others = io { app.database.contacts().all().filter { it.personKey != key } }.orEmpty()
+        otherDetails = io { app.database.people().all().groupBy { it.personKey ?: People.namedKey(it.name) }.mapValues { (_, list) -> list.take(2).joinToString { Handles.label(it.handle) } } }.orEmpty()
+    } }
     var message by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(key) {
         view = io {
             val aliases = loadAliases(app)
+            val identities = loadIdentities(app)
             val all = loadInteractions(app, System.currentTimeMillis() - 365L * 86_400_000)
-            val mine = all.filter { People.personKey(it.handle, aliases) == key }
+            val mine = all.filter { People.personKey(it.handle, aliases, identities) == key }
             val saved = app.database.contacts().find(key)
-            val person = People.build(mine, aliases).firstOrNull()
+            val person = People.build(mine, aliases, identities).firstOrNull()
                 ?: saved?.let { Person(key, it.displayName, true, emptyMap(), 0, 0, 0, emptySet()) } ?: return@io null
             val sources = mine.map { it.sourceId }.toSet()
             val digits = person.handles.keys.filter { it.startsWith("tel:") }.map { it.removePrefix("tel:") }
             PersonView(person, mine.sortedByDescending { it.at }.take(60),
                 app.database.tasks().all().filter { it.personKey == key || (it.personKey == null && it.sourceId in sources && it.state in setOf("ACTIVE", "REVIEW")) }.sortedBy { it.dueAt },
-                Debts.balances(app.database.debts().all()).firstOrNull { Debts.key(it.person) == Debts.key(person.name) },
+                Debts.balances(app.database.debts().all()).firstOrNull { (it.personKey ?: People.namedKey(it.person)) == key },
                 app.database.media().all().filter { m -> (person.named && m.name.contains(person.name, true)) || digits.any { m.name.contains(it) } }.take(10),
                 app.database.finances().allEntries().filter { it.personKey == key }.sortedByDescending { it.occurredAt },
-                app.database.debts().all().filter { People.namedKey(it.person) == key })
+                app.database.debts().all().filter { (it.personKey ?: People.namedKey(it.person)) == key })
         }
         name = view?.person?.takeIf { it.named }?.name.orEmpty()
         loaded = true
@@ -185,8 +202,8 @@ fun PersonPage(key: String) {
         SavedContactStatus(key)
         SectionCard(if (p.named) "Name" else "Give this person a name") {
             ContactPersonField(name, { name = it; picked = null }, "Name", onPick = { picked = it; name = it.displayName })
-            Note("A contact joins all its numbers and email addresses into this person. The same typed name also joins saved handles.")
-            PrimaryButton("Save name", {
+            Note("A contact joins all its numbers and email addresses into this person. Choose the correct saved person when names repeat.")
+            PrimaryButton(com.hellfire.ass.ui.tr("Save name"), {
                 val chosen = name.trim()
                 scope.launch {
                     val saved = io { com.hellfire.ass.contacts.ContactLinks(app.database).namePerson(key,
@@ -196,8 +213,9 @@ fun PersonPage(key: String) {
                 }
             }, Modifier.fillMaxWidth(), enabled = name.isNotBlank() && name.trim().length <= 200)
         }
+        SecondaryButton("Manage linked identities…", { managing = true })
         if (v.tasks.isNotEmpty()) {
-            SectionHeader("Tasks", trailing = v.tasks.size.toString())
+            SectionHeader(com.hellfire.ass.ui.tr("Tasks"), trailing = v.tasks.size.toString())
             ListCard { v.tasks.forEachIndexed { i, t ->
                 if (i > 0) ListDivider()
                 ListRow(t.title.take(100), subtitle = (when (t.state) { "REVIEW" -> "Found in a message · not added yet"; "DONE" -> "Done"; "DISMISSED" -> "Dismissed"; else -> "Due ${Fmt.dayTime(t.dueAt)}" }) +
@@ -223,7 +241,7 @@ fun PersonPage(key: String) {
         }
         if (v.debt != null) ListCard { ListRow("Loans and repayments", subtitle = "Open the debt record", icon = HfIcons.Money, chevron = true, onClick = { nav.push(Screen.Debts) }) }
         if (v.media.isNotEmpty()) {
-            SectionHeader("Recordings", trailing = v.media.size.toString())
+            SectionHeader(com.hellfire.ass.ui.tr("Recordings"), trailing = v.media.size.toString())
             ListCard { v.media.forEachIndexed { i, m ->
                 if (i > 0) ListDivider()
                 ListRow(m.name.take(80), subtitle = Fmt.dayTime(m.recordedAt ?: m.importedAt) + (m.summary.takeIf { it.isNotBlank() }?.let { " · ${it.take(80)}" } ?: ""),
@@ -239,6 +257,31 @@ fun PersonPage(key: String) {
         } }
         Note("Recordings are matched by file name: this person's name or number. Calls and conversations are not linked to people in any other way yet.")
     }
+    if (managing && v != null) HfBottomSheet({ managing = false }) {
+        Text("Linked identities", style = Hf.type.cardTitle, color = Hf.colors.onSurface)
+        Note("Names can repeat. Merge only when both records are the same person. Separate a handle and choose which records move with it.")
+        v.person.handles.forEach { (handle, label) -> SecondaryButton("Separate $label…", { separateHandle = handle; separateName = v.person.name; managing = false }) }
+        others.forEach { person -> SecondaryButton("Merge into ${person.displayName} · ${otherDetails[person.personKey].orEmpty()}…", { mergeTarget = person; managing = false }) }
+    }
+    mergeTarget?.let { target -> ConfirmDialog("Merge these people?", "Move aliases, tasks, payment associations and debt notes into ${target.displayName}. Ledger amounts stay unchanged. Review the target carefully.", "Merge people", {
+        mergeTarget = null
+        scope.launch { val ok = io { com.hellfire.ass.contacts.ContactLinks(app.database).merge(key, target.personKey) }; if (ok != null) { nav.pop(); nav.push(Screen.Person, target.personKey) } else message = "Merge failed; no changes committed." }
+    }, { mergeTarget = null }) }
+    separateHandle?.let { handle -> HfBottomSheet({ separateHandle = null }) {
+        Text("Separate identity", style = Hf.type.cardTitle, color = Hf.colors.onSurface)
+        HfTextField(separateName, { separateName = it }, "Name for the separate person")
+        Note("Only checked records move. All other associations remain with the original person.")
+        v?.tasks?.filter { it.personKey == key }?.forEach { t -> CheckRow(t.title, t.id in moveTasks, { checked -> moveTasks = if (checked) moveTasks + t.id else moveTasks - t.id }) }
+        v?.payments?.forEach { p -> CheckRow("${Fmt.amount(p.amount)} · ${p.description}", p.id in movePayments, { checked -> movePayments = if (checked) movePayments + p.id else movePayments - p.id }) }
+        v?.debts?.forEach { d -> CheckRow("Debt · ${Fmt.amount(d.amount)} · ${d.note}", d.id in moveDebts, { checked -> moveDebts = if (checked) moveDebts + d.id else moveDebts - d.id }) }
+        PrimaryButton("Separate selected identity and records", {
+            scope.launch {
+                val newKey = io { com.hellfire.ass.contacts.ContactLinks(app.database).separate(key, handle, separateName, moveTasks, movePayments, moveDebts) }
+                separateHandle = null
+                if (newKey != null) { nav.pop(); nav.push(Screen.Person, newKey) } else message = "Separation failed; no changes committed."
+            }
+        }, enabled = separateName.isNotBlank())
+    } }
 }
 
 private fun billsPrefs(app: HellFireApp) = app.getSharedPreferences("bills", 0)
@@ -310,6 +353,7 @@ fun BillsPage() {
                     style = Hf.type.rowSubtitle, color = Hf.colors.muted)
             }
         }
+        Note("Forecast assumptions: confirmed ledger balances only; no future income assumed. Bills without amounts are excluded from the total. Only scheduled occurrences are included; future repeats have not yet been created.")
         Note("Found by rule from payments you confirmed: the same description, once or twice a month, three months running. Bill amounts are reminders only and never change your ledger.")
     }
 }

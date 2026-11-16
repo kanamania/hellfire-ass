@@ -91,7 +91,7 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
                 answer.text = "Checking local evidence…"
                 try {
                     val app = sessionContext.applicationContext as HellFireApp
-                    val result = AssistantEngine(app).answer(text)
+                    val result = app.assistant.answer(text)
                     lastAnswer = result.text + if (result.sources.isNotEmpty()) "\nEvidence IDs: " + result.sources.take(10).joinToString() else ""
                     answer.text = lastAnswer
                     pending = result.command
@@ -121,7 +121,7 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
         voiceStatus = label("Offline voice output is optional; text input works without microphone access.")
         speech = TextToSpeech(sessionContext) { status ->
             val engine = speech
-            val voice = engine?.voices?.firstOrNull { !it.isNetworkConnectionRequired && it.locale.language == Locale.ENGLISH.language }
+            val voice = engine?.voices?.firstOrNull { !it.isNetworkConnectionRequired && it.locale.language == com.hellfire.ass.ui.UiLanguage.locale.language }
             speechReady = status == TextToSpeech.SUCCESS && voice != null
             if (speechReady) engine?.voice = voice
             voiceStatus?.text = if (speechReady) "Offline voice ready" else "Offline voice unavailable. Install an offline system voice; text remains available."
@@ -158,6 +158,7 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
                             })
                             startListening(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
                                 .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                .putExtra(RecognizerIntent.EXTRA_LANGUAGE, com.hellfire.ass.ui.UiLanguage.locale.toLanguageTag())
                                 .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true))
                         }
                     } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); voiceStatus?.text = "Offline speech could not start. Type your question instead." }

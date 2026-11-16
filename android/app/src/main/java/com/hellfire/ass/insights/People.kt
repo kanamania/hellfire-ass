@@ -9,7 +9,7 @@ import java.util.Locale
 
 /** The owner's name for one phone number, WhatsApp id or email address (v14). Handles that share a name are one person. */
 @Entity(tableName = "person_alias")
-data class PersonAlias(@PrimaryKey val handle: String, val name: String, val updatedAt: Long)
+data class PersonAlias(@PrimaryKey val handle: String, val name: String, val updatedAt: Long, val personKey: String? = null)
 
 @Dao
 interface PeopleDao {
@@ -31,20 +31,37 @@ object Handles {
         val text = raw.trim()
         if (text.isEmpty()) return null
         if (text.endsWith("@g.us")) return "group:" + text.substringBefore('@')
-        whatsappUser.find(text)?.let { return "tel:" + it.groupValues[1].takeLast(9) }
+        whatsappUser.find(text)?.let { return telephone(it.groupValues[1]) }
         if (text.endsWith("@lid")) return "wa:" + text.substringBefore('@')
         email.find(text)?.let { return "mail:" + it.value.lowercase(Locale.ROOT) }
         val digits = text.filter(Char::isDigit)
         return when {
-            phone.matches(text) && digits.length >= 9 -> "tel:" + digits.takeLast(9)
+            phone.matches(text) && digits.length >= 9 -> telephone(digits)
             phone.matches(text) && digits.length >= 3 -> "short:$digits"
             else -> "name:" + text.lowercase(Locale.ROOT)
+        }
+    }
+
+    private fun telephone(digits: String): String {
+        val value = digits.removePrefix("00")
+        return "tel:" + when {
+            value.length == 12 && value.startsWith("255") -> value.takeLast(9)
+            value.length == 10 && value.startsWith("0") -> value.takeLast(9)
+            value.length == 9 -> value
+            else -> "+$value"
         }
     }
 
     /** A real person's number or address, as opposed to a group, a short code, a sender name such as M-PESA, or an automated mailbox. */
     fun person(key: String): Boolean = key.startsWith("tel:") || key.startsWith("wa:") ||
         (key.startsWith("mail:") && !automated.matches(key.removePrefix("mail:").substringBefore('@')))
+
+    fun label(key: String): String = when {
+        key.startsWith("tel:") -> key.removePrefix("tel:").let { if (it.length == 9) "+255$it" else it }
+        key.startsWith("mail:") -> key.removePrefix("mail:")
+        key.startsWith("wa:") -> "WhatsApp " + key.removePrefix("wa:")
+        else -> key
+    }
 
     /** Readable form of a raw sender: the display name of "Asha <a@b.c>", a WhatsApp id as a phone number, otherwise the text. */
     fun display(raw: String): String {
@@ -57,7 +74,7 @@ object Handles {
 
 /** One message to or from someone, on any channel. [handle] is the other side's [Handles.key]. */
 data class Interaction(val handle: String, val raw: String, val channel: String, val incoming: Boolean, val at: Long,
-    val preview: String, val sourceId: String, val messageId: String? = null, val group: Boolean = false)
+    val preview: String, val sourceId: String, val messageId: String? = null, val group: Boolean = false, val thread: String? = null)
 
 data class Person(val key: String, val name: String, val named: Boolean, val handles: Map<String, String>, val lastAt: Long,
     val incoming: Int, val outgoing: Int, val channels: Set<String>)
@@ -66,10 +83,10 @@ object People {
     fun namedKey(name: String): String = "n:" + name.trim().lowercase(Locale.ROOT)
 
     /** Key of the person behind a handle: the owner's name for it when there is one, else the handle itself. */
-    fun personKey(handle: String, aliases: Map<String, String>): String = aliases[handle]?.let { namedKey(it) } ?: handle
+    fun personKey(handle: String, aliases: Map<String, String>, identities: Map<String, String> = emptyMap()): String = identities[handle] ?: aliases[handle]?.let { namedKey(it) } ?: handle
 
-    fun build(interactions: List<Interaction>, aliases: Map<String, String>): List<Person> =
-        interactions.filter { Handles.person(it.handle) || it.handle in aliases }.groupBy { personKey(it.handle, aliases) }.map { (key, list) ->
+    fun build(interactions: List<Interaction>, aliases: Map<String, String>, identities: Map<String, String> = emptyMap()): List<Person> =
+        interactions.filter { Handles.person(it.handle) || it.handle in aliases }.groupBy { personKey(it.handle, aliases, identities) }.map { (key, list) ->
             val latest = list.maxBy { it.at }
             val alias = aliases[latest.handle]
             Person(key, alias ?: Handles.display(latest.raw), alias != null, list.associate { it.handle to Handles.display(it.raw) }, latest.at,
@@ -78,7 +95,7 @@ object People {
 }
 
 data class WaitingItem(val personKey: String, val name: String, val channel: String, val at: Long, val preview: String,
-    val sourceId: String, val messageId: String?)
+    val sourceId: String, val messageId: String?, val reviewKey: String = personKey)
 
 /** [iOwe]: their message is the latest and has gone unanswered. [theyOwe]: the owner asked something and has heard nothing back. */
 data class WaitingOn(val iOwe: List<WaitingItem>, val theyOwe: List<WaitingItem>)
@@ -93,15 +110,22 @@ object Waiting {
      * Looks at the latest message with each person across all channels, so an SMS reply settles a WhatsApp question.
      * Groups and automated senders are ignored. [dismissed] maps a person key to the message time the owner cleared.
      */
-    fun compute(interactions: List<Interaction>, aliases: Map<String, String>, now: Long, dismissed: Map<String, Long> = emptyMap()): WaitingOn {
-        val latest = interactions.filter { !it.group && (Handles.person(it.handle) || it.handle in aliases) && it.at <= now && it.at > now - WINDOW }
-            .groupBy { People.personKey(it.handle, aliases) }.mapValues { (_, list) -> list.maxBy { it.at } }
-            .filter { (key, last) -> (dismissed[key] ?: Long.MIN_VALUE) < last.at }
-        fun item(key: String, last: Interaction) = WaitingItem(key, aliases[last.handle] ?: Handles.display(last.raw), last.channel, last.at, last.preview, last.sourceId, last.messageId)
-        return WaitingOn(
-            latest.filter { (_, last) -> last.incoming && now - last.at >= REPLY_AFTER }.map { (key, last) -> item(key, last) }.sortedBy { it.at },
-            latest.filter { (_, last) -> !last.incoming && now - last.at >= CHASE_AFTER && asks.containsMatchIn(last.preview) }.map { (key, last) -> item(key, last) }.sortedBy { it.at },
-        )
+    fun compute(interactions: List<Interaction>, aliases: Map<String, String>, now: Long, dismissed: Map<String, Long> = emptyMap(), identities: Map<String, String> = emptyMap()): WaitingOn {
+        val groups = interactions.filter { !it.group && (Handles.person(it.handle) || it.handle in aliases) && it.at <= now && it.at > now - WINDOW }
+            .groupBy { People.personKey(it.handle, aliases, identities) + (it.thread?.let { thread -> "|$thread" } ?: "") }
+        val incoming = mutableListOf<WaitingItem>(); val outgoing = mutableListOf<WaitingItem>()
+        for ((reviewKey, list) in groups) {
+            val requests = list.filter { asks.containsMatchIn(it.preview) }
+            val request = requests.maxByOrNull { it.at } ?: continue
+            if (list.any { it.at > request.at && it.incoming != request.incoming }) continue
+            if ((dismissed[reviewKey] ?: Long.MIN_VALUE) >= request.at || (dismissed["snooze:$reviewKey"] ?: 0) > now) continue
+            val key = People.personKey(request.handle, aliases, identities)
+            val item = WaitingItem(key, aliases[request.handle] ?: Handles.display(request.raw), request.channel, request.at, request.preview,
+                request.sourceId, request.messageId, reviewKey)
+            if (request.incoming && now - request.at >= REPLY_AFTER) incoming += item
+            if (!request.incoming && now - request.at >= CHASE_AFTER) outgoing += item
+        }
+        return WaitingOn(incoming.sortedBy { it.at }, outgoing.sortedBy { it.at })
     }
 }
 
@@ -109,6 +133,7 @@ object Waiting {
 object WaitingPrefs {
     private fun prefs(context: Context) = context.getSharedPreferences("waiting", 0)
     fun dismissed(context: Context): Map<String, Long> = prefs(context).all.mapNotNull { (key, value) -> (value as? Long)?.let { key to it } }.toMap()
+    fun snooze(context: Context, key: String, until: Long) = prefs(context).edit().putLong("snooze:$key", until).apply()
     fun dismiss(context: Context, personKey: String, at: Long) = prefs(context).edit().putLong(personKey, at).apply()
 }
 
@@ -118,7 +143,7 @@ suspend fun loadInteractions(app: HellFireApp, since: Long, until: Long = System
         val incoming = m.direction == "INCOMING"
         val raw = (if (incoming) m.sender else m.recipient).substringBefore(", ").ifBlank { return@mapNotNull null }
         Interaction(Handles.key(raw) ?: return@mapNotNull null, raw, if (m.channel == "EMAIL_IMAP") "Email" else "WhatsApp", incoming, m.occurredAt,
-            listOf(m.subject, m.body).filter(String::isNotBlank).joinToString(" · ").take(200), m.sourceId, m.id, m.threadKey.endsWith("@g.us"))
+            listOf(m.subject, m.body).filter(String::isNotBlank).joinToString(" · ").take(200), m.sourceId, m.id, m.threadKey.endsWith("@g.us"), if (m.channel == "EMAIL_IMAP") "${m.accountId}:${m.threadKey}" else null)
     }
     val sms = app.database.events().fromSource("android_sms", since, until, smsLimit).mapNotNull { event ->
         val fields = EventText.fields(app, event)
@@ -129,3 +154,5 @@ suspend fun loadInteractions(app: HellFireApp, since: Long, until: Long = System
 }
 
 suspend fun loadAliases(app: HellFireApp): Map<String, String> = app.database.people().all().associate { it.handle to it.name }
+
+suspend fun loadIdentities(app: HellFireApp): Map<String, String> = app.database.people().all().associate { it.handle to (it.personKey ?: People.namedKey(it.name)) }

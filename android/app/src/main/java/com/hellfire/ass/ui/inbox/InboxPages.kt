@@ -71,7 +71,7 @@ fun ReplySheet(initial: ReplyDraft, onDone: (String?) -> Unit) {
                 }
             }, enabled = body.isNotBlank() && app.localModel.configured)
         }
-        PrimaryButton("Save draft", {
+        PrimaryButton(com.hellfire.ass.ui.tr("Save draft"), {
             scope.launch {
                 try {
                     withContext(Dispatchers.IO) {
@@ -151,7 +151,7 @@ fun EmailPage() {
         port = account?.optInt("smtp_port", 465)?.toString() ?: "465"
     }
     LaunchedEffect(Unit) { reload() }
-    PushedPage("Email", breadcrumb = "Settings") {
+    PushedPage(com.hellfire.ass.ui.tr("Email"), breadcrumb = "Settings") {
         status?.let { Banner(it, Tone.Info, null) }
         Note("Incoming email uses IMAP; sending uses SMTP. Gmail needs an app password where Google allows it. Passwords are encrypted on this phone. Up to ${Accounts.MAX} inboxes.")
         if (accounts.isNotEmpty()) ListCard {
@@ -195,7 +195,7 @@ fun EmailPage() {
                     }
                 }, Modifier.fillMaxWidth(), enabled = email.isNotBlank() && (password.isNotBlank() || editingId.isNotEmpty()))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    QuietButton("Cancel", { editing = null; password = "" })
+                    QuietButton(com.hellfire.ass.ui.tr("Cancel"), { editing = null; password = "" })
                     if (editingId.isNotEmpty()) QuietButton("Disconnect this inbox", { removing = accounts.firstOrNull { it.getString("id") == editingId } })
                 }
             }
@@ -259,7 +259,7 @@ fun WhatsAppPage() {
                 catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Public key export failed." }
         }
     }
-    PushedPage("WhatsApp", breadcrumb = "Settings") {
+    PushedPage(com.hellfire.ass.ui.tr("WhatsApp"), breadcrumb = "Settings") {
         status?.let { Banner(it, Tone.Info, null) }
         Note("Each WhatsApp account needs its own self-hosted gateway (relay URL and device token). All gateways use this phone's public key. Up to ${Accounts.MAX} accounts.")
         if (accounts.isNotEmpty()) ListCard {
@@ -308,7 +308,7 @@ fun WhatsAppPage() {
                     }
                 }, Modifier.fillMaxWidth(), enabled = gateway.isNotBlank() && (token.length >= 32 || (editingId.isNotEmpty() && token.isEmpty())))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    QuietButton("Cancel", { editing = null; token = "" })
+                    QuietButton(com.hellfire.ass.ui.tr("Cancel"), { editing = null; token = "" })
                     if (editingId.isNotEmpty()) QuietButton("Disconnect this account", { removing = accounts.firstOrNull { it.getString("id") == editingId } })
                 }
             }

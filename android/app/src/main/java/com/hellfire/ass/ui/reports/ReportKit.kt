@@ -99,7 +99,7 @@ fun RangeSheet(startCustom: Boolean = false, onDone: () -> Unit) {
                 }
                 custom = false; onDone()
             }) { Text("Use these dates") }
-        }, dismissButton = { TextButton({ custom = false; if (startCustom) onDone() }) { Text("Cancel") } }) {
+        }, dismissButton = { TextButton({ custom = false; if (startCustom) onDone() }) { Text(com.hellfire.ass.ui.tr("Cancel")) } }) {
             DateRangePicker(state, Modifier.heightIn(max = 520.dp), title = { Text("Choose dates", Modifier.padding(16.dp)) })
         }
         return
@@ -144,7 +144,7 @@ private fun ExportSheet(spec: ExportSpec, onDone: () -> Unit) {
         Note("You pick where to save it. Nothing is uploaded.")
         status?.let { Banner(it, Tone.Info, null) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SecondaryButton("Cancel", onDone, Modifier.weight(1f))
+            SecondaryButton(com.hellfire.ass.ui.tr("Cancel"), onDone, Modifier.weight(1f))
             PrimaryButton(if (format == "pdf") "Export PDF" else "Export CSV", {
                 val stamp = TaskTime.display(System.currentTimeMillis()).replace(' ', '_').replace(':', '-')
                 save.launch("HellFire-${spec.title.replace(' ', '-')}-$stamp.${if (format == "pdf") "pdf" else "csv"}")

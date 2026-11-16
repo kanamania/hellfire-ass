@@ -33,13 +33,13 @@ fun RouteContent(route: Route) {
         Screen.Settings -> com.hellfire.ass.ui.settings.SettingsHub()
         Screen.Permissions -> com.hellfire.ass.ui.settings.PermissionsPage()
         Screen.CloudAi -> PushedPage(if (route.arg == "budget") "Monthly AI budget" else "Cloud AI", breadcrumb = "Settings") { AiSettingsScreen(env.app, budgetOnly = route.arg == "budget") }
-        Screen.LocalModels -> PushedPage("On-device models", breadcrumb = "Settings") { SectionCard("Language model and offline reading") { LocalAiScreen(env.app) }; ModelExtractionSection() }
-        Screen.Recordings -> PushedPage("Recordings", breadcrumb = "Settings") {
+        Screen.LocalModels -> PushedPage(com.hellfire.ass.ui.tr("On-device models"), breadcrumb = "Settings") { SectionCard("Language model and offline reading") { LocalAiScreen(env.app) }; ModelExtractionSection() }
+        Screen.Recordings -> PushedPage(com.hellfire.ass.ui.tr("Recordings"), breadcrumb = "Settings") {
             MediaScreen(env.app, env.permissions, a.onMicrophone)
             SectionCard("60-second microphone test") { MicTestSection(env.app, env.permissions, a.onMicrophone, a.onSettings) }
         }
         Screen.MediaItem -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, route.arg) }
-        Screen.Backup -> PushedPage("Encrypted backup", breadcrumb = "Settings") { BackupScreen(env.app) }
+        Screen.Backup -> PushedPage(com.hellfire.ass.ui.tr("Encrypted backup"), breadcrumb = "Settings") { BackupScreen(env.app) }
         Screen.Device -> com.hellfire.ass.ui.settings.DevicePage()
         Screen.WebAccess -> com.hellfire.ass.ui.settings.WebAccessPage()
         Screen.Reminders -> RemindersPage()
@@ -64,6 +64,10 @@ fun RouteContent(route: Route) {
         Screen.ReportMessages -> com.hellfire.ass.ui.reports.MessagesReport()
         Screen.ReportMedia -> com.hellfire.ass.ui.reports.MediaReport()
         Screen.ReportAi -> com.hellfire.ass.ui.reports.AiReport()
+        Screen.Language -> LanguagePage()
+        Screen.Reconcile -> ReconcilePage()
+        Screen.Review -> ReviewPage()
+        Screen.Share -> SharePage()
         Screen.Brief -> com.hellfire.ass.ui.insights.BriefPage()
         Screen.Waiting -> com.hellfire.ass.ui.insights.WaitingPage()
         Screen.People -> com.hellfire.ass.ui.insights.PeoplePage()

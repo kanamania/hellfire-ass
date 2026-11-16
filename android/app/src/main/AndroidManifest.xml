@@ -31,6 +31,18 @@
         <service android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync" tools:node="merge" />
         <service android:name=".communications.MailIdleService" android:exported="false" android:foregroundServiceType="dataSync" />
+        <activity android:name=".ShareActivity" android:exported="true" android:excludeFromRecents="true" android:theme="@style/Theme.HellFire">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="image/*" />
+                <data android:mimeType="audio/*" />
+                <data android:mimeType="video/*" />
+                <data android:mimeType="application/pdf" />
+            </intent-filter>
+        </activity>
         <!-- Not exported: only this app's own intents (widgets, reminders) reach it directly and may carry deep links. -->
         <activity android:name=".MainActivity" android:exported="false" android:launchMode="singleTop" />
         <!-- The launcher, assist gesture and system assistant settings enter through this alias; links sent to it are ignored. -->

@@ -49,7 +49,7 @@ fun Note(text: String, modifier: Modifier = Modifier, color: Color = Hf.colors.m
 /** Small uppercase group label used above setting groups and in sheets. */
 @Composable
 fun GroupLabel(text: String, modifier: Modifier = Modifier) {
-    Text(text.uppercase(), modifier.padding(horizontal = 4.dp), style = Hf.type.caption.copy(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.24.sp),
+    Text(com.hellfire.ass.ui.tr(text).uppercase(), modifier.padding(horizontal = 4.dp), style = Hf.type.caption.copy(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.24.sp),
         color = Hf.colors.muted)
 }
 
@@ -76,7 +76,7 @@ fun HfTextField(
     supporting: String? = null, minLines: Int = 1,
 ) {
     OutlinedTextField(
-        value, onValueChange, modifier.fillMaxWidth(), enabled = enabled, label = { Text(label) },
+        value, onValueChange, modifier.fillMaxWidth(), enabled = enabled, label = { Text(com.hellfire.ass.ui.tr(label)) },
         singleLine = singleLine, minLines = minLines, shape = RoundedCornerShape(14.dp),
         visualTransformation = if (password) androidx.compose.ui.text.input.PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = when {
@@ -321,7 +321,7 @@ fun ConfirmDialog(title: String, text: String, confirm: String, onConfirm: () ->
         confirmButton = { TextButton(onConfirm, colors = ButtonDefaults.textButtonColors(contentColor = if (destructive) Hf.colors.danger else Hf.colors.primary)) {
             Text(confirm, style = Hf.type.label.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold)) } },
         dismissButton = { TextButton(onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = Hf.colors.muted)) {
-            Text("Cancel", style = Hf.type.label.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold)) } },
+            Text(com.hellfire.ass.ui.tr("Cancel"), style = Hf.type.label.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold)) } },
     )
 }
 

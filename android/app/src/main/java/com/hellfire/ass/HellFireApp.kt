@@ -30,6 +30,7 @@ class HellFireApp : Application() {
     val media by lazy { com.hellfire.ass.media.MediaVault(this) }
     val speech by lazy { com.hellfire.ass.media.LocalSpeech(this) }
     val speakers by lazy { com.hellfire.ass.media.SpeakerModel(this) }
+    val assistant by lazy { com.hellfire.ass.assistant.AssistantEngine(this) }
     val finances by lazy { com.hellfire.ass.finance.FinanceRepository(database) }
     val templates by lazy { com.hellfire.ass.templates.TemplateRunner(database, finances, packageName) { events.capture(it, packageName) } }
     val cipher by lazy { PayloadCipher.deviceCipher() }
@@ -49,6 +50,7 @@ class HellFireApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        com.hellfire.ass.ui.UiLanguage.code = getSharedPreferences("ui", 0).getString("language", "en").orEmpty()
         Diagnostics.init(this)
         initializeStorage()
         refreshSmsCapture()

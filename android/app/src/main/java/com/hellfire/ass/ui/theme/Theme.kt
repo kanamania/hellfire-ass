@@ -209,6 +209,9 @@ private fun Typography.withInter(): Typography {
 
 @Composable
 fun HellFireTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+    val baseContext = androidx.compose.ui.platform.LocalContext.current
+    val language = com.hellfire.ass.ui.UiLanguage.code
+    val localized = androidx.compose.runtime.remember(baseContext, language) { com.hellfire.ass.ui.UiLanguage.context(baseContext) }
     val c = if (dark) DarkHfColors else LightHfColors
     val scheme = (if (dark) darkColorScheme() else lightColorScheme()).copy(
         primary = c.primary, onPrimary = c.onPrimary,
@@ -224,7 +227,7 @@ fun HellFireTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable ()
         error = c.danger, onError = c.surface, errorContainer = c.dangerContainer, onErrorContainer = c.danger,
         scrim = Color(0xFF111418),
     )
-    CompositionLocalProvider(LocalHfColors provides c) {
+    CompositionLocalProvider(LocalHfColors provides c, androidx.compose.ui.platform.LocalContext provides localized) {
         MaterialTheme(colorScheme = scheme, typography = Typography().withInter(), content = content)
     }
 }

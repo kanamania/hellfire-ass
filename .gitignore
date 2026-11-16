@@ -38,3 +38,6 @@ node_modules/
 .wwebjs_cache/
 server/state/
 server/whatsapp-web/state/
+
+# Private APK signing material stays on the owner’s machine.
+android/signing.properties

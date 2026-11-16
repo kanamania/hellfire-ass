@@ -26,7 +26,7 @@ fun WidgetsPage() {
     var hideAll by remember { mutableStateOf(WidgetPrefs.hideAll(app)) }
     val shows = remember { mutableStateMapOf<String, Boolean>().apply { WidgetPrefs.widgets.forEach { (id, _) -> put(id, WidgetPrefs.shows(app, id)) } } }
     var budget by remember { mutableStateOf(WidgetPrefs.budgetCategory(app)) }
-    PushedPage("Home screen widgets", breadcrumb = "Settings") {
+    PushedPage(com.hellfire.ass.ui.tr("Home screen widgets"), breadcrumb = "Settings") {
         Note("Anyone holding your unlocked phone can see the home screen. Amounts and message previews start hidden (•••••). Widgets never send or post anything; replies, names and reviews open here for your approval.")
         HfCard {
             SwitchRow("Hide all amounts", hideAll, { hideAll = it; WidgetPrefs.setHideAll(app, it); app.requestWidgetRefresh() },

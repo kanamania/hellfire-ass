@@ -191,3 +191,22 @@ Decisions made where `HANDOFF.md` was unclear or a screen was marked *not drawn*
 - **Integrity:** the size and SHA-256 must match, and the file must load in the app's runtime (LiteRT-LM 0.12.0) before it replaces anything. For updates, the expected checksum comes from the repository metadata over HTTPS. Redirects are followed by the app itself and must stay on HTTPS.
 - **Updates** (owner choice): a daily Wi-Fi check records a newer published file; downloading needs a tap on **Update**. The old model stays in use until the new one is verified, so an update briefly needs room for both.
 - **Owner control:** removing the model stops automatic downloads; "Download now" undoes that. An imported model of the owner's own is never replaced by an update; "Switch to Gemma 4 E2B" is explicit.
+
+## Project review implementation — 2026-11-16 (in progress)
+
+Owner authorized implementation of the review and asked to continue to completion.
+Work stays in existing packages, with no new runtime dependencies. Physical OPPO,
+live account and real-corpus checks remain the final stage.
+
+- [x] Correct filtered/contextual Ask, integrate local evidence answers, readable sources.
+- [x] Stable person identities, reviewed merge/separation, migration and backup compatibility.
+- [x] Accurate action results, web contrast, date/time pickers and source-based memory actions.
+- [x] Unified daily review with explicit approvals and remembered review choices.
+- [x] Share text/media to HellFire behind app unlock and an explicit save action.
+- [x] Threaded Inbox with full saved-history search and follow-up controls.
+- [x] Recording workspace with readable queue state and transcript actions.
+- [x] Guided balance reconciliation and explicit forecast assumptions.
+- [x] Flexible reminders and calendar handoff.
+- [x] English/Kiswahili main workflows and speech locale.
+- [x] Recovery readiness and backups beyond the previous 7 GiB originals ceiling.
+- [ ] Regression tests, lint/build, existing feasibility docs, integration and cleanup.

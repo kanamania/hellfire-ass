@@ -28,6 +28,9 @@ data class IntegrationState(@PrimaryKey val adapter: String, val state: String, 
 
 @Dao
 interface CommunicationDao {
+    @Query("SELECT * FROM communication_message WHERE :query = '' OR instr(lower(sender || ' ' || recipient || ' ' || subject || ' ' || body), lower(:query)) > 0 ORDER BY occurredAt DESC, id DESC LIMIT :limit")
+    fun inbox(query: String, limit: Int): Flow<List<CommunicationMessage>>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun message(value: CommunicationMessage): Long
     @Query("SELECT * FROM communication_message ORDER BY occurredAt DESC LIMIT 100") fun messages(): Flow<List<CommunicationMessage>>
     @Query("SELECT * FROM mail_cursor WHERE accountId = :account AND folder = :folder") suspend fun cursor(account: String, folder: String): MailCursor?

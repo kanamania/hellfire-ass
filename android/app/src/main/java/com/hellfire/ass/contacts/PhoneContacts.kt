@@ -9,7 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /** Only an explicit pick is persisted. Search results live in the picker, never in the database. */
-data class ContactChoice(val displayName: String, val lookupKey: String? = null, val handles: List<String> = emptyList())
+data class ContactChoice(val displayName: String, val lookupKey: String? = null, val handles: List<String> = emptyList(), val personKey: String? = null)
 data class ContactMatch(val id: Long, val lookupKey: String, val displayName: String, val detail: String = "")
 enum class ContactPresence { PRESENT, MISSING, NO_ACCESS, UNAVAILABLE }
 

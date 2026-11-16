@@ -108,7 +108,7 @@ object Briefs {
         val dao = app.database.finances()
         val balance = dao.allAccounts().fold(0L) { sum, a -> Math.addExact(sum, dao.balance(a.id)) }
         val tasks = app.database.tasks().all()
-        val waiting = Waiting.compute(loadInteractions(app, now - Waiting.WINDOW), loadAliases(app), now, WaitingPrefs.dismissed(app))
+        val waiting = Waiting.compute(loadInteractions(app, now - Waiting.WINDOW), loadAliases(app), now, WaitingPrefs.dismissed(app), loadIdentities(app))
         return build(BriefInputs(evening, now, tasks, totals.expenses, totals.income, dao.reviewCount(), app.database.tasks().reviewsNow().size,
             waiting, Debts.balances(app.database.debts().all()), Recurring.forecast(tasks, balance, now), CaptureGaps.check(app, now)))
     }

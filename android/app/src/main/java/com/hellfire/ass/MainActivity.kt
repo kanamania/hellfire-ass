@@ -145,6 +145,10 @@ class MainActivity : ComponentActivity() {
      * Intents through the exported launcher alias come from other apps or the system, so their data is ignored.
      */
     private fun linkFor(intent: Intent?): Uri? = when {
+        intent?.component?.className == MainActivity::class.java.name && intent.action in setOf(Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE) -> {
+            com.hellfire.ass.ui.SharedContent.intent = Intent(intent)
+            Uri.parse("hellfire://share")
+        }
         intent?.action == Intent.ACTION_ASSIST -> Uri.parse("hellfire://ask")
         intent?.data?.scheme == "hellfire" && intent.component?.className == MainActivity::class.java.name -> intent.data
         else -> null

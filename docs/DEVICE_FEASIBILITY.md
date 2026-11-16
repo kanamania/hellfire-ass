@@ -1,8 +1,90 @@
 # HellFire Ass — implementation and feasibility
 
-Latest update: 2026-11-16 (local contacts and person links, directly below). Earlier
+Latest update: 2026-11-16 (project review implementation, directly below). Earlier
 checkpoints keep the test counts and APK checksums that were true when they were
 written; the newest checkpoint has the current ones.
+
+## Project review implementation — 2026-11-16
+
+Owner requested implementation of the review and continuation to completion.
+Version **0.8.0** (code 8), Room/backup schema **16**. This checkpoint covers
+software changes only; physical OPPO tests remain the final stage.
+
+Implemented:
+
+- Ask validates category, account, quoted merchant and saved-person filters and
+  retains finance scope for period/metric follow-ups. Conflicting periods and unknown qualifiers ask for
+  clarification. Money stays integer-based and source-linked; associated fees and
+  reversals retain their effective person/category. The explicit **Local model +
+  saved sources** route uses the installed model for read-only explanations with
+  source links, prioritizing saved owner corrections. Keyword retrieval removes
+  common question words and labels partial matches as evidence candidates.
+  No cloud fallback is added.
+- Source links have readable channel/sender/date labels. Optional Ask history is
+  encrypted, bounded to 40 pairs, off by default, clearable and never restores
+  executable proposals or approvals. Confirmed commands display Applying until
+  execution reports success; failures never show Completed.
+- Selected contacts with identical names retain separate stable identities.
+  Renaming preserves links. Reviewed merge/separation moves only the selected
+  associations, never ledger amounts. Migration and old-archive restore backfill
+  alias/debt keys with Unicode-aware normalization. Foreign phone country codes
+  are preserved; Tanzania local/international representations still match.
+- Home › **Review** offers one queue, with due-soon task proposals ahead of
+  payments, existing approval sheets, batch account/category suggestions (never
+  batch posting), and cash check-ins. Opt-in encrypted review defaults suggest
+  account/category on later captures; each payment still needs confirmation.
+- Android's Sharesheet accepts text, provider-backed images/audio/video/PDFs.
+  Shared data passes the existing app unlock gate and requires explicit Save.
+  Notes and finance/task candidates use sanitized text; files are encrypted and
+  locally queued. Unsupported URIs/types fail visibly; a partial multi-file import
+  reports possible earlier saves instead of claiming nothing changed.
+- Inbox has conversation grouping, body search across saved history and Load older
+  history. Duplicate posted-payment proofs group by their ledger link without
+  deleting sources. Waiting-on tracks requests rather than greetings, keeps email threads
+  separate, and offers No reply needed / Tomorrow. Source events remain intact.
+- Task editing uses date/time pickers, daily/weekly/monthly recurrence, per-task
+  snooze and daily/hourly/persistent overdue intervals. Undo also closes the spawned
+  repeat. Calendar handoff opens an editable system calendar form; HellFire does
+  not claim that the user saved it.
+- Home › **Record** reaches the recording workspace. Queue failures/waits have
+  readable states; each transcript passage offers Remember this / Create task
+  beside timestamp playback. Model setup is collapsed behind a settings control. Original audio is retained until owner deletion.
+- Money › **Check account balance** compares a stated/observed balance at a chosen
+  time with the ledger, surfaces pending/unassigned items and source SMS, then
+  offers the existing explicitly approved adjustment. Forecast assumptions are
+  visible; no income or settlement is fabricated.
+- Settings › **Language** selects English/Kiswahili for main navigation and common
+  controls. Source content is not translated. Voice requests use the selected
+  locale; installed recognizer/voice support still needs a phone test. Advanced
+  technical details and some dynamic explanatory text remain English.
+- Backup readiness shows retained original size, free/estimated staging space and
+  archive-verification status. Streaming archives allow up to 500 GiB of originals
+  (each media import retains its 8 GiB bound), with storage preflight and a 512 GiB
+  archive cap. **Verify an archive** authenticates tables and original hashes in
+  encrypted staging without replacing local data. Real large archives and native
+  replacement-phone restores are not established by small host fixtures.
+- Web buttons have explicit foreground tokens: calculated contrast is 5.18:1 in
+  light appearance and 7.29:1 in dark appearance. No browser rendering claim.
+- Release builds use R8/resource shrinking and optional ignored owner signing
+  properties. GitHub Actions runs the existing checks sequentially, with a
+  disposable test database; it never installs personal credentials or deploys.
+
+| Check | Command / method | Result |
+|---|---|---|
+| Android unit tests | `./gradlew :app:testDebugUnitTest --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'` | PASS: 286 total, 282 passed, 4 opt-in live AI tests skipped, 0 failures/errors |
+| Android lint | `./gradlew :app:lintDebug` with the same worker/heap limits | PASS: 0 errors, 275 warnings, 6 hints; advanced/dynamic English remains documented |
+| Debug APK | `./gradlew :app:assembleDebug`; `apksigner verify --verbose`; `zipalign -c -P 16 4` | PASS: version 0.8.0/code 8, 150,856,321 bytes; signature and alignment verify. SHA-256 `f6b79bf799f67fab73e83de9ff8b871530de7c1544b774b898c31280aaeba47e` |
+| Signed release APK | `./gradlew :app:assembleRelease`; `apksigner verify --verbose`; `zipalign -c -P 16 4` | PASS: version 0.8.0/code 8, 104,539,808 bytes; v2 signature verifies, alignment check passes. SHA-256 `ad6dc13d09a3f0d58c38f1b42032ed59dd08ae8006357e456eb98a6e8d6c14d9` |
+| Web frontend (worktree) | `npm run typecheck`; `npm run build -- --webpack` | PASS. Default Turbopack build rejects worktree dependency symlinks outside its root; primary-checkout build/restart follows integration |
+| Device/account/model/real-corpus behavior | ADB / actual owner-authorized integrations | NOT TESTED; no connected device or live accounts used |
+| Hosted CI | Push/PR in GitHub | NOT TESTED; workflow is added, not executed remotely |
+
+Final phone checks: upgrade populated encrypted schema 15 data; use two same-name
+contacts, merge and separate selected records; rotate/unlock during review; share
+from Gallery, Files and a chat app; reject unsupported shares; verify financial
+filter answers and source links; try English/Kiswahili speech; test recurrence,
+Undo, snooze, calendar cancel/save and Doze; verify archive then restore a synthetic
+backup on an empty separate installation. Record actual OEM results here.
 
 ## Local contacts and person links — 2026-11-16
 

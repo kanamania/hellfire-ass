@@ -48,7 +48,7 @@ fun BudgetsPage() {
                         Text("Spent ${Fmt.amount(spent[category] ?: 0)}" + (current?.let { " of ${Fmt.amount(it.amount)}" } ?: ""), style = Hf.type.rowSubtitle, color = Hf.colors.muted)
                     }
                     HfTextField(text, { text = it.filter(Char::isDigit) }, "Limit TZS", Modifier.width(132.dp), number = true)
-                    QuietButton("Save", { scope.launch {
+                    QuietButton(com.hellfire.ass.ui.tr("Save"), { scope.launch {
                         val amount = text.toLongOrNull()
                         withContext(Dispatchers.IO) { if (amount == null || amount == 0L) dao.clearBudget(category, month.toString()) else dao.budget(CategoryBudget(category, month.toString(), amount)) }
                         message = if (amount == null || amount == 0L) "$category limit removed." else "$category limit saved."

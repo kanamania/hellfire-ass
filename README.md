@@ -18,21 +18,21 @@ used to establish host results. No message has been sent and no gateway deployed
   the 2026-11-16 review findings, **multiple email inboxes and WhatsApp accounts**, and
   **Gemma 4 E2B downloaded on first launch with on-device update checks**, and the
   **daily brief, waiting-on, people, debts, bills, expiry reminders, capture alerts and
-  action templates**, plus **local contact picking and person links**. Debug version **0.7.0** (code 7), Room schema **15**, backup schema **15**.
+  action templates**, plus **local contact picking and person links**. Debug/release version **0.8.0** (code 8), Room schema **16**, backup schema **16**.
 - **Web access:** an optional read-only web copy (NestJS API, Postgres, Next.js site
   in `web/`) synced from the phone; see [Web access](#web-access-read-only-mirror).
-  Not deployed anywhere and not yet run against a real phone.
-- **Host checks on this tree:** 263 Android unit tests (259 passed, 4 opt-in live AI
+  Local website: `https://hellfire.local`; not yet connected to a real phone.
+- **Host checks on this tree:** 286 Android unit tests (282 passed, 4 opt-in live AI
   tests skipped, 0 failures), 23 relay tests, 6 WhatsApp Web worker tests and 11 web
   API tests pass.
-  Lint passes with 0 errors and the debug APK assembles; the checksum is in
+  Lint and APK verification results are in
   [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md).
 - **Not done:** nothing has run on the physical OPPO, with a real model file, a live
   mail/WhatsApp/Google account or a real SMS corpus. Every phase stays **PARTIAL**.
 - **Review findings:** all fixed in code and covered by host tests; each still needs
-  its device or real-data check. DEVICE_FEASIBILITY.md → "Review fixes and multiple
-  accounts" lists what changed and what remains to verify.
-- **Not added:** a release build type (signing, shrinking) and CI.
+  its device or real-data check. DEVICE_FEASIBILITY.md → "Project review implementation" lists what changed
+  and what remains to verify.
+- **Release and CI:** release shrinking and optional local signing are configured; GitHub Actions runs the repository checks. Hosted CI and physical release behavior remain unverified.
 
 ## Build and verify
 
@@ -46,11 +46,11 @@ cd android
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'
 ```
 
-APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.7.0**.
+APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.8.0**.
 It is built for **arm64-v8a only** (since 2026-11-16), Android API 29+, target/compile
 API 36. Confirm the phone ABI before installation (`adb shell getprop ro.product.cpu.abilist`);
-32-bit-only phones and x86_64 PC emulators cannot run it. Size: about 149 MB
-(142 MiB): native libraries ≈94 MB (ONNX Runtime 34 MB, LiteRT-LM 15 MB, ML Kit OCR
+32-bit-only phones and x86_64 PC emulators cannot run it. Size: about 151 MB
+(144 MiB): native libraries ≈94 MB (ONNX Runtime 34 MB, LiteRT-LM 15 MB, ML Kit OCR
 22 MB, MediaPipe 8 MB, whisper 5 MB), unshrunk debug code ≈50 MB. Native libraries
 stay uncompressed in the APK and are not extracted, so installed size is close to the
 APK size plus Android's compiled code and app data. This is a debug artifact, without private release signing.
@@ -69,6 +69,48 @@ Model compatibility is established only by running the selected file on the phon
 The app remains one Gradle module with bounded Kotlin packages. Core capture,
 ledger calculations, task review and bundled OCR work without account credentials.
 Optional network adapters remain disconnected until configured by the owner.
+
+## Review improvements (0.8.0)
+
+- Home › **Review** combines payment, task and draft review; **Record** opens recordings.
+- Ask supports `spending on Fuel from M-Pesa this month`, `and last month?`,
+  `spending at merchant "Cafe" last week`, and `spending for person "Asha" this month`
+  (use your own account/category/person names). Unknown filters need clarification.
+  Choose **Local model + saved sources** for read-only model explanations. **History**
+  offers optional encrypted history and Clear.
+- **Share → HellFire Ass** accepts text, screenshots, PDFs and audio/video through
+  the existing app unlock gate. Review before saving a note, reminder or expense
+  candidate. It never sends or posts a payment automatically.
+- Inbox has Conversations / All items, saved-history search and older-page loading.
+  Waiting on has per-request clearing and thread snooze. People can have identical
+  names; Manage linked identities offers explicit merge/separation.
+- Task editing has date/time pickers, recurrence, reminder intensity, per-task
+  snooze and **Add to calendar** (you save or cancel in your calendar app).
+- Money › **Check account balance** guides reconciliation before an adjustment.
+  Review sheets can remember account/category suggestions after your approval.
+- Settings › **Language** selects English/Kiswahili main controls and speech locale;
+  advanced diagnostics and some dynamic explanations remain English. Captured
+  messages, names and source excerpts remain unchanged.
+- Backup shows staging-space estimates and **Verify an archive**. Streaming archives
+  support more than the previous 7 GiB originals ceiling, subject to free space:
+  500 GiB originals / 512 GiB archive; individual originals remain limited to 8 GiB.
+  Verification checks authentication and original hashes without replacing data.
+
+### Release APK and automated checks
+
+`cd android && ./gradlew :app:assembleRelease` builds a shrunk release APK. To sign,
+put private `android/signing.properties` (mode 600, ignored) beside Gradle settings:
+`storeFile`, `storePassword`, `keyAlias`, `keyPassword`; `storeFile` is relative to
+`android/`. Never commit that file or the keystore. Without it, CI builds an unsigned
+release for validation. A release key differs from the debug key: keep using the
+debug APK for an in-place upgrade of a debug install; do not uninstall personal data
+just to change signing identity. Android/Google authorization must be configured for
+whichever signing certificate you use.
+
+`.github/workflows/checks.yml` runs Android tests/lint/debug/release builds, relay and
+worker tests, web API tests against disposable Postgres, and frontend typecheck/build.
+It needs no personal messages, accounts, model weights or production secrets and
+performs no deployment. A hosted successful run has not been claimed.
 
 ## App controls
 
@@ -684,7 +726,7 @@ Phone side: `WebSyncTest` in the Android unit tests. Pinned: NestJS 12.3.2,
 
 ## Storage, recovery and boundaries
 
-Room schema **14** has non-destructive migrations from schema 1. Production uses
+Room schema **16** has non-destructive migrations from schema 1. Production uses
 SQLCipher plus Android Keystore-wrapped database credentials; captured payloads
 also use Keystore-backed AES-GCM. Legacy plaintext database conversion exports to
 an encrypted copy, checks it and atomically replaces the original; errors do not
@@ -819,3 +861,9 @@ References: [Android assistant](https://developer.android.com/reference/android/
 [Gmail app passwords](https://support.google.com/accounts/answer/185833),
 [whisper.cpp](https://github.com/ggml-org/whisper.cpp/tree/v1.9.5),
 [WhatsApp Business](https://developers.facebook.com/docs/whatsapp/).
+
+Local release signing material for this machine is kept under
+`~/.config/hellfire-ass/release-signing/` (directory mode 700, key/properties mode
+600). Ignored `android/signing.properties` links to that private configuration.
+Keep a separate private backup of the signing key and properties for future APK
+updates. They are deliberately excluded from Git, CI and application backups.

@@ -44,12 +44,12 @@ class ContactLinksTest {
         }
         val migrated = Room.databaseBuilder(context, EventDatabase::class.java, name).addMigrations(*EventDatabase.ALL_MIGRATIONS).build()
         try {
-            assertEquals(15, migrated.openHelper.writableDatabase.version)
+            assertEquals(16, migrated.openHelper.writableDatabase.version)
             assertEquals(-5000L, migrated.finances().balance("a"))
             assertNull(migrated.finances().entry("e")!!.personKey)
             assertNull(migrated.tasks().task("t")!!.personKey)
             assertEquals("Synthetic Asha", migrated.people().all().single().name)
-            assertTrue(migrated.contacts().all().isEmpty())
+            assertEquals("n:synthetic asha", migrated.contacts().all().single().personKey)
         } finally { migrated.close(); context.deleteDatabase(name) }
     }
     @Test fun `two numbers and an email join SMS WhatsApp and email with the existing normalizer`() = runBlocking {
@@ -101,7 +101,7 @@ class ContactLinksTest {
         assertEquals("n:synthetic asha", key)
         assertNull(db.contacts().find(key)!!.lookupKey)
         assertTrue(db.people().all().isEmpty())
-        links.save(ContactChoice("Synthetic Asha", "lookup-a", listOf("0712345678")))
+        links.namePerson(key, ContactChoice("Synthetic Asha", "lookup-a", listOf("0712345678")), emptyList(), "Synthetic Asha")
         links.save(ContactChoice("Synthetic Asha"))
         assertEquals("lookup-a", db.contacts().find(key)!!.lookupKey)
         assertEquals(1, db.people().all().size)
@@ -118,7 +118,8 @@ class ContactLinksTest {
         assertEquals("Synthetic Asha", db.debts().all().single().person)
         assertEquals(-5000L, db.finances().balance("a"))
         assertEquals(2, db.people().all().size)
-        assertNull(db.contacts().find(old))
+        assertEquals(old, key)
+        assertNotNull(db.contacts().find(old))
         assertEquals(1, db.communications().audits("OWNER_PERSON_RENAME").size)
     }
     @Test fun `schema 15 backup round trip retains only selected contact links and aliases`() = runBlocking {
@@ -128,7 +129,7 @@ class ContactLinksTest {
         links.task("t", key); links.ledger("e", key)
         val restored = restore(15)
         try {
-            assertEquals(15, BackupTables.SCHEMA)
+            assertEquals(16, BackupTables.SCHEMA)
             assertEquals(db.contacts().all(), restored.contacts().all())
             assertEquals(db.people().all(), restored.people().all())
             assertEquals(key, restored.tasks().task("t")!!.personKey)

@@ -34,7 +34,7 @@ private fun contactsSettings(context: android.content.Context) {
 fun ContactPersonField(value: String, onValueChange: (String) -> Unit, label: String, suggestions: List<String> = emptyList(), onPick: (ContactChoice) -> Unit) {
     var open by remember { mutableStateOf(false) }
     AutocompleteField(value, onValueChange, label, suggestions, onPick = { onValueChange(it) })
-    SecondaryButton("Choose contact", { open = true })
+    SecondaryButton(com.hellfire.ass.ui.tr("Choose contact"), { open = true })
     if (open) ContactPicker(value, { open = false }) { chosen -> onPick(chosen); open = false }
 }
 
@@ -45,6 +45,8 @@ private fun ContactPicker(initial: String, onDismiss: () -> Unit, onPick: (Conta
     val scope = rememberCoroutineScope()
     var granted by remember { mutableStateOf(provider.granted()) }
     var query by remember { mutableStateOf(initial) }
+    var savedDetails by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var savedPeople by remember { mutableStateOf<List<PersonContact>>(emptyList()) }
     var matches by remember { mutableStateOf<List<ContactMatch>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
@@ -52,6 +54,9 @@ private fun ContactPicker(initial: String, onDismiss: () -> Unit, onPick: (Conta
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { granted = provider.granted() }
     LaunchedEffect(query, granted) {
         matches = emptyList(); error = null
+        savedDetails = withContext(Dispatchers.IO) { (context.applicationContext as com.hellfire.ass.HellFireApp).database.people().all().groupBy { it.personKey ?: com.hellfire.ass.insights.People.namedKey(it.name) }
+            .mapValues { (_, aliases) -> aliases.take(2).joinToString { com.hellfire.ass.insights.Handles.label(it.handle) } } }
+        savedPeople = withContext(Dispatchers.IO) { (context.applicationContext as com.hellfire.ass.HellFireApp).database.contacts().all().filter { query.isNotBlank() && it.displayName.contains(query.trim(), true) }.take(30) }
         if (!granted || query.isBlank()) { loading = false; return@LaunchedEffect }
         loading = true
         delay(250)
@@ -60,14 +65,19 @@ private fun ContactPicker(initial: String, onDismiss: () -> Unit, onPick: (Conta
         catch (_: Exception) { error = "Contacts could not be read. You can still use a typed name." }
         finally { loading = false }
     }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Choose a person") }, text = {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(com.hellfire.ass.ui.tr("Choose a person")) }, text = {
         Column(Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             HfTextField(query, { query = it }, "Name, number or email")
+            savedPeople.forEach { person ->
+                SecondaryButton(person.displayName + " · " + (savedDetails[person.personKey] ?: "saved person"), {
+                    onPick(ContactChoice(person.displayName, person.lookupKey, personKey = person.personKey))
+                })
+            }
             if (!granted) {
                 Text("Allow contacts to find people already synced on this phone, including Google contacts. Only the person you pick is saved, with their numbers and emails to join your messages.")
-                SecondaryButton("Allow contacts", { permission.launch(Manifest.permission.READ_CONTACTS) })
+                SecondaryButton(com.hellfire.ass.ui.tr("Allow contacts"), { permission.launch(Manifest.permission.READ_CONTACTS) })
                 Text("If access is denied, type a name. To allow it later: App settings › Permissions › Contacts.")
-                QuietButton("App settings", { contactsSettings(context) })
+                QuietButton(com.hellfire.ass.ui.tr("App settings"), { contactsSettings(context) })
             } else {
                 Text(when { loading -> "Searching…"; query.isBlank() -> "Type to search contacts on this phone."; matches.isEmpty() -> "No matching contacts. You can use the typed name."; else -> "Pick a contact. Up to ${PhoneContacts.LIMIT} results; refine your search if needed." })
                 matches.forEach { match ->
@@ -86,8 +96,8 @@ private fun ContactPicker(initial: String, onDismiss: () -> Unit, onPick: (Conta
             error?.let { Text(it) }
         }
     }, confirmButton = {
-        PrimaryButton("Use typed name", { onPick(ContactChoice(query.trim())) }, enabled = query.isNotBlank() && query.trim().length <= 200)
-    }, dismissButton = { QuietButton("Cancel", onDismiss) })
+        PrimaryButton(com.hellfire.ass.ui.tr("Use typed name"), { onPick(ContactChoice(query.trim())) }, enabled = query.isNotBlank() && query.trim().length <= 200)
+    }, dismissButton = { QuietButton(com.hellfire.ass.ui.tr("Cancel"), onDismiss) })
 }
 
 /** Does not request access or erase the owner's saved name when a contact disappears. */

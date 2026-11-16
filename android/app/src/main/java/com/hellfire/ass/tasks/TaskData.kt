@@ -19,13 +19,22 @@ data class AssistantTask(@PrimaryKey val id: String, val sourceId: String, val t
     /** TASK or BILL (v11). */
     @ColumnInfo(defaultValue = "TASK") val kind: String = "TASK",
     /** Bills only: when done, the next month's bill is scheduled (v11). */
-    @ColumnInfo(defaultValue = "0") val repeatMonthly: Boolean = false, val personKey: String? = null)
+    @ColumnInfo(defaultValue = "0") val repeatMonthly: Boolean = false, val personKey: String? = null,
+    @ColumnInfo(defaultValue = "NONE") val repeatRule: String = "NONE",
+    @ColumnInfo(defaultValue = "PERSISTENT") val alertProfile: String = "PERSISTENT",
+    @ColumnInfo(defaultValue = "10") val snoozeMinutes: Int = 10)
 
 @Entity(tableName = "daily_review")
 data class DailyReview(@PrimaryKey val day: String, val state: String = "PENDING", val createdAt: Long, val completedAt: Long? = null)
 
 @Dao
 interface TaskDao {
+    @Query("UPDATE assistant_task SET state = 'ACTIVE', nextAlertAt = :next, updatedAt = :now, completedAt = NULL, lastAlertAt = NULL, alertCount = 0 WHERE id = :id AND state = 'REJECTED'")
+    suspend fun reactivateRepeat(id: String, next: Long?, now: Long)
+
+    @Query("UPDATE assistant_task SET repeatRule = :repeat, alertProfile = :profile, snoozeMinutes = :snooze WHERE id = :id")
+    suspend fun reminderOptions(id: String, repeat: String, profile: String, snooze: Int)
+
     @Query("UPDATE assistant_task SET personKey = :key, updatedAt = :now WHERE id = :id") suspend fun setPerson(id: String, key: String?, now: Long)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insert(task: AssistantTask): Long

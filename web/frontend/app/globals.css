@@ -8,6 +8,7 @@
   --line: #e4e7eb;
   --fill: #f1f3f5;
   --primary: #c2410c;
+  --on-primary: #ffffff;
   --primary-soft: #ffede3;
   --success: #15803d;
   --danger: #991b1b;
@@ -24,6 +25,7 @@
     --line: #2a2f36;
     --fill: #23262d;
     --primary: #fb923c;
+    --on-primary: #3a1300;
     --primary-soft: #3a2316;
     --success: #4ade80;
     --danger: #f87171;
@@ -73,7 +75,7 @@ td.num, th.num { text-align: right; white-space: nowrap; }
 .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin: 16px 0; }
 .filters label { display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
 input, select, button { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; }
-button, .button { cursor: pointer; background: var(--primary); color: #fff; border-color: var(--primary); text-decoration: none; display: inline-block; padding: 7px 14px; border-radius: 10px; }
+button, .button { cursor: pointer; background: var(--primary); color: var(--on-primary); border-color: var(--primary); text-decoration: none; display: inline-block; padding: 7px 14px; border-radius: 10px; }
 button.quiet, .button.quiet { background: transparent; color: var(--text); border-color: var(--line); }
 
 .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0; }

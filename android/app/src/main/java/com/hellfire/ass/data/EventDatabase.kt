@@ -45,6 +45,9 @@ data class EventSummary(
 
 @Dao
 interface EventDao {
+    @Query("SELECT e.*, p.label, COALESCE(p.state, 'PENDING') AS state FROM source_event e LEFT JOIN event_processing p ON p.eventId = e.id WHERE (e.source = 'android_sms' OR (e.source = 'android_notification' AND p.label IN ('MESSAGE', 'FINANCE_CANDIDATE'))) AND (:query = '' OR EXISTS(SELECT 1 FROM source_search s WHERE s.eventId = e.id AND instr(lower(s.text), lower(:query)) > 0)) ORDER BY e.occurredAt DESC, e.id DESC LIMIT :limit")
+    fun inbox(query: String, limit: Int): Flow<List<LabelledEvent>>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(event: SourceEvent): Long
 
@@ -154,7 +157,7 @@ interface EventDao {
 data class LabelledEvent(@Embedded val event: SourceEvent, val label: String?, val state: String)
 
 @Database(entities = [SourceEvent::class, EventProcessing::class, CaptureAudit::class, NotificationPolicy::class, FinanceAccount::class, FinanceCandidate::class, LedgerEntry::class, LedgerEvidence::class, MerchantAlias::class, CommunicationMessage::class, MailCursor::class, OutboundDraft::class, ActionAudit::class, IntegrationState::class, AssistantTask::class, DailyReview::class, MediaItem::class, TranscriptSegment::class, SpeechSpan::class, MemoryItem::class, com.hellfire.ass.memory.SemanticVector::class, AiUsage::class, CategoryBudget::class, ProviderBalance::class, SourceSearch::class,
-    com.hellfire.ass.templates.ActionTemplate::class, com.hellfire.ass.insights.DebtEntry::class, com.hellfire.ass.insights.PersonAlias::class, com.hellfire.ass.contacts.PersonContact::class], version = 15, exportSchema = true)
+    com.hellfire.ass.templates.ActionTemplate::class, com.hellfire.ass.insights.DebtEntry::class, com.hellfire.ass.insights.PersonAlias::class, com.hellfire.ass.contacts.PersonContact::class], version = 16, exportSchema = true)
 abstract class EventDatabase : RoomDatabase() {
     abstract fun events(): EventDao
     abstract fun finances(): FinanceDao
@@ -255,8 +258,18 @@ abstract class EventDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE ledger_entry ADD COLUMN personKey TEXT")
             }
         }
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE person_alias ADD COLUMN personKey TEXT")
+                db.execSQL("ALTER TABLE debt_entry ADD COLUMN personKey TEXT")
+                com.hellfire.ass.contacts.ContactSchema.backfill(db)
+                db.execSQL("ALTER TABLE assistant_task ADD COLUMN repeatRule TEXT NOT NULL DEFAULT 'NONE'")
+                db.execSQL("ALTER TABLE assistant_task ADD COLUMN alertProfile TEXT NOT NULL DEFAULT 'PERSISTENT'")
+                db.execSQL("ALTER TABLE assistant_task ADD COLUMN snoozeMinutes INTEGER NOT NULL DEFAULT 10")
+            }
+        }
         const val SOURCE_SEARCH_SQL = "CREATE VIRTUAL TABLE IF NOT EXISTS `source_search` USING FTS4(`eventId` TEXT NOT NULL, `text` TEXT NOT NULL, tokenize=unicode61, notindexed=`eventId`)"
-        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
         fun open(context: Context): EventDatabase = Room.databaseBuilder(
             context.applicationContext, EventDatabase::class.java, "hellfire.db"
         ).openHelperFactory(EncryptedDatabase.factory(context)).addMigrations(*ALL_MIGRATIONS).build()

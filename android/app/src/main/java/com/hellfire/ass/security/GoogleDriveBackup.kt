@@ -35,7 +35,7 @@ data class DriveSnapshot(val id: String, val name: String, val createdAt: String
 /** Only encrypted .hfb archives cross this transport. Never follows a bearer-token redirect. */
 class GoogleDriveBackup(private val connect: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }) {
     companion object {
-        const val MAX_BYTES = 9L * 1024 * 1024 * 1024
+        const val MAX_BYTES = BackupReadiness.MAX_ARCHIVE
         private const val API = "https://www.googleapis.com/drive/v3/files"
         private const val UPLOAD = "https://www.googleapis.com/upload/drive/v3/files"
         fun validId(id: String): String { require(id.matches(Regex("[A-Za-z0-9_-]{1,200}"))); return id }

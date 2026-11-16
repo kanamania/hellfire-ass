@@ -104,12 +104,24 @@ class FinanceRepository(private val db: EventDatabase) {
         db.communications().audit(com.hellfire.ass.communications.ActionAudit(UUID.randomUUID().toString(), id, "OWNER_LEDGER_RECATEGORIZE", category, System.currentTimeMillis()))
     }
 
-    suspend fun summary(start: Long, end: Long): FinanceSummary {
+    suspend fun selected(start: Long, end: Long, category: String? = null, accountId: String? = null, merchant: String? = null, personKey: String? = null): List<LedgerEntry> {
+        require(start >= 0 && end > start)
+        return dao.period(start, end).map { entry ->
+            val original = entry.reversesId?.let { dao.entry(it) } ?: entry
+            val person = original.personKey ?: if (original.kind == "FEE") dao.entry(original.groupId)?.personKey else null
+            entry.copy(category = original.category, personKey = person)
+        }.filter { entry ->
+            (category == null || entry.category.equals(category, true)) && (accountId == null || entry.accountId == accountId) &&
+                (merchant == null || entry.description.contains(merchant, true)) && (personKey == null || entry.personKey == personKey)
+        }
+    }
+
+    suspend fun summary(start: Long, end: Long, category: String? = null, accountId: String? = null, merchant: String? = null, personKey: String? = null): FinanceSummary {
         require(start >= 0 && end > start)
         var income = 0L
         var expenses = 0L
         val sources = linkedSetOf<String>()
-        for (entry in dao.period(start, end)) {
+        for (entry in selected(start, end, category, accountId, merchant, personKey)) {
             val original = entry.reversesId?.let { dao.entry(it) }
             val kind = original?.kind ?: entry.kind
             when (kind) {
