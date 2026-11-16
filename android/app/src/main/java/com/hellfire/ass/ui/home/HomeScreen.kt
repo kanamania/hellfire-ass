@@ -48,6 +48,8 @@ fun HomeScreen() {
         runCatching { withContext(Dispatchers.IO) { app.finances.summary(start, end) } }.getOrNull()?.let { spent = it.expenses; received = it.income }
     }
     LaunchedEffect(Unit) { cloudOn = runCatching { withContext(Dispatchers.IO) { app.ai.store.read().cloudEnabled } }.getOrDefault(false) }
+    var brief by remember { mutableStateOf<com.hellfire.ass.insights.Brief?>(null) }
+    LaunchedEffect(Unit) { brief = com.hellfire.ass.ui.insights.io { com.hellfire.ass.insights.Briefs.load(app) } }
     val now = remember { java.time.ZonedDateTime.now(com.hellfire.ass.tasks.TaskTime.zone) }
     val greeting = when (now.hour) { in 5..11 -> "Good morning"; in 12..16 -> "Good afternoon"; else -> "Good evening" }
 
@@ -61,6 +63,22 @@ fun HomeScreen() {
             Icon(if (cloudOn) HfIcons.Cloud else HfIcons.Lock, null, Modifier.size(14.dp), tint = Hf.colors.muted)
             Text(if (cloudOn) "Cloud AI on · used only when you choose a cloud model" else "Private on this phone · Cloud AI off",
                 style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+        }
+
+        val gaps = brief?.sections?.firstOrNull { it.title == "Capture" }?.lines.orEmpty()
+        if (gaps.isNotEmpty()) Banner(gaps.first().text + (if (gaps.size > 1) " · and ${gaps.size - 1} more" else "") + ". Tap to fix.", Tone.Warning, HfIcons.Info,
+            Modifier.clickableRow { nav.push(Screen.Settings); nav.push(Screen.Permissions) })
+        ListCard {
+            ListRow(if (brief?.evening ?: com.hellfire.ass.insights.Briefs.isEvening(System.currentTimeMillis())) "Evening wrap-up" else "Morning brief",
+                subtitle = brief?.headline ?: "Tasks, bills, replies and money in one place", icon = HfIcons.Bell, tone = Tone.Primary, chevron = true,
+                onClick = { nav.push(Screen.Brief) })
+        }
+        FlowRow(Modifier.offset(y = (-6).dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            HfChip("Templates", { nav.push(Screen.Templates) })
+            HfChip("Waiting on", { nav.push(Screen.Waiting) })
+            HfChip("People", { nav.push(Screen.People) })
+            HfChip("Debts", { nav.push(Screen.Debts) })
+            HfChip("Bills", { nav.push(Screen.Bills) })
         }
 
         val pendingDrafts = drafts.filter { it.state == "DRAFT" }

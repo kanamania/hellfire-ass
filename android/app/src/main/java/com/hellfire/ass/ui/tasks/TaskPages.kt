@@ -73,6 +73,9 @@ fun RemindersPage() {
     val prefs = remember { app.getSharedPreferences("capture", 0) }
     val states by remember { app.database.communications().integrations() }.collectAsStateWithLifecycle(emptyList())
     var nightly by remember { mutableStateOf(prefs.getBoolean("nightly_review", true)) }
+    var morning by remember { mutableStateOf(prefs.getBoolean("morning_brief", true)) }
+    var briefHour by remember { mutableStateOf(prefs.getInt("brief_hour", 7).coerceIn(4, 11)) }
+    var gapAlerts by remember { mutableStateOf(prefs.getBoolean("gap_alerts", true)) }
     var repeat by remember { mutableStateOf(prefs.getInt("overdue_minutes", 10).toString()) }
     var status by remember { mutableStateOf<String?>(null) }
     PushedPage("Reminders", breadcrumb = "Settings") {
@@ -92,6 +95,24 @@ fun RemindersPage() {
                 prefs.edit().putBoolean("nightly_review", enabled).apply()
                 scope.launch { runCatching { TaskScheduler.restore(app) } }
             }, subtitle = "21:00 East Africa Time")
+            ListDivider(16.dp)
+            SwitchRow("Morning brief", morning, { enabled ->
+                morning = enabled
+                prefs.edit().putBoolean("morning_brief", enabled).apply()
+                scope.launch { runCatching { TaskScheduler.restore(app) } }
+            }, subtitle = "A quiet notification with today's tasks, bills and replies")
+            if (morning) Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)) {
+                com.hellfire.ass.ui.money.ChipPicker((5..9).map { it.toString() }, briefHour.toString(), { "%02d:00".format(it.toInt()) }) { picked ->
+                    briefHour = picked.toInt()
+                    prefs.edit().putInt("brief_hour", briefHour).apply()
+                    scope.launch { runCatching { TaskScheduler.restore(app) } }
+                }
+            }
+            ListDivider(16.dp)
+            SwitchRow("Capture problem alerts", gapAlerts, { enabled ->
+                gapAlerts = enabled
+                prefs.edit().putBoolean("gap_alerts", enabled).apply()
+            }, subtitle = "Tell me when notifications, SMS, email or WhatsApp stop being saved")
         }
         SectionCard("Overdue reminders") {
             HfTextField(repeat, { repeat = it }, "Repeat every · 5–1440 minutes", number = true)

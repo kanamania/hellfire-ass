@@ -41,6 +41,8 @@ object MediaWork {
         app.events.capture(raw, app.packageName)
         val sanitized = safe.snapshot.fields["text"].orEmpty().joinToString("\n")
         app.database.media().segment(TranscriptSegment("${item.id}:$suffix:$start", item.id, safe.id, start, end, text = sanitized))
+        // Scanned pages may carry an expiry date (passport, licence, insurance): propose a renewal task for the owner to accept.
+        if (suffix == "image" || suffix == "pdf_page_zero_based") com.hellfire.ass.insights.ExpiryFinder.collect(app.database, safe.id, item.id, item.name, text, now)
     }
 }
 

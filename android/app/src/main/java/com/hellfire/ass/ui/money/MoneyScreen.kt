@@ -98,6 +98,11 @@ fun MoneyScreen() {
             }
             banner?.let { Banner(it, modifier = Modifier.clickableRow { banner = null }) }
             BalanceCard(accounts, balances, totals, onOpen = { nav.push(Screen.Accounts) }, onAdd = { nav.push(Screen.Accounts, "add") })
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                HfChip("Use a template", { nav.push(Screen.Templates) })
+                HfChip("Bills", { nav.push(Screen.Bills) })
+                HfChip("Debts", { nav.push(Screen.Debts) })
+            }
             val byCategory = remember(entries) { com.hellfire.ass.reports.posted(entries, accounts).groupBy { it.entry.category }
                 .mapValues { (_, v) -> v.sumOf(::spend) }.filterValues { it > 0 }.toList() }
             if (byCategory.isNotEmpty()) ChartCard("Where it went", trailing = month.month.getDisplayName(java.time.format.TextStyle.SHORT, Locale.ENGLISH)) {

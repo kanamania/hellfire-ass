@@ -167,6 +167,7 @@ fun TransactionPage(id: String) {
     var merchant by remember { mutableStateOf<String?>(null) }
     var confirmReverse by remember { mutableStateOf(false) }
     var pickCategory by remember { mutableStateOf(false) }
+    var debt by remember { mutableStateOf<com.hellfire.ass.ui.insights.DebtPrefill?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(entry) {
         val e = entry ?: return@LaunchedEffect
@@ -206,10 +207,14 @@ fun TransactionPage(id: String) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (e.reversesId == null && e.kind != "FEE") SecondaryButton("Change category", { pickCategory = true })
             source?.let { s -> SecondaryButton("Full source", { nav.push(Screen.Source, s.id) }) }
+            if (e.reversesId == null && e.id == e.groupId && e.kind in setOf("EXPENSE", "INCOME")) SecondaryButton("Record as debt", {
+                debt = com.hellfire.ass.ui.insights.DebtPrefill(kind = if (e.amount < 0) "LENT" else "REPAID_TO_ME", amount = kotlin.math.abs(e.amount), occurredAt = e.occurredAt, ledgerId = e.id)
+            })
         }
         if (e.reversesId == null && e.id == e.groupId && !reversed) QuietButton("Correct with a reversal", { confirmReverse = true })
         Note("Amount, date and account come from the confirmed entry. The source message is kept as proof and is never edited.")
     }
+    debt?.let { p -> com.hellfire.ass.ui.insights.DebtSheet(p) { msg -> debt = null; if (msg != null) message = msg } }
     if (confirmReverse) ConfirmDialog("Correct with a reversal?", "Adds reversal entries for this payment, its fee and any transfer credit. The original entry and its evidence stay.",
         "Add reversal", onConfirm = {
             confirmReverse = false

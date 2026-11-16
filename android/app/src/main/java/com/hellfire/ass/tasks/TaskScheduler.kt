@@ -37,6 +37,18 @@ object TaskScheduler {
         return if (!app.database.tasks().reviewedOrPrompted(today)) at.coerceAtLeast(now)
             else local.toLocalDate().plusDays(1).atTime(21, 0).atZone(TaskTime.zone).toInstant().toEpochMilli()
     }
+    /** Hour of the morning brief notification, East Africa Time, or null when the owner turned it off. */
+    fun briefHour(app: HellFireApp): Int? = app.getSharedPreferences("capture", 0).let { p ->
+        if (p.getBoolean("morning_brief", true)) p.getInt("brief_hour", 7).coerceIn(4, 11) else null
+    }
+    /** Next morning brief: today at the chosen hour if it is still morning and not yet shown, else tomorrow. */
+    fun briefTime(hour: Int?, shownDay: String?, now: Long): Long? {
+        if (hour == null) return null
+        val local = Instant.ofEpochMilli(now).atZone(TaskTime.zone)
+        val today = local.toLocalDate()
+        val day = if (shownDay != today.toString() && local.hour < 12) today else today.plusDays(1)
+        return day.atTime(hour, 0).atZone(TaskTime.zone).toInstant().toEpochMilli().coerceAtLeast(now)
+    }
     @SuppressLint("ScheduleExactAlarm")
     private suspend fun arm(app: HellFireApp) {
         val alarm = app.getSystemService(AlarmManager::class.java)
@@ -47,7 +59,8 @@ object TaskScheduler {
             return
         }
         val now = System.currentTimeMillis()
-        val next = listOfNotNull(app.database.tasks().nextAlert(), reviewTime(app, now)).minOrNull() ?: return
+        val next = listOfNotNull(app.database.tasks().nextAlert(), reviewTime(app, now),
+            briefTime(briefHour(app), app.getSharedPreferences("capture", 0).getString("brief_day", null), now)).minOrNull() ?: return
         val exact = Build.VERSION.SDK_INT < 31 || alarm.canScheduleExactAlarms()
         try {
             if (exact) alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.coerceAtLeast(now + 1000), pending(app))
@@ -149,6 +162,15 @@ object TaskScheduler {
             app.database.tasks().review(DailyReview(day, createdAt = now))
         }
         if (local.hour >= 21) app.requestWidgetRefresh()
+        val prefs = app.getSharedPreferences("capture", 0)
+        val briefHour = briefHour(app)
+        if (briefHour != null && local.hour in briefHour until 12 && prefs.getString("brief_day", null) != day) {
+            // Mark the day first: a brief that fails to load must not re-fire the alarm in a loop.
+            prefs.edit().putString("brief_day", day).apply()
+            try { com.hellfire.ass.insights.Briefs.notify(app, com.hellfire.ass.insights.Briefs.load(app, now, evening = false)) }
+            catch (e: CancellationException) { throw e }
+            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught) }
+        }
         arm(app)
     }
 }

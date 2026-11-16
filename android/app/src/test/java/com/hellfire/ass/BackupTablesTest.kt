@@ -73,7 +73,7 @@ class BackupTablesTest {
         val restored = target.finances().findCandidate("c")!!
         assertEquals(3000L, restored.amount)
         assertNull(restored.accountId); assertNull(restored.category)
-        assertEquals(BackupTables.tables, BackupTables.tablesFor(11))
+        assertEquals(BackupTables.tablesFor(13), BackupTables.tablesFor(11))
     }
 
     @Test fun `archives cannot invent SQL tables or columns`() {

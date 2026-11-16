@@ -104,6 +104,7 @@ fun InboxTab() {
     val pending = drafts.filter { it.state == "DRAFT" }.let { list -> focusDraft?.let { id -> list.sortedByDescending { it.id == id } } ?: list }
     ScrollPage(gap = 14.dp) {
         ScreenHeader("Inbox") {
+            IconCircleButton(HfIcons.Alarm, "Waiting on", { nav.push(Screen.Waiting) })
             IconCircleButton(HfIcons.Search, "Search", { search = if (search == null) "" else null })
             IconCircleButton(HfIcons.Plus, "New message", { editing = ReplyDraft() })
         }

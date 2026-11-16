@@ -1,8 +1,39 @@
 # HellFire Ass — implementation and feasibility
 
-Latest update: 2026-11-16 (Gemma 4 E2B download and dependency check, directly below). Earlier
+Latest update: 2026-11-16 (daily outputs and action templates, directly below). Earlier
 checkpoints keep the test counts and APK checksums that were true when they were
-written; the review checkpoint has the current ones.
+written; the newest checkpoint has the current ones.
+
+## Daily outputs and action templates — 2026-11-16
+
+Branch `feat/daily-outputs-and-templates`. Version 0.7.0 (code 7), Room schema 14,
+backup schema 14 (schemas 8 and 10–13 still restore). New tables: `action_template`,
+`debt_entry`, `person_alias`. Synthetic data only; no phone, account, real SMS,
+real document scan or notification delivery was used.
+
+| Check | Command | Result |
+|---|---|---|
+| Android unit tests | `./gradlew :app:testDebugUnitTest --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'` | PASS: 247 tests, 243 passed, 4 opt-in live AI tests skipped, 0 failures; 15 new in `DailyOutputsTest` |
+| Lint and debug APK | `./gradlew :app:lintDebug :app:assembleDebug` with the same limits | PASS: lint 0 errors, 266 warnings, 6 hints. Debug APK 0.7.0 (code 7), arm64-v8a only, 150,091,685 bytes, SHA-256 `bf947b77ad15f3e8239c2b32ddb1ef51a6584ae9977c75f6f9c59837b7067d74`. Not installed on any device |
+
+| Question | Method | Result | Evidence / limit | Next step |
+|---|---|---|---|---|
+| Schema 13 → 14 migrates and backs up? | `DailyOutputsTest` | PASS (host) / NOT TESTED (SQLCipher) | A schema 13 file opens at 14 with the three new tables usable; backup schema 14 adds them and schema 13 archives restore without them; restore now also requires these tables empty | Upgrade over the owner's database on the phone |
+| Templates add a mix in one step? | `DailyOutputsTest` | PASS (host) | One run scheduled 1 task (active, bill, due 5 days later 08:30), posted 1 expense and 1 income to the ledger with the run as evidence, and left the line without an account in To confirm; a payment line without an amount is refused; lines round-trip through JSON | Create and use a template on the phone; check the reminder fires |
+| Template and brief screens | Compile, lint | NOT TESTED (device) | Compose screens for Templates, Brief, Waiting on, People, Debts and Bills compile; none was drawn or tapped | Hand-test every new screen and the Home, Money, Tasks and Inbox entry points |
+| Morning brief content | `DailyOutputsTest` | PASS (host, synthetic) | Sections and headline for morning and evening; overdue first; bill shortfall flagged; empty day says so | Compare with a real day's data |
+| Morning brief notification | `DailyOutputsTest` (timing only) | PARTIAL | Next time is today at the chosen hour if still morning and not shown, else tomorrow. It shares the reminder alarm; delivery was not exercised | Check 07:00 delivery on ColorOS with Doze and battery limits |
+| Waiting-on correct? | `DailyOutputsTest` | PASS (synthetic) / NOT TESTED (real traffic) | Latest message per person across channels; a reply on another channel settles it; groups, short codes, sender names and automated mailboxes ignored; cleared rows return on a newer message | Measure false positives on the owner's real messages; tune the 4 h / 24 h limits |
+| Numbers and addresses joined? | `DailyOutputsTest` | PASS (host) | `+255712345678`, `0712 345 678` and `255712345678@c.us` are one handle (last nine digits); a shared name joins a number and an email | Check real sender formats, especially WhatsApp `@lid` ids, which stay separate until named |
+| People page linked to calls? | Code review | PARTIAL | Recordings match by file name (name or number) only; there is no caller-ID link | Check what the OPPO names its call recordings |
+| Debts net correctly? | `DailyOutputsTest` | PASS (host) | Balance per person, case-insensitive; settled people hidden; overdue from the agreed date; repayment suggestions need the whole name in an approved payment's source text | Try with real M-Pesa names, which are often upper-case full names |
+| Debt reminder sending | Compile | NOT TESTED | Share sheet intent, or an email draft that needs Inbox approval; nothing is sent by the app | Share to WhatsApp and SMS on the phone |
+| Recurring bills found? | `DailyOutputsTest` | PASS (synthetic) | Three consecutive months, at most 1.5 payments a month, still current; stopped, gapped, daily, generic and reversed payments are ignored; 30-day shortfall computed | Run on the owner's ledger; descriptions must repeat exactly for a match |
+| Expiry dates read? | `DailyOutputsTest` | PASS (typed text) / NOT TESTED (real OCR) | Passport `12 MAR /MARS 31`, `30/06/2027`, ISO, `02/2027`, `December 1, 2027`; past and non-expiry dates ignored; one proposal per date; the document number is not copied | Scan a real passport, licence and insurance cover note; record misses |
+| Capture gaps detected? | `DailyOutputsTest` | PASS (host rules) | Revoked access, 12 h without a notification, an SMS on the phone unsaved after 30 min, 6 h without a sync; a new install and a just-arrived SMS are not gaps | — |
+| Capture alert and listener rebind | Compile | NOT TESTED | 15-minute maintenance worker posts one notification per problem set per day and calls `requestRebind`; skipped until first-run setup is done | Force-stop or battery-restrict the app on ColorOS; confirm the alert appears and whether rebind restores capture |
+| Spoken money commands | `DailyOutputsTest`, `AssistantCommandsTest` | PASS (typed text) / NOT TESTED (speech) | `elfu kumi na tano` = 15,000, `laki mbili na elfu hamsini` = 250,000, income amount-first or last, leading "HellFire,", `use template <name>`; `income this month` is still a question | Speak them through Whisper on the phone; record recognition errors |
+| Web copy | Code review | NOT INCLUDED | Templates, debts and person names are not synced to the web copy; tasks and payments made from them are, as before | Decide whether the web copy should show them |
 
 ## Gemma 4 E2B download and updates — 2026-11-16
 
