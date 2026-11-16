@@ -275,6 +275,29 @@ reports, Room v10/v11 and Glance home screen widgets. Evidence below is host tes
 | Assistant gesture opens Ask | — | NOT TESTED | Intent routing implemented (`ACTION_ASSIST` → Ask) | Test the ColorOS gesture and power-button assistant |
 | Background capture overnight with the new UI | — | NOT TESTED | Unchanged services; Setup row shows battery exemption and ColorOS caveat | Overnight test with battery optimisation off and auto-launch on |
 
+## Money entry update — 2026-11-14
+
+Cash entry now has date/time pickers in East Africa Time, a category selector and an
+account selector. Each review candidate retains those choices across reloads. Account
+creation no longer asks for a provider; Money cards, sheets and report grouping no
+longer display it. Any saved account can be chosen when confirming a payment.
+Receipt identifiers remain internal to preserve duplicate detection and merchant evidence.
+Room v12 adds nullable account/category selections without discarding existing data;
+backups retain these selections and schemas 8, 10 and 11 remain readable.
+
+| Question | Test | Result | Evidence | Next action |
+|---|---|---|---|---|
+| Do selections, migration and ledger approval work? | Host unit tests/build | PASS (host) | 192 tests: 188 passed, 4 live-AI tests skipped; no failures/errors. Debug APK built. Migration v11→v12, selected account/category/EAT timestamp, approval and old/new backup rows covered | Verify real phone interactions |
+| Do picker controls behave on ColorOS? | Select and cancel date/time; change category/account; rotate, reopen review, confirm multi-item cash entry; add an account without a provider | NOT TESTED | No phone test performed for this change | Verify timezone, retained selections and balances on the OPPO |
+
+Command: `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug --max-workers=1 --console=plain`
+from `android/`. Test and assemble tasks passed. Lint is **NOT COMPLETED**: its
+analysis was stopped after prolonged runtime under host memory pressure (about
+600 MiB RAM available, 35 GiB swap in use). No lint success is claimed for this change.
+Rerun `./gradlew :app:lintDebug --max-workers=1 --console=plain` when capacity is available.
+APK SHA-256:
+`dc852ff89217f8ef380e84c736e87338e42954c5dd583950f99b4aa8d40c2c43`.
+
 ## Final-stage device verification
 
 Run these when physical testing begins, from the checkout root. Do not assume the

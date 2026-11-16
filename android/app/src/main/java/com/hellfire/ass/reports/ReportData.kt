@@ -108,7 +108,7 @@ fun moneyTotals(items: List<Posted>): MoneyTotals {
 /** Expense flow of one entry: positive for spending, negative for refunds and reversals of spending. */
 fun spend(p: Posted): Long = if (p.kind == "EXPENSE" || p.kind == "REFUND") -p.entry.amount else 0
 
-enum class MoneyGroup(val label: String) { Category("Category"), Account("Account"), Provider("Provider"), Week("Week"), Day("Day") }
+enum class MoneyGroup(val label: String) { Category("Category"), Account("Account"), Week("Week"), Day("Day") }
 
 data class GroupRow(val key: String, val count: Int, val amount: Long, val share: Int, val change: Int?)
 
@@ -119,13 +119,12 @@ fun expenseGroups(current: List<Posted>, previous: List<Posted>, group: MoneyGro
     fun keyOf(p: Posted, r: DateRange): String = when (group) {
         MoneyGroup.Category -> p.entry.category
         MoneyGroup.Account -> p.accountLabel
-        MoneyGroup.Provider -> p.provider
         MoneyGroup.Day -> dayFmt.format(Instant.ofEpochMilli(p.entry.occurredAt).atZone(TaskTime.zone))
         MoneyGroup.Week -> (if (r === range) weeks else buckets(r)).firstOrNull { p.entry.occurredAt >= it.start && p.entry.occurredAt < it.end }?.label ?: "Other"
     }
     val spendCurrent = current.filter { spend(it) != 0L }
     val total = spendCurrent.sumOf { spend(it) }
-    val prev = if (group == MoneyGroup.Category || group == MoneyGroup.Account || group == MoneyGroup.Provider)
+    val prev = if (group == MoneyGroup.Category || group == MoneyGroup.Account)
         previous.filter { spend(it) != 0L }.groupBy { keyOf(it, range.previous()) }.mapValues { (_, v) -> v.sumOf(::spend) } else emptyMap()
     return spendCurrent.groupBy { keyOf(it, range) }.map { (k, v) ->
         val amount = v.sumOf(::spend)

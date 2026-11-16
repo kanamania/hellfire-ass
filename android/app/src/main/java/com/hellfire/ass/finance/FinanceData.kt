@@ -7,13 +7,14 @@ import java.util.UUID
 
 @Entity(tableName = "finance_account")
 data class FinanceAccount(@PrimaryKey val id: String = UUID.randomUUID().toString(), val label: String,
-    val provider: String, val currency: String = "TZS", val createdAt: Long = System.currentTimeMillis())
+    val provider: String = "MANUAL", val currency: String = "TZS", val createdAt: Long = System.currentTimeMillis())
 
 @Entity(tableName = "finance_candidate", indices = [Index(value = ["sourceId", "position"], unique = true)],
     foreignKeys = [ForeignKey(entity = SourceEvent::class, parentColumns = ["id"], childColumns = ["sourceId"], onDelete = ForeignKey.RESTRICT)])
 data class FinanceCandidate(@PrimaryKey val id: String, val sourceId: String, val position: Int = 0,
     val provider: String, val reference: String?, val kind: String, val amount: Long, val fee: Long,
-    val merchant: String?, val evidence: String, val occurredAt: Long, val state: String = "REVIEW")
+    val merchant: String?, val evidence: String, val occurredAt: Long, val state: String = "REVIEW",
+    val accountId: String? = null, val category: String? = null)
 
 @Entity(tableName = "ledger_entry", indices = [Index(value = ["dedupeKey"], unique = true), Index(value = ["reversesId"], unique = true), Index("accountId")],
     foreignKeys = [ForeignKey(entity = FinanceAccount::class, parentColumns = ["id"], childColumns = ["accountId"], onDelete = ForeignKey.RESTRICT)])

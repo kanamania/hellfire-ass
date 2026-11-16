@@ -79,14 +79,59 @@ class FinanceTest {
         assertEquals(6, db.finances().entryCount())
         assertTrue(runCatching { repo.reverse(original.id) }.isFailure)
     }
-    @Test fun `overflow and wrong provider approvals fail without partial entries`() = runBlocking {
+    @Test fun `overflow approvals fail without partial entries`() = runBlocking {
         db.finances().addAccount(FinanceAccount("a", "Synthetic source", "MPESA"))
         candidate("huge", fee = 1, amount = Long.MAX_VALUE)
         assertTrue(runCatching { repo.approve("huge", "a", "INCOME", "Income", "Synthetic") }.isFailure)
         assertEquals(0, db.finances().entryCount())
-        db.finances().addAccount(FinanceAccount("b", "Other provider", "NMB"))
+        db.finances().addAccount(FinanceAccount("b", "Other account", "NMB"))
         assertTrue(runCatching { repo.approve("huge", "b", "EXPENSE", "Other", "Synthetic") }.isFailure)
     }
+    @Test fun `receipt source never restricts the owner's chosen account`() = runBlocking {
+        db.finances().addAccount(FinanceAccount("wallet", "My wallet"))
+        candidate("receipt")
+        repo.approve("receipt", "wallet", "EXPENSE", "Transport", "Owner choice")
+        assertEquals(-15000L, db.finances().balance("wallet"))
+        assertEquals("MANUAL", db.finances().account("wallet")!!.provider)
+    }
+
+    @Test fun `cash account category and EAT date survive reload and approval`() = runBlocking {
+        db.finances().addAccount(FinanceAccount("cash", "Cash"))
+        db.finances().addAccount(FinanceAccount("other", "Other"))
+        val at = com.hellfire.ass.tasks.TaskTime.parse("2026-11-14 00:15")
+        candidate("cash-entry")
+        val original = db.finances().findCandidate("cash-entry")!!
+        db.finances().candidate(original.copy(id = "manual", position = 1, provider = "MANUAL", reference = null,
+            occurredAt = at, accountId = "cash", category = "Transport"))
+        val saved = db.finances().findCandidate("manual")!!
+        assertEquals("cash", saved.accountId)
+        assertEquals("Transport", saved.category)
+        assertEquals("2026-11-14T00:15+03:00[Africa/Dar_es_Salaam]", java.time.Instant.ofEpochMilli(saved.occurredAt).atZone(com.hellfire.ass.tasks.TaskTime.zone).toString())
+        repo.approve(saved.id, saved.accountId!!, saved.kind, saved.category!!, saved.evidence)
+        assertEquals(-15000L, db.finances().balance("cash"))
+        assertEquals(0L, db.finances().balance("other"))
+        assertEquals(at, db.finances().allEntries().single().occurredAt)
+    }
+
+    @Test fun `v11 migration retains accounts and review evidence with unset new selections`() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        val name = "finance-11-12.db"
+        MigrationFixture.create(context, name, 11) { old ->
+            old.execSQL("INSERT INTO finance_account (id, label, provider, currency, createdAt) VALUES ('a', 'Wallet', 'MPESA', 'TZS', 1)")
+            old.execSQL("INSERT INTO source_event (id, source, externalId, packageName, occurredAt, receivedAt, kind, payloadHash, encryptedPayload, contentAvailable, contentRedacted, securitySensitive, ingestVersion, processingStatus) VALUES ('s', 'owner_entry', 's', 'fixture', 1, 1, 'POSTED', 'h', X'01', 1, 0, 0, 1, 'captured')")
+            old.execSQL("INSERT INTO finance_candidate (id, sourceId, position, provider, reference, kind, amount, fee, merchant, evidence, occurredAt, state) VALUES ('c', 's', 0, 'MANUAL', NULL, 'EXPENSE', 3000, 0, NULL, 'Synthetic cash', 1, 'REVIEW')")
+        }
+        val migrated = Room.databaseBuilder(context, EventDatabase::class.java, name).addMigrations(*EventDatabase.ALL_MIGRATIONS).build()
+        try {
+            val saved = migrated.finances().findCandidate("c")!!
+            assertEquals(3000L, saved.amount)
+            assertEquals("Synthetic cash", saved.evidence)
+            assertNull(saved.accountId); assertNull(saved.category)
+            assertEquals("Wallet", migrated.finances().account("a")!!.label)
+            assertEquals(12, migrated.openHelper.writableDatabase.version)
+        } finally { migrated.close(); context.deleteDatabase(name) }
+    }
+
     @Test fun `approved edits preserve candidates and summaries exclude transfers but include fees refunds and reversals`() = runBlocking {
         db.finances().addAccount(FinanceAccount("a", "Synthetic wallet", "MPESA"))
         db.finances().addAccount(FinanceAccount("b", "Synthetic cash", "CASH"))
