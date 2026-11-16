@@ -76,7 +76,7 @@ fun TasksTab() {
 
     Box(Modifier.fillMaxSize()) {
         ScrollPage(bottomInset = 92.dp) {
-            ScreenHeader("Tasks")
+            ScreenHeader("Tasks") { IconCircleButton(HfIcons.Bolt, "Templates", { nav.push(Screen.Templates) }) }
             SegmentedControl(listOf("Today", "Upcoming", "Done"), view, { view = it })
             banner?.let { Banner(it, modifier = Modifier.clickableRow { banner = null }) }
             undo?.let { t ->

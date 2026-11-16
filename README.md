@@ -16,12 +16,13 @@ used to establish host results. No message has been sent and no gateway deployed
   (five tabs, reports, 13 home screen widgets), money entry pickers, fingerprint app
   lock, daily encrypted Google Drive backup, the resource-use changes, the fixes for
   the 2026-11-16 review findings, **multiple email inboxes and WhatsApp accounts**, and
-  **Gemma 4 E2B downloaded on first launch with on-device update checks**.
-  Debug version **0.6.0** (code 6), Room schema **13**, backup schema **13**.
+  **Gemma 4 E2B downloaded on first launch with on-device update checks**, and the
+  **daily brief, waiting-on, people, debts, bills, expiry reminders, capture alerts and
+  action templates**. Debug version **0.7.0** (code 7), Room schema **14**, backup schema **14**.
 - **Web access:** an optional read-only web copy (NestJS API, Postgres, Next.js site
   in `web/`) synced from the phone; see [Web access](#web-access-read-only-mirror).
   Not deployed anywhere and not yet run against a real phone.
-- **Host checks on this tree:** 232 Android unit tests (228 passed, 4 opt-in live AI
+- **Host checks on this tree:** 247 Android unit tests (243 passed, 4 opt-in live AI
   tests skipped, 0 failures), 23 relay tests, 6 WhatsApp Web worker tests and 11 web
   API tests pass.
   Lint passes with 0 errors and the debug APK assembles; the checksum is in
@@ -196,11 +197,61 @@ assistant is the Ask tab. [DECISIONS.md](DECISIONS.md) records where each contro
   transcripts are included. Limits: 7 GiB originals plus 1 GiB database rows.
   Passwords/tokens, gateway private key, Android grants, models, recording exclusions,
   folder grants and Phase 0 samples are excluded. Restore accepts backup schemas 8,
-  10, 11, 12 and 13 and requires empty local data, stopped microphone, disabled notification/SMS capture
+  10, 11, 12, 13 and 14 and requires empty local data, stopped microphone, disabled notification/SMS capture
   and disconnected integrations. It authenticates/stages before merging, re-encrypts
   payloads/media with the receiving device key, revokes stale send approvals and
   preserves uncertain sends. Reconnect accounts and review exclusions afterward.
   Full native/device round-trip verification is still required before relying on it.
+
+- **Daily brief:** Home › Morning brief / Evening wrap-up shows one page built on the
+  phone: tasks due and overdue, bills in the next 7 days with a 30-day shortfall
+  warning, yesterday's or today's confirmed spending, payments to confirm, replies
+  owed, money owed both ways, new task proposals and capture problems. A quiet
+  morning notification (default 07:00 EAT, counts only) opens it; switch it off or
+  change the hour in Settings › Reminders. `morning brief` / `evening brief` in Ask
+  include the same replies, bills, debts and capture lines.
+- **Waiting on:** Home or the Inbox header. "You owe a reply" lists people whose
+  message has been the latest for 4 hours; "Waiting to hear back" lists people the
+  owner asked something a day ago. It looks at the latest message per person across
+  SMS, email and WhatsApp in the last 14 days and leaves out groups, short codes,
+  sender names such as M-PESA and automated mailboxes. **Clear** hides a row until
+  that person writes again.
+- **People:** one page per person with every saved message across channels, open
+  tasks found in their messages, the debt balance and recordings whose file name
+  contains their name or number. Naming a number or address joins handles with the
+  same name into one person. Calls and recordings are matched by file name only.
+- **Debts:** Money › Debts records loans and repayments per person as the owner's own
+  notes; they never change the ledger. A confirmed payment can be linked from its
+  page (**Record as debt**), and approved payments whose source text names someone
+  with an open balance are offered as possible repayments. **Remind** prepares an
+  editable Kiswahili or English message for the Android share sheet, or an email
+  draft that still needs approval in Inbox. Nothing is sent from this screen.
+- **Bills and subscriptions:** Money › Bills totals the bills due in 30 days against
+  the account balances and lists payments that look monthly: the same description,
+  once or twice a month, three months running. **Track as monthly bill** creates a
+  repeating bill reminder. Detection is rule-based on confirmed ledger entries.
+- **Document expiry:** scanned images and PDF pages are checked for an expiry date
+  after an expiry word (English or Kiswahili). Each future date becomes a task
+  proposal ("Renew Passport · expires 12 Mar 2031") due 30 days before, or 7 days
+  before when that is closer. Only the date and document type are kept from the
+  unredacted text.
+- **Capture problem alerts:** every 15 minutes the app checks for revoked access,
+  no notification saved for 12 hours, an SMS on the phone that was not saved within
+  30 minutes, and an email or WhatsApp account that has not synced for 6 hours. It
+  notifies once and again each day the problem remains, shows a banner on Home, and
+  asks Android to reconnect a silent notification listener. Switch off in
+  Settings › Reminders.
+- **Templates:** Home › Templates (also from Tasks and Money). A template is a named
+  list of task, expense and income lines. **Use** shows every line with its amount
+  and date; untick or adjust lines, then add them all with one tap. Tasks become
+  active reminders. Payments with an account are posted to the ledger with the
+  template run as their source record; lines without an account wait in To confirm.
+  A payment line can be saved without an amount to enter it each time.
+  `use template <name>` / `tumia kiolezo <name>` works in Ask and the assistant.
+- **Spoken money commands:** `nimelipa bodaboda elfu kumi na tano`, `log income salary
+  500,000`, `nimepokea 50000 kutoka kwa Juma`. Compound Kiswahili amounts (elfu, mia,
+  laki, milioni) are parsed, and a leading "HellFire," is ignored. Items still go to
+  Money › To confirm.
 
 The system assistant session supports the same local queries and confirm-first commands with optional
 installed on-device speech input and offline TTS. Gestures, engine/language support,
@@ -612,7 +663,7 @@ Phone side: `WebSyncTest` in the Android unit tests. Pinned: NestJS 12.3.2,
 
 ## Storage, recovery and boundaries
 
-Room schema **13** has non-destructive migrations from schema 1. Production uses
+Room schema **14** has non-destructive migrations from schema 1. Production uses
 SQLCipher plus Android Keystore-wrapped database credentials; captured payloads
 also use Keystore-backed AES-GCM. Legacy plaintext database conversion exports to
 an encrypted copy, checks it and atomically replaces the original; errors do not
@@ -670,6 +721,11 @@ Exact host results, artifact checksum and the final physical checklist are in
 ordinary SQLite/Robolectric and generated AES/RSA keys; they do not prove native
 SQLCipher/Keystore, actual model execution, live accounts or Android/OEM behavior.
 
+- 2026-11-16, daily outputs and templates (0.7.0, Room v14): morning brief and evening
+  wrap-up with a morning notification, waiting-on tracker, people pages, debts with
+  repayment suggestions, recurring-bill detection and 30-day shortfall, expiry-date
+  task proposals from scans, capture-gap alerts, action templates for tasks, expenses
+  and income, compound Kiswahili amounts and income/template commands; 247 host tests.
 - 2026-11-16, web access: optional read-only web copy (`web/`: NestJS API, Postgres,
   Next.js site) and Settings › Web access with an incremental WebSync worker on the phone;
   no Room change. 226 Android, 11 web API tests.

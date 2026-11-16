@@ -64,6 +64,14 @@ fun RouteContent(route: Route) {
         Screen.ReportMessages -> com.hellfire.ass.ui.reports.MessagesReport()
         Screen.ReportMedia -> com.hellfire.ass.ui.reports.MediaReport()
         Screen.ReportAi -> com.hellfire.ass.ui.reports.AiReport()
+        Screen.Brief -> com.hellfire.ass.ui.insights.BriefPage()
+        Screen.Waiting -> com.hellfire.ass.ui.insights.WaitingPage()
+        Screen.People -> com.hellfire.ass.ui.insights.PeoplePage()
+        Screen.Person -> com.hellfire.ass.ui.insights.PersonPage(route.arg)
+        Screen.Debts -> com.hellfire.ass.ui.insights.DebtsPage()
+        Screen.Bills -> com.hellfire.ass.ui.insights.BillsPage()
+        Screen.Templates -> com.hellfire.ass.ui.templates.TemplatesPage()
+        Screen.TemplateEdit -> com.hellfire.ass.ui.templates.TemplateEditPage(route.arg)
         else -> PushedPage(route.screen.name) { Note("This screen is not available yet.") }
     }
 }

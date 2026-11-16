@@ -109,7 +109,8 @@ suspend fun loadBriefing(app: HellFireApp, now: Long = System.currentTimeMillis(
     )
 }
 
-data class SourceStatus(val name: String, val working: Boolean)
+/** [syncedAt]: last sync attempt of a polled source (email, WhatsApp); null for sources Android pushes. */
+data class SourceStatus(val name: String, val working: Boolean, val syncedAt: Long? = null)
 
 suspend fun loadCaptureSources(app: HellFireApp): List<SourceStatus> {
     val notifications = app.getSystemService(NotificationManager::class.java)
@@ -119,10 +120,12 @@ suspend fun loadCaptureSources(app: HellFireApp): List<SourceStatus> {
     if (SmsCaptureSettings.enabled(app)) list += SourceStatus("SMS", SmsCaptureSettings.canRead(app))
     val mail = runCatching { Accounts.list(app.secrets, Accounts.MAIL) }.getOrDefault(emptyList())
     for (account in mail) list += SourceStatus(if (mail.size > 1) "Email · ${account.optString("address")}" else "Email",
-        states[Accounts.mailState(account.getString("id"))]?.let { it.error == null && it.state !in setOf("FAILED", "AUTH_FAILED", "ERROR") } ?: true)
+        states[Accounts.mailState(account.getString("id"))]?.let { it.error == null && it.state !in setOf("FAILED", "AUTH_FAILED", "ERROR") } ?: true,
+        states[Accounts.mailState(account.getString("id"))]?.updatedAt)
     val gateways = runCatching { Accounts.gateways(app.secrets) }.getOrDefault(emptyList())
     for (gateway in gateways) list += SourceStatus(if (gateways.size > 1) "WhatsApp · ${Accounts.label(gateway)}" else "WhatsApp",
-        states[Accounts.gatewayState(gateway.getString("id"))]?.let { it.error == null && it.state != "FAILED" } ?: true)
+        states[Accounts.gatewayState(gateway.getString("id"))]?.let { it.error == null && it.state != "FAILED" } ?: true,
+        states[Accounts.gatewayState(gateway.getString("id"))]?.updatedAt)
     return list
 }
 

@@ -46,6 +46,7 @@ enum class Screen {
     Setup, Settings, Permissions, CloudAi, LocalModels, Email, WhatsApp, Backup, Device, Recordings, Reminders, Memory, Widgets, WebAccess,
     Accounts, Budgets, Transaction, Source, Task, Message, MediaItem,
     Reports, ReportMoney, ReportCategory, ReportAccounts, ReportStatement, ReportCapture, FixSms, ReportTasks, ReportMessages, ReportMedia, ReportAi,
+    Brief, Waiting, People, Person, Debts, Bills, Templates, TemplateEdit,
 }
 
 /** A pushed screen plus one string argument (an id, or an encoded filter). */
@@ -77,6 +78,12 @@ class Nav(private val stack: SnapshotStateList<Route>, private val tabState: Mut
         val parts = uri.pathSegments.orEmpty()
         when (uri.host) {
             "home" -> tab(MainTab.Home)
+            "brief" -> { tab(MainTab.Home); push(Screen.Brief) }
+            "templates" -> { tab(MainTab.Home); push(Screen.Templates) }
+            "people" -> { tab(MainTab.Home); push(Screen.People) }
+            "waiting" -> { tab(MainTab.Inbox); push(Screen.Waiting) }
+            "debts" -> { tab(MainTab.Money); push(Screen.Debts) }
+            "bills" -> { tab(MainTab.Money); push(Screen.Bills) }
             "ask" -> tab(MainTab.Ask, if (uri.getQueryParameter("voice") == "1") "voice" else null)
             "money" -> when (parts.firstOrNull()) {
                 "cash" -> tab(MainTab.Money, "cash")

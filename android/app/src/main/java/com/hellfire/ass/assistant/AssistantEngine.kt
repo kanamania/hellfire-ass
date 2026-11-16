@@ -25,7 +25,8 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
             lower.startsWith("search ") || lower.startsWith("tafuta ") || lower.startsWith("find ") -> search(query.substringAfter(' ').trim())
             lower in setOf("", "help", "msaada") -> Answer("Ask: spending today, income this month, balances, tasks tomorrow, morning brief, evening brief, or search <words>.\n" +
                 "Commands (applied only after you confirm): remind me to <task> <when>; remember <subject>: <note>; mark <task> done; snooze <task>; " +
-                "reschedule <task> to <when>; log cash <item> <amount>; email <address> about <subject>: <body>; whatsapp <number>: <body>.")
+                "reschedule <task> to <when>; log cash <item> <amount> (or nimelipa bodaboda elfu tano); log income <item> <amount> (or nimepokea 50000 kutoka kwa Juma); " +
+                "use template <name>; email <address> about <subject>: <body>; whatsapp <number>: <body>.")
             "brief" in lower || "muhtasari" in lower -> brief(lower.contains("evening") || lower.contains("jioni"))
             lower.contains(Regex("\\b(balance|balances|salio)\\b")) -> {
                 val accounts = app.database.finances().allAccounts()
@@ -48,13 +49,30 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
         }
     }
     private suspend fun propose(command: OwnerCommand): Answer {
-        val resolved = if (command !is OwnerCommand.TaskAction) command else {
-            val matches = app.database.tasks().activeMatching(command.query)
-            when (matches.size) {
-                0 -> return Answer("No active task matches \"${command.query}\". Review items must be activated in Tasks first.")
-                1 -> command.copy(taskId = matches[0].id, title = matches[0].title)
-                else -> return Answer("Several active tasks match; say more of the title:\n" + matches.joinToString("\n") { "${TaskTime.display(it.dueAt)} · ${it.title}" })
+        val resolved = when (command) {
+            is OwnerCommand.TaskAction -> {
+                val matches = app.database.tasks().activeMatching(command.query)
+                when (matches.size) {
+                    0 -> return Answer("No active task matches \"${command.query}\". Review items must be activated in Tasks first.")
+                    1 -> command.copy(taskId = matches[0].id, title = matches[0].title)
+                    else -> return Answer("Several active tasks match; say more of the title:\n" + matches.joinToString("\n") { "${TaskTime.display(it.dueAt)} · ${it.title}" })
+                }
             }
+            is OwnerCommand.UseTemplate -> {
+                val all = app.database.templates().all()
+                val matches = all.filter { it.name.equals(command.query, ignoreCase = true) }.ifEmpty { all.filter { it.name.contains(command.query, ignoreCase = true) } }
+                when (matches.size) {
+                    0 -> return Answer(if (all.isEmpty()) "You have no templates yet. Create one in Home › Templates." else "No template is called \"${command.query}\". Yours: ${all.joinToString { it.name }}.")
+                    1 -> {
+                        val items = com.hellfire.ass.templates.TemplateItems.decode(matches[0].items)
+                        if (items.any { it.type != "TASK" && it.amount == null })
+                            return Answer("Template ${matches[0].name} has lines without an amount. Open Home › Templates to fill them in and use it.")
+                        command.copy(templateId = matches[0].id, name = matches[0].name, lines = items.map(com.hellfire.ass.templates.TemplateItems::describe))
+                    }
+                    else -> return Answer("Several templates match; say the full name: ${matches.joinToString { it.name }}.")
+                }
+            }
+            else -> command
         }
         return Answer("Proposed: ${resolved.summary}\nConfirm to apply. Nothing has changed yet.", command = resolved)
     }
@@ -124,9 +142,16 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
             "${if (evening) "Today" else "Yesterday"}: net expenses ${Money.display(finance.expenses)}, income ${Money.display(finance.income)}.\n" +
             "$candidates financial items await review; $drafts drafts await review.\n" +
             (if (tasks.isEmpty()) "No active due/overdue commitments in this briefing window." else tasks.take(30).joinToString("\n") { "${TaskTime.display(it.dueAt)} · ${it.party} · ${it.title}" }) +
+            extras(evening) +
             "\nOnly saved, owner-approved ledger/tasks are included. Check unlogged cash, bills, unconfirmed dates and important replies.",
             (finance.sourceIds + tasks.map { it.sourceId }).distinct())
     }
+    /** Replies, bills, debts and capture problems from the in-app brief; left out if they cannot be read. */
+    private suspend fun extras(evening: Boolean): String = try {
+        com.hellfire.ass.insights.Briefs.load(app, clock.millis(), evening).sections.filter { it.title in setOf("Replies", "Bills", "Debts", "Capture") }
+            .joinToString("") { s -> "\n${s.title}: " + s.lines.joinToString("; ") { it.text + (it.detail?.let { d -> " ($d)" } ?: "") } }
+    } catch (e: CancellationException) { throw e } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "" }
+
     /** Net expenses per category; reversals count under the kind of the entry they reverse, as in FinanceRepository.summary. */
     private suspend fun expenseBreakdown(range: Pair<Long, Long>): List<Pair<String, Long>> {
         val dao = app.database.finances()

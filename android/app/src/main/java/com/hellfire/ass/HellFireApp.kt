@@ -31,6 +31,7 @@ class HellFireApp : Application() {
     val speech by lazy { com.hellfire.ass.media.LocalSpeech(this) }
     val speakers by lazy { com.hellfire.ass.media.SpeakerModel(this) }
     val finances by lazy { com.hellfire.ass.finance.FinanceRepository(database) }
+    val templates by lazy { com.hellfire.ass.templates.TemplateRunner(database, finances, packageName) { events.capture(it, packageName) } }
     val cipher by lazy { PayloadCipher.deviceCipher() }
     val events by lazy { EventRepository(database.events()) { cipher } }
     val storageStatus = kotlinx.coroutines.flow.MutableStateFlow("STARTING")

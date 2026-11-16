@@ -41,8 +41,14 @@ sealed interface OwnerCommand {
         override val summary get() = "${if (channel == "EMAIL_IMAP") "Email" else "WhatsApp"} draft to $recipient" +
             (if (subject.isNotEmpty()) " · $subject" else "") + "\n$body\nConfirming saves a draft only; sending needs separate approval in Messages."
     }
-    data class Cash(override val utterance: String, val items: List<Pair<String, Long>>, val occurredAt: Long) : OwnerCommand {
-        override val summary get() = "Cash expenses for Finance review:\n" + items.joinToString("\n") { "${it.first}: ${Money.display(it.second)}" }
+    /** [kind] is EXPENSE or INCOME. Either way the items wait in Money › To confirm. */
+    data class Cash(override val utterance: String, val items: List<Pair<String, Long>>, val occurredAt: Long, val kind: String = "EXPENSE") : OwnerCommand {
+        override val summary get() = "${if (kind == "INCOME") "Income" else "Cash expenses"} for Finance review:\n" + items.joinToString("\n") { "${it.first}: ${Money.display(it.second)}" }
+    }
+    /** Use a saved template by name. [templateId] and [lines] are filled in when the name matches exactly one template. */
+    data class UseTemplate(override val utterance: String, val query: String, val templateId: String? = null, val name: String? = null,
+        val lines: List<String> = emptyList()) : OwnerCommand {
+        override val summary get() = "Use template ${name ?: query}:\n" + lines.joinToString("\n")
     }
 }
 
@@ -50,6 +56,10 @@ object AssistantCommands {
     private val remind = Regex("(?is)^(?:remind me(?: to)?|nikumbushe)\\s+(.+)$")
     private val remember = Regex("(?is)^(?:remember(?: that)?|kumbuka(?: kwamba)?)\\s+(.+)$")
     private val cash = Regex("(?is)^(?:log cash|cash expense)\\s*:?\\s+(.+)$|^(nimelipa\\s+.+)$")
+    private val income = Regex("(?is)^(?:log income|nimepokea|i received)\\s*:?\\s+(.+)$")
+    private val template = Regex("(?is)^(?:(?:use|run|apply)\\s+(?:the\\s+)?template|tumia\\s+kiolezo|kiolezo)\\s*:?\\s+(.+)$")
+    // Spoken to the assistant: "HellFire, nimelipa bodaboda elfu tano."
+    private val invocation = Regex("(?i)^(?:hey\\s+|ok\\s+)?hell\\s?fire\\s*[,:.!]?\\s+")
     private val email = Regex("(?is)^(?:email|send email to)\\s+([^\\s:]+@[^\\s:]+)(?:\\s+(?:about|subject|kuhusu)\\s+([^:\\r\\n]+))?\\s*:\\s*(.+)$")
     private val whatsapp = Regex("(?is)^whatsapp\\s+(\\+?[0-9][0-9 ]{5,20})\\s*:\\s*(.+)$")
     private val done = Regex("(?is)^(?:mark\\s+(?:task\\s+)?(.+?)(?:\\s+as)?\\s+(?:done|complete|completed)|(?:complete|finish|maliza)\\s+(?:task\\s+)?(.+))$")
@@ -60,7 +70,7 @@ object AssistantCommands {
 
     /** Returns null when the text is a question rather than a command. Throws IllegalArgumentException with an owner-facing message for malformed commands. */
     fun parse(text: String, now: Instant): OwnerCommand? {
-        val input = text.trim()
+        val input = text.trim().replace(invocation, "")
         remind.find(input)?.let { m ->
             val rest = m.groupValues[1].trim()
             val due = requireNotNull(TaskExtractor.extract(rest, now.toEpochMilli(), outgoing = true, requireCommitment = false)) { WHEN_HINT }.dueAt
@@ -79,6 +89,15 @@ object AssistantCommands {
             val items = runCatching { CashParser.parse(m.groupValues[1].ifEmpty { m.groupValues[2] }) }.getOrNull()
             requireNotNull(items) { "Say each item with a whole-shilling amount, e.g. log cash bodaboda 3000 na chakula elfu saba." }
             return OwnerCommand.Cash(input, items, now.toEpochMilli())
+        }
+        income.find(input)?.let { m ->
+            val items = runCatching { CashParser.parseIncome(m.groupValues[1]) }.getOrNull()
+            requireNotNull(items) { "Say what it was and a whole-shilling amount, e.g. nimepokea 50000 kutoka kwa Juma, or log income salary 500,000." }
+            return OwnerCommand.Cash(input, items, now.toEpochMilli(), "INCOME")
+        }
+        template.find(input)?.let { m ->
+            val name = m.groupValues[1].trim().trimEnd('.', '!', '?').removeSurrounding("\"").also { require(it.length in 1..80) { "Say the template's name." } }
+            return OwnerCommand.UseTemplate(input, name)
         }
         email.find(input)?.let { m ->
             val (recipient, subject, body) = m.destructured
@@ -166,10 +185,16 @@ object AssistantCommands {
                     val sourceId = ownerSource(app, command.utterance, command.occurredAt)
                     command.items.forEachIndexed { index, (description, amount) ->
                         app.database.finances().candidate(FinanceCandidate(UUID.randomUUID().toString(), sourceId, index, "MANUAL", null,
-                            "EXPENSE", amount, 0, null, description, command.occurredAt))
+                            command.kind, amount, 0, null, description, command.occurredAt))
                     }
                 }
-                "${command.items.size} cash item(s) added to Finance review. They reach the ledger only after you approve them there."
+                "${command.items.size} ${if (command.kind == "INCOME") "income" else "cash"} item(s) added to Finance review. They reach the ledger only after you approve them there."
+            }
+            is OwnerCommand.UseTemplate -> {
+                val saved = requireNotNull(command.templateId?.let { app.database.templates().find(it) }) { "That template no longer exists." }
+                val result = app.templates.run(saved, com.hellfire.ass.templates.TemplateItems.decode(saved.items), now)
+                if (result.tasks > 0) TaskScheduler.restore(app)
+                "Template ${saved.name}: ${result.message}."
             }
         }
     }

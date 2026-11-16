@@ -220,7 +220,8 @@ private fun proposalRows(c: OwnerCommand): Pair<String, List<Pair<String, String
         "Change" to when (c.action) { "DONE" -> "Mark done"; "SNOOZE" -> "Snooze 10 minutes"; else -> "Move" }, c.dueAt?.let { "New time" to Fmt.weekdayDayTime(it) })
     is OwnerCommand.Draft -> "Save this draft?" to listOfNotNull("Channel" to Fmt.channel(c.channel), "To" to c.recipient,
         c.subject.takeIf { it.isNotEmpty() }?.let { "Subject" to it }, "Message" to c.body.take(300))
-    is OwnerCommand.Cash -> "Add this cash for review?" to (c.items.map { it.first to "TZS " + Fmt.amount(it.second) } + ("When" to Fmt.dayTime(c.occurredAt)))
+    is OwnerCommand.UseTemplate -> "Use template ${c.name ?: c.query}?" to c.lines.map { it.substringBefore(": ") to it.substringAfter(": ") }
+    is OwnerCommand.Cash -> (if (c.kind == "INCOME") "Add this income for review?" else "Add this cash for review?") to (c.items.map { it.first to "TZS " + Fmt.amount(it.second) } + ("When" to Fmt.dayTime(c.occurredAt)))
 }
 
 @Composable
@@ -232,7 +233,7 @@ private fun ProposalCard(item: ChatItem.Proposal, onConfirm: () -> Unit, onEdit:
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            IconTile(icon = when (item.command) { is OwnerCommand.Remind, is OwnerCommand.TaskAction -> HfIcons.Alarm; is OwnerCommand.Cash -> HfIcons.Money
+            IconTile(icon = when (item.command) { is OwnerCommand.Remind, is OwnerCommand.TaskAction -> HfIcons.Alarm; is OwnerCommand.Cash -> HfIcons.Money; is OwnerCommand.UseTemplate -> HfIcons.Bolt
                 is OwnerCommand.Draft -> HfIcons.Chat; is OwnerCommand.Remember -> HfIcons.Key }, size = 30.dp)
             Text(title, style = Hf.type.cardTitle.copy(fontSize = 15.sp), color = Hf.colors.onSurface)
         }

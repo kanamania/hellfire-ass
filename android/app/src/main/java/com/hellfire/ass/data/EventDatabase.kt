@@ -105,6 +105,12 @@ interface EventDao {
     @Query("SELECT * FROM capture_audit ORDER BY source")
     fun audits(): Flow<List<CaptureAudit>>
 
+    @Query("SELECT * FROM capture_audit") suspend fun auditsNow(): List<CaptureAudit>
+
+    /** Readable events of one source in a period, newest first. */
+    @Query("SELECT * FROM source_event WHERE source = :source AND occurredAt >= :start AND occurredAt < :end AND contentAvailable = 1 AND securitySensitive = 0 ORDER BY occurredAt DESC LIMIT :limit")
+    suspend fun fromSource(source: String, start: Long, end: Long, limit: Int): List<SourceEvent>
+
     @Query("SELECT state, COUNT(*) AS count FROM event_processing GROUP BY state")
     fun queueSummary(): Flow<List<QueueSummary>>
 
@@ -147,7 +153,8 @@ interface EventDao {
 
 data class LabelledEvent(@Embedded val event: SourceEvent, val label: String?, val state: String)
 
-@Database(entities = [SourceEvent::class, EventProcessing::class, CaptureAudit::class, NotificationPolicy::class, FinanceAccount::class, FinanceCandidate::class, LedgerEntry::class, LedgerEvidence::class, MerchantAlias::class, CommunicationMessage::class, MailCursor::class, OutboundDraft::class, ActionAudit::class, IntegrationState::class, AssistantTask::class, DailyReview::class, MediaItem::class, TranscriptSegment::class, SpeechSpan::class, MemoryItem::class, com.hellfire.ass.memory.SemanticVector::class, AiUsage::class, CategoryBudget::class, ProviderBalance::class, SourceSearch::class], version = 13, exportSchema = true)
+@Database(entities = [SourceEvent::class, EventProcessing::class, CaptureAudit::class, NotificationPolicy::class, FinanceAccount::class, FinanceCandidate::class, LedgerEntry::class, LedgerEvidence::class, MerchantAlias::class, CommunicationMessage::class, MailCursor::class, OutboundDraft::class, ActionAudit::class, IntegrationState::class, AssistantTask::class, DailyReview::class, MediaItem::class, TranscriptSegment::class, SpeechSpan::class, MemoryItem::class, com.hellfire.ass.memory.SemanticVector::class, AiUsage::class, CategoryBudget::class, ProviderBalance::class, SourceSearch::class,
+    com.hellfire.ass.templates.ActionTemplate::class, com.hellfire.ass.insights.DebtEntry::class, com.hellfire.ass.insights.PersonAlias::class], version = 14, exportSchema = true)
 abstract class EventDatabase : RoomDatabase() {
     abstract fun events(): EventDao
     abstract fun finances(): FinanceDao
@@ -158,6 +165,9 @@ abstract class EventDatabase : RoomDatabase() {
     abstract fun semantic(): com.hellfire.ass.memory.SemanticDao
     abstract fun aiUsage(): AiUsageDao
     abstract fun widgetData(): WidgetDataDao
+    abstract fun templates(): com.hellfire.ass.templates.TemplateDao
+    abstract fun debts(): com.hellfire.ass.insights.DebtDao
+    abstract fun people(): com.hellfire.ass.insights.PeopleDao
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -228,8 +238,17 @@ abstract class EventDatabase : RoomDatabase() {
                 db.execSQL("DELETE FROM integration_state WHERE adapter IN ('EMAIL_IMAP', 'WHATSAPP_GATEWAY', 'IMAP_IDLE')")
             }
         }
+        /** v14: action templates, the owner's debt notes, and names for phone numbers and addresses. */
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS action_template (id TEXT NOT NULL, name TEXT NOT NULL, items TEXT NOT NULL, createdAt INTEGER NOT NULL, updatedAt INTEGER NOT NULL, lastUsedAt INTEGER, uses INTEGER NOT NULL, PRIMARY KEY(id))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS debt_entry (id TEXT NOT NULL, person TEXT NOT NULL, amount INTEGER NOT NULL, kind TEXT NOT NULL, note TEXT NOT NULL, occurredAt INTEGER NOT NULL, dueAt INTEGER, ledgerId TEXT, createdAt INTEGER NOT NULL, PRIMARY KEY(id))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_debt_entry_person ON debt_entry(person)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS person_alias (handle TEXT NOT NULL, name TEXT NOT NULL, updatedAt INTEGER NOT NULL, PRIMARY KEY(handle))")
+            }
+        }
         const val SOURCE_SEARCH_SQL = "CREATE VIRTUAL TABLE IF NOT EXISTS `source_search` USING FTS4(`eventId` TEXT NOT NULL, `text` TEXT NOT NULL, tokenize=unicode61, notindexed=`eventId`)"
-        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
+        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
         fun open(context: Context): EventDatabase = Room.databaseBuilder(
             context.applicationContext, EventDatabase::class.java, "hellfire.db"
         ).openHelperFactory(EncryptedDatabase.factory(context)).addMigrations(*ALL_MIGRATIONS).build()

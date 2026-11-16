@@ -71,17 +71,64 @@ object FinanceParser {
     }
 }
 
+/** Swahili amounts as spoken: "elfu tano", "elfu kumi na tano", "laki mbili", "elfu mbili mia tano", "milioni moja". */
+object SwahiliAmount {
+    private val units = mapOf("moja" to 1L, "mbili" to 2L, "tatu" to 3L, "nne" to 4L, "tano" to 5L, "sita" to 6L, "saba" to 7L, "nane" to 8L, "tisa" to 9L)
+    private val tens = mapOf("kumi" to 10L, "ishirini" to 20L, "thelathini" to 30L, "arobaini" to 40L, "hamsini" to 50L, "sitini" to 60L,
+        "sabini" to 70L, "themanini" to 80L, "tisini" to 90L)
+    private val multipliers = mapOf("mia" to 100L, "elfu" to 1_000L, "laki" to 100_000L, "milioni" to 1_000_000L)
+    fun isWord(token: String) = token in units || token in tens || token in multipliers
+
+    /**
+     * Each multiplier is followed by a number below 100; the groups add up. A unit after a ten joins it under the same
+     * multiplier, so "elfu kumi na tano" is 15,000, as people say it. [tokens] are lower-case words without "na".
+     */
+    fun parse(tokens: List<String>): Long? {
+        var total = 0L
+        var index = 0
+        if (tokens.isEmpty()) return null
+        while (index < tokens.size) {
+            val multiplier = multipliers[tokens[index++]] ?: return null
+            var count = 0L
+            tens[tokens.getOrNull(index)]?.let { count += it; index++ }
+            units[tokens.getOrNull(index)]?.let { count += it; index++ }
+            if (count == 0L) return null
+            total = Math.addExact(total, Math.multiplyExact(multiplier, count))
+        }
+        return total
+    }
+}
+
 object CashParser {
-    private val words = mapOf("moja" to 1L, "mbili" to 2L, "tatu" to 3L, "nne" to 4L,
-        "tano" to 5L, "sita" to 6L, "saba" to 7L, "nane" to 8L, "tisa" to 9L, "kumi" to 10L)
-    fun parse(text: String): List<Pair<String, Long>> = text.split(Regex("(?i)\\s+na\\s+|;|\\n")).map { part ->
-        val plain = part.trim().removePrefix("Nimelipa ").removePrefix("nimelipa ")
-        val match = Regex("(?i)(?:elfu\\s+([a-z]+)|(?:TZS\\s*)?([0-9][0-9,]*(?:\\.00)?))\\s*$").find(plain)
-            ?: error("Each cash item needs a description and a whole-shilling amount")
-        val description = plain.substring(0, match.range.first).trim()
-        require(description.isNotEmpty())
-        val value = if (match.groupValues[1].isNotEmpty()) Math.multiplyExact(words[match.groupValues[1].lowercase()] ?: error("Unknown Swahili number"), 1000L)
-            else Money.tzs(match.groupValues[2])
-        description to value
-    }.also { require(it.isNotEmpty() && it.size <= 20) }
+    private val digits = Regex("(?i)(?:^|\\s)(?:TZS\\s*)?([0-9][0-9,]*(?:\\.00)?)$")
+    private val missing = "Each cash item needs a description and a whole-shilling amount"
+
+    /** "bodaboda 3000 na chakula elfu saba; soda elfu mbili mia tano" → one description and amount per item. */
+    fun parse(text: String): List<Pair<String, Long>> {
+        // "na" separates items, but also joins the words of one amount ("elfu kumi na tano"): a part made only of number words continues the item before it.
+        val parts = mutableListOf<String>()
+        for (part in text.split(Regex("(?i)\\s+na\\s+|;|\\n")).map { it.trim().trimEnd('.', ',', '!', '?').trim() }.filter(String::isNotEmpty)) {
+            val numeric = part.lowercase().split(Regex("\\s+")).all(SwahiliAmount::isWord)
+            if (numeric && parts.isNotEmpty()) parts[parts.lastIndex] = parts.last() + " " + part else parts += part
+        }
+        return parts.map { part ->
+            val plain = part.replace(Regex("(?i)^nimelipa\\s+"), "")
+            val match = digits.find(plain)
+            val (description, value) = if (match != null) plain.substring(0, match.range.first).trim() to Money.tzs(match.groupValues[1])
+            else {
+                val tokens = plain.split(Regex("\\s+"))
+                // The longest run of number words at the end that reads as an amount; earlier number words belong to the description ("soda mbili elfu tatu").
+                val start = tokens.indices.firstOrNull { from -> SwahiliAmount.parse(tokens.drop(from).map(String::lowercase)) != null } ?: error(missing)
+                tokens.take(start).joinToString(" ") to SwahiliAmount.parse(tokens.drop(start).map(String::lowercase))!!
+            }
+            require(description.isNotEmpty() && value > 0) { missing }
+            description to value
+        }.also { require(it.isNotEmpty() && it.size <= 20) }
+    }
+
+    /** Income as spoken: "mshahara 500000", or amount first: "50,000 kutoka kwa Juma" / "50000 from Juma". */
+    fun parseIncome(text: String): List<Pair<String, Long>> {
+        val amountFirst = Regex("(?i)^(?:TZS\\s*)?([0-9][0-9,]*(?:\\.00)?)\\s+(.+)$").find(text.trim().trimEnd('.', '!', '?'))
+        return if (amountFirst != null) listOf(amountFirst.groupValues[2].trim().replaceFirstChar { it.uppercase() } to Money.tzs(amountFirst.groupValues[1])) else parse(text)
+    }
 }
