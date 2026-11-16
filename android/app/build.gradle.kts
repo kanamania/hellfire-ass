@@ -13,7 +13,7 @@ android {
         applicationId = "com.hellfire.ass"
         minSdk = 29
         targetSdk = 36
-        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
+        ndk { abiFilters += listOf("arm64-v8a") }
         externalNativeBuild { cmake { cppFlags += "-std=c++17" } }
         versionCode = 5
         versionName = "0.5.0"

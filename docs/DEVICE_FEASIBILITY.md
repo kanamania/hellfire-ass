@@ -4,6 +4,20 @@ Latest update: 2026-11-16 (review fixes and multiple accounts, directly below). 
 checkpoints keep the test counts and APK checksums that were true when they were
 written; the review checkpoint has the current ones.
 
+## Phone-only build — 2026-11-16
+
+The owner asked for arm64-v8a only; x86_64 served only the PC emulator. `abiFilters`
+is now `arm64-v8a`. `./gradlew :app:assembleDebug` PASS: debug APK 0.5.0 (code 5),
+**149,321,625 bytes** (was 249,567,013 with x86_64), SHA-256
+`a9da8cbce2378555aa92172055051bf47fa7e8709b7ade719d3c956a4952fb0e`. `aapt` reports
+`native-code: 'arm64-v8a'`; `zipalign -c -P 16 4` passes. Contents: native libraries
+93.6 MB (ONNX Runtime 34.2, LiteRT-LM 14.7, ML Kit OCR and common pipeline 22.1,
+MediaPipe text 7.6, whisper 5.1, LiteRT 7.8, SQLCipher 2.1), dex 49.7 MB (debug,
+unshrunk), assets 3.3 MB, resources 2.1 MB. Installed size on the phone is NOT TESTED;
+native libraries are stored uncompressed and not extracted, so it should be close to
+the APK size plus ART-compiled code and app data. Check with Settings › Apps › HellFire
+Ass › Storage after installation. Emulator checks now need an arm64 system image.
+
 ## Review fixes and multiple accounts — 2026-11-16
 
 Branch `feat/multi-account`, merged into `main`. Version 0.5.0 (code 5), Room schema
@@ -90,7 +104,8 @@ Repository and build state on 2026-11-16:
   worktree and branch have been removed; no feature branches remain.
 - Only a debug build type exists. There is no release signing configuration, code
   shrinking or CI. The debug APK is about 238 MiB because it carries arm64-v8a and
-  x86_64 native libraries; a phone-only arm64 build would be much smaller.
+  x86_64 native libraries; a phone-only arm64 build would be much smaller. **Done
+  later on 2026-11-16:** the build is arm64-v8a only; see "Phone-only build" below.
 - `AGENTS.md` still tells agents to implement Phase 0 only and to use official
   WhatsApp Coexistence; `docs/MASTER_SPEC.md` records the owner's later decisions that
   supersede both. An agent that reads only `AGENTS.md` gets the old rules.
