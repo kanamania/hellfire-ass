@@ -157,7 +157,8 @@ fun SettingsHub() {
                 icon = HfIcons.Cloud, tone = Tone.Info, chevron = true, onClick = { nav.push(Screen.CloudAi) })
             ListDivider()
             ListRow("On-device models", subtitle = listOfNotNull("language".takeIf { app.localModel.configured }, "meaning search".takeIf { app.semantic.configured },
-                "speakers".takeIf { app.speakers.configured }).joinToString(", ").ifEmpty { "None imported" }.replaceFirstChar { it.uppercase() },
+                "speakers".takeIf { app.speakers.configured }).joinToString(", ").ifEmpty { "None installed" }.replaceFirstChar { it.uppercase() } +
+                    (if (com.hellfire.ass.ai.ModelUpdates.pendingUpdate(com.hellfire.ass.ai.ModelUpdates.state(app)) != null) " · update available" else ""),
                 icon = HfIcons.Chip, tone = Tone.Success, chevron = true, onClick = { nav.push(Screen.LocalModels) })
             ListDivider()
             val spent = ai?.let { s -> s.usage.filterKeys { it.startsWith("${app.ai.month()}/") }.values.sumOf { it.charged } } ?: 0

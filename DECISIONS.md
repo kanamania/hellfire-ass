@@ -182,3 +182,12 @@ Decisions made where `HANDOFF.md` was unclear or a screen was marked *not drawn*
 - **No Docker (owner request).** The server runs on the host: local PostgreSQL 18 through the Unix socket with peer authentication (role `dev`, databases `hellfire` and `hellfire_test`), and two systemd units bound to 127.0.0.1 (website 3910, API 3911; 3000/3001 were already taken). Tests use the local `hellfire_test` database.
 - **Password hash uses `:` separators** (`scrypt:salt:key`), so it can sit in an env file without `$` escaping.
 
+
+## Gemma 4 E2B download and updates (2026-11-16)
+
+- **Downloaded on first launch, not bundled** (owner choice). LiteRT-LM opens models only from a file path, so a model inside the APK would have to be copied out, using about 5.3 GB on the phone and leaving a stale copy in the APK after any update. The APK stays about 149 MB.
+- **Source:** Google's `litert-community/gemma-4-E2B-it-litert-lm` repository on Hugging Face (Apache-2.0, not gated, no account). First install uses the release pinned in the app (commit `2d74ac4`, file SHA-256 `181938…`, 2,588,147,712 bytes), not whatever is newest.
+- **File variant:** the generic `gemma-4-E2B-it.litertlm`, which runs on CPU and GPU. There is no MediaTek NPU build, and the GPU-only and Tensor/Qualcomm/Intel variants do not fit this phone.
+- **Integrity:** the size and SHA-256 must match, and the file must load in the app's runtime (LiteRT-LM 0.12.0) before it replaces anything. For updates, the expected checksum comes from the repository metadata over HTTPS. Redirects are followed by the app itself and must stay on HTTPS.
+- **Updates** (owner choice): a daily Wi-Fi check records a newer published file; downloading needs a tap on **Update**. The old model stays in use until the new one is verified, so an update briefly needs room for both.
+- **Owner control:** removing the model stops automatic downloads; "Download now" undoes that. An imported model of the owner's own is never replaced by an update; "Switch to Gemma 4 E2B" is explicit.
