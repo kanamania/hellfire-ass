@@ -584,6 +584,16 @@ and two systemd units in `web/systemd/`. Both Node services listen on 127.0.0.1 
 6. On the phone: **Settings › Web access**, enter `https://<your domain>` and the
    `SYNC_TOKEN`, then **Save and turn on**. Open the site and sign in with the password.
 
+**On this machine (2026-11-16):** running at **https://hellfire.local** behind nginx
+(`web/nginx/hellfire.local.conf`, installed in `/etc/nginx/sites-available` and enabled), with a
+self-signed certificate in `/etc/nginx/ssl/hellfire.local.{crt,key}` (CN and SAN
+`hellfire.local`, valid 825 days), `127.0.0.1 hellfire.local` in `/etc/hosts`, both systemd
+units enabled, and `web/.env` filled. The generated site password is in
+`~/.config/hellfire-web/owner-password` (mode 600); replace it with `npm run hash-password`
+and a restart of `hellfire-web-api`. Browsers on this PC must accept or trust the certificate.
+**The phone cannot sync to it yet:** `hellfire.local` resolves only on this PC, and the app
+trusts only system certificate authorities, so it refuses a self-signed certificate.
+
 The website forwards only `/api/sync/*` to the API, for the phone; the read API is
 reachable only from the website's server. Sign-in sessions last 12 hours in an HttpOnly,
 Secure, SameSite=Strict cookie; changing `SESSION_SECRET` signs every browser out.
