@@ -179,6 +179,8 @@ class PortableBackup(private val app: HellFireApp) {
             if (format2 && selection != null) {
                 withContext(NonCancellable) { app.media.exclusive {
                     app.database.withTransaction {
+                        val newlyAdded = selectedIds.filter { app.database.media().item(it) == null && !app.media.file(it).exists() }
+                        app.secrets.save("restore-journal", JSONObject().put("ids", JSONArray(newlyAdded)))
                         SelectiveRestore.copy(db.openHelper.writableDatabase, app.database.openHelper.writableDatabase, selectedIds)
                         for (id in selectedIds) {
                             val staged = File(folder, "$id.hfm")
@@ -190,6 +192,7 @@ class PortableBackup(private val app: HellFireApp) {
                         }
                     }
                     committed = true
+                    app.secrets.remove("restore-journal")
                 } }
                 app.database.library().rebuildSearch()
             } else {
