@@ -10,7 +10,7 @@ import java.util.UUID
 
 /** Follow-up context for one inbox item. Each item has its own session; clearing context never deletes the item. */
 class DrawerTalk(private val inbox: InboxDao, private val now: () -> Long = { System.currentTimeMillis() }) {
-    fun sessionId(inboxId: String, session: String? = null) = session?.ifBlank { null } ?: session(inboxId)
+    fun sessionId(inboxId: String, session: String? = null) = session(inboxId)
 
     /** [content] is the saved item's own text (original, OCR, PDF text or transcript), framed as untrusted data. */
     fun prompt(content: String, history: List<DrawerMessage>, question: String): String {
@@ -33,11 +33,12 @@ class DrawerTalk(private val inbox: InboxDao, private val now: () -> Long = { Sy
 
     suspend fun ask(inboxId: String, session: String, question: String, content: String, answer: suspend (String) -> String): DrawerMessage {
         val at = now()
-        val history = inbox.context(session, 20).sortedBy { it.createdAt }
-        inbox.insertMessage(DrawerMessage(UUID.randomUUID().toString(), session, inboxId, MessageRole.USER.name, question.take(4000), at))
+        val scopedSession = sessionId(inboxId, session)
+        val history = inbox.context(scopedSession, 20).sortedBy { it.createdAt }
+        inbox.insertMessage(DrawerMessage(UUID.randomUUID().toString(), scopedSession, inboxId, MessageRole.USER.name, question.take(4000), at))
         val reply = runCatching { answer(prompt(content, history, question)) }
             .getOrElse { "No answer was produced. ${it.message.orEmpty()}".trim() }
-        val message = DrawerMessage(UUID.randomUUID().toString(), session, inboxId, MessageRole.ASSISTANT.name, reply.take(8000), now())
+        val message = DrawerMessage(UUID.randomUUID().toString(), scopedSession, inboxId, MessageRole.ASSISTANT.name, reply.take(8000), now())
         inbox.insertMessage(message)
         return message
     }

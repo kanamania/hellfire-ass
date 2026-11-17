@@ -22,16 +22,16 @@ data class StorageUsage(
 object BackupStorage {
     fun usage(app: HellFireApp): StorageUsage {
         val db = app.database.openHelper.readableDatabase
-        val managed = count(db, "SELECT COUNT(*), COALESCE(SUM(size), 0) FROM media_item WHERE storage = 'MANAGED' AND state != 'DELETING'")
+        val managed = count(db, "SELECT COUNT(*), COALESCE(SUM(size), 0) FROM media_item WHERE storage = 'MANAGED' AND size > 0 AND contentHash IS NOT NULL AND state != 'DELETING'")
         val external = count(db, "SELECT COUNT(*), 0 FROM media_item WHERE storage = 'EXTERNAL' AND state != 'DELETING'")
-        val backed = count(db, "SELECT COUNT(*), 0 FROM media_item m WHERE m.storage = 'MANAGED' AND EXISTS (SELECT 1 FROM backup_item b WHERE b.itemId = m.id AND b.contentHash = m.contentHash AND b.verifiedAt IS NOT NULL)")
+        val backed = count(db, "SELECT COUNT(*), 0 FROM media_item m WHERE m.storage = 'MANAGED' AND m.size > 0 AND m.contentHash IS NOT NULL AND EXISTS (SELECT 1 FROM backup_item b WHERE b.itemId = m.id AND b.contentHash = m.contentHash AND b.verifiedAt IS NOT NULL)")
         val media = File(app.filesDir, "media")
         val models = File(app.filesDir, "models")
         return StorageUsage(
             managedBytes = managed.second,
             managedCount = managed.first,
             externalCount = external.first,
-            thumbnailBytes = THUMBNAIL_DIRS.sumOf { bytesOf(File(app.filesDir, it)) },
+            thumbnailBytes = bytesOf(File(app.cacheDir, "intelligence-thumbs")) + bytesOf(File(app.noBackupFilesDir, "player-thumbs")),
             cacheBytes = bytesOf(app.cacheDir) + bytesOf(File(app.noBackupFilesDir, "plain-tmp")),
             modelBytes = bytesOf(models),
             databaseBytes = app.getDatabasePath("hellfire.db").length(),
@@ -41,30 +41,22 @@ object BackupStorage {
         )
     }
 
-    /** Scene and bookmark thumbnails. Rows reference these paths, so cache clearing never deletes them. */
+    /** Scene and bookmark thumbnail folder names (stored under cache/no-backup respectively). */
     val THUMBNAIL_DIRS = listOf("intelligence-thumbs", "player-thumbs")
     /** cacheDir children that are in use by other features: share outputs awaiting hand-off. */
-    val KEEP_IN_CACHE = setOf("share")
+    val KEEP_IN_CACHE = setOf("share", "intelligence-thumbs", "player-thumbs")
 
-    /**
-     * Deletes rebuildable cache only: the model engine cache (after releasing the loaded model) and plaintext temps older
-     * than an hour. Never touches managed originals, referenced thumbnails, pending share outputs or model downloads.
-     */
+    /** Removes orphan derived thumbnails; active outputs, model caches and downloads are retained. */
     suspend fun evictCache(app: HellFireApp): Long {
-        val protected = File(app.filesDir, "media")
+        val refs = app.database.library().segmentThumbs().toSet()
         var freed = 0L
-        com.hellfire.ass.ai.HeavyModelGate.mutex.withLock {
-            app.localModel.closeCached()
-            for (child in app.cacheDir.listFiles().orEmpty()) {
-                if (child.name in KEEP_IN_CACHE) continue
-                if (child.isDirectory) { freed += evictTree(child, protected); child.delete() }
-                else { val size = child.length(); if (child.delete()) freed += size }
-            }
+        File(app.cacheDir, "intelligence-thumbs").listFiles().orEmpty().filter { "intelligence-thumbs/${it.name}" !in refs }.forEach { file ->
+            val size = file.length(); if (file.delete()) freed += size
         }
-        val cutoff = System.currentTimeMillis() - 3_600_000
-        File(app.noBackupFilesDir, "plain-tmp").listFiles().orEmpty().filter { it.isFile && it.lastModified() < cutoff }
-            .forEach { val size = it.length(); if (it.delete()) freed += size }
-        return freed
+        val players = File(app.noBackupFilesDir, "player-thumbs")
+        val before = bytesOf(players)
+        com.hellfire.ass.player.FrameScrubber.purgeOrphans(app)
+        return freed + (before - bytesOf(players)).coerceAtLeast(0)
     }
 
     fun evictTree(root: File, protected: File): Long {

@@ -16,7 +16,12 @@ import java.security.*
 import java.util.*
 import java.util.zip.*
 
-class PortableBackup(private val app: HellFireApp) {
+class PortableBackup(
+    private val app: HellFireApp,
+    private val stagingDatabase: (File, ByteArray) -> EventDatabase = { file, key ->
+        Room.databaseBuilder(app, EventDatabase::class.java, file.path).openHelperFactory(SupportOpenHelperFactory(key)).build()
+    },
+) {
     private val prefix = "HFABACK2".toByteArray(Charsets.US_ASCII)
     suspend fun export(uri: Uri, password: CharArray, incremental: Boolean = false): BackupOutcome =
         export(password, incremental, uri.toString(), true, { app.contentResolver.openInputStream(uri) ?: error("Backup destination cannot be read back") }) {
@@ -51,8 +56,8 @@ class PortableBackup(private val app: HellFireApp) {
             app.media.exclusive {
                 media = app.database.media().all()
                 require(media.none { it.state == "DELETING" })
-                previous = verifiedHashes()
                 baseId = if (incremental) availableBackups().firstOrNull() else null
+                previous = verifiedHashes(baseId)
                 planned = BackupPlanner.plan(media, previous, app.noBackupFilesDir.usableSpace, incremental) { app.media.file(it.id).isFile }
             }
             portable = try { BackupCrypto.derive(password, salt) } finally { password.fill('\u0000') }
@@ -60,8 +65,8 @@ class PortableBackup(private val app: HellFireApp) {
             app.media.exclusive {
                 media = app.database.media().all()
                 require(media.none { it.state == "DELETING" })
-                previous = verifiedHashes()
                 baseId = if (incremental) availableBackups().firstOrNull() else null
+                previous = verifiedHashes(baseId)
                 planned = BackupPlanner.plan(media, previous, app.noBackupFilesDir.usableSpace, incremental) { app.media.file(it.id).isFile }
                 val current = planned!!
                 val dbBytes = app.getDatabasePath("hellfire.db").length().coerceAtMost(1024L * 1024 * 1024)
@@ -94,7 +99,7 @@ class PortableBackup(private val app: HellFireApp) {
                 written.blocked, true, pending.takeUnless { commit })
             if (commit) {
                 record(archiveId, written, verified, previous, baseId, archiveHash, destinationRef, "portable")
-                if (written.blocked.isNotEmpty()) throw BackupBlocked(written.blocked)
+
             }
             outcome
         } finally { password.fill('\u0000'); encrypted.delete() }
@@ -161,8 +166,7 @@ class PortableBackup(private val app: HellFireApp) {
                 encrypted.outputStream().use { copyBounded(input, it, BackupReadiness.MAX_ARCHIVE) }; key
             }
             val stageKey = Base64.getEncoder().encode(SecureRandom().generateSeed(32))
-            staging = try { Room.databaseBuilder(app, EventDatabase::class.java, File(folder, "stage.db").path)
-                .openHelperFactory(SupportOpenHelperFactory(stageKey)).build().also { it.openHelper.writableDatabase } }
+            staging = try { stagingDatabase(File(folder, "stage.db"), stageKey).also { it.openHelper.writableDatabase } }
                 finally { stageKey.fill(0) }
             val db = staging
             ChunkedMedia.Reader(encrypted, portable, maxBytes = BackupReadiness.MAX_ARCHIVE).use { reader ->
@@ -225,6 +229,13 @@ class PortableBackup(private val app: HellFireApp) {
             if (format2 && selection != null) {
                 withContext(NonCancellable) { app.media.exclusive {
                     app.database.withTransaction {
+                        for (id in selectedIds) {
+                            val local = app.database.media().item(id) ?: continue
+                            val incoming = requireNotNull(db.media().item(id))
+                            require(local.storage == incoming.storage && local.contentHash == incoming.contentHash && local.size == incoming.size && local.state !in setOf("DELETING", "SYNC_REMOVED")) {
+                                "Existing local original differs; it was not replaced"
+                            }
+                        }
                         val newlyAdded = selectedIds.filter { app.database.media().item(it) == null && !app.media.file(it).exists() }
                         app.secrets.save("restore-journal", JSONObject().put("ids", JSONArray(newlyAdded)))
                         SelectiveRestore.copy(db.openHelper.writableDatabase, app.database.openHelper.writableDatabase, selectedIds)
@@ -235,12 +246,13 @@ class PortableBackup(private val app: HellFireApp) {
                             if (dest.exists()) { staged.delete(); continue }
                             java.nio.file.Files.move(staged.toPath(), dest.toPath())
                             moved += id
+                            app.database.library().setAvailability(id, "AVAILABLE")
                         }
+                        app.database.library().rebuildSearch()
                     }
                     committed = true
                     app.secrets.remove("restore-journal")
                 } }
-                app.database.library().rebuildSearch()
             } else {
                 withContext(NonCancellable) { app.media.exclusive {
                     app.database.withTransaction {
@@ -249,7 +261,7 @@ class PortableBackup(private val app: HellFireApp) {
                         require(items.none { app.media.file(it.id).exists() }) { "Existing orphan originals require recovery before restore" }
                         app.secrets.save("restore-journal", JSONObject().put("ids", JSONArray(items.map { it.id })))
                         for (item in items) {
-                            if (item.id in unavailable) continue
+                            if (item.storage != "MANAGED" || item.id in unavailable) continue
                             val staged = File(folder, "${item.id}.hfm")
                             require(staged.exists()) { "Original missing from backup" }
                             java.nio.file.Files.move(staged.toPath(), app.media.file(item.id).toPath())
@@ -287,9 +299,7 @@ class PortableBackup(private val app: HellFireApp) {
     }
     private suspend fun requireEmpty() {
         val db = app.database.openHelper.writableDatabase
-        for (table in listOf("source_event", "finance_account", "ledger_entry", "assistant_task", "outbound_draft", "memory_item", "media_item",
-            "action_template", "debt_entry", "person_alias", "person_contact", "ai_skill", "skill_use", "memory_revision",
-            "media_category", "media_collection", "inbox_item")) {
+        for (table in BackupTables.tables.filterNot { it in setOf("capture_audit", "notification_policy", "daily_review") }) {
             db.query("SELECT COUNT(*) FROM $table").use { require(it.moveToFirst() && it.getLong(0) == 0L) { "Restore requires an empty local database; existing data is never replaced" } }
         }
     }
@@ -389,7 +399,8 @@ class PortableBackup(private val app: HellFireApp) {
         for (id in unavailable) db.openHelper.writableDatabase.execSQL("UPDATE media_item SET availability = 'MISSING' WHERE id = ?", arrayOf(id))
         val wanted = if (selection == null) db.media().all().map { it.id }
             else SelectiveRestore.resolve(db.openHelper.writableDatabase, selection).filter { it !in unavailable }
-        val items = db.media().all().filter { it.id in wanted && it.id !in unavailable }
+        db.openHelper.writableDatabase.execSQL("UPDATE media_item SET availability = 'UNVERIFIED' WHERE storage = 'EXTERNAL'")
+        val items = db.media().all().filter { it.storage == "MANAGED" && it.id in wanted && it.id !in unavailable }
         val byHash = items.groupBy { requireNotNull(it.contentHash) }
         for (hash in catalog.filter { it.action == BackupAction.INCLUDE }.map { it.contentHash }.distinct()) {
             require(zip.nextEntry?.name == "blobs/$hash")
@@ -552,8 +563,15 @@ class PortableBackup(private val app: HellFireApp) {
         return ids
     }
 
-    private fun verifiedHashes(): Set<String> {
-        val available = availableBackups().toSet()
+    private fun verifiedHashes(baseId: String?): Set<String> {
+        val readable = availableBackups().toSet()
+        val available = mutableSetOf<String>()
+        var next = baseId
+        while (next != null && next in readable && available.add(next)) {
+            next = app.database.openHelper.readableDatabase.query("SELECT baseId FROM backup_manifest WHERE id = ?", arrayOf(next)).use {
+                if (it.moveToFirst() && !it.isNull(0)) it.getString(0) else null
+            }
+        }
         val hashes = mutableSetOf<String>()
         app.database.openHelper.readableDatabase.query("SELECT manifestId, contentHash FROM backup_item WHERE verifiedAt IS NOT NULL").use { cursor ->
             while (cursor.moveToNext()) if (cursor.getString(0) in available) hashes += cursor.getString(1)

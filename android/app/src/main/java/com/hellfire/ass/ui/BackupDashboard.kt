@@ -47,11 +47,11 @@ fun BackupDashboardScreen(app: HellFireApp) {
             tr("Not backed up") to usageNow.notBackedUp.toString(),
         ))
         Note("Local originals stay on this phone. Remote availability is the last confirmed Drive upload, not a live quota from Google. Thumbnails are referenced by scenes and bookmarks and are not cleared.")
-        SecondaryButton(tr("Clear cache"), {
+        SecondaryButton(tr("Clear unused thumbnails"), {
             scope.launch {
                 busy = true
                 val freed = withContext(Dispatchers.IO) { BackupStorage.evictCache(app) }
-                message = "Cleared ${freed / 1024} KiB of cache. Originals, thumbnails, pending shares and model downloads were not touched."
+                message = "Cleared ${freed / 1024} KiB of orphan thumbnails. Originals, referenced thumbnails, active copies, model caches and downloads were retained."
                 busy = false
                 reload()
             }

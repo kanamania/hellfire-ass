@@ -233,7 +233,11 @@ object DrawerInbox {
     suspend fun deletableOriginals(app: HellFireApp, id: String): List<String> {
         val sql = app.database.openHelper.readableDatabase
         return app.database.inbox().contentsNow(id).filter { media ->
-            media.storage == StorageMode.MANAGED.name &&
+            media.storage == StorageMode.MANAGED.name && !media.favorite &&
+                app.database.library().latestAnalysis(media.id, LibraryOrganize.USER_DESCRIPTION) == null &&
+                app.database.playback().bookmarks(media.id, true).first().isEmpty() &&
+                app.database.library().itemCategoriesNow(media.id).none { it.linkOrigin == "USER" } &&
+                app.database.library().tagsNow(media.id).none { it.origin == "USER" } &&
                 media.origin in setOf(CaptureOrigin.DRAWER.name, CaptureOrigin.SHARE.name) &&
                 sql.query("SELECT (SELECT COUNT(*) FROM inbox_member WHERE itemId = ? AND inboxId != ?) + (SELECT COUNT(*) FROM collection_member WHERE itemId = ?)",
                     arrayOf(media.id, id, media.id)).use { it.moveToFirst() && it.getLong(0) == 0L }

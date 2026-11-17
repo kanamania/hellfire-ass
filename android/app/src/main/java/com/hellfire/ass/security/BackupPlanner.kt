@@ -99,8 +99,10 @@ object BackupPlanner {
             require(item.state != "DELETING") { "Stop deletion before backup" }
             val hash = item.contentHash
             when {
-                !hasOriginal(item) || (hash.isNullOrBlank() && item.size <= 0) ->
+                hash.isNullOrBlank() && item.size <= 0 ->
                     planned += PlannedItem(item.id, hash.orEmpty(), item.size, BackupAction.METADATA_ONLY, "no original stored on this phone")
+                !hasOriginal(item) ->
+                    planned += PlannedItem(item.id, hash.orEmpty(), item.size, BackupAction.BLOCKED, "original is unavailable on this phone")
                 hash.isNullOrBlank() || !hash.matches(Regex("[0-9a-f]{64}")) || item.size <= 0 ->
                     planned += PlannedItem(item.id, hash.orEmpty(), item.size, BackupAction.BLOCKED, "missing content hash or empty original")
                 incremental && hash in verifiedHashes ->

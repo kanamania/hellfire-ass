@@ -82,6 +82,7 @@ object StatusReport {
         app.getSharedPreferences("media", 0).edit().putBoolean("analysis_paused", true).apply()
         app.database.jobs().pause(null, System.currentTimeMillis())
         WorkManager.getInstance(app).cancelAllWorkByTag(MediaWork.ANALYSIS).result.get()
+        WorkManager.getInstance(app).cancelUniqueWork(com.hellfire.ass.intelligence.IntelligenceWork.NAME).result.get()
     }
 
     suspend fun resumeAnalysis(app: HellFireApp) {

@@ -156,7 +156,7 @@ fun DrawerHost() {
                     if (messages.isNotEmpty()) Text(tr("Saved") + " · " + messages.size, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
                     messages.takeLast(4).forEach { Text("${it.role}: ${it.text.take(240)}", style = Hf.type.body, color = Hf.colors.onSurface) }
                     if (row.contentKind == "IMAGE") Note("QR codes are not decoded: no on-device barcode decoder is included.")
-                    actions.filter { it.state != "DISMISSED" }.distinctBy { it.actionType }.take(8).forEach { record ->
+                    actions.filter { it.state in setOf("PROPOSED", "FAILED") }.distinctBy { it.actionType }.take(8).forEach { record ->
                         val needs = record.actionType in confirmTypes
                         val shown = record.label + when (record.state) { "EXECUTED" -> " · done"; "FAILED" -> " · failed"; else -> "" }
                         SecondaryButton(shown, {

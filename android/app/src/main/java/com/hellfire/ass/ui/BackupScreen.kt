@@ -43,9 +43,9 @@ fun BackupScreen(app: HellFireApp) {
             scope.launch {
                 busy = true
                 try {
-                    backup.export(uri, secret, incremental)
+                    val outcome = backup.export(uri, secret, incremental)
                     app.getSharedPreferences("ui", 0).edit().putLong("last_backup_at", System.currentTimeMillis()).apply()
-                    result = "Encrypted portable backup saved. Keep its passphrase separately; there is no recovery without it. Test restore on an empty installation before relying on this backup."
+                    result = (if (outcome.blocked.isEmpty()) "" else "Partial backup: ${outcome.blocked.size} originals were unavailable and are not backed up. Other records and originals can be restored. ") + "Encrypted portable backup saved. Keep its passphrase separately; there is no recovery without it. Test restore on an empty installation before relying on this backup."
                 }
                 catch (e: CancellationException) { result = "Backup interrupted; the selected destination may contain an incomplete encrypted file."; throw e }
                 catch (blocked: com.hellfire.ass.security.BackupBlocked) { result = blocked.message ?: "Backup blocked." }

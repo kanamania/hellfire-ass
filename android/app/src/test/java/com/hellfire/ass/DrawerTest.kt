@@ -150,7 +150,7 @@ class DrawerTest {
         val id = UUID.randomUUID().toString()
         db.inbox().saveCapture(InboxItem(id, ContentKind.LOCATION.name, "Place", "Coordinates -1.29, 36.82", capturedAt = 1, updatedAt = 1), emptyList())
         val talk = DrawerTalk(db.inbox(), now = { 5 })
-        val session = "sess-1"
+        val session = DrawerTalk.session(id)
         talk.ask(id, session, "What is nearby?", "Coordinates -1.29, 36.82") { prompt ->
             assertTrue(prompt.contains("untrusted"))
             assertTrue(prompt.contains("What is nearby?"))
@@ -177,7 +177,7 @@ class DrawerTest {
         DrawerInbox.restore(app, id, 3)
         assertEquals(InboxLifecycle.ACTIVE.name, db.inbox().item(id)!!.lifecycle)
         DrawerInbox.deletePermanently(app, id, 4)
-        assertEquals(InboxLifecycle.DELETED.name, db.inbox().item(id)!!.lifecycle)
+        assertNull(db.inbox().item(id))
         assertNull(db.media().item(captured.id))
         assertEquals(true, db.sync().record("inbox_item", id)!!.deleted)
     }
