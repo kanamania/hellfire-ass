@@ -56,7 +56,7 @@ object LibraryIndex {
                 scanned.truncated -> ScanVisibility.PARTIAL
                 else -> ScanVisibility.FULL
             }
-            val applied = apply(dao, LibraryDiscovery.diff(scanned.entries, known, visibility), CaptureOrigin.SAF_FOLDER, System.currentTimeMillis())
+            val applied = apply(dao, LibraryDiscovery.diff(scanned.entries, known.map { it.media }, visibility), CaptureOrigin.SAF_FOLDER, System.currentTimeMillis())
             inserted += applied.inserted; changed += applied.changed; missing += applied.missing; revoked += applied.revoked; moved += applied.moved
         }
         val hashed = hashPending(app, HASH_BATCH)

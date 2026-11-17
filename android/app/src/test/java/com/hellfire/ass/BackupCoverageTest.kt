@@ -183,6 +183,42 @@ class BackupCoverageTest {
         root.deleteRecursively()
     }
 
+    @Test fun `metadata only export writes an authenticated archive containing financial rows`() = runBlocking {
+        val app = HellFireApp()
+        ReflectionHelpers.callInstanceMethod<Unit>(app, "attach", ClassParameter.from(Context::class.java, context))
+        ReflectionHelpers.setField(app, "database\$delegate", lazyOf(source))
+        ReflectionHelpers.setField(app, "cipher\$delegate", lazyOf(PayloadCipher(KeyGenerator.getInstance("AES").apply { init(256) }.generateKey())))
+        source.finance().addAccount(com.hellfire.ass.finance.FinanceAccount("cash", "Cash", createdAt = 1))
+        val file = File(context.cacheDir, "metadata-${UUID.randomUUID()}.hfb")
+        val encrypted = File(context.cacheDir, "metadata-${UUID.randomUUID()}.hfm")
+        val password = "synthetic-passphrase".toCharArray()
+        try {
+            val outcome = PortableBackup(app).export(file, password)
+            assertTrue(outcome.verified)
+            assertTrue(outcome.id.isNotBlank())
+            assertEquals(0, outcome.included)
+            assertTrue(password.all { it == '\u0000' })
+            file.inputStream().use { input ->
+                val header = ByteArray(24)
+                java.io.DataInputStream(input).readFully(header)
+                val key = BackupCrypto.derive("synthetic-passphrase".toCharArray(), header.copyOfRange(8, 24))
+                encrypted.outputStream().use { input.copyTo(it) }
+                com.hellfire.ass.media.ChunkedMedia.Reader(encrypted, key).use { reader ->
+                    ZipInputStream(reader.stream()).use { zip ->
+                        var entry = zip.nextEntry
+                        var account = ""
+                        while (entry != null) {
+                            if (entry.name == "tables/finance_account.jsonl") account = zip.readBytes().toString(Charsets.UTF_8)
+                            entry = zip.nextEntry
+                        }
+                        assertTrue(account.contains("Cash"))
+                        assertTrue(account.contains("cash"))
+                    }
+                }
+            }
+        } finally { file.delete(); encrypted.delete() }
+    }
+
     @Test fun `export verifies then marks backed up and incremental omits that hash`() = runBlocking {
         val db = Room.inMemoryDatabaseBuilder(context, EventDatabase::class.java).build()
         val app = HellFireApp()
@@ -199,7 +235,10 @@ class BackupCoverageTest {
             assertEquals(1, outcome.included)
             val record = db.sync().lastVerifiedBackup(item.id)
             assertNotNull(record)
-            val again = PortableBackup(app).export(File(context.cacheDir, "skip.hfb"), "synthetic-passphrase".toCharArray(), incremental = true)
+            val incremental = File(context.cacheDir, "skip.hfb")
+            val again = PortableBackup(app).export(incremental, "synthetic-passphrase".toCharArray(), incremental = true)
+            assertTrue(incremental.isFile && incremental.length() > 24)
+            assertTrue(again.id.isNotBlank())
             assertEquals(0, again.included)
             assertEquals(1, again.omitted)
             val fresh = Room.inMemoryDatabaseBuilder(context, EventDatabase::class.java).build()
