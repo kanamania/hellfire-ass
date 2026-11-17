@@ -276,7 +276,7 @@ fun MediaReport() {
         "Stored" to "${list.sumOf { it.first.size } / 1_048_576} MB"),
         listOf("Name", "Kind", "Recorded", "Length", "Summary"), list.map { (m, len) -> listOf(m.name, kind(m.kind), Fmt.day(m.recordedAt ?: m.importedAt), duration(len), summary(m.summaryState)) }, null,
         listOf("Name", "Kind", "Recorded", "Length ms", "Size bytes", "State", "Summary", "Source ID"),
-        list.map { (m, len) -> listOf(m.name, m.kind, TaskTimeFmt.iso(m.recordedAt ?: m.importedAt), len?.toString().orEmpty(), m.size.toString(), m.state, m.summaryState, m.sourceId) }, 7)
+        list.map { (m, len) -> listOf(m.name, m.kind, TaskTimeFmt.iso(m.recordedAt ?: m.importedAt), len?.toString().orEmpty(), m.size.toString(), m.state, m.summaryState, m.sourceId.orEmpty()) }, 7)
     val b = buckets(range)
     ReportScaffold("media", "Media", "Calls, conversations, voice notes", export = spec, group = "None" to listOf("None"), chart = {
         KpiGrid(listOf(Triple("Audio captured", hours(audio.sumOf { it.second ?: 0 }), "${audio.size} recordings" + if (audio.any { it.second == null }) " · some lengths unknown" else ""),

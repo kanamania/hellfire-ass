@@ -157,7 +157,16 @@ interface EventDao {
 data class LabelledEvent(@Embedded val event: SourceEvent, val label: String?, val state: String)
 
 @Database(entities = [SourceEvent::class, EventProcessing::class, CaptureAudit::class, NotificationPolicy::class, FinanceAccount::class, FinanceCandidate::class, LedgerEntry::class, LedgerEvidence::class, MerchantAlias::class, CommunicationMessage::class, MailCursor::class, OutboundDraft::class, ActionAudit::class, IntegrationState::class, AssistantTask::class, DailyReview::class, MediaItem::class, TranscriptSegment::class, SpeechSpan::class, MemoryItem::class, com.hellfire.ass.memory.SemanticVector::class, AiUsage::class, CategoryBudget::class, ProviderBalance::class, SourceSearch::class,
-    com.hellfire.ass.templates.ActionTemplate::class, com.hellfire.ass.insights.DebtEntry::class, com.hellfire.ass.insights.PersonAlias::class, com.hellfire.ass.contacts.PersonContact::class, com.hellfire.ass.memory.AiSkill::class, com.hellfire.ass.memory.SkillUse::class, com.hellfire.ass.memory.MemoryRevision::class], version = 17, exportSchema = true)
+    com.hellfire.ass.templates.ActionTemplate::class, com.hellfire.ass.insights.DebtEntry::class, com.hellfire.ass.insights.PersonAlias::class, com.hellfire.ass.contacts.PersonContact::class, com.hellfire.ass.memory.AiSkill::class, com.hellfire.ass.memory.SkillUse::class, com.hellfire.ass.memory.MemoryRevision::class,
+    com.hellfire.ass.library.MediaAnalysis::class, com.hellfire.ass.library.MediaSegment::class, com.hellfire.ass.library.MediaEmbedding::class,
+    com.hellfire.ass.library.MediaCategory::class, com.hellfire.ass.library.ItemCategory::class, com.hellfire.ass.library.ItemTag::class,
+    com.hellfire.ass.library.MediaCollection::class, com.hellfire.ass.library.CollectionMember::class, com.hellfire.ass.library.MediaBookmark::class,
+    com.hellfire.ass.library.PlaybackState::class, com.hellfire.ass.library.PlayHistory::class, com.hellfire.ass.library.ProcessingJob::class,
+    com.hellfire.ass.library.InboxItem::class, com.hellfire.ass.library.InboxMember::class, com.hellfire.ass.library.DrawerMessage::class,
+    com.hellfire.ass.library.ActionRecord::class, com.hellfire.ass.library.SavedLocation::class, com.hellfire.ass.library.ShareExport::class,
+    com.hellfire.ass.library.PrivacyFinding::class, com.hellfire.ass.library.SyncRecord::class, com.hellfire.ass.library.SyncConflict::class,
+    com.hellfire.ass.library.BackupManifest::class, com.hellfire.ass.library.BackupItemRecord::class, com.hellfire.ass.library.LibrarySearch::class],
+    version = 18, exportSchema = true)
 abstract class EventDatabase : RoomDatabase() {
     abstract fun events(): EventDao
     abstract fun finances(): FinanceDao
@@ -173,6 +182,12 @@ abstract class EventDatabase : RoomDatabase() {
     abstract fun debts(): com.hellfire.ass.insights.DebtDao
     abstract fun people(): com.hellfire.ass.insights.PeopleDao
     abstract fun contacts(): com.hellfire.ass.contacts.ContactDao
+    abstract fun library(): com.hellfire.ass.library.LibraryDao
+    abstract fun playback(): com.hellfire.ass.library.PlaybackDao
+    abstract fun jobs(): com.hellfire.ass.library.JobDao
+    abstract fun inbox(): com.hellfire.ass.library.InboxDao
+    abstract fun shares(): com.hellfire.ass.library.ShareDao
+    abstract fun sync(): com.hellfire.ass.library.SyncDao
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -272,8 +287,12 @@ abstract class EventDatabase : RoomDatabase() {
         val MIGRATION_16_17 = object : Migration(16, 17) {
             override fun migrate(db: SupportSQLiteDatabase) { com.hellfire.ass.memory.SkillSchema.migrate(db) }
         }
+        /** v18: universal media library, inbox, processing, sharing, sync and backup records (library/LibrarySchema.kt). */
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) { com.hellfire.ass.library.LibrarySchema.migrate(db) }
+        }
         const val SOURCE_SEARCH_SQL = "CREATE VIRTUAL TABLE IF NOT EXISTS `source_search` USING FTS4(`eventId` TEXT NOT NULL, `text` TEXT NOT NULL, tokenize=unicode61, notindexed=`eventId`)"
-        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
+        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
         fun open(context: Context): EventDatabase = Room.databaseBuilder(
             context.applicationContext, EventDatabase::class.java, "hellfire.db"
         ).openHelperFactory(EncryptedDatabase.factory(context)).addMigrations(*ALL_MIGRATIONS).build()

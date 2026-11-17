@@ -47,6 +47,8 @@ enum class Screen {
     Accounts, Budgets, Transaction, Source, Task, Message, MediaItem,
     Reports, ReportMoney, ReportCategory, ReportAccounts, ReportStatement, ReportCapture, FixSms, ReportTasks, ReportMessages, ReportMedia, ReportAi,
     Brief, Waiting, People, Person, Debts, Bills, Templates, TemplateEdit, Review, Share, Reconcile, Language, Skills, Recovery, GuidedSetup, Privacy,
+    // Media intelligence (schema v18). Args are built and parsed only through com.hellfire.ass.library.LibraryRoutes.
+    Library, MediaDetail, Player, UniversalInbox, InboxItem, Search, ShareWithAi, ProcessingQueue, SyncDashboard, BackupDashboard, StatusDashboard, MediaSettings,
 }
 
 /** A pushed screen plus one string argument (an id, or an encoded filter). */

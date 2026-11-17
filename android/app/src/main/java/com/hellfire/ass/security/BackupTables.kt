@@ -8,8 +8,8 @@ import java.util.zip.*
 
 /** Fixed table/column allowlists; archives cannot supply executable SQL. */
 object BackupTables {
-    /** Backup schema written by this version. Schema 8 archives (before the v10 database) still restore. The full-text index is rebuilt, not backed up. */
-    const val SCHEMA = 17
+    /** Backup schema written by this version. Schema 8 archives (before the v10 database) still restore. Full-text indexes and embeddings are rebuilt, not backed up. */
+    const val SCHEMA = 18
     private val schema8 = listOf("source_event", "event_processing", "capture_audit", "notification_policy", "finance_account",
         "finance_candidate", "ledger_entry", "ledger_evidence", "merchant_alias", "communication_message", "outbound_draft",
         "action_audit", "assistant_task", "daily_review", "media_item", "transcript_segment", "speech_span", "memory_item")
@@ -17,18 +17,25 @@ object BackupTables {
     private val schema11 = schema10 + listOf("category_budget", "provider_balance")
     private val schema14 = schema11 + listOf("action_template", "debt_entry", "person_alias")
     private val schema16 = schema14 + "person_contact"
-    val tables = schema16 + listOf("ai_skill", "skill_use", "memory_revision")
+    private val schema17 = schema16 + listOf("ai_skill", "skill_use", "memory_revision")
+    /** v18 library tables, parents before children (restore inserts with foreign keys on). */
+    val tables = schema17 + listOf("media_category", "media_collection", "media_analysis", "media_segment", "media_item_category",
+        "media_item_tag", "collection_member", "media_bookmark", "playback_state", "play_history", "processing_job", "inbox_item",
+        "inbox_member", "drawer_message", "action_record", "saved_location", "share_export", "privacy_finding", "sync_record",
+        "sync_conflict", "backup_manifest", "backup_item")
     fun tablesFor(schema: Int): List<String> = when (schema) {
         8 -> schema8
         10 -> schema10
         11, 12, 13 -> schema11
         14 -> schema14
         15, 16 -> schema16
+        17 -> schema17
         SCHEMA -> tables
         else -> throw IllegalArgumentException("Backup schema requires a matching app version")
     }
     /** Columns added after schema 8. Older archives may omit exactly these; they restore as the column default (NULL, NONE, TASK, 0). */
-    val addedColumns = mapOf("assistant_task" to setOf("completedAt", "direction", "amount", "kind", "repeatMonthly", "personKey", "repeatRule", "alertProfile", "snoozeMinutes"), "ledger_entry" to setOf("personKey"), "media_item" to setOf("durationMs"),
+    val addedColumns = mapOf("assistant_task" to setOf("completedAt", "direction", "amount", "kind", "repeatMonthly", "personKey", "repeatRule", "alertProfile", "snoozeMinutes"), "ledger_entry" to setOf("personKey"), "media_item" to setOf("durationMs", "storage", "contentKind",
+        "externalUri", "availability", "origin", "favorite", "modifiedAt", "width", "height", "originalMetadata", "syncEnabled"),
         "person_alias" to setOf("personKey"), "debt_entry" to setOf("personKey"),
         "finance_candidate" to setOf("accountId", "category", "duplicateOf"))
     fun write(db: SupportSQLiteDatabase, zip: ZipOutputStream, cipher: PayloadCipher): Map<String, Long> {
@@ -119,6 +126,11 @@ object BackupTables {
         db.execSQL("UPDATE outbound_draft SET state='DRAFT' WHERE state='APPROVED'")
         db.execSQL("UPDATE outbound_draft SET state='UNKNOWN', error='RESTORED_DELIVERY_UNCONFIRMED' WHERE state='SENDING'")
         db.execSQL("UPDATE outbound_draft SET approvalId=NULL, approvedAt=NULL")
+        db.execSQL("UPDATE action_record SET state='PROPOSED' WHERE state='APPROVED'")
+        // In-flight work resumes from its checkpoint; external URIs from the old device must be re-checked before use.
+        db.execSQL("UPDATE processing_job SET state='PENDING', claimToken=NULL WHERE state IN ('PREPARING','PROCESSING','INDEXING')")
+        db.execSQL("UPDATE sync_record SET state='PENDING' WHERE state='UPLOADING'")
+        db.execSQL("UPDATE media_item SET availability='UNVERIFIED' WHERE storage='EXTERNAL'")
     }
     fun copy(from: SupportSQLiteDatabase, to: SupportSQLiteDatabase) {
         for (table in tables) {

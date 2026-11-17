@@ -77,6 +77,11 @@ dependencies {
     implementation(libs.coroutines.android)
     implementation(libs.glance.appwidget)
     implementation(libs.glance.material3)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
+    implementation(libs.media3.session)
+    implementation(libs.media3.transformer)
+    implementation(libs.exifinterface)
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
 }
