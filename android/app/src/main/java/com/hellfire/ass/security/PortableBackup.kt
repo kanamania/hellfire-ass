@@ -40,11 +40,6 @@ class PortableBackup(private val app: HellFireApp) {
                 baseId = if (incremental) app.database.sync().lastVerified()?.id else null
                 planned = BackupPlanner.plan(media, previous, app.noBackupFilesDir.usableSpace, incremental)
             }
-            val plan = planned!!
-            if (plan.includedHashes.isEmpty()) {
-                if (plan.blocked.isNotEmpty()) throw BackupBlocked(plan.blocked)
-                return@withContext BackupOutcome("", plan.kind, 0, plan.items.count { it.action == BackupAction.OMITTED }, emptyList(), true)
-            }
             portable = try { BackupCrypto.derive(password, salt) } finally { password.fill('\u0000') }
             val key = portable!!
             app.media.exclusive {
@@ -54,7 +49,6 @@ class PortableBackup(private val app: HellFireApp) {
                 baseId = if (incremental) app.database.sync().lastVerified()?.id else null
                 planned = BackupPlanner.plan(media, previous, app.noBackupFilesDir.usableSpace, incremental)
                 val current = planned!!
-                if (current.includedHashes.isEmpty()) return@exclusive
                 val dbBytes = app.getDatabasePath("hellfire.db").length().coerceAtMost(1024L * 1024 * 1024)
                 require(app.noBackupFilesDir.usableSpace >= BackupReadiness.stagingBytes(current.bytesIncluded(), dbBytes)) { "Insufficient free space for encrypted backup staging" }
                 coroutineScope {
@@ -66,10 +60,6 @@ class PortableBackup(private val app: HellFireApp) {
                 }
             }
             val written = planned!!
-            if (written.includedHashes.isEmpty()) {
-                if (written.blocked.isNotEmpty()) throw BackupBlocked(written.blocked)
-                return@withContext BackupOutcome("", written.kind, 0, written.items.count { it.action == BackupAction.OMITTED }, emptyList(), true)
-            }
             val verified = verifyFormat2(encrypted, key, written)
             if (verified != written.includedHashes.toSet()) error("Backup verification failed")
             var archiveHash = ""
@@ -80,7 +70,7 @@ class PortableBackup(private val app: HellFireApp) {
             record(archiveId, written, verified, previous, baseId, archiveHash)
             if (written.blocked.isNotEmpty()) throw BackupBlocked(written.blocked)
             BackupOutcome(archiveId, written.kind, written.includedHashes.size, written.items.count { it.action == BackupAction.OMITTED }, emptyList(), true)
-        } finally { encrypted.delete() }
+        } finally { password.fill('\u0000'); encrypted.delete() }
     }
     suspend fun restore(uri: Uri, password: CharArray) {
         restore(password) { app.contentResolver.openInputStream(uri) ?: error("Backup unavailable") }
