@@ -75,14 +75,14 @@ class LibraryFeatureTest {
         assertTrue(pairs.none { it.distance > LibraryDiscovery.SIMILAR_MAX_DISTANCE })
     }
 
-    @Test fun `hash move keeps the older missing id`() {
+    @Test fun `hash move keeps the live row and retires only the missing row`() {
         val missing = external("old", "content://old", "same", at = 1, availability = Availability.MISSING.name)
         val added = external("new", "content://new", "same", at = 5)
         val other = external("dup", "content://dup", "other", at = 2)
         val moves = LibraryDiscovery.hashMoves(listOf(missing, added, other, added.copy(id = "managed", storage = StorageMode.MANAGED.name)))
         assertEquals(1, moves.size)
-        assertEquals("old", moves.single().keepId)
-        assertEquals("new", moves.single().dropId)
+        assertEquals("new", moves.single().keepId)
+        assertEquals("old", moves.single().dropId)
         assertEquals("content://new", moves.single().uri)
     }
 

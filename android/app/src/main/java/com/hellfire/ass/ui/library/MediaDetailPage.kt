@@ -67,7 +67,7 @@ fun MediaDetailPage(route: Route) {
             categories = loaded.categories
             tags = loaded.tags
             allCategories = loaded.all
-            description = LibraryOrganize.editedDescription(loaded.analysis?.editedJson) ?: ""
+            description = withContext(Dispatchers.IO) { LibraryOrganize.description(app.database.library(), id) }.orEmpty()
         }
     }
     LaunchedEffect(id) { load() }
@@ -194,13 +194,15 @@ fun MediaDetailPage(route: Route) {
                     scope.launch {
                         val job = withContext(Dispatchers.IO) {
                             val now = System.currentTimeMillis()
-                            app.database.jobs().enqueue(ProcessingJob(UUID.randomUUID().toString(), "ANALYZE", id, priority = JobPriority.USER_REQUESTED, createdAt = now, updatedAt = now))
+                            app.database.jobs().enqueue(ProcessingJob(UUID.randomUUID().toString(), com.hellfire.ass.intelligence.ContentEngine.JOB, id, priority = JobPriority.USER_REQUESTED, createdAt = now, updatedAt = now))
                         }
+                        com.hellfire.ass.intelligence.IntelligenceWork.schedule(app)
                         note = "Analysis job ${job.state}. This does not mean a model ran."
                         load()
                     }
                 })
             }
+            SceneThumbnails(id)
             if (current.storage == StorageMode.EXTERNAL.name && !current.syncEnabled) Note("Indexed only. The original was not copied and is not selected for sync.")
         }
         if (viewing && current?.contentKind == ContentKind.IMAGE.name) {
@@ -286,5 +288,31 @@ private fun Zoomable(item: MediaItem, onZoomed: (Boolean) -> Unit) {
                 onZoomed(scale > 1f)
             }
         }, contentScale = ContentScale.Fit)
+    }
+}
+
+@Composable
+internal fun SceneThumbnail(path: String?) {
+    val app = LocalEnv.current.app
+    var bitmap by remember(path) { mutableStateOf<android.graphics.Bitmap?>(null) }
+    LaunchedEffect(path) {
+        bitmap = withContext(Dispatchers.IO) {
+            path?.takeIf { it.startsWith("intelligence-thumbs/") && !it.contains("..") }?.let {
+                android.graphics.BitmapFactory.decodeFile(java.io.File(app.cacheDir, it).path)
+            }
+        }
+    }
+    bitmap?.let { androidx.compose.foundation.Image(it.asImageBitmap(), "Sampled video scene", Modifier.height(90.dp)) }
+}
+
+@Composable
+private fun SceneThumbnails(id: String) {
+    val app = LocalEnv.current.app
+    val nav = LocalNav.current
+    var scenes by remember(id) { mutableStateOf<List<com.hellfire.ass.library.MediaSegment>>(emptyList()) }
+    LaunchedEffect(id) { scenes = withContext(Dispatchers.IO) { app.database.library().segmentsNow(id).filter { it.kind == "SCENE" } } }
+    scenes.take(60).forEach { scene ->
+        SceneThumbnail(scene.thumbnailPath)
+        SecondaryButton("${scene.startMs / 1000}s: ${scene.title}", { nav.push(LibraryRoutes.player(id, scene.startMs)) })
     }
 }

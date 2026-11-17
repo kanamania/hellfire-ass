@@ -65,6 +65,9 @@ fun LibraryPage(route: Route) {
     var offset by remember { mutableIntStateOf(0) }
     var action by remember { mutableStateOf<String?>(null) }
     var draft by remember { mutableStateOf("") }
+    var nameFilter by remember { mutableStateOf("") }
+    var tagFilter by remember { mutableStateOf("") }
+    var folders by remember { mutableStateOf(FolderImport.libraryTrees(app)) }
     val categoryId = args["category"]?.ifBlank { null }
     val collectionId = args["collection"]?.ifBlank { null }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -75,7 +78,7 @@ fun LibraryPage(route: Route) {
         scope.launch {
             val saved = runCatching { withContext(Dispatchers.IO) { FolderImport.addLibraryTree(app, uri) } }
             note = if (saved.isSuccess) "Folder added. Files stay where they are and are not synced." else "Could not keep permission for that folder."
-            if (saved.isSuccess) scan(app) { note = it }
+            if (saved.isSuccess) { folders = FolderImport.libraryTrees(app); scan(app) { note = it } }
         }
     }
     LaunchedEffect(Unit) {
@@ -91,7 +94,7 @@ fun LibraryPage(route: Route) {
             val page = withContext(Dispatchers.IO) {
                 app.database.library().queryItems(LibraryQuery.sql(LibraryFilter(
                     kinds = if (kind.isBlank()) listOf(ContentKind.IMAGE.name, ContentKind.VIDEO.name, ContentKind.AUDIO.name) else listOf(kind),
-                    favoritesOnly = favoritesOnly, categoryId = categoryId, collectionId = collectionId,
+                    favoritesOnly = favoritesOnly, categoryId = categoryId, collectionId = collectionId, nameContains = nameFilter, tag = tagFilter.ifBlank { null },
                     sort = runCatching { LibrarySort.valueOf(sort) }.getOrDefault(LibrarySort.NEWEST),
                     limit = 60, offset = offset,
                 )))
@@ -100,7 +103,7 @@ fun LibraryPage(route: Route) {
             statuses = withContext(Dispatchers.IO) { runCatching { LibraryStatus.load(app, rows) }.getOrDefault(emptyMap()) }
         }
     }
-    LaunchedEffect(kind, sort, favoritesOnly, categoryId, collectionId, offset, mode) { if (mode == "browse") reload() }
+    LaunchedEffect(kind, sort, favoritesOnly, categoryId, collectionId, offset, mode, nameFilter, tagFilter) { if (mode == "browse") reload() }
     val title = when {
         kind == ContentKind.IMAGE.name -> tr("Pictures")
         kind == ContentKind.VIDEO.name -> tr("Videos")
@@ -113,6 +116,9 @@ fun LibraryPage(route: Route) {
     Column(Modifier.fillMaxSize().padding(horizontal = ScreenPadding, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         PushedTopBar(title, { nav.pop() }, breadcrumb = "Library")
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            HfChip(tr("Search"), { nav.push(LibraryRoutes.search()) })
+            HfChip("Processing queue", { nav.push(LibraryRoutes.processingQueue()) })
+            HfChip("Media settings", { nav.push(LibraryRoutes.mediaSettings()) })
             HfChip(tr("All"), { kind = ""; offset = 0; mode = "browse" })
             HfChip(tr("Pictures"), { kind = ContentKind.IMAGE.name; offset = 0; mode = "browse" })
             HfChip(tr("Videos"), { kind = ContentKind.VIDEO.name; offset = 0; mode = "browse" })
@@ -122,7 +128,11 @@ fun LibraryPage(route: Route) {
             HfChip(tr("Duplicates"), { mode = "duplicates" })
         }
         if (mode == "browse") {
+            HfTextField(nameFilter, { nameFilter = it; offset = 0 }, "File name")
+            HfTextField(tagFilter, { tagFilter = it; offset = 0 }, "Tag")
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                HfChip("Date taken", { sort = LibrarySort.TAKEN.name; offset = 0 })
+                HfChip("Date modified", { sort = LibrarySort.MODIFIED.name; offset = 0 })
                 HfChip(tr("Newest"), { sort = LibrarySort.NEWEST.name; offset = 0 })
                 HfChip(tr("Name"), { sort = LibrarySort.NAME.name; offset = 0 })
                 HfChip(tr("Size"), { sort = LibrarySort.SIZE.name; offset = 0 })
@@ -135,6 +145,14 @@ fun LibraryPage(route: Route) {
                 SecondaryButton(tr("Scan"), { scope.launch { busy = true; scan(app) { note = it }; busy = false } }, enabled = !busy)
                 SecondaryButton(tr("Add folder"), { folder.launch(null) })
                 if (LibraryAccess.missing(context).isNotEmpty()) SecondaryButton(tr("Media access needed"), { permission.launch(LibraryAccess.missing(context)) })
+            }
+            folders.forEach { tree ->
+                ListRow(tree.substringAfterLast('/'), subtitle = "Selected folder", trailing = {
+                    SecondaryButton("Remove folder", { scope.launch {
+                        withContext(Dispatchers.IO) { LibraryIndex.removeTree(app, tree) }
+                        folders = FolderImport.libraryTrees(app); reload()
+                    } })
+                })
             }
             if (!access.images && !access.videos && !access.audio) Note("Media permission is not granted. Device pictures, videos and audio are not listed. Managed copies already in the app still appear.")
             else if (access.partialVisual) Note("Partial media access. Only items you selected are visible. Unlisted items were not deleted or marked missing.")
@@ -185,6 +203,8 @@ private fun BulkBar(count: Int, onAction: (String) -> Unit, onClear: () -> Unit)
             HfChip(tr("Mark favorite"), { onAction("favorite") })
             HfChip(tr("Tags"), { onAction("tag") })
             HfChip(tr("Assign"), { onAction("category") })
+            HfChip("Exclude category", { onAction("exclude") })
+            HfChip("Unassign category", { onAction("unassign") })
             HfChip(tr("Add to collection"), { onAction("collection") })
             HfChip(tr("Managed sync"), { onAction("sync") })
             HfChip(tr("Queue processing"), { onAction("queue") })
@@ -201,7 +221,7 @@ private fun BulkAction(action: String, draft: String, onDraft: (String) -> Unit,
     LaunchedEffect(action) {
         choices = withContext(Dispatchers.IO) {
             when (action) {
-                "category" -> app.database.library().categoriesNow().map { it.id to it.name }
+                "category", "exclude", "unassign" -> app.database.library().categoriesNow().map { it.id to it.name }
                 "collection" -> app.database.library().collectionsNow().map { it.id to "${it.kind}: ${it.name}" }
                 else -> emptyList()
             }
@@ -210,6 +230,8 @@ private fun BulkAction(action: String, draft: String, onDraft: (String) -> Unit,
     SectionCard(tr(when (action) {
         "tag" -> "Tags"
         "category" -> "Assign"
+        "exclude" -> "Exclude category"
+        "unassign" -> "Unassign category"
         "collection" -> "Add to collection"
         "sync" -> "Managed sync"
         "queue" -> "Queue processing"
@@ -221,6 +243,8 @@ private fun BulkAction(action: String, draft: String, onDraft: (String) -> Unit,
             scope.launch {
                 withContext(Dispatchers.IO) {
                     selected.forEach { itemId ->
+                        if (action == "exclude") LibraryOrganize.assign(app.database.library(), itemId, id, LinkState.EXCLUDED, System.currentTimeMillis())
+                        if (action == "unassign") app.database.library().removeCategoryLink(itemId, id)
                         if (action == "category") LibraryOrganize.assign(app.database.library(), itemId, id, LinkState.ASSIGNED, System.currentTimeMillis())
                         if (action == "collection") app.database.library().addToCollection(id, itemId, System.currentTimeMillis())
                     }
@@ -252,14 +276,14 @@ private suspend fun runBulk(app: com.hellfire.ass.HellFireApp, action: String, s
                 "favorite" -> app.database.library().setFavorite(id, true)
                 "tag" -> LibraryOrganize.setTag(app.database.library(), id, draft, LinkState.ASSIGNED, now) ?: error("blank")
                 "sync" -> app.media.promote(id, true)
-                "queue" -> app.database.jobs().enqueue(ProcessingJob(UUID.randomUUID().toString(), "ANALYZE", id, priority = JobPriority.USER_REQUESTED, createdAt = now, updatedAt = now))
+                "queue" -> app.database.jobs().enqueue(ProcessingJob(UUID.randomUUID().toString(), com.hellfire.ass.intelligence.ContentEngine.JOB, id, priority = JobPriority.USER_REQUESTED, createdAt = now, updatedAt = now))
             }
         }
         if (result.isSuccess) ok++ else failed++
     }
     return when (action) {
         "sync" -> "Copied $ok into managed storage and marked them for sync. $failed could not be copied. Upload is not confirmed."
-        "queue" -> "Queued $ok for analysis. $failed were not queued. Nothing was sent."
+        "queue" -> { com.hellfire.ass.intelligence.IntelligenceWork.schedule(app); "Queued $ok for analysis. $failed were not queued. Nothing was sent." }
         else -> "Updated $ok. $failed failed."
     }
 }
@@ -403,8 +427,7 @@ private fun CollectionPane(note: (String) -> Unit) {
                             if (index == 0) return@clickable
                             scope.launch {
                                 withContext(Dispatchers.IO) {
-                                    app.database.library().moveMember(row.id, item.id, (index - 1).toLong())
-                                    app.database.library().moveMember(row.id, members[index - 1].id, index.toLong())
+                                    LibraryOrganize.moveUp(app.database.library(), row.id, item.id)
                                 }
                                 members = withContext(Dispatchers.IO) { app.database.library().membersNow(row.id) }
                             }
@@ -459,6 +482,22 @@ private fun DuplicatePane(note: (String) -> Unit) {
     }
     if (similar.isEmpty() && compared == 0) Note("Similar pictures are not guessed. Compare reads pictures you can open and stores only a perceptual hash.")
     similar.forEach { pair ->
-        ListRow("Distance ${pair.distance}", subtitle = "${pair.leftId.take(8)} · ${pair.rightId.take(8)}", onClick = { nav.push(LibraryRoutes.mediaDetail(pair.leftId)) })
+        SectionCard("Similar pictures · distance ${pair.distance}") {
+            Row {
+                listOf(pair.leftId, pair.rightId).forEach { id ->
+                    Column(Modifier.weight(1f)) {
+                        var item by remember(id) { mutableStateOf<MediaItem?>(null) }
+                        LaunchedEffect(id) { item = withContext(Dispatchers.IO) { app.database.library().item(id) } }
+                        item?.let { MediaCell(it, null, grid = true, selected = false, selecting = false, onClick = { nav.push(LibraryRoutes.mediaDetail(id)) }) }
+                        SecondaryButton("Hide this copy", { scope.launch {
+                            LibraryOrganize.hide(app.database.library(), id, System.currentTimeMillis())
+                            similar = similar.filter { it.leftId != id && it.rightId != id }
+                            note("Hidden from the library. Original retained; filter by tag hidden to show it.")
+                        } })
+                    }
+                }
+            }
+            SecondaryButton("Keep both", { similar = similar.filter { it != pair } })
+        }
     }
 }

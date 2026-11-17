@@ -48,19 +48,20 @@ object LibraryIndex {
             val held = app.contentResolver.persistedUriPermissions.any { it.uri == tree && it.isReadPermission }
             val treeId = runCatching { DocumentsContract.getTreeDocumentId(tree) }.getOrDefault(raw)
             val known = indexed.filter { it.origin == CaptureOrigin.SAF_FOLDER.name && belongs(it, treeId) }.map { indexedOf(it) }
-            val scanned = if (held) walkTree(app, tree, treeId) else TreeScan(emptyList(), false, if (held) null else "Folder permission is not held")
-            if (scanned.truncated) partial = true
-            error = error ?: scanned.error
-            val visibility = when {
-                !held -> ScanVisibility.DENIED
-                scanned.truncated -> ScanVisibility.PARTIAL
-                else -> ScanVisibility.FULL
+            val walk = if (held) walkTree(app, tree, treeId) else null
+            val visibility = LibraryDiscovery.treeVisibility(held, walk)
+            if (visibility == ScanVisibility.PARTIAL) partial = true
+            error = error ?: walk?.error ?: if (!held) "Folder permission is not held" else null
+            val entries = walk?.files.orEmpty().mapNotNull { row ->
+                val kind = ContentKind.fromMime(row.mime)
+                if (kind != ContentKind.IMAGE && kind != ContentKind.VIDEO && kind != ContentKind.AUDIO) return@mapNotNull null
+                ScannedMedia(DocumentsContract.buildDocumentUriUsingTree(tree, row.docId).toString(), "saf:$treeId/${row.docId}", row.name, row.mime, row.size, row.modifiedAt, 0)
             }
-            val applied = apply(dao, LibraryDiscovery.diff(scanned.entries, known.map { it.media }, visibility), CaptureOrigin.SAF_FOLDER, System.currentTimeMillis())
+            val applied = apply(dao, LibraryDiscovery.diff(entries, known.map { it.media }, visibility), CaptureOrigin.SAF_FOLDER, System.currentTimeMillis())
             inserted += applied.inserted; changed += applied.changed; missing += applied.missing; revoked += applied.revoked; moved += applied.moved
         }
         val hashed = hashPending(app, HASH_BATCH)
-        moved += reconcile(dao)
+        moved += reconcile(dao, System.currentTimeMillis())
         ScanReport(inserted, changed, missing, revoked, moved, hashed, partial, error)
     }
 
@@ -76,7 +77,7 @@ object LibraryIndex {
                     val scan = decision.scanned ?: return@forEach
                     val kind = ContentKind.fromMime(scan.mime)
                     val row = MediaItem(UUID.randomUUID().toString(), null, scan.name.take(200).ifBlank { "Media" }, scan.mime.ifBlank { "application/octet-stream" },
-                        kind.name, scan.contentHash, scan.size, now, null, durationMs = scan.durationMs, storage = StorageMode.EXTERNAL.name,
+                        kind.name, scan.contentHash, scan.size, now, scan.takenAt, durationMs = scan.durationMs, storage = StorageMode.EXTERNAL.name,
                         contentKind = kind.name, externalUri = scan.uri, availability = Availability.AVAILABLE.name, origin = origin.name,
                         modifiedAt = scan.modifiedAt, width = scan.width, height = scan.height, originalMetadata = meta(null, scan), syncEnabled = false)
                     if (dao.insertItem(row) != -1L) inserted++
@@ -90,7 +91,8 @@ object LibraryIndex {
                         name = scan.name.take(200).ifBlank { existing.name }, mime = scan.mime.ifBlank { existing.mime },
                         contentKind = ContentKind.fromMime(scan.mime).name, kind = ContentKind.fromMime(scan.mime).name,
                         size = scan.size, modifiedAt = scan.modifiedAt, width = scan.width ?: existing.width, height = scan.height ?: existing.height,
-                        durationMs = scan.durationMs ?: existing.durationMs, externalUri = scan.uri, availability = Availability.AVAILABLE.name,
+                        durationMs = scan.durationMs ?: existing.durationMs, recordedAt = scan.takenAt ?: existing.recordedAt,
+                        externalUri = scan.uri, availability = Availability.AVAILABLE.name,
                         contentHash = if (decision.change == IndexChange.CHANGED) scan.contentHash else (scan.contentHash ?: existing.contentHash),
                         originalMetadata = meta(existing.originalMetadata, scan),
                     ))
@@ -108,31 +110,51 @@ object LibraryIndex {
         return ApplyCounts(inserted, changed, missing, revoked, moved)
     }
 
+    /**
+     * Hash up to [limit] unhashed external entries. An entry that cannot be opened is skipped, not marked missing: under partial
+     * or revoked access an unreadable file may still exist (only a full scan decides availability). A cursor rotates through
+     * the entries so unreadable ones never block the rest.
+     */
     suspend fun hashPending(app: HellFireApp, limit: Int): Int {
         val dao = app.database.library()
+        val prefs = app.getSharedPreferences("library", 0)
+        var after = prefs.getString("hash-cursor", "").orEmpty()
         var hashed = 0
-        dao.unhashedExternal(limit).forEach { item ->
-            val hash = runCatching { app.media.openStream(item).use { LibraryDiscovery.sha256(it) } }.getOrNull()
-            if (hash == null) dao.setAvailability(item.id, Availability.MISSING.name)
-            else {
-                dao.setHash(item.id, hash)
-                hashed++
+        var tried = 0
+        var wrapped = after.isEmpty()
+        while (hashed < limit && tried < limit * 4) {
+            val page = dao.unhashedExternalAfter(after, limit)
+            if (page.isEmpty()) {
+                if (wrapped) break
+                wrapped = true; after = ""; continue
+            }
+            for (item in page) {
+                tried++
+                after = item.id
+                val hash = runCatching { app.media.openStream(item).use { LibraryDiscovery.sha256(it) } }.getOrNull()
+                if (hash != null) { dao.setHash(item.id, hash); hashed++ }
+                if (hashed >= limit || tried >= limit * 4) break
             }
         }
+        prefs.edit().putString("hash-cursor", after).apply()
         return hashed
     }
 
-    suspend fun reconcile(dao: LibraryDao): Int {
+    /** Retire missing external entries into live entries with the same content hash (see [LibraryDao.retireInto]). */
+    suspend fun reconcile(dao: LibraryDao, now: Long): Int {
         val moves = LibraryDiscovery.hashMoves(dao.indexedExternal())
-        moves.forEach { move ->
-            val keep = dao.item(move.keepId) ?: return@forEach
-            val drop = dao.item(move.dropId) ?: return@forEach
-            dao.deleteExternal(move.dropId)
-            dao.updateItem(keep.copy(externalUri = move.uri, availability = Availability.AVAILABLE.name, name = drop.name, size = drop.size,
-                modifiedAt = drop.modifiedAt, mime = drop.mime, width = drop.width, height = drop.height, originalMetadata = drop.originalMetadata))
-        }
+        moves.forEach { move -> dao.retireInto(move.dropId, move.keepId, now) }
         return moves.size
     }
+
+    /** Stop indexing a picked folder: release its permission and mark its entries as no longer permitted (user data kept). */
+    suspend fun removeTree(app: HellFireApp, treeUri: String): Int = withContext(Dispatchers.IO) {
+        FolderImport.removeLibraryTree(app, treeUri)
+        app.database.library().revokeUnder(treePrefix(treeUri))
+    }
+
+    /** Document URIs built from a tree URI start with "<tree uri>/document/". */
+    fun treePrefix(treeUri: String) = treeUri.trimEnd('/') + "/document/"
 
     suspend fun storeDHash(dao: LibraryDao, item: MediaItem, hash: Long) {
         val json = item.originalMetadata?.let { runCatching { JSONObject(it) }.getOrNull() } ?: JSONObject()
@@ -145,7 +167,6 @@ object LibraryIndex {
     }
 
     private data class StorePlan(val decisions: List<IndexDecision>, val partial: Boolean, val error: String?)
-    private data class TreeScan(val entries: List<ScannedMedia>, val truncated: Boolean, val error: String?)
     data class ApplyCounts(val inserted: Int, val changed: Int, val missing: Int, val revoked: Int, val moved: Int)
     private data class IndexedView(val media: IndexedMedia, val kindKey: String)
 
@@ -157,7 +178,7 @@ object LibraryIndex {
 
     private fun queryStore(app: HellFireApp, collection: Uri, kindKey: String, kind: ContentKind): List<ScannedMedia> {
         val projection = mutableListOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME, MediaStore.MediaColumns.MIME_TYPE,
-            MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.DATE_MODIFIED)
+            MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.DATE_MODIFIED, MediaStore.MediaColumns.DATE_TAKEN)
         if (kind != ContentKind.AUDIO) projection += listOf(MediaStore.MediaColumns.WIDTH, MediaStore.MediaColumns.HEIGHT)
         if (kind != ContentKind.IMAGE) projection += MediaStore.MediaColumns.DURATION
         if (Build.VERSION.SDK_INT >= 30) projection += MediaStore.MediaColumns.GENERATION_MODIFIED
@@ -172,6 +193,7 @@ object LibraryIndex {
             val heightCol = cursor.getColumnIndex(MediaStore.MediaColumns.HEIGHT)
             val durationCol = cursor.getColumnIndex(MediaStore.MediaColumns.DURATION)
             val generationCol = if (Build.VERSION.SDK_INT >= 30) cursor.getColumnIndex(MediaStore.MediaColumns.GENERATION_MODIFIED) else -1
+            val takenCol = cursor.getColumnIndex(MediaStore.MediaColumns.DATE_TAKEN)
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idCol)
                 val uri = ContentUris.withAppendedId(collection, id).toString()
@@ -181,42 +203,27 @@ object LibraryIndex {
                     if (generationCol < 0 || cursor.isNull(generationCol)) 0 else cursor.getLong(generationCol),
                     width = if (widthCol < 0 || cursor.isNull(widthCol)) null else cursor.getInt(widthCol),
                     height = if (heightCol < 0 || cursor.isNull(heightCol)) null else cursor.getInt(heightCol),
-                    durationMs = if (durationCol < 0 || cursor.isNull(durationCol)) null else cursor.getLong(durationCol))
+                    durationMs = if (durationCol < 0 || cursor.isNull(durationCol)) null else cursor.getLong(durationCol),
+                    takenAt = if (takenCol < 0 || cursor.isNull(takenCol)) null else cursor.getLong(takenCol).takeIf { it > 0 })
             }
         }
         return out
     }
 
-    private fun walkTree(app: HellFireApp, tree: Uri, treeId: String): TreeScan {
-        val pending = ArrayDeque<String>()
-        pending += treeId
-        val entries = mutableListOf<ScannedMedia>()
-        var seen = 0
-        while (pending.isNotEmpty()) {
-            if (seen >= SAF_LIST_CAP) return TreeScan(entries, true, "Folder listing stopped at $SAF_LIST_CAP entries")
-            val parent = pending.removeFirst()
-            val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, parent)
-            val cursor = app.contentResolver.query(children, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+    private fun walkTree(app: HellFireApp, tree: Uri, treeId: String): TreeWalk = LibraryDiscovery.walkTree(treeId, SAF_LIST_CAP) { parent ->
+        val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, parent)
+        runCatching {
+            app.contentResolver.query(children, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME,
                 DocumentsContract.Document.COLUMN_MIME_TYPE, DocumentsContract.Document.COLUMN_SIZE, DocumentsContract.Document.COLUMN_LAST_MODIFIED), null, null, null)
-                ?: return TreeScan(entries, false, "Folder unavailable")
-            cursor.use {
-                while (it.moveToNext()) {
-                    seen++
-                    val docId = it.getString(0) ?: continue
-                    val mime = it.getString(2).orEmpty()
-                    if (mime == DocumentsContract.Document.MIME_TYPE_DIR) {
-                        pending += docId
-                        continue
+                ?.use { cursor ->
+                    val rows = mutableListOf<DocRow>()
+                    while (cursor.moveToNext()) {
+                        val docId = cursor.getString(0) ?: continue
+                        rows += DocRow(docId, cursor.getString(1).orEmpty(), cursor.getString(2).orEmpty(), cursor.getLong(3), cursor.getLong(4))
                     }
-                    val kind = ContentKind.fromMime(mime)
-                    if (kind != ContentKind.IMAGE && kind != ContentKind.VIDEO && kind != ContentKind.AUDIO) continue
-                    val uri = DocumentsContract.buildDocumentUriUsingTree(tree, docId).toString()
-                    entries += ScannedMedia(uri, "saf:$treeId/$docId", it.getString(1).orEmpty(), mime, it.getLong(3), it.getLong(4), 0)
-                    if (seen >= SAF_LIST_CAP) return TreeScan(entries, true, "Folder listing stopped at $SAF_LIST_CAP entries")
+                    rows
                 }
-            }
-        }
-        return TreeScan(entries, false, null)
+        }.getOrNull()
     }
 
     private fun indexedOf(item: MediaItem): IndexedView {
