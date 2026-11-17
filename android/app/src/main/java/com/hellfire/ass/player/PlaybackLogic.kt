@@ -139,7 +139,7 @@ object PlaybackLogic {
     fun neighbor(markers: List<TimelineMarker>, positionMs: Long, forward: Boolean): TimelineMarker? {
         val ordered = markers.sortedBy { it.startMs }
         return if (forward) ordered.firstOrNull { it.startMs > positionMs + 250 }
-        else ordered.lastOrNull { it.startMs < positionMs - 250 }
+        else ordered.lastOrNull { it.startMs < positionMs - 250 } ?: ordered.firstOrNull { it.startMs <= positionMs }
     }
 
     fun transition(current: Presentation, event: PresentationEvent, video: Boolean): Presentation = when (event) {

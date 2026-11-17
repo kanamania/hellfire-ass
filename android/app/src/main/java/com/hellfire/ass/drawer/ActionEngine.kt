@@ -196,7 +196,7 @@ private object CodeActions : ActionProvider {
         val modelReason = if (modelInstalled) null else "Local model is not installed. The text was not executed."
         return listOf(
             action("explain_error", "Explain error", kinds, listOf("text"), emptyList(), emptyList(), true, false, "Explanation needs an installed local model. The text was not executed.", 40, available = modelInstalled, reason = modelReason),
-            action("troubleshoot", "Troubleshoot", kinds, listOf("text"), emptyList(), emptyList(), true, false, "Troubleshooting needs an installed local model. The text was not executed.", 35, available = modelInstalled, reason = modelReason),
+            action("troubleshoot", "Troubleshoot", kinds, listOf("text"), emptyList(), emptyList(), true, false, "Troubleshooting needs an installed local model. The text was not executed.", 45, available = modelInstalled, reason = modelReason),
             action("review_code", "Review code", kinds, listOf("text"), emptyList(), emptyList(), true, false, "Review needs an installed local model. The text was not executed.", 30, available = modelInstalled, reason = modelReason),
             action("suggest_fix", "Suggest fix", kinds, listOf("text"), emptyList(), emptyList(), true, false, "A suggestion needs an installed local model. Nothing was applied or executed.", 25, available = modelInstalled, reason = modelReason),
             action("copy_snippet", "Copy snippet", kinds, listOf("text"), emptyList(), emptyList(), true, false, "Nothing to copy.", 20),
