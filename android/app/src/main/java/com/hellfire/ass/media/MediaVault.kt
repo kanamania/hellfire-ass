@@ -230,6 +230,9 @@ class MediaVault(private val app: HellFireApp) {
             }
             if (item.syncEnabled || app.database.sync().record("media_item", id) != null)
                 app.database.sync().markChanged("media_item", id, true, System.currentTimeMillis())
+            app.database.library().segmentsNow(item.id).mapNotNull { it.thumbnailPath }
+                .filter { it.startsWith("intelligence-thumbs/") && !it.contains("..") }.forEach { File(app.cacheDir, it).delete() }
+            app.database.library().unindexItem(item.id)
             app.database.media().delete(item.id)
             com.hellfire.ass.player.FrameScrubber.deleteForItem(app, id)
             com.hellfire.ass.performance.ProcessingCheckpoint.clear(app, id)

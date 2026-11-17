@@ -41,7 +41,7 @@ object PlaybackLogic {
 
     /** Explicit route start wins. A completed or near-end item resumes at the beginning. */
     fun resumeMs(savedPositionMs: Long, completed: Boolean, requestedStartMs: Long?, durationMs: Long?): Long {
-        if (requestedStartMs != null && requestedStartMs > 0) return requestedStartMs
+        if (requestedStartMs != null && requestedStartMs >= 0) return requestedStartMs
         if (completed) return 0
         if (durationMs != null && durationMs > 0 && savedPositionMs >= durationMs - NEAR_END_MS) return 0
         return savedPositionMs.coerceAtLeast(0)

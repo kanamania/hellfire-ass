@@ -158,7 +158,7 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
         val player = controller ?: return@LaunchedEffect
         if (started) return@LaunchedEffect
         val kind = MediaReadAccess.kindOf(media.contentKind, media.mime)
-        if (media.storage == StorageMode.EXTERNAL.name && !MediaReadAccess.canRead(context, kind)) {
+        if (media.storage == StorageMode.EXTERNAL.name && MediaReadAccess.requiresMediaPermission(media.externalUri) && !MediaReadAccess.canRead(context, kind)) {
             permission.launch(MediaReadAccess.request(kind))
             return@LaunchedEffect
         }

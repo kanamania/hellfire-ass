@@ -19,6 +19,8 @@ object MediaReadAccess {
         else -> visual(Manifest.permission.READ_MEDIA_IMAGES, sdk)
     }
 
+    fun requiresMediaPermission(uri: String?): Boolean = uri == null || android.net.Uri.parse(uri).authority == android.provider.MediaStore.AUTHORITY
+
     fun canRead(context: Context, kind: String): Boolean {
         val state = LibraryAccess.read(context)
         return when (kind) {

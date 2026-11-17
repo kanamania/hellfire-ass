@@ -123,15 +123,23 @@ object ContainerExport {
         }
     }
 
-    private fun coverEffect(covers: List<RedactRect>): OverlayEffect {
-        val bitmap = Bitmap.createBitmap(1000, 1000, Bitmap.Config.ARGB_8888)
-        if (covers.isNotEmpty()) {
-            val canvas = Canvas(bitmap)
-            val paint = Paint().apply { color = Color.BLACK }
-            covers.filter { it.valid() }.forEach { canvas.drawRect(it.left * 1000f, it.top * 1000f, it.right * 1000f, it.bottom * 1000f, paint) }
+    private fun coverEffect(covers: List<RedactRect>): OverlayEffect = OverlayEffect(listOf(object : BitmapOverlay() {
+        private var bitmap: Bitmap? = null
+        override fun configure(videoSize: androidx.media3.common.util.Size) {
+            super.configure(videoSize)
+            bitmap?.recycle()
+            bitmap = coverBitmap(videoSize.width, videoSize.height, covers)
         }
-        val settings = StaticOverlaySettings.Builder().setScale(1f, 1f).build()
-        return OverlayEffect(listOf(BitmapOverlay.createStaticBitmapOverlay(bitmap, settings)))
+        override fun getBitmap(presentationTimeUs: Long): Bitmap = checkNotNull(bitmap)
+        override fun release() { super.release(); bitmap?.recycle(); bitmap = null }
+    }))
+
+    internal fun coverBitmap(width: Int, height: Int, covers: List<RedactRect>): Bitmap {
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val paint = Paint().apply { color = Color.BLACK }
+        covers.filter { it.valid() }.forEach { canvas.drawRect(it.left * width, it.top * height, it.right * width, it.bottom * height, paint) }
+        return bitmap
     }
 
     private fun playbackFindings(file: File): List<MarkerHit> {
@@ -140,6 +148,14 @@ object ContainerExport {
         try {
             extractor.setDataSource(file.absolutePath)
             if (extractor.trackCount < 1) hits += MarkerHit("CONTAINER", "tracks", "No playable tracks")
+            for (index in 0 until extractor.trackCount) {
+                extractor.selectTrack(index)
+                val size = extractor.sampleSize
+                require(size in 1..16L * 1024 * 1024) { "Unreadable or oversized sample" }
+                val sample = ByteBuffer.allocate(size.toInt())
+                if (extractor.readSampleData(sample, 0) <= 0) hits += MarkerHit("CONTAINER", "sample", "Track $index has no readable sample")
+                extractor.unselectTrack(index)
+            }
         } catch (error: Exception) {
             hits += MarkerHit("CONTAINER", "extractor", error.javaClass.simpleName)
         } finally {
@@ -148,6 +164,11 @@ object ContainerExport {
         val retriever = MediaMetadataRetriever()
         try {
             retriever.setDataSource(file.absolutePath)
+            if (retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_HAS_VIDEO) == "yes") {
+                val frame = retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST)
+                if (frame == null) hits += MarkerHit("CONTAINER", "frame", "Video does not decode")
+                frame?.recycle()
+            }
             val keys = listOf(
                 "location" to MediaMetadataRetriever.METADATA_KEY_LOCATION,
                 "author" to MediaMetadataRetriever.METADATA_KEY_AUTHOR,
