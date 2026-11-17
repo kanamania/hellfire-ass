@@ -10,7 +10,7 @@ set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
 set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
 set(GGML_VULKAN OFF CACHE BOOL "" FORCE)
 set(GGML_CPU_KLEIDIAI OFF CACHE BOOL "" FORCE)
-# Snapdragon 8 Elite-class CPUs (owner phone: OnePlus 16, SM8975). WhisperNative.open() checks these at runtime.
+# Owner-selected CPU target; handset/SoC remain unverified. WhisperNative.open() checks required features at runtime.
 set(GGML_CPU_ARM_ARCH "armv8.2-a+dotprod+fp16+i8mm" CACHE STRING "" FORCE)
 FetchContent_Declare(whisper
     URL https://github.com/ggml-org/whisper.cpp/archive/refs/tags/v1.9.5.tar.gz

@@ -12,10 +12,19 @@ class WhisperCpuTest {
 
     @Test fun olderCpuReportsMissingFeatures() {
         val cpuinfo = "Features\t: fp asimd evtstrm aes pmull sha1 sha2 crc32\n"
-        assertEquals(listOf("asimddp", "asimdhp", "i8mm"), WhisperNative.missingCpuFeatures(cpuinfo))
+        assertEquals(listOf("asimddp", "fphp", "asimdhp", "i8mm"), WhisperNative.missingCpuFeatures(cpuinfo))
     }
 
     @Test fun unreadableCpuinfoIsTreatedAsUnsupported() {
         assertEquals(WhisperNative.requiredCpuFeatures, WhisperNative.missingCpuFeatures(""))
     }
+    @Test fun everyReportedCoreMustSupportTheTargetInstructions() {
+        val cpuinfo = "Features : asimddp fphp asimdhp i8mm\nFeatures : asimddp fphp asimdhp\n"
+        assertEquals(listOf("i8mm"), WhisperNative.missingCpuFeatures(cpuinfo))
+    }
+
+    @Test fun scalarHalfPrecisionIsRequiredAsWellAsVectorHalfPrecision() {
+        assertEquals(listOf("fphp"), WhisperNative.missingCpuFeatures("Features : asimddp asimdhp i8mm"))
+    }
+
 }

@@ -8,14 +8,15 @@ object WhisperNative {
      * instructions (Snapdragon 8 Elite-class CPUs). [open] refuses to load it on a CPU that lacks
      * them, so an unsupported phone gets an error instead of a SIGILL crash.
      */
-    val requiredCpuFeatures = listOf("asimddp", "asimdhp", "i8mm")
+    val requiredCpuFeatures = listOf("asimddp", "fphp", "asimdhp", "i8mm")
 
     fun missingCpuFeatures(cpuinfo: String): List<String> {
-        val present = cpuinfo.lineSequence()
-            .filter { it.startsWith("Features") }
-            .flatMap { it.substringAfter(':').trim().split(Regex("\\s+")) }
-            .toSet()
-        return requiredCpuFeatures.filterNot { it in present }
+        val cores = cpuinfo.lineSequence()
+            .map(String::trim)
+            .filter { it.startsWith("Features") && it.contains(':') }
+            .map { it.substringAfter(':').trim().split(Regex("\\s+")).toSet() }
+            .toList()
+        return requiredCpuFeatures.filter { feature -> cores.isEmpty() || cores.any { feature !in it } }
     }
 
     private val missing by lazy { missingCpuFeatures(runCatching { File("/proc/cpuinfo").readText() }.getOrDefault("")) }

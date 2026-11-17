@@ -333,3 +333,18 @@ No new runtime dependencies. Existing action approvals and capture-all policy st
 - No device, model, private-media or live-account result follows from these host
   tests. The installed Next.js build still reports a pre-existing security
   advisory; its suggested patch is separate from this media review.
+
+
+## 2026-11-17 — OnePlus CPU target and verification policy
+
+- Preserve Claude's targeted whisper.cpp build (`armv8.2-a+dotprod+fp16+i8mm`)
+  and cap transcription at six threads. Check dot-product, scalar/vector FP16
+  and int8 matrix-multiply features before loading the native library. Every
+  reported core must support them; missing/unreadable feature data fails closed.
+- The owner-described OnePlus 16 / Snapdragon 8 Elite Extreme Gen 6 / SM8975 is
+  not a measured hardware identity. No SVE2 flags or acceleration are assumed.
+  CPU/GPU are measured first; CPU remains fallback. NPU follows only after actual
+  driver/model/output verification. No physical performance claim is made.
+- Keep the existing intelligence job contract (`intelligence`, with legacy
+  `ANALYZE` normalization) and the single persistent sync pause API. No second
+  worker queue, model manager or pause mechanism was introduced.

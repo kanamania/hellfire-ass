@@ -7,7 +7,7 @@ read actual firmware, ABI and CPU/accelerator capabilities from the connected ph
 No physical-device, model-performance or live-account success is claimed.
 
 A media review found functional bugs missed by the 428-test integration pass.
-The four interrupted fix branches are being completed and verified sequentially:
+The four interrupted fix branches were completed and verified sequentially:
 library/intelligence, players/sharing, drawer/backup, then sync/web. Consult the
 latest checkpoint in [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md) for each
 branch's actual status. Do not treat an earlier successful APK build as proof that
@@ -29,7 +29,7 @@ The original starter instructions are retained below.
 1. Extract this ZIP into the root of an empty project/repository (or copy the `docs` folder and `AGENTS.md` into your existing repository).
 2. Open the repository in VS Code or your Codex working directory.
 3. Give Codex the prompt below.
-4. Have a physical Android OPPO available later for assistant-role, notification, recording, and alarm tests. Codex should document untested outcomes honestly.
+4. Have a physical Android OnePlus 16 available later for assistant-role, notification, recording, and alarm tests. Codex should document untested outcomes honestly.
 
 ## Paste this into Codex
 
