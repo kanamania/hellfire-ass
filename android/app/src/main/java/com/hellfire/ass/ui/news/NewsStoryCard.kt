@@ -405,4 +405,3 @@ fun StoryCard(view: StoryView, settings: NewsSettings, read: Boolean, onListen: 
         "timeline" -> TimelineSheet(view, settings) { sheet = null }
     }
 }
-

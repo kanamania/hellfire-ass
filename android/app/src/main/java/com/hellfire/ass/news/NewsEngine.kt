@@ -2,7 +2,6 @@ package com.hellfire.ass.news
 
 /*
  * CONTRACT between the engine (pure Kotlin, no Android APIs, JVM-testable) and the runtime/UI.
- * The engine branch implements every TODO() below and may add private helpers or new files in this package.
  * Do not rename, remove or change the parameters of anything declared here; adding optional parameters
  * with defaults and new members is fine. All engine functions are deterministic for the same inputs.
  */
