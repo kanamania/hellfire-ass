@@ -63,6 +63,7 @@ object WaveformLoader {
     private fun extractor(source: EncryptedMediaSource): MediaExtractor = MediaExtractor().also { it.setDataSource(source) }
 
     private fun decode(extractor: MediaExtractor, durationMs: Long?): FloatArray? {
+        var decoder: MediaCodec? = null
         try {
             val track = (0 until extractor.trackCount).firstOrNull {
                 extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true
@@ -70,52 +71,52 @@ object WaveformLoader {
             extractor.selectTrack(track)
             val format = extractor.getTrackFormat(track)
             val mime = format.getString(MediaFormat.KEY_MIME) ?: return null
-            val decoder = try { MediaCodec.createDecoderByType(mime) } catch (_: Exception) { return null }
-            decoder.configure(format, null, null, 0)
-            decoder.start()
-            val sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE).coerceAtLeast(1)
+            val codec = try { MediaCodec.createDecoderByType(mime) } catch (_: Exception) { return null }
+            decoder = codec
+            codec.configure(format, null, null, 0)
+            codec.start()
+            val sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+            val channels = if (format.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) format.getInteger(MediaFormat.KEY_CHANNEL_COUNT) else 1
             val durationUs = durationMs?.times(1000) ?: format.getLongOrNull(MediaFormat.KEY_DURATION)
-            val totalSamples = if (durationUs != null && durationUs > 0) sampleRate * durationUs / 1_000_000 else sampleRate * 60L
-            val acc = WaveformPeaks.accumulator(totalSamples.coerceAtLeast(1) * 2)
+            val (acc, limitFrames) = WaveformPeaks.forStream(sampleRate, durationUs, channels)
             val info = MediaCodec.BufferInfo()
             var inputDone = false
-            var outputSamples = 0L
-            val limit = totalSamples.coerceAtLeast(sampleRate.toLong())
-            while (outputSamples < limit) {
+            while (acc.framesFed < limitFrames) {
                 if (!inputDone) {
-                    val inIndex = decoder.dequeueInputBuffer(5_000)
+                    val inIndex = codec.dequeueInputBuffer(5_000)
                     if (inIndex >= 0) {
-                        val input = decoder.getInputBuffer(inIndex) ?: break
+                        val input = codec.getInputBuffer(inIndex) ?: break
                         val size = extractor.readSampleData(input, 0)
                         if (size < 0) {
-                            decoder.queueInputBuffer(inIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                            codec.queueInputBuffer(inIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
                             inputDone = true
                         } else {
-                            decoder.queueInputBuffer(inIndex, 0, size, extractor.sampleTime, 0)
+                            codec.queueInputBuffer(inIndex, 0, size, extractor.sampleTime, 0)
                             extractor.advance()
                         }
                     }
                 }
-                val outIndex = decoder.dequeueOutputBuffer(info, 5_000)
+                val outIndex = codec.dequeueOutputBuffer(info, 5_000)
                 if (outIndex >= 0) {
-                    val output = decoder.getOutputBuffer(outIndex)
+                    val output = codec.getOutputBuffer(outIndex)
                     if (output != null && info.size > 0) {
                         val bytes = ByteArray(info.size)
                         output.position(info.offset)
                         output.get(bytes, 0, info.size)
                         acc.feedPcm16le(bytes)
-                        outputSamples += info.size / 2
                     }
-                    decoder.releaseOutputBuffer(outIndex, false)
+                    codec.releaseOutputBuffer(outIndex, false)
                     if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
+                } else if (outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                    val out = codec.outputFormat
+                    if (out.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) acc.channels = out.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
                 } else if (outIndex == MediaCodec.INFO_TRY_AGAIN_LATER && inputDone) break
             }
-            decoder.stop()
-            decoder.release()
             return acc.finish()
         } catch (_: Exception) {
             return null
         } finally {
+            decoder?.let { runCatching { it.stop() }; runCatching { it.release() } }
             runCatching { extractor.release() }
         }
     }
@@ -124,7 +125,8 @@ object WaveformLoader {
 
     private fun cacheFile(app: HellFireApp, item: MediaItem): File {
         val dir = File(app.noBackupFilesDir, "waveforms").apply { mkdirs() }
-        return File(dir, "${item.id}-${item.contentHash ?: "none"}.peaks")
+        // v2: earlier stereo envelopes were computed from half the audio.
+        return File(dir, "${item.id}-${item.contentHash ?: "none"}.v2.peaks")
     }
 
     private fun readCache(file: File): FloatArray? {

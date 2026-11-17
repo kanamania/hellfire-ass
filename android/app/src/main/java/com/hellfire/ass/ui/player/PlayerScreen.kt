@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.os.Build
 import android.view.WindowManager
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
@@ -36,9 +37,11 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
@@ -46,6 +49,7 @@ import androidx.media3.ui.PlayerView
 import com.hellfire.ass.library.*
 import com.hellfire.ass.media.MediaItem
 import com.hellfire.ass.player.*
+import com.hellfire.ass.sharing.MediaReadAccess
 import com.hellfire.ass.ui.LocalEnv
 import com.hellfire.ass.ui.LocalNav
 import com.hellfire.ass.ui.components.HfTextField
@@ -100,25 +104,62 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
     var title by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var pipNote by remember { mutableStateOf<String?>(null) }
+    var tracks by remember { mutableStateOf(Tracks.EMPTY) }
+    var queue by remember { mutableStateOf<List<String>>(emptyList()) }
+    var queueIndex by remember { mutableStateOf(-1) }
+    var inPip by remember { mutableStateOf(activity?.isInPictureInPictureMode == true) }
+    val aspect by PlaybackFlags.videoAspect.collectAsState()
     val listState = rememberLazyListState()
     val skip = remember { context.getSharedPreferences("player", 0).getLong("skip_ms", 10_000L) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
         val media = item
-        if (media != null && granted.values.any { it }) scope.launch { open(app, controller, media, startMs) { started = true } }
+        if (media != null && MediaReadAccess.granted(granted)) scope.launch { open(app, controller, media, startMs) { started = true } }
         else connectError = "Storage permission was not granted. The external file was not opened."
     }
+    /** Live position for actions; the published flow can lag by one tick. */
+    fun now(): Long = controller?.currentPosition?.coerceAtLeast(0) ?: position
 
     LaunchedEffect(Unit) { PlaybackFlags.skipMs.value = skip }
     LaunchedEffect(itemId) {
         controller = runCatching { PlaybackHub.controller(context) }.onFailure { connectError = "Playback session could not start." }.getOrNull()
         edits = PlayerStore.transcriptEdits(app, itemId)
+        FrameScrubber.purgeOrphans(app)
+    }
+    DisposableEffect(controller) {
+        val player = controller
+        fun read(p: Player) {
+            tracks = p.currentTracks
+            queue = (0 until p.mediaItemCount).map { p.getMediaItemAt(it).mediaMetadata.title?.toString().orEmpty() }
+            queueIndex = p.currentMediaItemIndex
+        }
+        val listener = object : Player.Listener {
+            override fun onEvents(player: Player, events: Player.Events) = read(player)
+        }
+        player?.let { read(it); it.addListener(listener) }
+        onDispose { player?.removeListener(listener) }
+    }
+    DisposableEffect(activity) {
+        val host = activity as? ComponentActivity
+        val consumer = androidx.core.util.Consumer<androidx.core.app.PictureInPictureModeChangedInfo> { info ->
+            inPip = info.isInPictureInPictureMode
+            if (PlaybackLogic.pipDismissed(inPip, host?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.STARTED) == true)) controller?.pause()
+        }
+        host?.addOnPictureInPictureModeChangedListener(consumer)
+        onDispose { host?.removeOnPictureInPictureModeChangedListener(consumer) }
+    }
+    LaunchedEffect(aspect, playing, video) {
+        val host = activity ?: return@LaunchedEffect
+        if (video && host.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) runCatching {
+            host.setPictureInPictureParams(PipControls.params(host, PlaybackLogic.shouldAutoEnterPip(video, playing, PlaybackFlags.presentation.value), playing))
+        }
     }
     LaunchedEffect(item?.id, controller, started) {
         val media = item ?: return@LaunchedEffect
         val player = controller ?: return@LaunchedEffect
         if (started) return@LaunchedEffect
-        if (media.storage == StorageMode.EXTERNAL.name && !context.hasMediaRead()) {
-            permission.launch(mediaReadPermissions())
+        val kind = MediaReadAccess.kindOf(media.contentKind, media.mime)
+        if (media.storage == StorageMode.EXTERNAL.name && !MediaReadAccess.canRead(context, kind)) {
+            permission.launch(MediaReadAccess.request(kind))
             return@LaunchedEffect
         }
         open(app, player, media, startMs) { started = true }
@@ -150,10 +191,24 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
     val lines = PlayerStore.lines(transcript, edits)
     val shownLines = PlaybackLogic.filterTranscript(lines, query)
     val active = PlaybackLogic.segmentIndexAt(lines, scrub ?: position)
-    LaunchedEffect(active) { if (active >= 0) listState.animateScrollToItem(active.coerceAtMost(shownLines.lastIndex.coerceAtLeast(0))) }
+    val visibleBookmarks = bookmarks.filter { !it.hidden }
+    val freeSegments = segments.filter { segment -> bookmarks.none { it.segmentId == segment.id } }
+    val activeRow = PlaybackLogic.transcriptListIndex(visibleBookmarks.size + freeSegments.size + 1, shownLines, lines.getOrNull(active)?.id)
+    LaunchedEffect(activeRow) { activeRow?.let { listState.animateScrollToItem(it) } }
     val markers = PlaybackLogic.timeline(bookmarks, segments, kinds)
     val drawn = PlaybackLogic.drawMarkers(markers)
     val ab by PlaybackFlags.ab.collectAsState()
+    fun shareClip(startMs: Long, endMs: Long) = nav.push(LibraryRoutes.shareWithAi(itemId, startMs, endMs))
+
+    if (inPip) {
+        // Picture-in-picture shows only the video; controls come from the PiP window and the session.
+        AndroidView(
+            factory = { ctx -> PlayerView(ctx).apply { useController = false } },
+            update = { it.player = controller },
+            modifier = Modifier.fillMaxSize().background(Color.Black),
+        )
+        return
+    }
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -197,8 +252,8 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
             Timeline(drawn, markers.size, ab, position, duration) { controller?.seekTo(it) }
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 SecondaryButton(if (playing) tr("Pause") else tr("Play"), { controller?.let { if (it.isPlaying) it.pause() else it.play() } })
-                SecondaryButton(tr("Skip back"), { controller?.seekTo(PlaybackLogic.skip(position, -PlaybackFlags.skipMs.value, duration)) })
-                SecondaryButton(tr("Skip forward"), { controller?.seekTo(PlaybackLogic.skip(position, PlaybackFlags.skipMs.value, duration)) })
+                SecondaryButton(tr("Skip back"), { controller?.seekTo(PlaybackLogic.skip(now(), -PlaybackFlags.skipMs.value, duration)) })
+                SecondaryButton(tr("Skip forward"), { controller?.seekTo(PlaybackLogic.skip(now(), PlaybackFlags.skipMs.value, duration)) })
                 SecondaryButton(tr("Previous"), { if (controller?.hasPreviousMediaItem() == true) controller?.seekToPreviousMediaItem() })
                 SecondaryButton(tr("Next"), { if (controller?.hasNextMediaItem() == true) controller?.seekToNextMediaItem() })
                 SecondaryButton(if (fullscreen) tr("Exit full screen") else tr("Full screen"), { fullscreen = !fullscreen })
@@ -235,7 +290,15 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
                 }
             }
             VolumeBrightness(activity)
-            TrackRow(controller, scope, app, itemId)
+            TrackRow(controller, tracks, scope, app, itemId)
+            if (queue.size > 1) {
+                Text(tr("Queue"), style = Hf.type.caption, color = Hf.colors.muted)
+                queue.forEachIndexed { index, name ->
+                    val label = "${index + 1}. ${name.ifBlank { tr("Untitled") }}"
+                    Text(if (index == queueIndex) "· $label" else label, Modifier.fillMaxWidth().clickable { controller?.seekTo(index, C.TIME_UNSET) },
+                        color = if (index == queueIndex) Hf.colors.primary else Hf.colors.onSurface, maxLines = 1)
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 SecondaryButton(tr("Repeat"), {
                     val next = when (controller?.repeatMode) {
@@ -266,10 +329,11 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
                 TextButton({ PlaybackFlags.sleepUntil.value = null; PlaybackFlags.sleepAtEnd.value = true }) { Text(tr("End of item")) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                SecondaryButton(tr("Set A"), { pointA = position })
+                SecondaryButton(tr("Set A"), { pointA = now() })
                 SecondaryButton(tr("Set B"), {
                     val start = pointA
-                    if (start != null && position > start) PlaybackFlags.ab.value = AbRange(start, position)
+                    val end = now()
+                    if (start != null && end > start) PlaybackFlags.ab.value = AbRange(start, end)
                 })
                 SecondaryButton(tr("Clear loop"), { PlaybackFlags.ab.value = null })
                 SecondaryButton(tr("Save range"), {
@@ -280,14 +344,22 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
                     }
                 })
             }
-            ab?.let { Note("A–B ${PlaybackLogic.formatTimestamp(it.startMs)}–${PlaybackLogic.formatTimestamp(it.endMs)}") }
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ab?.let { range ->
+                Note("A–B ${PlaybackLogic.formatTimestamp(range.startMs)}–${PlaybackLogic.formatTimestamp(range.endMs)}")
+                SecondaryButton(tr("Share A–B clip"), { shareClip(range.startMs, range.endMs) })
+            }
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 SecondaryButton(tr("Previous chapter"), {
-                    PlaybackLogic.neighbor(markers.filter { it.kind == MarkerKind.CHAPTER || it.kind == MarkerKind.SCENE }, position, false)?.let { controller?.seekTo(it.startMs) }
+                    PlaybackLogic.neighbor(markers.filter { it.kind == MarkerKind.CHAPTER || it.kind == MarkerKind.SCENE }, now(), false)?.let { controller?.seekTo(it.startMs) }
                 })
                 SecondaryButton(tr("Next chapter"), {
-                    PlaybackLogic.neighbor(markers.filter { it.kind == MarkerKind.CHAPTER || it.kind == MarkerKind.SCENE }, position, true)?.let { controller?.seekTo(it.startMs) }
+                    PlaybackLogic.neighbor(markers.filter { it.kind == MarkerKind.CHAPTER || it.kind == MarkerKind.SCENE }, now(), true)?.let { controller?.seekTo(it.startMs) }
                 })
+                val scene = PlaybackLogic.markerAt(markers.filter { it.kind != MarkerKind.BOOKMARK }, position)
+                SecondaryButton(tr("Share current scene"), {
+                    val current = PlaybackLogic.markerAt(markers.filter { it.kind != MarkerKind.BOOKMARK }, now())
+                    current?.endMs?.let { shareClip(current.startMs, it) }
+                }, enabled = scene != null)
             }
             Row(Modifier.horizontalScroll(rememberScrollState())) {
                 for (kind in MarkerKind.entries) {
@@ -309,23 +381,26 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
             SecondaryButton(tr("Bookmark"), {
                 title = ""
                 note = ""
-                editor = MediaBookmark(UUID.randomUUID().toString(), itemId, scrub ?: position, null, createdAt = System.currentTimeMillis(), updatedAt = System.currentTimeMillis())
+                editor = MediaBookmark(UUID.randomUUID().toString(), itemId, scrub ?: now(), null, createdAt = System.currentTimeMillis(), updatedAt = System.currentTimeMillis())
             })
             LazyColumn(Modifier.weight(1f), state = listState, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(bookmarks.filter { !it.hidden }, key = { it.id }) { bookmark ->
+                items(visibleBookmarks, key = { it.id }) { bookmark ->
                     Column {
-                        Text("${PlaybackLogic.formatTimestamp(bookmark.startMs)} ${bookmark.title.ifBlank { tr("Bookmark") }} · ${bookmark.origin}", Modifier.clickable { controller?.seekTo(bookmark.startMs) }, color = Hf.colors.onSurface)
-                        Row {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            BookmarkThumb(app, bookmark.thumbnailPath)
+                            Text("${PlaybackLogic.formatTimestamp(bookmark.startMs)} ${bookmark.title.ifBlank { tr("Bookmark") }} · ${bookmark.origin}", Modifier.clickable { controller?.seekTo(bookmark.startMs) }, color = Hf.colors.onSurface)
+                        }
+                        Row(Modifier.horizontalScroll(rememberScrollState())) {
                             TextButton({ controller?.seekTo(bookmark.startMs) }) { Text(tr("Seek")) }
                             TextButton({ editor = bookmark; title = bookmark.title; note = bookmark.note }) { Text(tr("Edit")) }
+                            bookmark.endMs?.takeIf { it > bookmark.startMs }?.let { end -> TextButton({ shareClip(bookmark.startMs, end) }) { Text(tr("Share clip")) } }
                             TextButton({ scope.launch { PlayerStore.setHidden(app, bookmark.id, true, System.currentTimeMillis()) } }) { Text(tr("Hide")) }
                             TextButton({ scope.launch { PlayerStore.deleteBookmark(app, bookmark.id, System.currentTimeMillis()) } }) { Text(tr("Delete")) }
                             if (bookmark.origin == Origin.AI.name) TextButton({ scope.launch { PlayerStore.convertToManual(app, bookmark.id, System.currentTimeMillis()) } }) { Text(tr("Convert to manual")) }
                         }
                     }
                 }
-                items(segments, key = { "seg-${it.id}" }) { segment ->
-                    if (bookmarks.any { it.segmentId == segment.id }) return@items
+                items(freeSegments, key = { "seg-${it.id}" }) { segment ->
                     Text("${segment.kind} ${PlaybackLogic.formatTimestamp(segment.startMs)} ${segment.title.ifBlank { segment.description }}", Modifier.clickable { controller?.seekTo(segment.startMs) }, color = Hf.colors.onSurface)
                     Row {
                         TextButton({
@@ -390,7 +465,7 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
                     scope.launch {
                         val now = System.currentTimeMillis()
                         val frame = item?.let { FrameScrubber.frame(app, it, draft.startMs) }
-                        val path = frame?.let { FrameScrubber.writeThumb(app, it, draft.id) }
+                        val path = frame?.let { FrameScrubber.writeThumb(app, it, itemId, draft.id) }
                         PlayerStore.saveBookmark(app, draft.copy(title = title, note = note, thumbnailPath = path ?: draft.thumbnailPath, updatedAt = now, origin = Origin.USER.name))
                         editor = null
                     }
@@ -458,40 +533,65 @@ private fun VolumeBrightness(activity: Activity?) {
 }
 
 @Composable
-private fun TrackRow(controller: MediaController?, scope: kotlinx.coroutines.CoroutineScope, app: com.hellfire.ass.HellFireApp, itemId: String) {
-    val tracks = controller?.currentTracks
-    if (tracks == null || tracks.groups.isEmpty()) {
+private fun TrackRow(controller: MediaController?, tracks: Tracks, scope: kotlinx.coroutines.CoroutineScope, app: com.hellfire.ass.HellFireApp, itemId: String) {
+    val player = controller
+    val audio = tracks.groups.withIndex().filter { it.value.type == C.TRACK_TYPE_AUDIO }
+    val text = tracks.groups.withIndex().filter { it.value.type == C.TRACK_TYPE_TEXT }
+    if (player == null || (audio.isEmpty() && text.isEmpty())) {
         Note(tr("No extra audio or subtitle tracks reported."))
         return
     }
-    Text(tr("Audio track"), style = Hf.type.caption, color = Hf.colors.muted)
-    for ((groupIndex, group) in tracks.groups.withIndex()) {
-        if (group.type != C.TRACK_TYPE_AUDIO && group.type != C.TRACK_TYPE_TEXT) continue
-        for (track in 0 until group.length) {
-            if (!group.isTrackSupported(track)) continue
-            val format = group.getTrackFormat(track)
-            val label = format.label ?: format.language ?: "${group.type}:${track}"
-            TextButton({
-                controller.trackSelectionParameters = controller.trackSelectionParameters.buildUpon()
-                    .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, track))
-                    .setTrackTypeDisabled(group.type, false)
-                    .build()
-                val key = PlaybackLogic.trackKey(group.type, groupIndex, track)
-                if (group.type == C.TRACK_TYPE_AUDIO) PlaybackFlags.audioTrack = key else PlaybackFlags.subtitleTrack = key
-                scope.launch {
-                    persistChoice(app, itemId) {
-                        if (group.type == C.TRACK_TYPE_AUDIO) it.copy(audioTrack = key) else it.copy(subtitleTrack = key)
-                    }
+    @Composable
+    fun choices(groups: List<IndexedValue<Tracks.Group>>) {
+        Row(Modifier.horizontalScroll(rememberScrollState())) {
+            for ((groupIndex, group) in groups) {
+                for (track in 0 until group.length) {
+                    if (!group.isTrackSupported(track)) continue
+                    val format = group.getTrackFormat(track)
+                    val label = format.label ?: format.language ?: "${track + 1}"
+                    TextButton({
+                        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                            .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, track))
+                            .setTrackTypeDisabled(group.type, false)
+                            .build()
+                        val key = PlaybackLogic.trackKey(group.type, groupIndex, track)
+                        if (group.type == C.TRACK_TYPE_AUDIO) PlaybackFlags.audioTrack = key else PlaybackFlags.subtitleTrack = key
+                        scope.launch {
+                            persistChoice(app, itemId) {
+                                if (group.type == C.TRACK_TYPE_AUDIO) it.copy(audioTrack = key) else it.copy(subtitleTrack = key)
+                            }
+                        }
+                    }) { Text(if (group.isTrackSelected(track)) "·$label" else label) }
                 }
-            }) { Text(label) }
+            }
         }
     }
-    TextButton({
-        controller.trackSelectionParameters = controller.trackSelectionParameters.buildUpon()
-            .clearOverridesOfType(C.TRACK_TYPE_TEXT).setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build()
-        PlaybackFlags.subtitleTrack = "off"
-        scope.launch { persistChoice(app, itemId) { it.copy(subtitleTrack = "off") } }
-    }) { Text(tr("Subtitles off")) }
+    if (audio.isNotEmpty()) {
+        Text(tr("Audio track"), style = Hf.type.caption, color = Hf.colors.muted)
+        choices(audio)
+    }
+    if (text.isNotEmpty()) {
+        Text(tr("Subtitles"), style = Hf.type.caption, color = Hf.colors.muted)
+        choices(text)
+        TextButton({
+            player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                .clearOverridesOfType(C.TRACK_TYPE_TEXT).setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build()
+            PlaybackFlags.subtitleTrack = "off"
+            scope.launch { persistChoice(app, itemId) { it.copy(subtitleTrack = "off") } }
+        }) { Text(tr("Subtitles off")) }
+    }
+}
+
+@Composable
+private fun BookmarkThumb(app: com.hellfire.ass.HellFireApp, relative: String?) {
+    val image by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, relative) {
+        value = withContext(Dispatchers.IO) {
+            FrameScrubber.thumbFile(app, relative)?.let { file ->
+                android.graphics.BitmapFactory.decodeFile(file.absolutePath, android.graphics.BitmapFactory.Options().apply { inSampleSize = 2 })?.asImageBitmap()
+            }
+        }
+    }
+    image?.let { androidx.compose.foundation.Image(it, null, Modifier.height(40.dp)) }
 }
 
 @Composable
@@ -560,12 +660,3 @@ private fun Context.findActivity(): Activity? {
     }
     return null
 }
-
-private fun Context.hasMediaRead(): Boolean = if (Build.VERSION.SDK_INT >= 33) {
-    checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED ||
-        checkSelfPermission(Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED
-} else checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-
-private fun mediaReadPermissions(): Array<String> = if (Build.VERSION.SDK_INT >= 33) {
-    arrayOf(Manifest.permission.READ_MEDIA_AUDIO, Manifest.permission.READ_MEDIA_VIDEO)
-} else arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)

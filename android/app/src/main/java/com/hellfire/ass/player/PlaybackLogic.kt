@@ -28,9 +28,13 @@ enum class PresentationEvent { OPEN, MINIMIZE, MAXIMIZE, CLOSE, ENTER_PIP, LEAVE
 
 enum class RepeatMode { OFF, ONE, ALL }
 
+/** Position of the item that is being left, saved before the player switches items. */
+data class Outgoing(val itemId: String, val positionMs: Long, val completed: Boolean)
+
 object PlaybackLogic {
     const val NEAR_END_MS = 1_500L
     const val TIMELINE_DRAW_LIMIT = 2_000
+    const val TICK_MS = 300L
     val SPEEDS = floatArrayOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
     val SKIP_CHOICES_MS = longArrayOf(5_000, 10_000, 15_000, 30_000, 60_000)
     val SLEEP_CHOICES_MIN = intArrayOf(15, 30, 45, 60)
@@ -191,4 +195,35 @@ object PlaybackLogic {
 
     fun shouldRestart(currentId: String?, requestedId: String, explicitStart: Long?): Boolean =
         currentId != requestedId || explicitStart != null
+
+    /** Publishes the live position while playing, so the slider, timeline and transcript highlight move. */
+    suspend fun tickPositions(intervalMs: Long, playing: () -> Boolean, read: () -> Long, publish: (Long) -> Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(intervalMs)
+            if (playing()) publish(read().coerceAtLeast(0))
+        }
+    }
+
+    /** What to save for the item being left. A repeat of the same item saves nothing. */
+    fun outgoing(lastId: String?, lastPositionMs: Long, newId: String?, autoAdvance: Boolean): Outgoing? {
+        if (lastId == null || lastId == newId) return null
+        return Outgoing(lastId, lastPositionMs.coerceAtLeast(0), autoAdvance)
+    }
+
+    fun savedLoop(startMs: Long?, endMs: Long?): AbRange? =
+        if (startMs != null && endMs != null && startMs >= 0 && endMs > startMs) AbRange(startMs, endMs) else null
+
+    /** List position of the active transcript line. [before] is the number of list items above the transcript lines. */
+    fun transcriptListIndex(before: Int, shown: List<TranscriptLine>, activeId: String?): Int? {
+        if (activeId == null) return null
+        val index = shown.indexOfFirst { it.id == activeId }
+        return if (index < 0) null else before + index
+    }
+
+    /** Leaving PiP while the activity is no longer started means the user closed the PiP window. */
+    fun pipDismissed(inPip: Boolean, activityStarted: Boolean): Boolean = !inPip && !activityStarted
+
+    /** Marker that contains the position, for sharing the current scene or chapter. */
+    fun markerAt(markers: List<TimelineMarker>, positionMs: Long): TimelineMarker? =
+        markers.filter { it.endMs != null && positionMs >= it.startMs && positionMs < it.endMs }.maxByOrNull { it.startMs }
 }
