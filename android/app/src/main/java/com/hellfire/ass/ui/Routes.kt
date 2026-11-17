@@ -91,8 +91,8 @@ fun RouteContent(route: Route) {
         Screen.ShareWithAi -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, com.hellfire.ass.library.LibraryRoutes.id(route)) } // OWNER: sharing-agent
         Screen.ProcessingQueue -> PushedPage(com.hellfire.ass.ui.tr("Recordings"), breadcrumb = "Settings") { MediaScreen(env.app, env.permissions, a.onMicrophone) } // OWNER: processing-agent
         Screen.SyncDashboard -> com.hellfire.ass.ui.settings.WebAccessPage() // OWNER: sync-agent
-        Screen.BackupDashboard -> PushedPage(com.hellfire.ass.ui.tr("Encrypted backup"), breadcrumb = "Settings") { BackupScreen(env.app) } // OWNER: backup-agent
-        Screen.StatusDashboard -> com.hellfire.ass.ui.settings.DevicePage() // OWNER: status-agent
+        Screen.BackupDashboard -> PushedPage(com.hellfire.ass.ui.tr("Backup dashboard"), breadcrumb = "Settings") { BackupDashboardScreen(env.app) }
+        Screen.StatusDashboard -> PushedPage(com.hellfire.ass.ui.tr("Status dashboard"), breadcrumb = "Settings") { StatusDashboardScreen(env.app) }
         Screen.MediaSettings -> PushedPage(com.hellfire.ass.ui.tr("Recordings"), breadcrumb = "Settings") { MediaScreen(env.app, env.permissions, a.onMicrophone) } // OWNER: processing-agent
         else -> PushedPage(route.screen.name) { Note("This screen is not available yet.") }
     }

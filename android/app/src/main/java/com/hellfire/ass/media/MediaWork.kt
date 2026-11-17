@@ -12,9 +12,11 @@ import kotlinx.coroutines.*
 import java.util.concurrent.TimeUnit
 
 object MediaWork {
+    const val ANALYSIS = "media-analysis"
     suspend fun schedule(app: HellFireApp, id: String, followUp: Boolean = false) = withContext(Dispatchers.IO) {
+        if (app.getSharedPreferences("media", 0).getBoolean("analysis_paused", false)) return@withContext
         WorkManager.getInstance(app).enqueueUniqueWork("analyze-media:$id", if (followUp) ExistingWorkPolicy.APPEND_OR_REPLACE else ExistingWorkPolicy.KEEP,
-            OneTimeWorkRequestBuilder<MediaWorker>().setInputData(workDataOf("id" to id))
+            OneTimeWorkRequestBuilder<MediaWorker>().setInputData(workDataOf("id" to id)).addTag(ANALYSIS)
                 .setConstraints(Constraints.Builder().setRequiresBatteryNotLow(true).setRequiresCharging(
                     app.getSharedPreferences("media", 0).getBoolean("charging", true)).build())
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS).build()).result.get()

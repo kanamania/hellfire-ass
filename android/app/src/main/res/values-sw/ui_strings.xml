@@ -462,4 +462,20 @@
     <string name="ui_eb5bb0e600" formatted="false">Mipangilio ya faragha haikusomeka. Hakuna kilichobadilishwa.</string>
     <string name="ui_9f2467da31" formatted="false">Inapakia mipangilio ya faragha…</string>
     <string name="ui_942087cc2d" formatted="false">Jaribu tena</string>
+    <string name="ui_0e81c52de2" formatted="false">Dashibodi ya nakala</string>
+    <string name="ui_452233847f" formatted="false">Dashibodi ya hali</string>
+    <string name="ui_6d46697086" formatted="false">Matumizi ya hifadhi</string>
+    <string name="ui_1a29a43bc9" formatted="false">Hakiki nakala</string>
+    <string name="ui_bee9dcc44e" formatted="false">Omba nakala</string>
+    <string name="ui_4f5d99b422" formatted="false">Sitisha uchambuzi</string>
+    <string name="ui_905dccea41" formatted="false">Endelea na uchambuzi</string>
+    <string name="ui_1e96a60ec9" formatted="false">Jaribu tena zilizoshindwa</string>
+    <string name="ui_bf0066107e" formatted="false">Panga upya</string>
+    <string name="ui_430a5aaa1e" formatted="false">Sitisha ulandanishi</string>
+    <string name="ui_41b7c8f0bf" formatted="false">Endelea na ulandanishi</string>
+    <string name="ui_d33461e6c0" formatted="false">Futa akiba</string>
+    <string name="ui_0f793aaea4" formatted="false">Haijahifadhiwa nakala</string>
+    <string name="ui_464b6e0507" formatted="false">Nakala imezuiwa</string>
+    <string name="ui_4159a74294" formatted="false">Hali ya joto</string>
+    <string name="ui_a748b5aa8c" formatted="false">Upatikanaji wa modeli</string>
 </resources>

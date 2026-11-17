@@ -462,4 +462,20 @@
     <string name="ui_eb5bb0e600" formatted="false">Privacy settings could not be read. Nothing has changed.</string>
     <string name="ui_9f2467da31" formatted="false">Loading privacy settings…</string>
     <string name="ui_942087cc2d" formatted="false">Retry</string>
+    <string name="ui_0e81c52de2" formatted="false">Backup dashboard</string>
+    <string name="ui_452233847f" formatted="false">Status dashboard</string>
+    <string name="ui_6d46697086" formatted="false">Storage usage</string>
+    <string name="ui_1a29a43bc9" formatted="false">Verify backups</string>
+    <string name="ui_bee9dcc44e" formatted="false">Request backup</string>
+    <string name="ui_4f5d99b422" formatted="false">Pause analysis</string>
+    <string name="ui_905dccea41" formatted="false">Resume analysis</string>
+    <string name="ui_1e96a60ec9" formatted="false">Retry failures</string>
+    <string name="ui_bf0066107e" formatted="false">Reindex</string>
+    <string name="ui_430a5aaa1e" formatted="false">Pause sync</string>
+    <string name="ui_41b7c8f0bf" formatted="false">Resume sync</string>
+    <string name="ui_d33461e6c0" formatted="false">Clear cache</string>
+    <string name="ui_0f793aaea4" formatted="false">Not backed up</string>
+    <string name="ui_464b6e0507" formatted="false">Backup blocked</string>
+    <string name="ui_4159a74294" formatted="false">Thermal state</string>
+    <string name="ui_a748b5aa8c" formatted="false">Model availability</string>
 </resources>
