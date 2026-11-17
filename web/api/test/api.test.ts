@@ -1,5 +1,6 @@
 // Runs against a real, disposable Postgres: TEST_DATABASE_URL must point at an empty database.
 import assert from 'node:assert/strict';
+import { createHash, webcrypto } from 'node:crypto';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import pg from 'pg';
 import { createApp } from '../src/app.js';
@@ -16,6 +17,7 @@ const config: Config = {
   ownerPasswordHash: hashPassword('correct horse battery'),
   port: 0,
   host: '127.0.0.1',
+  quotaBytes: 1000,
 };
 
 let base = '';
@@ -37,7 +39,8 @@ const owner = (path: string) => call(path, { token: session });
 before(async () => {
   const admin = new pg.Client({ connectionString: databaseUrl });
   await admin.connect();
-  await admin.query('DROP TABLE IF EXISTS record, meta');
+  await admin.query('DROP TABLE IF EXISTS library_chunk, library_blob, library_record, library_search, library_meta, record, meta CASCADE');
+  await admin.query('DROP SEQUENCE IF EXISTS library_change_seq');
   await admin.end();
   const app = await createApp(config);
   await app.listen(0, '127.0.0.1');
@@ -156,6 +159,85 @@ describe('sync', () => {
     assert.equal((await owner('/api/record/task/missing')).status, 404);
   });
 });
+
+describe('encrypted library', () => {
+  const chunk = (n: number) => {
+    const bytes = Buffer.alloc(40, n);
+    return { sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.toString('base64') };
+  };
+  const record = (id: string, baseVersion: number, deleted = false) => ({
+    entityType: 'media_bookmark', entityId: id, baseVersion, deleted, updatedAt: 10, deviceId: 'phone-1',
+    envelope: { v: 1, salt: 'c2FsdC1pcy1zaXg=', ct: 'Y2lwaGVydGV4dA==' },
+  });
+
+  it('requires a sync token or owner session', async () => {
+    assert.equal((await call('/api/library/state')).status, 401);
+    assert.equal((await phone('/api/library/state')).status, 200);
+    assert.equal((await owner('/api/library/state')).status, 200);
+  });
+
+  it('uploads chunks, resumes, verifies hashes and rejects a second copy of the same hash', async () => {
+    const opened = await phone('/api/library/blobs', { contentHash: 'a'.repeat(64), size: 20, chunkSize: 8, chunkCount: 3 });
+    assert.equal(opened.status, 200);
+    assert.deepEqual(opened.body.received, []);
+    const first = await phone(`/api/library/blobs/${opened.body.blobId}/chunks/1`, chunk(1));
+    assert.equal(first.body.complete, false);
+    const again = await phone('/api/library/blobs', { contentHash: 'a'.repeat(64), size: 20, chunkSize: 8, chunkCount: 3 });
+    assert.deepEqual(again.body.received, [1]);
+    assert.equal(again.body.blobId, opened.body.blobId);
+    const bad = chunk(2); bad.sha256 = 'b'.repeat(64);
+    assert.equal((await phone(`/api/library/blobs/${opened.body.blobId}/chunks/0`, bad)).status, 400);
+    await phone(`/api/library/blobs/${opened.body.blobId}/chunks/0`, chunk(2));
+    const done = await phone(`/api/library/blobs/${opened.body.blobId}/chunks/2`, chunk(3));
+    assert.equal(done.body.complete, true);
+    const downloaded = await owner(`/api/library/blobs/${opened.body.blobId}/chunks/1`);
+    assert.equal(downloaded.body.sha256, chunk(1).sha256);
+  });
+
+  it('refuses a blob that would pass the quota', async () => {
+    assert.equal((await phone('/api/library/blobs', { contentHash: 'c'.repeat(64), size: 600, chunkSize: 256, chunkCount: 3 })).status, 200);
+    assert.equal((await phone('/api/library/blobs', { contentHash: 'd'.repeat(64), size: 500, chunkSize: 256, chunkCount: 2 })).status, 413);
+  });
+
+  it('publishes a change feed, tombstones and version conflicts without storing plaintext search', async () => {
+    assert.equal((await owner('/api/library/search?q=secret')).status, 403);
+    assert.equal((await phone('/api/library/records', { records: [{ ...record('b1', 0), searchText: 'secret note' }] })).status, 400);
+    const saved = await phone('/api/library/records', { records: [record('b1', 0)] });
+    assert.equal(saved.body.accepted[0].version, 1);
+    const conflict = await phone('/api/library/records', { records: [record('b1', 0)] });
+    assert.equal(conflict.body.conflicts[0].version, 1);
+    assert.equal(conflict.body.accepted.length, 0);
+    const removed = await phone('/api/library/records', { records: [record('b1', 1, true)] });
+    assert.equal(removed.body.accepted[0].version, 2);
+    const feed = await owner('/api/library/changes?after=0');
+    assert.equal(feed.body.records.at(-1).deleted, true);
+    assert.equal(feed.body.records.at(-1).envelope.ct, 'Y2lwaGVydGV4dA==');
+    assert.equal((await phone('/api/library/records', { records: [{ ...record('nope', 0), entityType: 'contact' }] })).status, 400);
+    await ownerPost('/api/library/search-opt-in', { enabled: true });
+    await phone('/api/library/records', { records: [{ ...record('b2', 0), searchText: 'harbour note' }] });
+    const found = await owner('/api/library/search?q=harbour');
+    assert.deepEqual(found.body.rows.map((row: { entityId: string }) => row.entityId), ['b2']);
+    await ownerPost('/api/library/search-opt-in', { enabled: false });
+    assert.equal((await owner('/api/library/search?q=harbour')).status, 403);
+  });
+
+  it('matches the Android passphrase envelope', async () => {
+    const password = 'correct horse';
+    const salt = new Uint8Array(16).fill(0x0b);
+    const iv = new Uint8Array(12).fill(1);
+    const plain = new TextEncoder().encode('hello library');
+    const base = await webcrypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+    const key = await webcrypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 600_000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt']);
+    const extra = new TextEncoder().encode('library-record-v1:media_item:item-1');
+    const ct = new Uint8Array(await webcrypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: extra }, key, plain));
+    const out = Buffer.concat([Buffer.from([1]), Buffer.from(iv), Buffer.from(ct)]);
+    assert.equal(out.toString('hex'), '0101010101010101010101010125292b7958ae59fdb3115a6fabac8d5abbb6beb49657e7b10946f8f799');
+  });
+});
+
+function ownerPost(path: string, body: unknown) {
+  return call(path, { token: session, body });
+}
 
 describe('login', () => {
   it('issues a usable session for the right password and throttles guessing', async () => {

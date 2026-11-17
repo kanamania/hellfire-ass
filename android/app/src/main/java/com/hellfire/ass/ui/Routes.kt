@@ -90,7 +90,7 @@ fun RouteContent(route: Route) {
         Screen.Search -> MemoryPage("") // OWNER: search-agent
         Screen.ShareWithAi -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, com.hellfire.ass.library.LibraryRoutes.id(route)) } // OWNER: sharing-agent
         Screen.ProcessingQueue -> PushedPage(com.hellfire.ass.ui.tr("Recordings"), breadcrumb = "Settings") { MediaScreen(env.app, env.permissions, a.onMicrophone) } // OWNER: processing-agent
-        Screen.SyncDashboard -> com.hellfire.ass.ui.settings.WebAccessPage() // OWNER: sync-agent
+        Screen.SyncDashboard -> com.hellfire.ass.ui.sync.SyncDashboardPage() // OWNER: sync-agent
         Screen.BackupDashboard -> PushedPage(com.hellfire.ass.ui.tr("Encrypted backup"), breadcrumb = "Settings") { BackupScreen(env.app) } // OWNER: backup-agent
         Screen.StatusDashboard -> com.hellfire.ass.ui.settings.DevicePage() // OWNER: status-agent
         Screen.MediaSettings -> PushedPage(com.hellfire.ass.ui.tr("Recordings"), breadcrumb = "Settings") { MediaScreen(env.app, env.permissions, a.onMicrophone) } // OWNER: processing-agent

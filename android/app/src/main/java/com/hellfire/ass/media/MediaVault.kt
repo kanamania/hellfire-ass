@@ -155,6 +155,25 @@ class MediaVault(private val app: HellFireApp) {
         } catch (error: Exception) { temporary.delete(); throw error }
     }
 
+    /** Store a remote original under its stable id. An existing managed row with the same id is returned. */
+    suspend fun adoptSynced(id: String, input: InputStream, name: String, mime: String, expectedHash: String): MediaItem = withContext(Dispatchers.IO) {
+        UUID.fromString(id)
+        lock.withLock {
+            app.database.library().item(id)?.let { if (it.storage == StorageMode.MANAGED.name) return@withLock it }
+            val (hash, size) = encrypt(input, id)
+            if (hash != expectedHash) { File(directory, "$id.importing").delete(); error("Synced original failed integrity check") }
+            app.database.media().hash(hash)?.let { existing ->
+                File(directory, "$id.importing").delete()
+                if (!existing.syncEnabled) app.database.library().setSyncEnabled(existing.id, true)
+                return@withLock app.database.library().item(existing.id)!!
+            }
+            java.nio.file.Files.move(File(directory, "$id.importing").toPath(), file(id).toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            try {
+                register(id, name.take(200), mime, ContentKind.fromMime(mime).name, hash, size, null, false, "", null, ContentKind.fromMime(mime), CaptureOrigin.SYNC, true)
+            } catch (error: Exception) { file(id).delete(); throw error }
+        }
+    }
+
     suspend fun importStream(input: InputStream, name: String, mime: String, kind: String, origin: String = "", durationMs: Long? = null): MediaItem =
         capture(input, name, mime, CaptureOrigin.IMPORT, syncEnabled = false, kind = kind, originRef = origin, durationMs = durationMs)
     suspend fun registerRecording(id: String, start: Long?, interrupted: Boolean, spans: List<Pair<Long, Long>>, durationMs: Long? = null,
