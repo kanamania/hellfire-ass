@@ -40,13 +40,17 @@ object SelectiveRestore {
         ids.forEach { UUID.fromString(it) }
         val marks = ids.joinToString(",") { "?" }
         val args = ids.toTypedArray()
+        val selected = ids.toSet()
+        val inboxes = strings(from, "SELECT DISTINCT inboxId FROM inbox_member WHERE itemId IN ($marks)", args).toSet()
         copyWhere(from, to, "source_event", "id IN (SELECT sourceId FROM media_item WHERE id IN ($marks) AND sourceId IS NOT NULL)", args)
         copyWhere(from, to, "source_event", "id IN (SELECT sourceId FROM transcript_segment WHERE mediaId IN ($marks))", args)
         copyWhere(from, to, "media_item", "id IN ($marks)", args)
         copyWhere(from, to, "transcript_segment", "mediaId IN ($marks)", args)
         copyWhere(from, to, "speech_span", "mediaId IN ($marks)", args)
-        copyWhere(from, to, "media_category", "id IN (SELECT categoryId FROM media_item_category WHERE itemId IN ($marks))", args)
-        copyWhere(from, to, "media_category", "id IN (SELECT parentId FROM media_category WHERE parentId IS NOT NULL AND id IN (SELECT categoryId FROM media_item_category WHERE itemId IN ($marks)))", args)
+        // Categories referenced by item links and bookmarks, with every ancestor, parents first.
+        val categories = categoryAncestry(from, strings(from, "SELECT categoryId FROM media_item_category WHERE itemId IN ($marks)", args) +
+            strings(from, "SELECT categoryId FROM media_bookmark WHERE mediaId IN ($marks) AND categoryId IS NOT NULL", args))
+        for (id in categories) copyWhere(from, to, "media_category", "id = ?", arrayOf(id))
         copyWhere(from, to, "media_analysis", "mediaId IN ($marks)", args)
         copyWhere(from, to, "media_segment", "mediaId IN ($marks)", args)
         copyWhere(from, to, "media_item_category", "itemId IN ($marks)", args)
@@ -59,26 +63,51 @@ object SelectiveRestore {
         copyWhere(from, to, "inbox_item", "id IN (SELECT inboxId FROM inbox_member WHERE itemId IN ($marks))", args)
         copyWhere(from, to, "inbox_member", "itemId IN ($marks)", args)
         copyWhere(from, to, "drawer_message", "inboxId IN (SELECT inboxId FROM inbox_member WHERE itemId IN ($marks))", args)
-        copyWhere(from, to, "action_record", "itemId IN ($marks) OR inboxId IN (SELECT inboxId FROM inbox_member WHERE itemId IN ($marks))", args + args)
-        copyWhere(from, to, "saved_location", "itemId IN ($marks) OR inboxId IN (SELECT inboxId FROM inbox_member WHERE itemId IN ($marks))", args + args)
+        // References to members or inbox items that were not selected are cleared instead of failing the restore.
+        val keep = mapOf("itemId" to selected, "inboxId" to inboxes)
+        copyWhere(from, to, "action_record", "inboxId IN (SELECT inboxId FROM inbox_member WHERE itemId IN ($marks))", args, mapOf("itemId" to selected))
+        copyWhere(from, to, "saved_location", "itemId IN ($marks) OR inboxId IN (SELECT inboxId FROM inbox_member WHERE itemId IN ($marks))", args + args, keep)
     }
 
-    private fun copyWhere(from: SupportSQLiteDatabase, to: SupportSQLiteDatabase, table: String, where: String, args: Array<String>) {
+    private fun strings(db: SupportSQLiteDatabase, sql: String, args: Array<String>): List<String> = db.query(sql, args).use { rows ->
+        buildList { while (rows.moveToNext()) if (!rows.isNull(0)) add(rows.getString(0)) }
+    }
+
+    /** [ids] plus all ancestors, ordered so each parent precedes its children. */
+    internal fun categoryAncestry(db: SupportSQLiteDatabase, ids: Collection<String>): List<String> {
+        val parentOf = linkedMapOf<String, String?>()
+        val pending = ArrayDeque(ids.distinct())
+        while (pending.isNotEmpty() && parentOf.size < 10_000) {
+            val id = pending.removeFirst()
+            if (id in parentOf) continue
+            val parent = db.query("SELECT parentId FROM media_category WHERE id = ?", arrayOf(id)).use { if (it.moveToFirst() && !it.isNull(0)) it.getString(0) else null }
+            parentOf[id] = parent
+            if (parent != null && parent !in parentOf) pending.addLast(parent)
+        }
+        fun depth(id: String): Int { var d = 0; var p = parentOf[id]; val seen = mutableSetOf(id); while (p != null && seen.add(p)) { d++; p = parentOf[p] }; return d }
+        return parentOf.keys.sortedBy(::depth)
+    }
+
+    private fun copyWhere(from: SupportSQLiteDatabase, to: SupportSQLiteDatabase, table: String, where: String, args: Array<String>,
+        nullUnless: Map<String, Set<String>> = emptyMap()) {
         require(table in BackupTables.tables || table == "source_event")
         from.query("SELECT * FROM $table WHERE $where", args).use { rows ->
             if (!rows.moveToFirst()) return
             val names = rows.columnNames.toList()
             val sql = "INSERT OR IGNORE INTO $table (${names.joinToString(",")}) VALUES (${names.joinToString(",") { "?" }})"
             to.compileStatement(sql).use { insert ->
-                bindRow(insert, rows)
-                while (rows.moveToNext()) bindRow(insert, rows)
+                bindRow(insert, rows, nullUnless)
+                while (rows.moveToNext()) bindRow(insert, rows, nullUnless)
             }
         }
     }
 
-    private fun bindRow(insert: SupportSQLiteStatement, rows: Cursor) {
+    private fun bindRow(insert: SupportSQLiteStatement, rows: Cursor, nullUnless: Map<String, Set<String>>) {
         insert.clearBindings()
         for (index in 0 until rows.columnCount) when (rows.getType(index)) {
+            Cursor.FIELD_TYPE_STRING -> nullUnless[rows.getColumnName(index)].let { allowed ->
+                if (allowed != null && rows.getString(index) !in allowed) insert.bindNull(index + 1) else insert.bindString(index + 1, rows.getString(index))
+            }
             Cursor.FIELD_TYPE_NULL -> insert.bindNull(index + 1)
             Cursor.FIELD_TYPE_INTEGER -> insert.bindLong(index + 1, rows.getLong(index))
             Cursor.FIELD_TYPE_FLOAT -> insert.bindDouble(index + 1, rows.getDouble(index))

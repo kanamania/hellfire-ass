@@ -19,16 +19,31 @@ import java.util.zip.*
 class PortableBackup(private val app: HellFireApp) {
     private val prefix = "HFABACK2".toByteArray(Charsets.US_ASCII)
     suspend fun export(uri: Uri, password: CharArray, incremental: Boolean = false): BackupOutcome =
-        export(password, incremental, uri.toString()) { app.contentResolver.openOutputStream(uri, "wt") ?: error("Destination unavailable") }
+        export(password, incremental, uri.toString(), true, { app.contentResolver.openInputStream(uri) ?: error("Backup destination cannot be read back") }) {
+            app.contentResolver.openOutputStream(uri, "wt") ?: error("Destination unavailable") }
     suspend fun export(file: File, password: CharArray, incremental: Boolean = false): BackupOutcome =
-        export(password, incremental, file.toURI().toString()) { file.outputStream() }
-    private suspend fun export(password: CharArray, incremental: Boolean, destinationRef: String, destination: () -> OutputStream): BackupOutcome = withContext(Dispatchers.IO) {
+        export(password, incremental, file.toURI().toString(), true, { file.inputStream() }) { file.outputStream() }
+    /**
+     * Writes a full archive to [file] for upload. Nothing is marked backed up here: call [commit] only after the
+     * destination confirmed the complete archive. Blocked originals are listed in the outcome instead of thrown.
+     */
+    suspend fun exportForUpload(file: File, password: CharArray): BackupOutcome =
+        export(password, false, file.toURI().toString(), false, { file.inputStream() }) { file.outputStream() }
+    /** Records an [exportForUpload] archive as backed up once [destination] confirmed it under [remoteRef]. */
+    suspend fun commit(outcome: BackupOutcome, destination: String, remoteRef: String) = withContext(Dispatchers.IO) {
+        val pending = requireNotNull(outcome.pending) { "Archive has no pending record" }
+        record(pending.id, pending.plan, pending.verified, pending.previous, pending.baseId, pending.archiveHash, remoteRef, destination)
+    }
+    private suspend fun export(password: CharArray, incremental: Boolean, destinationRef: String, commit: Boolean,
+        readBack: () -> InputStream, destination: () -> OutputStream): BackupOutcome = withContext(Dispatchers.IO) {
         require(!com.hellfire.ass.audio.MicrophoneStatus.busy.value) { "Stop microphone recording first" }
         val archiveId = UUID.randomUUID().toString()
         val salt = SecureRandom().generateSeed(16)
         val encrypted = File(app.noBackupFilesDir, "backup-${UUID.randomUUID()}.hfm")
         var portable: PayloadCipher? = null
         try {
+            // Rows of permanently deleted drawer items must not be carried into a new archive.
+            com.hellfire.ass.drawer.DrawerInbox.purgeDeletedRows(app)
             var planned: BackupPlan? = null
             var previous = emptySet<String>()
             var baseId: String? = null
@@ -38,7 +53,7 @@ class PortableBackup(private val app: HellFireApp) {
                 require(media.none { it.state == "DELETING" })
                 previous = verifiedHashes()
                 baseId = if (incremental) availableBackups().firstOrNull() else null
-                planned = BackupPlanner.plan(media, previous, app.noBackupFilesDir.usableSpace, incremental)
+                planned = BackupPlanner.plan(media, previous, app.noBackupFilesDir.usableSpace, incremental) { app.media.file(it.id).isFile }
             }
             portable = try { BackupCrypto.derive(password, salt) } finally { password.fill('\u0000') }
             val key = portable!!
@@ -47,7 +62,7 @@ class PortableBackup(private val app: HellFireApp) {
                 require(media.none { it.state == "DELETING" })
                 previous = verifiedHashes()
                 baseId = if (incremental) availableBackups().firstOrNull() else null
-                planned = BackupPlanner.plan(media, previous, app.noBackupFilesDir.usableSpace, incremental)
+                planned = BackupPlanner.plan(media, previous, app.noBackupFilesDir.usableSpace, incremental) { app.media.file(it.id).isFile }
                 val current = planned!!
                 val dbBytes = app.getDatabasePath("hellfire.db").length().coerceAtMost(1024L * 1024 * 1024)
                 require(app.noBackupFilesDir.usableSpace >= BackupReadiness.stagingBytes(current.bytesIncluded(), dbBytes)) { "Insufficient free space for encrypted backup staging" }
@@ -67,17 +82,46 @@ class PortableBackup(private val app: HellFireApp) {
                 output.write(prefix); output.write(salt)
                 archiveHash = hashCopy(encrypted, output)
             }
-            record(archiveId, written, verified, previous, baseId, archiveHash, destinationRef)
-            if (written.blocked.isNotEmpty()) throw BackupBlocked(written.blocked)
-            BackupOutcome(archiveId, written.kind, written.includedHashes.size, written.items.count { it.action == BackupAction.OMITTED }, emptyList(), true)
+            // Verify what the destination returns, not the local staging copy.
+            readBack().use { input ->
+                val header = ByteArray(24); DataInputStream(input).readFully(header)
+                require(header.contentEquals(prefix + salt)) { "Backup destination returned a different archive" }
+                val (actual, size) = BackupStream.copy(input, Discard(), encrypted.length())
+                require(actual == archiveHash && size == encrypted.length()) { "Backup destination returned a different archive" }
+            }
+            val pending = PendingBackup(archiveId, written, verified, previous, baseId, archiveHash)
+            val outcome = BackupOutcome(archiveId, written.kind, written.includedHashes.size, written.items.count { it.action == BackupAction.OMITTED },
+                written.blocked, true, pending.takeUnless { commit })
+            if (commit) {
+                record(archiveId, written, verified, previous, baseId, archiveHash, destinationRef, "portable")
+                if (written.blocked.isNotEmpty()) throw BackupBlocked(written.blocked)
+            }
+            outcome
         } finally { password.fill('\u0000'); encrypted.delete() }
     }
-    suspend fun restore(uri: Uri, password: CharArray) {
-        restore(password) { app.contentResolver.openInputStream(uri) ?: error("Backup unavailable") }
-    }
-    suspend fun restore(file: File, password: CharArray, parents: List<File> = emptyList(), selection: BackupSelection? = null) {
-        restore(password, parents = parents, selection = selection) { file.inputStream() }
-    }
+    suspend fun restore(uri: Uri, password: CharArray): RestoreReport = restore(listOf(uri), password)
+    /**
+     * Restores one archive, or an incremental archive together with the older archives it builds on, chosen in any
+     * order: the newest archive supplies the database and the others supply the originals it omitted.
+     */
+    suspend fun restore(uris: List<Uri>, password: CharArray, selection: BackupSelection? = null): RestoreReport =
+        restoreSet(uris.map { uri -> { app.contentResolver.openInputStream(uri) ?: error("Backup unavailable") } }, password, selection)
+    suspend fun restoreFiles(files: List<File>, password: CharArray, selection: BackupSelection? = null): RestoreReport =
+        restoreSet(files.map { file -> { file.inputStream() } }, password, selection)
+    suspend fun restore(file: File, password: CharArray, parents: List<File> = emptyList(), selection: BackupSelection? = null): RestoreReport =
+        restore(password, parents = parents.map { parent -> { parent.inputStream() } }, selection = selection) { file.inputStream() }
+    /** Verify-only dry run of the newest selected archive that also lists what it holds. Current data is not changed. */
+    suspend fun inspect(uris: List<Uri>, password: CharArray): RestoreReport =
+        restoreSet(uris.map { uri -> { app.contentResolver.openInputStream(uri) ?: error("Backup unavailable") } }, password, null, verifyOnly = true)
+    suspend fun inspectFiles(files: List<File>, password: CharArray): RestoreReport =
+        restoreSet(files.map { file -> { file.inputStream() } }, password, null, verifyOnly = true)
+    private suspend fun restoreSet(sources: List<() -> InputStream>, password: CharArray, selection: BackupSelection?, verifyOnly: Boolean = false): RestoreReport = try {
+        require(sources.isNotEmpty()) { "Select a backup archive" }
+        val ordered = if (sources.size == 1) sources else withContext(Dispatchers.IO) {
+            sources.map { it to manifestOf(password.copyOf(), it).optLong("createdAt") }.sortedByDescending { it.second }.map { it.first }
+        }
+        restore(password, verifyOnly, ordered.drop(1), selection, ordered.first())
+    } finally { password.fill('\u0000') }
     suspend fun catalog(file: File, password: CharArray): List<PlannedItem> = withContext(Dispatchers.IO) {
         val folder = File(app.noBackupFilesDir, "catalog-${UUID.randomUUID()}").apply { mkdirs() }
         try {
@@ -93,10 +137,9 @@ class PortableBackup(private val app: HellFireApp) {
             }
         } finally { password.fill('\u0000'); folder.deleteRecursively() }
     }
-    suspend fun verify(uri: Uri, password: CharArray) {
+    suspend fun verify(uri: Uri, password: CharArray): RestoreReport =
         restore(password, verifyOnly = true) { app.contentResolver.openInputStream(uri) ?: error("Backup unavailable") }
-    }
-    private suspend fun restore(password: CharArray, verifyOnly: Boolean = false, parents: List<File> = emptyList(), selection: BackupSelection? = null, source: () -> InputStream) = withContext(Dispatchers.IO) {
+    private suspend fun restore(password: CharArray, verifyOnly: Boolean = false, parents: List<() -> InputStream> = emptyList(), selection: BackupSelection? = null, source: () -> InputStream): RestoreReport = withContext(Dispatchers.IO) {
         if (!verifyOnly && selection == null) checkRestoreAllowed()
         else if (!verifyOnly) require(!com.hellfire.ass.audio.MicrophoneStatus.busy.value) { "Stop microphone recording first" }
         val parentPassword = if (parents.isNotEmpty()) password.copyOf() else null
@@ -108,6 +151,7 @@ class PortableBackup(private val app: HellFireApp) {
         var committed = false
         var format2 = false
         var selectedIds = emptyList<String>()
+        var unavailable = emptySet<String>()
         var manifestJson: JSONObject? = null
         try {
             val portable = source().use { input ->
@@ -129,7 +173,8 @@ class PortableBackup(private val app: HellFireApp) {
                     val format = manifest.optInt("format", 1)
                     if (format == 2) {
                         format2 = true
-                        selectedIds = readFormat2(zip, db, folder, manifest, verifyOnly, selection, parents, parentPassword)
+                        val read = readFormat2(zip, db, folder, manifest, verifyOnly, selection, parents, parentPassword)
+                        selectedIds = read.wanted; unavailable = read.unavailable
                         return@use
                     }
                     require(format == 1) { "Backup format requires a matching app version" }
@@ -169,9 +214,10 @@ class PortableBackup(private val app: HellFireApp) {
             }
             com.hellfire.ass.contacts.ContactSchema.backfill(db.openHelper.writableDatabase)
             com.hellfire.ass.library.LibrarySchema.backfill(db.openHelper.writableDatabase)
+            val missing = db.media().all().filter { it.id in unavailable }.map { it.name }
             if (verifyOnly) {
                 app.getSharedPreferences("ui", 0).edit().putLong("last_backup_verified_at", System.currentTimeMillis()).apply()
-                return@withContext
+                return@withContext describe(db, missing)
             }
             BackupTables.revokeRestoredApprovals(db.openHelper.writableDatabase)
             db.openHelper.writableDatabase.query("PRAGMA foreign_key_check").use { require(!it.moveToFirst()) }
@@ -203,6 +249,7 @@ class PortableBackup(private val app: HellFireApp) {
                         require(items.none { app.media.file(it.id).exists() }) { "Existing orphan originals require recovery before restore" }
                         app.secrets.save("restore-journal", JSONObject().put("ids", JSONArray(items.map { it.id })))
                         for (item in items) {
+                            if (item.id in unavailable) continue
                             val staged = File(folder, "${item.id}.hfm")
                             require(staged.exists()) { "Original missing from backup" }
                             java.nio.file.Files.move(staged.toPath(), app.media.file(item.id).toPath())
@@ -216,8 +263,12 @@ class PortableBackup(private val app: HellFireApp) {
                     app.secrets.remove("restore-journal")
                 } }
                 if (format2) applySettings(manifestJson)
-                runCatching { com.hellfire.ass.tasks.TaskScheduler.restore(app); MediaWork.recover(app); com.hellfire.ass.data.SearchBackfill.reset(app); app.database.library().rebuildSearch() }
+                runCatching { com.hellfire.ass.tasks.TaskScheduler.restore(app) }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }
+                runCatching { MediaWork.recover(app) }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }
+                runCatching { com.hellfire.ass.data.SearchBackfill.reset(app) }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }
+                runCatching { app.database.library().rebuildSearch() }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }
             }
+            RestoreReport(moved.size, missing)
         } finally {
             parentPassword?.fill('\u0000')
             password.fill('\u0000')
@@ -274,7 +325,8 @@ class PortableBackup(private val app: HellFireApp) {
         for ((index, hash) in plan.includedHashes.withIndex()) {
             currentCoroutineContext().ensureActive()
             app.getSharedPreferences("ui", 0).edit().putString("backup_progress", "${index + 1}/${plan.includedHashes.size}").apply()
-            val item = media.first { it.contentHash == hash }
+            val includedId = plan.items.first { it.action == BackupAction.INCLUDE && it.contentHash == hash }.id
+            val item = media.first { it.id == includedId }
             zip.putNextEntry(ZipEntry("blobs/$hash"))
             app.media.reader(item).use { reader -> reader.stream().use { input ->
                 val (actual, size) = BackupStream.copy(input, zip, item.size)
@@ -316,7 +368,9 @@ class PortableBackup(private val app: HellFireApp) {
         return verified
     }
 
-    private suspend fun readFormat2(zip: ZipInputStream, db: EventDatabase, folder: File, manifest: JSONObject, verifyOnly: Boolean, selection: BackupSelection?, parents: List<File>, parentPassword: CharArray?): List<String> {
+    private class Format2(val wanted: List<String>, val unavailable: Set<String>)
+
+    private suspend fun readFormat2(zip: ZipInputStream, db: EventDatabase, folder: File, manifest: JSONObject, verifyOnly: Boolean, selection: BackupSelection?, parents: List<() -> InputStream>, parentPassword: CharArray?): Format2 {
         require(!manifest.getJSONObject("recovery").getBoolean("keyStored"))
         require(zip.nextEntry?.name == "catalog.jsonl")
         val catalog = readCatalog(zip)
@@ -329,12 +383,13 @@ class PortableBackup(private val app: HellFireApp) {
                 counts[table] = BackupTables.readTable(db.openHelper.writableDatabase, zip, table, app.cipher, budget)
             }
         }
-        val blocked = catalog.filter { it.action == BackupAction.BLOCKED }.map { it.id }
-        if (!verifyOnly && selection == null && blocked.isNotEmpty()) error("Backup is incomplete: ${blocked.size} originals were blocked and were not included")
-        if (selection != null && selection.itemIds.any { id -> id in blocked }) error("Selected original was not included in this backup")
-        for (id in blocked) db.openHelper.writableDatabase.execSQL("DELETE FROM media_item WHERE id = ?", arrayOf(id))
-        val wanted = if (selection == null) db.media().all().map { it.id } else SelectiveRestore.resolve(db.openHelper.writableDatabase, selection)
-        val items = db.media().all().filter { it.id in wanted }
+        // Blocked and metadata-only rows keep their records (bookmarks, transcripts, notes) and are restored as MISSING.
+        val unavailable = catalog.filter { it.action == BackupAction.BLOCKED || it.action == BackupAction.METADATA_ONLY }.map { it.id }.toSet()
+        if (selection != null && selection.itemIds.any { id -> id in unavailable }) error("Selected original was not included in this backup")
+        for (id in unavailable) db.openHelper.writableDatabase.execSQL("UPDATE media_item SET availability = 'MISSING' WHERE id = ?", arrayOf(id))
+        val wanted = if (selection == null) db.media().all().map { it.id }
+            else SelectiveRestore.resolve(db.openHelper.writableDatabase, selection).filter { it !in unavailable }
+        val items = db.media().all().filter { it.id in wanted && it.id !in unavailable }
         val byHash = items.groupBy { requireNotNull(it.contentHash) }
         for (hash in catalog.filter { it.action == BackupAction.INCLUDE }.map { it.contentHash }.distinct()) {
             require(zip.nextEntry?.name == "blobs/$hash")
@@ -351,11 +406,11 @@ class PortableBackup(private val app: HellFireApp) {
         if (!verifyOnly) {
             val missing = items.filter { !File(folder, "${it.id}.hfm").exists() }.groupBy { requireNotNull(it.contentHash) }
             if (missing.isNotEmpty()) {
-                require(parentPassword != null && parents.isNotEmpty()) { "Incremental backup is missing ${missing.size} originals from older archives" }
+                require(parentPassword != null && parents.isNotEmpty()) { "Incremental backup is missing ${missing.size} originals; select the older archives it builds on too" }
                 fillFromParents(parents, parentPassword, missing, folder)
             }
         }
-        return wanted
+        return Format2(wanted, unavailable)
     }
 
     private fun stageBlob(zip: InputStream, hash: String, size: Long, items: List<MediaItem>, folder: File) {
@@ -372,14 +427,14 @@ class PortableBackup(private val app: HellFireApp) {
         }
     }
 
-    private suspend fun fillFromParents(parents: List<File>, password: CharArray, needed: Map<String, List<MediaItem>>, folder: File) {
+    private suspend fun fillFromParents(parents: List<() -> InputStream>, password: CharArray, needed: Map<String, List<MediaItem>>, folder: File) {
         val remaining = needed.keys.toMutableSet()
         for (parent in parents) {
             if (remaining.isEmpty()) break
             val copy = password.copyOf()
             val temp = File(folder, "parent-${UUID.randomUUID()}.hfm")
             try {
-                val key = openHeader(copy, parent.inputStream(), temp)
+                val key = openHeader(copy, parent(), temp)
                 ChunkedMedia.Reader(temp, key, maxBytes = BackupReadiness.MAX_ARCHIVE).use { reader ->
                     ZipInputStream(BufferedInputStream(reader.stream())).use { zip ->
                         var entry = zip.nextEntry
@@ -407,7 +462,7 @@ class PortableBackup(private val app: HellFireApp) {
                 }
             } finally { copy.fill('\u0000'); temp.delete() }
         }
-        require(remaining.isEmpty()) { "Incremental backup is missing ${remaining.size} originals from older archives" }
+        require(remaining.isEmpty()) { "Incremental backup is missing ${remaining.size} originals; select the older archives it builds on too" }
     }
 
     private suspend fun openHeader(password: CharArray, input: InputStream, encrypted: File): PayloadCipher = input.use {
@@ -442,17 +497,18 @@ class PortableBackup(private val app: HellFireApp) {
         while (input.read(buffer) >= 0) {}
     }
 
-    private suspend fun record(id: String, plan: BackupPlan, verified: Set<String>, previously: Set<String>, baseId: String?, archiveHash: String, destinationRef: String) {
+    private suspend fun record(id: String, plan: BackupPlan, verified: Set<String>, previously: Set<String>, baseId: String?, archiveHash: String, destinationRef: String, destination: String) {
         val now = System.currentTimeMillis()
         val backed = BackupPlanner.backedUpIds(plan, verified, previously)
         val state = if (plan.blocked.isEmpty()) "VERIFIED" else "PARTIAL"
-        app.database.sync().saveManifest(BackupManifest(id, "portable", plan.kind, baseId, BackupTables.SCHEMA, state, plan.includedHashes.size, plan.bytesIncluded(), archiveHash, destinationRef, now, now, now,
+        app.database.sync().saveManifest(BackupManifest(id, destination, plan.kind, baseId, BackupTables.SCHEMA, state, plan.includedHashes.size, plan.bytesIncluded(), archiveHash, destinationRef, now, now, now,
             plan.blocked.takeIf { it.isNotEmpty() }?.joinToString("; ") { "${it.id}: ${it.reason}" }))
         val rows = plan.items.filter { (it.action == BackupAction.INCLUDE || it.action == BackupAction.DEDUPE) && it.contentHash in verified }
             .map { BackupItemRecord(id, it.id, it.contentHash, it.size, now, now) }
         if (rows.isNotEmpty()) app.database.sync().saveBackupItems(rows)
         val touched = plan.items.map { it.id }.toSet()
         val blocked = plan.blocked.map { it.id }.toSet()
+        val noOriginal = plan.metadataOnly.map { it.id }.toSet()
         val members = mutableMapOf<String, MutableList<String>>()
         app.database.openHelper.readableDatabase.query("SELECT inboxId, itemId FROM inbox_member").use { rowsCursor ->
             while (rowsCursor.moveToNext()) members.getOrPut(rowsCursor.getString(0)) { mutableListOf() } += rowsCursor.getString(1)
@@ -460,12 +516,14 @@ class PortableBackup(private val app: HellFireApp) {
         for ((inbox, itemIds) in members) {
             if (itemIds.none { it in touched }) continue
             val inboxState = when {
-                itemIds.all { it in backed } -> "BACKED_UP"
+                itemIds.all { it in backed || it in noOriginal } -> "BACKED_UP"
                 itemIds.any { it in blocked } -> "FAILED"
                 else -> "PENDING"
             }
             app.database.inbox().setBackupState(inbox, inboxState, now)
         }
+        // An incomplete drawer record has no original; its row is in this verified archive.
+        app.database.openHelper.writableDatabase.execSQL("UPDATE inbox_item SET backupState = 'BACKED_UP', updatedAt = ? WHERE backupState = 'PENDING' AND NOT EXISTS (SELECT 1 FROM inbox_member m WHERE m.inboxId = inbox_item.id)", arrayOf(now))
         val listed = mutableListOf<Pair<String, Long>>()
         val parents = mutableMapOf<String, String?>()
         app.database.openHelper.readableDatabase.query("SELECT id, createdAt, baseId FROM backup_manifest").use { cursor ->
@@ -533,6 +591,66 @@ class PortableBackup(private val app: HellFireApp) {
             }
             edit.apply()
         }
+    }
+
+    private suspend fun describe(db: EventDatabase, missing: List<String>): RestoreReport {
+        val sql = db.openHelper.readableDatabase
+        val kinds = linkedMapOf<String, Int>()
+        sql.query("SELECT contentKind, COUNT(*) FROM media_item WHERE storage = 'MANAGED' GROUP BY contentKind ORDER BY contentKind").use { while (it.moveToNext()) kinds[it.getString(0)] = it.getInt(1) }
+        val collections = mutableListOf<Pair<String, String>>()
+        sql.query("SELECT id, name FROM media_collection ORDER BY name LIMIT 200").use { while (it.moveToNext()) collections += it.getString(0) to it.getString(1) }
+        val items = mutableListOf<Pair<String, String>>()
+        sql.query("SELECT id, name FROM media_item WHERE storage = 'MANAGED' AND availability != 'MISSING' ORDER BY importedAt DESC LIMIT 300").use { while (it.moveToNext()) items += it.getString(0) to it.getString(1) }
+        return RestoreReport(0, missing, kinds, collections, items)
+    }
+
+    /** Reads only the manifest at the start of an archive, streaming; nothing is staged. */
+    private fun manifestOf(password: CharArray, source: () -> InputStream): JSONObject = source().use { raw ->
+        val input = DataInputStream(BufferedInputStream(raw))
+        val header = ByteArray(24); input.readFully(header)
+        require(header.copyOfRange(0, 8).contentEquals(prefix)) { "Unsupported backup format" }
+        val key = try { BackupCrypto.derive(password, header.copyOfRange(8, 24)) } finally { password.fill('\u0000') }
+        ZipInputStream(SequentialChunks(input, key)).use { zip ->
+            require(zip.nextEntry?.name == "manifest.json") { "Backup manifest missing" }
+            JSONObject(readSmall(zip))
+        }
+    }
+
+    /** Sequential reader for the ChunkedMedia layout, for archives that are only available as a stream. */
+    private class SequentialChunks(private val input: DataInputStream, private val cipher: PayloadCipher) : InputStream() {
+        private val id: String
+        private val size: Long
+        private var index = 0
+        private var done = 0L
+        private var chunk = ByteArray(0)
+        private var position = 0
+        init {
+            val magic = ByteArray(9); input.readFully(magic)
+            require(magic.contentEquals("HFAMEDIA2".toByteArray(Charsets.US_ASCII))) { "Unsupported backup format" }
+            id = UUID(input.readLong(), input.readLong()).toString()
+            input.readInt()
+            require(input.readInt() == ChunkedMedia.CHUNK)
+            size = input.readLong()
+            require(size in 0..BackupReadiness.MAX_ARCHIVE) { "Incomplete backup" }
+        }
+        override fun read(): Int { val one = ByteArray(1); return if (read(one, 0, 1) < 0) -1 else one[0].toInt() and 255 }
+        override fun read(b: ByteArray, off: Int, len: Int): Int {
+            if (len == 0) return 0
+            if (position == chunk.size) {
+                if (done >= size) return -1
+                val plain = input.readInt()
+                require(plain == minOf(ChunkedMedia.CHUNK.toLong(), size - done).toInt()) { "Corrupt backup chunk" }
+                val envelope = ByteArray(plain + 29); input.readFully(envelope)
+                chunk.fill(0)
+                chunk = cipher.decrypt(envelope, ChunkedMedia.aad(id, index, plain))
+                index++; done += plain; position = 0
+            }
+            val count = minOf(len, chunk.size - position)
+            chunk.copyInto(b, off, position, position + count)
+            position += count
+            return count
+        }
+        override fun close() { chunk.fill(0); input.close() }
     }
 
     private fun hashCopy(file: File, output: OutputStream): String {

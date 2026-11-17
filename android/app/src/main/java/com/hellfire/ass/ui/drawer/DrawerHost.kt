@@ -155,12 +155,14 @@ fun DrawerHost() {
                     Text(tr("Backup") + ": " + row.backupState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
                     if (messages.isNotEmpty()) Text(tr("Saved") + " · " + messages.size, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
                     messages.takeLast(4).forEach { Text("${it.role}: ${it.text.take(240)}", style = Hf.type.body, color = Hf.colors.onSurface) }
-                    actions.filter { it.state == "PROPOSED" }.take(8).forEach { record ->
+                    if (row.contentKind == "IMAGE") Note("QR codes are not decoded: no on-device barcode decoder is included.")
+                    actions.filter { it.state != "DISMISSED" }.distinctBy { it.actionType }.take(8).forEach { record ->
                         val needs = record.actionType in confirmTypes
-                        SecondaryButton(record.label, {
+                        val shown = record.label + when (record.state) { "EXECUTED" -> " · done"; "FAILED" -> " · failed"; else -> "" }
+                        SecondaryButton(shown, {
                             if (needs && confirm != record.actionType) confirm = record.actionType
                             else scope.launch {
-                                val outcome = withContext(Dispatchers.IO) { DrawerActions(app).execute(row.id, record.actionType, confirmed = true, session = DrawerController.sessionId) }
+                                val outcome = withContext(Dispatchers.IO) { DrawerActions(app).execute(row.id, record.actionType, confirmed = true, session = DrawerTalk.session(row.id), actionId = record.id) }
                                 confirm = null
                                 outcome.route?.let { nav.push(it) }
                                 if (record.actionType == "floating_player") outcome.route?.let { DrawerController.miniPlayerId = LibraryRoutes.id(it) }
@@ -173,7 +175,7 @@ fun DrawerHost() {
                     if (confirm != null) Note(tr("Needs a live source").let { "Confirmation required. Tap the action again to continue. External apps are not opened until then." })
                     SecondaryButton(tr("Universal inbox"), { nav.push(LibraryRoutes.inboxItem(row.id)) })
                     QuietButton(tr("Clear context"), {
-                        scope.launch { withContext(Dispatchers.IO) { DrawerTalk(app.database.inbox()).clear(DrawerController.sessionId) } }
+                        scope.launch { withContext(Dispatchers.IO) { DrawerTalk(app.database.inbox()).clear(DrawerTalk.session(row.id)) }; DrawerController.status = "Context cleared for this item. The saved item is still here." }
                     })
                 }
             }
@@ -185,10 +187,7 @@ fun DrawerHost() {
                 busy = true
                 scope.launch {
                     val reply = withContext(Dispatchers.IO) {
-                        DrawerTalk(app.database.inbox()).ask(id, DrawerController.sessionId, question, item?.summary.orEmpty()) { prompt ->
-                            if (app.localModel.configured) app.localModel.generate(prompt).text
-                            else "Local model is not installed. The question was saved. Nothing was invented."
-                        }
+                        DrawerTalk(app.database.inbox()).ask(id, DrawerTalk.session(id), question, DrawerContent.text(app, id)) { prompt -> DrawerAi.answer(app, prompt) }
                     }
                     followUp = ""
                     DrawerController.status = reply.text.take(300)

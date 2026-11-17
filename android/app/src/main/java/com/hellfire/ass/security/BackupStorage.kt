@@ -2,6 +2,7 @@ package com.hellfire.ass.security
 
 import android.content.Context
 import com.hellfire.ass.HellFireApp
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 
 data class StorageUsage(
@@ -19,8 +20,6 @@ data class StorageUsage(
 
 /** Usage and cache eviction. Originals under files/media are never deleted here. */
 object BackupStorage {
-    private val installedModels = setOf("assistant.litertlm", "speech.ggml", "text_embedder.tflite", "speaker.onnx")
-
     fun usage(app: HellFireApp): StorageUsage {
         val db = app.database.openHelper.readableDatabase
         val managed = count(db, "SELECT COUNT(*), COALESCE(SUM(size), 0) FROM media_item WHERE storage = 'MANAGED' AND state != 'DELETING'")
@@ -28,12 +27,11 @@ object BackupStorage {
         val backed = count(db, "SELECT COUNT(*), 0 FROM media_item m WHERE m.storage = 'MANAGED' AND EXISTS (SELECT 1 FROM backup_item b WHERE b.itemId = m.id AND b.contentHash = m.contentHash AND b.verifiedAt IS NOT NULL)")
         val media = File(app.filesDir, "media")
         val models = File(app.filesDir, "models")
-        val thumbs = File(app.filesDir, "thumbnails")
         return StorageUsage(
             managedBytes = managed.second,
             managedCount = managed.first,
             externalCount = external.first,
-            thumbnailBytes = bytesOf(thumbs) + bytesOf(File(app.cacheDir, "thumbnails")),
+            thumbnailBytes = THUMBNAIL_DIRS.sumOf { bytesOf(File(app.filesDir, it)) },
             cacheBytes = bytesOf(app.cacheDir) + bytesOf(File(app.noBackupFilesDir, "plain-tmp")),
             modelBytes = bytesOf(models),
             databaseBytes = app.getDatabasePath("hellfire.db").length(),
@@ -43,15 +41,29 @@ object BackupStorage {
         )
     }
 
-    /** Deletes cache, plaintext temps and partial model downloads. Returns bytes removed. Never touches managed originals. */
-    fun evictCache(app: HellFireApp): Long {
+    /** Scene and bookmark thumbnails. Rows reference these paths, so cache clearing never deletes them. */
+    val THUMBNAIL_DIRS = listOf("intelligence-thumbs", "player-thumbs")
+    /** cacheDir children that are in use by other features: share outputs awaiting hand-off. */
+    val KEEP_IN_CACHE = setOf("share")
+
+    /**
+     * Deletes rebuildable cache only: the model engine cache (after releasing the loaded model) and plaintext temps older
+     * than an hour. Never touches managed originals, referenced thumbnails, pending share outputs or model downloads.
+     */
+    suspend fun evictCache(app: HellFireApp): Long {
         val protected = File(app.filesDir, "media")
         var freed = 0L
-        freed += evictTree(app.cacheDir, protected)
-        freed += evictTree(File(app.noBackupFilesDir, "plain-tmp"), protected)
-        freed += evictTree(File(app.filesDir, "thumbnails"), protected)
-        File(app.filesDir, "models").listFiles().orEmpty().filter { it.isFile && (it.extension == "part" || it.name.endsWith(".part")) && it.name !in installedModels }
-            .forEach { freed += it.length(); it.delete() }
+        com.hellfire.ass.ai.HeavyModelGate.mutex.withLock {
+            app.localModel.closeCached()
+            for (child in app.cacheDir.listFiles().orEmpty()) {
+                if (child.name in KEEP_IN_CACHE) continue
+                if (child.isDirectory) { freed += evictTree(child, protected); child.delete() }
+                else { val size = child.length(); if (child.delete()) freed += size }
+            }
+        }
+        val cutoff = System.currentTimeMillis() - 3_600_000
+        File(app.noBackupFilesDir, "plain-tmp").listFiles().orEmpty().filter { it.isFile && it.lastModified() < cutoff }
+            .forEach { val size = it.length(); if (it.delete()) freed += size }
         return freed
     }
 
