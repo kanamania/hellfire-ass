@@ -462,19 +462,18 @@
     <string name="ui_eb5bb0e600" formatted="false">Privacy settings could not be read. Nothing has changed.</string>
     <string name="ui_9f2467da31" formatted="false">Loading privacy settings…</string>
     <string name="ui_942087cc2d" formatted="false">Retry</string>
-    <string name="ui_0e81c52de2" formatted="false">Backup dashboard</string>
-    <string name="ui_452233847f" formatted="false">Status dashboard</string>
-    <string name="ui_6d46697086" formatted="false">Storage usage</string>
-    <string name="ui_1a29a43bc9" formatted="false">Verify backups</string>
-    <string name="ui_bee9dcc44e" formatted="false">Request backup</string>
-    <string name="ui_4f5d99b422" formatted="false">Pause analysis</string>
-    <string name="ui_905dccea41" formatted="false">Resume analysis</string>
-    <string name="ui_1e96a60ec9" formatted="false">Retry failures</string>
-    <string name="ui_bf0066107e" formatted="false">Reindex</string>
-    <string name="ui_430a5aaa1e" formatted="false">Pause sync</string>
-    <string name="ui_41b7c8f0bf" formatted="false">Resume sync</string>
-    <string name="ui_d33461e6c0" formatted="false">Clear cache</string>
-    <string name="ui_0f793aaea4" formatted="false">Not backed up</string>
-    <string name="ui_464b6e0507" formatted="false">Backup blocked</string>
-    <string name="ui_4159a74294" formatted="false">Thermal state</string>
-    <string name="ui_a748b5aa8c" formatted="false">Model availability</string>
+    <string name="share_with_ai" formatted="false">Share with AI</string>
+    <string name="share_prepare" formatted="false">Prepare sanitized copy</string>
+    <string name="share_open_sheet" formatted="false">Open share sheet</string>
+    <string name="share_copy_caption" formatted="false">Copy caption</string>
+    <string name="share_copy_summary" formatted="false">Copy summary</string>
+    <string name="share_export_json" formatted="false">Export JSON</string>
+    <string name="share_sanitized_copy" formatted="false">Sanitized copy</string>
+    <string name="share_preview" formatted="false">Sanitized preview</string>
+    <string name="share_not_published" formatted="false">Share sheet opened. HellFire Ass did not publish this.</string>
+    <string name="share_not_anonymous" formatted="false">Embedded metadata was removed from this copy. Visible or audible content can still identify people and places.</string>
+    <string name="share_no_face_model" formatted="false">Face and plate detection is not available.</string>
+    <string name="share_no_tracking" formatted="false">Video region tracking is not implemented.</string>
+    <string name="share_original_kept" formatted="false">The original file was not changed.</string>
+    <string name="share_no_model" formatted="false">Local model is not installed.</string>
+</resources>

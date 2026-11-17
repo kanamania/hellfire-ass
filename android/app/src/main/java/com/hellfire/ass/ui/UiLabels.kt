@@ -468,19 +468,20 @@ object UiLabels {
         "Privacy settings could not be read. Nothing has changed." -> R.string.ui_eb5bb0e600
         "Loading privacy settings…" -> R.string.ui_9f2467da31
         "Retry" -> R.string.ui_942087cc2d
-        "Backup dashboard" -> R.string.ui_0e81c52de2
-        "Status dashboard" -> R.string.ui_452233847f
-        "Storage usage" -> R.string.ui_6d46697086
-        "Verify backups" -> R.string.ui_1a29a43bc9
-        "Request backup" -> R.string.ui_bee9dcc44e
-        "Pause analysis" -> R.string.ui_4f5d99b422
-        "Resume analysis" -> R.string.ui_905dccea41
-        "Retry failures" -> R.string.ui_1e96a60ec9
-        "Reindex" -> R.string.ui_bf0066107e
-        "Pause sync" -> R.string.ui_430a5aaa1e
-        "Resume sync" -> R.string.ui_41b7c8f0bf
-        "Clear cache" -> R.string.ui_d33461e6c0
-        "Not backed up" -> R.string.ui_0f793aaea4
-        "Backup blocked" -> R.string.ui_464b6e0507
-        "Thermal state" -> R.string.ui_4159a74294
-        "Model availability" -> R.string.ui_a748b5aa8c
+        "Share with AI" -> R.string.share_with_ai
+        "Prepare sanitized copy" -> R.string.share_prepare
+        "Open share sheet" -> R.string.share_open_sheet
+        "Copy caption" -> R.string.share_copy_caption
+        "Copy summary" -> R.string.share_copy_summary
+        "Export JSON" -> R.string.share_export_json
+        "Sanitized copy" -> R.string.share_sanitized_copy
+        "Sanitized preview" -> R.string.share_preview
+        "Share sheet opened. HellFire Ass did not publish this." -> R.string.share_not_published
+        "Embedded metadata was removed from this copy. Visible or audible content can still identify people and places." -> R.string.share_not_anonymous
+        "Face and plate detection is not available." -> R.string.share_no_face_model
+        "Video region tracking is not implemented." -> R.string.share_no_tracking
+        "The original file was not changed." -> R.string.share_original_kept
+        "Local model is not installed." -> R.string.share_no_model
+        else -> null
+    }
+}

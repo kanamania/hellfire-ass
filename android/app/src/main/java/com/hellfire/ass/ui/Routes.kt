@@ -88,9 +88,5 @@ fun RouteContent(route: Route) {
         Screen.Player -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, com.hellfire.ass.library.LibraryRoutes.id(route)) } // OWNER: player-agent
         Screen.UniversalInbox -> InboxTab() // OWNER: drawer-inbox-agent
         Screen.InboxItem -> InboxTab() // OWNER: drawer-inbox-agent
-        Screen.Search -> com.hellfire.ass.ui.intelligence.SearchScreen(route)
-        Screen.ShareWithAi -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, com.hellfire.ass.library.LibraryRoutes.id(route)) } // OWNER: sharing-agent
-        Screen.ProcessingQueue -> PushedPage(com.hellfire.ass.ui.tr("Recordings"), breadcrumb = "Settings") { MediaScreen(env.app, env.permissions, a.onMicrophone) } // OWNER: processing-agent
-        Screen.SyncDashboard -> com.hellfire.ass.ui.sync.SyncDashboardPage() // OWNER: sync-agent
-        Screen.BackupDashboard -> PushedPage(com.hellfire.ass.ui.tr("Encrypted backup"), breadcrumb = "Settings") { BackupScreen(env.app) } // OWNER: backup-agent
-        Screen.StatusDashboard -> com.hellfire.ass.ui.settings.DevicePage() // OWNER: status-agent
+        Screen.Search -> MemoryPage("") // OWNER: search-agent
+        Screen.ShareWithAi -> com.hellfire.ass.ui.sharing.ShareWithAiPage(route) // OWNER: sharing-agent
