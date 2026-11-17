@@ -54,6 +54,7 @@ interface MediaDao {
     /** Managed originals only (encrypted in MediaVault); external index entries are listed through LibraryDao. */
     @Query("SELECT * FROM media_item WHERE storage = 'MANAGED' ORDER BY importedAt DESC") suspend fun all(): List<MediaItem>
     @Query("SELECT * FROM media_item WHERE storage = 'MANAGED' ORDER BY importedAt DESC") fun items(): Flow<List<MediaItem>>
+    @Query("SELECT COUNT(*) FROM media_item WHERE storage = 'MANAGED'") fun count(): Flow<Int>
     @Query("SELECT * FROM media_item WHERE id=:id") suspend fun item(id: String): MediaItem?
     /** The managed original with this SHA-256, used for capture deduplication. */
     @Query("SELECT * FROM media_item WHERE contentHash=:hash AND storage = 'MANAGED' LIMIT 1") suspend fun hash(hash: String): MediaItem?

@@ -214,6 +214,7 @@ class MediaVault(private val app: HellFireApp) {
                 error("Original could not be deleted")
             }
             app.database.media().delete(item.id)
+            com.hellfire.ass.performance.ProcessingCheckpoint.clear(app, id)
         }
     }
     suspend fun recover() = withContext(Dispatchers.IO) {

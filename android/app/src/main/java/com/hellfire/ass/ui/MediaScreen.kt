@@ -34,6 +34,8 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
     var deletion by remember { mutableStateOf<MediaItem?>(null) }
     var exporting by remember { mutableStateOf<MediaItem?>(null) }
     var playback by remember { mutableStateOf<Job?>(null) }
+    var itemPages by remember { mutableIntStateOf(0) }
+    var segmentPages by remember { mutableIntStateOf(0) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) playback?.cancel() }
@@ -149,7 +151,9 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
     if (playback != null) OutlinedButton(onClick = { playback?.cancel() }) { Text(com.hellfire.ass.ui.tr("Stop playback")) }
     if (initialSelected == null) {
         Text("${items.size} originals kept encrypted", style = Hf.type.rowSubtitle, color = Hf.colors.muted)
-        items.forEach { item -> ListRow(item.name, subtitle = item.kind.lowercase().replace('_', ' ') + " · " + mediaStatus(item.state, item.error), chevron = true, onClick = { selected = item.id }) }
+        val shownItems = com.hellfire.ass.performance.visibleWindow(items.size, itemPages)
+        items.take(shownItems).forEach { item -> ListRow(item.name, subtitle = item.kind.lowercase().replace('_', ' ') + " · " + mediaStatus(item.state, item.error), chevron = true, onClick = { selected = item.id }) }
+        if (shownItems < items.size) TextButton(onClick = { itemPages++ }) { Text("Show more originals") }
     }
     items.firstOrNull { it.id == selected }?.let { item -> key(item.id) {
         val segments by app.database.media().segments(item.id).collectAsStateWithLifecycle(initialValue = emptyList())
@@ -187,7 +191,8 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
         if (segments.isNotEmpty() && (item.mime.startsWith("audio/") || item.mime.startsWith("video/"))) OutlinedButton(enabled = !busy && app.speakers.configured, onClick = { action {
             try { app.speakers.label(item) } catch (e: IllegalArgumentException) { e.message ?: "Speaker labelling failed." }
         } }) { Text("Label speakers automatically (experimental)") }
-        segments.take(200).forEach { segment ->
+        val shownSegments = com.hellfire.ass.performance.visibleWindow(segments.size, segmentPages, 40)
+        segments.take(shownSegments).forEach { segment ->
             Text("${segment.startMs / 1000}s–${segment.endMs / 1000}s · ${segment.speaker}"); Text(segment.text)
             SourceActions(segment.sourceId, segment.text)
             var speaker by remember(segment.id) { mutableStateOf(segment.speaker) }
@@ -200,7 +205,7 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
                     finally { playback = null } }
             }) { Text(com.hellfire.ass.ui.tr("Play from timestamp")) }
         }
-        if (segments.size > 200) Text("Showing first 200 segments; all retained segments remain searchable.")
+        if (shownSegments < segments.size) TextButton(onClick = { segmentPages++ }) { Text("Show more segments") }
     } }
     }
     deletion?.let { item -> AlertDialog(onDismissRequest = { deletion = null }, title = { Text("Delete ${item.name}?") },

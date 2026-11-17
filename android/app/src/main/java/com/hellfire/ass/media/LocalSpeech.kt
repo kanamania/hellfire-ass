@@ -3,15 +3,33 @@ package com.hellfire.ass.media
 import android.net.Uri
 import com.hellfire.ass.HellFireApp
 import com.hellfire.ass.ai.HeavyModelGate
+import com.hellfire.ass.performance.DeviceProbe
+import com.hellfire.ass.performance.ModelSlots
+import com.hellfire.ass.performance.OperatingProfile
+import com.hellfire.ass.performance.PerfLog
+import com.hellfire.ass.performance.rolesToEvict
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import java.io.File
 
 class LocalSpeech(private val app: HellFireApp) {
+    private var handle = 0L
+    private var handleKey = ""
     val model get() = File(app.filesDir, "models/speech.ggml")
+
+    suspend fun releaseCached() = HeavyModelGate.mutex.withLock { closeCached() }
+
+    /** Caller must already hold [HeavyModelGate]. */
+    fun closeCached() {
+        if (handle != 0L) runCatching { WhisperNative.release(handle) }
+        handle = 0L
+        handleKey = ""
+        ModelSlots.drop("SPEECH")
+    }
     suspend fun import(uri: Uri) = withContext(Dispatchers.IO) {
         HeavyModelGate.mutex.withLock {
+            closeCached()
             model.parentFile!!.mkdirs()
             val part = File(model.parentFile, "speech.part")
             try {
@@ -29,21 +47,39 @@ class LocalSpeech(private val app: HellFireApp) {
     suspend fun transcribe(samples: FloatArray, language: String): JSONObject = withContext(Dispatchers.Default) {
         require(language in setOf("auto", "sw", "en"))
         HeavyModelGate.mutex.withLock {
-            check(model.isFile) { "TRANSCRIPTION_MODEL_REQUIRED" }
-            val handle = WhisperNative.load(model.path)
-            try {
-                coroutineScope {
-                    ensureActive(); WhisperNative.reset(handle)
-                    val watcher = launch(Dispatchers.Default, start = CoroutineStart.UNDISPATCHED) {
-                        try { awaitCancellation() } finally { WhisperNative.abort(handle) }
+                check(model.isFile) { "TRANSCRIPTION_MODEL_REQUIRED" }
+                val profile = OperatingProfile.of(DeviceProbe.signals(app))
+                rolesToEvict("SPEECH", ModelSlots.snapshot(), profile).forEach { role ->
+                    when (role) {
+                        "LANGUAGE" -> app.localModel.closeCached()
+                        "EMBEDDING" -> app.semantic.closeCached()
+                        "SPEAKER" -> app.speakers.closeCached()
                     }
-                    try {
-                        val result = WhisperNative.transcribe(handle, samples, language)
-                        ensureActive()
-                        JSONObject(result.toString(Charsets.UTF_8))
-                    } finally { withContext(NonCancellable) { watcher.cancelAndJoin() } }
                 }
-            } finally { WhisperNative.release(handle) }
-        }
+                val key = "${model.path}:${DeviceProbe.fileKey(model)}"
+                val reuse = profile.reuseModels
+                if (!reuse || handle == 0L || handleKey != key) {
+                    closeCached()
+                    handle = WhisperNative.load(model.path)
+                    handleKey = key
+                    if (reuse) ModelSlots.mark("SPEECH")
+                }
+                val active = handle
+                try {
+                    coroutineScope {
+                        ensureActive(); WhisperNative.reset(active)
+                        val watcher = launch(Dispatchers.Default, start = CoroutineStart.UNDISPATCHED) {
+                            try { awaitCancellation() } finally { WhisperNative.abort(active) }
+                        }
+                        try {
+                            val started = android.os.SystemClock.elapsedRealtime()
+                            val result = WhisperNative.transcribe(active, samples, language)
+                            ensureActive()
+                            PerfLog.record("whisper_ms", android.os.SystemClock.elapsedRealtime() - started)
+                            JSONObject(result.toString(Charsets.UTF_8))
+                        } finally { withContext(NonCancellable) { watcher.cancelAndJoin() } }
+                    }
+                } finally { if (!reuse) closeCached() }
+            }
     }
 }

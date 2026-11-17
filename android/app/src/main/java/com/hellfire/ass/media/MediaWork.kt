@@ -1,24 +1,49 @@
 package com.hellfire.ass.media
 
 import android.content.Context
-import android.os.PowerManager
 import androidx.room.withTransaction
 import androidx.work.*
 import com.hellfire.ass.HellFireApp
 import com.hellfire.ass.events.NotificationNormalizer
 import com.hellfire.ass.events.NotificationSnapshot
+import com.hellfire.ass.performance.DeviceProbe
+import com.hellfire.ass.performance.ExecutionScheduler
+import com.hellfire.ass.performance.JobBudget
+import com.hellfire.ass.performance.OperatingProfile
+import com.hellfire.ass.performance.PerfLog
+import com.hellfire.ass.performance.ProcessingCheckpoint
+import com.hellfire.ass.performance.SpeechPlan
+import com.hellfire.ass.performance.WorkPriority
 import com.hellfire.ass.processing.CaptureWork
 import kotlinx.coroutines.*
 import java.util.concurrent.TimeUnit
 
 object MediaWork {
-    suspend fun schedule(app: HellFireApp, id: String, followUp: Boolean = false) = withContext(Dispatchers.IO) {
+    private const val TAG = "analyze-media"
+    const val OCR_CHECKPOINT = 1
+    suspend fun schedule(app: HellFireApp, id: String, followUp: Boolean = false, delaySeconds: Long = 0) = withContext(Dispatchers.IO) {
         WorkManager.getInstance(app).enqueueUniqueWork("analyze-media:$id", if (followUp) ExistingWorkPolicy.APPEND_OR_REPLACE else ExistingWorkPolicy.KEEP,
-            OneTimeWorkRequestBuilder<MediaWorker>().setInputData(workDataOf("id" to id))
+            OneTimeWorkRequestBuilder<MediaWorker>().setInputData(workDataOf("id" to id)).addTag(TAG)
+                .setInitialDelay(delaySeconds, TimeUnit.SECONDS)
                 .setConstraints(Constraints.Builder().setRequiresBatteryNotLow(true).setRequiresCharging(
                     app.getSharedPreferences("media", 0).getBoolean("charging", true)).build())
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS).build()).result.get()
         Unit
+    }
+    /** Schedules at most [JobBudget.MEDIA_PENDING_CAP] analysis jobs. The rest stay queued for the next pass. */
+    suspend fun pump(app: HellFireApp) = withContext(Dispatchers.IO) {
+        val manager = WorkManager.getInstance(app)
+        val pending = manager.getWorkInfos(WorkQuery.Builder.fromTags(listOf(TAG))
+            .addStates(listOf(WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING, WorkInfo.State.BLOCKED)).build()).get().size
+        var slots = JobBudget.slots(pending)
+        for (item in app.database.media().unfinished().sortedBy { it.importedAt }) {
+            if (slots <= 0) break
+            val active = manager.getWorkInfosForUniqueWork("analyze-media:${item.id}").get()
+                .any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.BLOCKED }
+            if (active) continue
+            schedule(app, item.id)
+            slots--
+        }
     }
     suspend fun queue(app: HellFireApp, id: String) {
         require(app.database.media().item(id)?.state != "DELETING")
@@ -27,7 +52,7 @@ object MediaWork {
     }
     suspend fun recover(app: HellFireApp) {
         app.media.recover()
-        for (item in app.database.media().unfinished()) schedule(app, item.id)
+        pump(app)
     }
     suspend fun text(app: HellFireApp, item: MediaItem, start: Long, end: Long, text: String, suffix: String): Unit = app.database.withTransaction {
         if (app.database.media().item(item.id)?.state == "DELETING") return@withTransaction
@@ -52,13 +77,18 @@ class MediaWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
         val id = inputData.getString("id") ?: return@withContext Result.failure()
         val item = app.database.media().item(id) ?: return@withContext Result.success()
         if (item.state == "DELETING") return@withContext Result.success()
-        if (app.getSystemService(PowerManager::class.java).currentThermalStatus >= PowerManager.THERMAL_STATUS_SEVERE) {
-            app.database.media().state(id, "QUEUED", "WAITING_FOR_DEVICE_TO_COOL")
+        val signals = DeviceProbe.signals(app)
+        val profile = OperatingProfile.of(signals)
+        if (signals.thermal >= OperatingProfile.THERMAL_SEVERE || signals.lowMemory) {
+            app.localModel.releaseCached(); app.speech.releaseCached(); app.semantic.releaseCached(); app.speakers.releaseCached()
+            app.database.media().state(id, "QUEUED", if (signals.lowMemory) "WAITING_FOR_MEMORY" else "WAITING_FOR_DEVICE_TO_COOL")
+            PerfLog.detail("media_wait", if (signals.lowMemory) "WAITING_FOR_MEMORY" else "WAITING_FOR_DEVICE_TO_COOL")
             return@withContext Result.retry()
         }
         try {
             app.database.media().state(id, "PROCESSING", null)
             var complete = true
+            var yielded = false
             var progress = item.processedMs
             when {
                 item.mime.startsWith("image/") -> VisualReader.image(app, item).let { read ->
@@ -66,37 +96,51 @@ class MediaWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
                     read.labels?.let { MediaWork.text(app, item, 0, 0, it, "image_labels") }
                 }
                 item.mime == "application/pdf" -> {
-                    complete = VisualReader.pdf(app, item, progress.toInt()) { page, text ->
+                    complete = VisualReader.pdf(app, item, progress.toInt(), profile.pdfPages) { page, text ->
                         MediaWork.text(app, item, page.toLong(), page.toLong(), text, "pdf_page_zero_based")
                         progress = page + 1L
                     }
                 }
                 item.mime.startsWith("audio/") || item.mime.startsWith("video/") -> {
-                    if (item.mime.startsWith("video/") && progress == 0L) VisualReader.video(app, item) { at, text ->
-                        MediaWork.text(app, item, at, at, text, "sampled_video_frame")
+                    if (item.mime.startsWith("video/") && progress == 0L && !ProcessingCheckpoint.videoDone(app, id, item.contentHash, MediaWork.OCR_CHECKPOINT)) {
+                        VisualReader.video(app, item) { at, text ->
+                            MediaWork.text(app, item, at, at, text, "sampled_video_frame")
+                        }
+                        ProcessingCheckpoint.markVideo(app, id, item.contentHash, MediaWork.OCR_CHECKPOINT)
                     }
                     if (!app.speech.model.isFile) error("TRANSCRIPTION_MODEL_REQUIRED")
-                    val chunk = AudioDecoder.chunk(EncryptedMediaSource(app.media.reader(item)), progress)
-                    if (chunk.samples.isNotEmpty()) {
-                        val result = try { app.speech.transcribe(chunk.samples, app.getSharedPreferences("media", 0).getString("language", "auto")!!) }
-                            finally { chunk.samples.fill(0f) }
-                        val segments = result.getJSONArray("segments")
-                        for (index in 0 until segments.length()) {
-                            val part = segments.getJSONObject(index)
-                            MediaWork.text(app, item, progress + part.getLong("start_ms"), progress + part.getLong("end_ms"), part.getString("text"), "speech")
+                    if (ExecutionScheduler.shouldYield(WorkPriority.DEFERRED)) {
+                        complete = false
+                        yielded = true
+                        PerfLog.detail("media_wait", "YIELDED_FOR_INTERACTIVE")
+                    } else {
+                        val chunk = AudioDecoder.chunk(EncryptedMediaSource(app.media.reader(item)), progress, profile.audioChunkSeconds)
+                        if (chunk.samples.isNotEmpty() && !SpeechPlan.needsTranscription(chunk.samples)) {
+                            PerfLog.detail("audio_chunk", "SILENCE_SKIPPED")
+                            progress += chunk.samples.size * 1000L / 16000
+                            chunk.samples.fill(0f)
+                        } else if (chunk.samples.isNotEmpty()) {
+                            val result = try { app.speech.transcribe(chunk.samples, app.getSharedPreferences("media", 0).getString("language", "auto")!!) }
+                                finally { chunk.samples.fill(0f) }
+                            val segments = result.getJSONArray("segments")
+                            for (index in 0 until segments.length()) {
+                                val part = segments.getJSONObject(index)
+                                MediaWork.text(app, item, progress + part.getLong("start_ms"), progress + part.getLong("end_ms"), part.getString("text"), "speech")
+                            }
+                            progress += chunk.samples.size * 1000L / 16000
                         }
-                        progress += chunk.samples.size * 1000L / 16000
+                        complete = chunk.end || chunk.samples.isEmpty()
                     }
-                    complete = chunk.end || chunk.samples.isEmpty()
                 }
                 else -> error("UNSUPPORTED_MEDIA_FORMAT")
             }
             app.database.media().progress(id, progress)
             app.database.media().state(id, if (complete) "INDEXED" else "QUEUED", null)
             CaptureWork.process(app)
-            if (!complete) MediaWork.schedule(app, id, true)
+            if (!complete) MediaWork.schedule(app, id, true, if (yielded) 30 else 0) else MediaWork.pump(app)
             Result.success()
         } catch (e: CancellationException) {
+            PerfLog.record("work_stop_reason", stopReason.toLong())
             withContext(NonCancellable) { if (app.database.media().item(id)?.state != "DELETING") app.database.media().state(id, "QUEUED", "PROCESSING_INTERRUPTED") }
             throw e
         } catch (error: Exception) {

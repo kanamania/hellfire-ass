@@ -1,8 +1,43 @@
 # HellFire Ass — implementation and feasibility
 
-Latest update: 2026-11-17 (everyday reliability and AI skills, directly below). Earlier
+Latest update: 2026-11-17 (adaptive performance, directly below). Earlier
 checkpoints keep the test counts and APK checksums that were true when they were
 written; the newest checkpoint has the current ones.
+
+## Adaptive performance — 2026-11-17
+
+Host-tested policy and hooks around the existing WorkManager jobs, `HeavyModelGate`
+and model classes. No second queue, worker or model manager. The verified release
+APK was not rebuilt or replaced. Token budget for language answers stays 4096 so
+financial JSON extraction is not truncated. Encryption, backup restore and send
+approval are unchanged. Room schema stays 18; managed-original counts stay separate from external library entries.
+
+| Check | Evidence | Result | What was shown | Still required |
+| --- | --- | --- | --- | --- |
+| Operating profile, backend fallback, yield, model-slot eviction, incremental SHA-256, scene filter, silence skip, job cap, gzip decision, query/perf logs | `./gradlew :app:testDebugUnitTest --tests com.hellfire.ass.PerformanceTest` | PASS (host) | 11 tests, 0 failures. Duplicate frames collapse to 1 of 20; frames that differ by 8+ bits keep the old 20; silence skips; a tone does not; CPU wins until a successful measurement; deferred work yields only while interactive work is waiting | None for the policy itself |
+| LiteRT CPU/GPU/NPU speed on the OPPO | — | NOT TESTED | Build can construct `Backend.CPU`, `Backend.GPU` and `Backend.NPU`. Selection stays CPU until Settings → This device → Performance runs the probe. A failed accelerator falls back to CPU | Run the probe on the OPPO with the imported Gemma file. Record ms, PSS and whether GPU/NPU initialize |
+| whisper.cpp, ONNX, MediaPipe accelerators | Code review | NOT SWITCHED | Sessions may be reused and dropped under low memory. Execution provider is still CPU. Switching ONNX/whisper/MediaPipe delegates could change speaker and embedding results | Do not enable NNAPI/GPU delegates until a device A/B test shows the same outputs |
+| Scene-aware video OCR and silence skip | `PerformanceTest` plus `VisualReader` / `MediaWork` | PASS (policy) / NOT TESTED (codecs) | Near-duplicate frames are not OCR'd. Uniform timestamps are unchanged when frames differ or fingerprints are missing. Near-silence chunks do not load whisper | Play a real recording and a static video on the OPPO. Confirm speech is not dropped and sampled OCR still says it is a sample |
+| Encrypted search | Existing FTS `LIMIT` and semantic pages of 500 | UNCHANGED + timed | Search SQL and encryption are unchanged. `QueryTrace` stores the label, duration and row count only | Time a large owner database on the phone. Add an index only if a named query is slow |
+| Compose | Settings counts; media list pages of 30 | PASS (code) / NOT TESTED (frames) | Settings no longer loads every memory and recording to show a count. The recordings list composes 30 rows at a time inside the existing scroll page | Macrobenchmark frame times on the OPPO |
+| Baseline / startup profile | `StartupProfile.critical` | NOT INSTALLED | A guessed profile was not put in the release APK | Generate a baseline profile on the OPPO and compare startup before installing it |
+| Web sync compression | `PayloadCompression` | NOT ENABLED | Change-based batches and retry already exist. Gzip is smaller in the host test but the server does not advertise it | Add server gzip support before sending `Content-Encoding: gzip` |
+| Android 16 / ColorOS quotas | `JobBudget` cap of 20 media jobs; existing WorkManager constraints | NOT TESTED (device) | Backlog stays in Room and is pumped by the existing 15-minute maintenance worker. Stop reason is recorded as a number if a job is cancelled | On the OPPO, queue more than 20 analyses, unplug, heat the phone, and confirm jobs resume without a second queue |
+| Battery, thermal, power | — | NOT TESTED | Dashboard can show thermal, battery percent and `BATTERY_PROPERTY_CURRENT_NOW` when the kernel exposes it | Overnight before/after on the same workload. Do not treat host tests as power results |
+
+### OPPO verification matrix
+
+Do this on the physical phone after installing a debug build. Do not treat a host
+PASS as a device PASS.
+
+1. Language model: Performance → Measure language backends. Record CPU/GPU/NPU ok-or-fail and milliseconds. Confirm a failed NPU still answers on CPU.
+2. Leave the dashboard open and scroll Home, Money and Recordings. Record frame samples. This is not a Macrobenchmark.
+3. Import one speech recording and one near-static video. Confirm silence is skipped, speech is transcribed, and video OCR stays a sample of at most 20 frames.
+4. Start indexing, then ask a local question. Indexing should stop at the next batch so the question can run, then continue.
+5. Queue more than 20 media analyses. Confirm only a bounded set is scheduled and the rest stay queued until maintenance or a finished job.
+6. Force thermal severe or low battery. Confirm analysis waits instead of failing, and capture still ingests.
+7. Read `BATTERY_PROPERTY_CURRENT_NOW` if present. Compare an overnight idle with and without HellFire. ColorOS may defer WorkManager; that is not a host result.
+8. Generate a baseline profile with Macrobenchmark on this device before adding one to a release APK. The current release APK has no baseline profile from this change.
 
 ## Everyday reliability and AI skills — 2026-11-17
 
