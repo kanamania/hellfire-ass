@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS library_record (
   change_seq bigint NOT NULL DEFAULT nextval('library_change_seq'),
   PRIMARY KEY (entity_type, entity_id)
 );
+ALTER TABLE library_record ADD COLUMN IF NOT EXISTS blob_id text;
+ALTER TABLE library_blob ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+CREATE INDEX IF NOT EXISTS library_record_blob ON library_record (blob_id) WHERE NOT deleted;
 CREATE INDEX IF NOT EXISTS library_record_change ON library_record (change_seq);
 CREATE TABLE IF NOT EXISTS library_meta (key text PRIMARY KEY, value text NOT NULL);
 INSERT INTO library_meta (key, value) VALUES ('epoch', gen_random_uuid()::text) ON CONFLICT (key) DO NOTHING;
@@ -52,6 +55,8 @@ CREATE TABLE IF NOT EXISTS library_search (
   text text NOT NULL,
   PRIMARY KEY (entity_type, entity_id)
 );
+DELETE FROM library_search;
+DELETE FROM library_meta WHERE key = 'search_plaintext';
 CREATE INDEX IF NOT EXISTS record_news_event ON record ((data->>'eventId')) WHERE kind IN ('news_article', 'news_version');
 CREATE TABLE IF NOT EXISTS news_action (
   seq bigserial PRIMARY KEY,

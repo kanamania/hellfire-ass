@@ -72,7 +72,7 @@ object StatusReport {
             thermal = thermal(app),
             errors = errors,
             analysisPaused = app.getSharedPreferences("media", 0).getBoolean("analysis_paused", false),
-            syncPaused = com.hellfire.ass.sync.LibrarySync.paused(app),
+            syncPaused = com.hellfire.ass.sync.LibrarySync.isPaused(app),
             driveFailure = driveFailure,
             unindexed = unindexed(app).size,
         )

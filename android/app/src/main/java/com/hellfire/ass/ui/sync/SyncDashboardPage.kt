@@ -8,7 +8,10 @@ import com.hellfire.ass.library.ContentKind
 import com.hellfire.ass.library.LibraryRoutes
 import com.hellfire.ass.sync.LibrarySync
 import com.hellfire.ass.sync.WebSync
-import com.hellfire.ass.sync.applyDoc
+import com.hellfire.ass.sync.resolveConflict
+import com.hellfire.ass.sync.saveLibraryPassphrase
+import com.hellfire.ass.sync.syncQueue
+import com.hellfire.ass.sync.SyncQueueRow
 import com.hellfire.ass.ui.*
 import com.hellfire.ass.ui.components.*
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +24,8 @@ fun SyncDashboardPage() {
     val nav = LocalNav.current
     val scope = rememberCoroutineScope()
     val counts by app.database.sync().counts().collectAsStateWithLifecycle(emptyList())
+    val queueChanges by app.database.sync().queueChanges().collectAsStateWithLifecycle(emptyList())
+    var queue by remember { mutableStateOf(emptyList<SyncQueueRow>()) }
     val conflicts by app.database.sync().openConflicts().collectAsStateWithLifecycle(emptyList())
     var status by remember { mutableStateOf("") }
     var paused by remember { mutableStateOf(false) }
@@ -30,9 +35,20 @@ fun SyncDashboardPage() {
     var hasPass by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var external by remember { mutableStateOf(emptyList<Pair<String, String>>()) }
+    DisposableEffect(app) {
+        val prefs = app.getSharedPreferences(LibrarySync.PREFS, android.content.Context.MODE_PRIVATE)
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+            status = LibrarySync.readStatus(app)
+            paused = LibrarySync.isPaused(app)
+            wifi = LibrarySync.wifiOnly(app)
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+    LaunchedEffect(queueChanges) { queue = syncQueue(app) }
     LaunchedEffect(counts, conflicts) {
         status = LibrarySync.readStatus(app)
-        paused = LibrarySync.paused(app)
+        paused = LibrarySync.isPaused(app)
         wifi = LibrarySync.wifiOnly(app)
         withContext(Dispatchers.IO) {
             server = runCatching { app.secrets.read(WebSync.CONFIG)?.getString("url") }.getOrNull()
@@ -43,7 +59,7 @@ fun SyncDashboardPage() {
     }
     PushedPage(tr("Sync"), breadcrumb = tr("Settings")) {
         message?.let { Banner(it, Tone.Info, null) }
-        Note("Drawer and share captures are queued when web access is on. Photos and videos found on the phone stay local until you mark them. Originals and analysis are encrypted on this phone; the server stores ciphertext and cannot search it unless you opt in on the website.")
+        Note("Drawer and share captures are queued when web access is on. Photos and videos found on the phone stay local until you mark them. Originals and analysis are encrypted on this phone; the server stores ciphertext and search runs only after decryption on your device.")
         KvList(listOf(
             "Web access" to (server ?: "Off"),
             "Library sync" to if (paused) "Paused" else status,
@@ -56,11 +72,13 @@ fun SyncDashboardPage() {
             PrimaryButton("Save passphrase", {
                 if (passphrase.length < 12) message = "Use at least 12 characters."
                 else scope.launch {
-                    withContext(Dispatchers.IO) { app.secrets.save(LibrarySync.PASS, org.json.JSONObject().put("passphrase", passphrase)) }
-                    passphrase = ""
-                    hasPass = true
-                    LibrarySync.now(app)
-                    message = "Passphrase saved on this phone. It is not sent to the server."
+                    try {
+                        saveLibraryPassphrase(app, passphrase)
+                        passphrase = ""
+                        hasPass = true
+                        LibrarySync.now(app)
+                        message = "Passphrase verified and saved on this phone."
+                    } catch (e: Exception) { message = e.message ?: "Could not verify the passphrase. The saved passphrase was kept." }
                 }
             }, Modifier.fillMaxWidth(), enabled = passphrase.isNotBlank())
         }
@@ -76,25 +94,26 @@ fun SyncDashboardPage() {
             }, Modifier.fillMaxWidth())
             SecondaryButton("Sync now", { LibrarySync.now(app); message = "Library sync queued." }, Modifier.fillMaxWidth(), enabled = server != null && !paused)
         }
+        if (queue.isNotEmpty()) SectionCard("Items waiting to sync") {
+            queue.forEach { row ->
+                val progress = if (row.bytesTotal > 0) " · ${row.bytesDone} / ${row.bytesTotal} bytes" else ""
+                ListRow(row.label.ifBlank { row.entityType }, subtitle = row.state + progress + (row.error?.let { " · $it" } ?: ""))
+            }
+        }
         if (conflicts.isNotEmpty()) SectionCard("Conflicts") {
-            Note("The same field changed on two devices and neither edit is clearly later. Nothing was overwritten until you choose.")
+            Note("The same field changed on two devices. The later value is currently shown. Choose which conflicting values to keep; unrelated edits are preserved.")
             conflicts.forEach { conflict ->
                 ListRow(conflict.entityType, subtitle = conflict.entityId)
-                SecondaryButton("Keep this phone", {
+                SecondaryButton("Keep this phone's edit", {
                     scope.launch {
-                        withContext(Dispatchers.IO) { app.database.sync().resolve(conflict.id, "local", System.currentTimeMillis()); app.database.sync().markChanged(conflict.entityType, conflict.entityId, false, System.currentTimeMillis()) }
-                        LibrarySync.now(app)
+                        try { resolveConflict(app, conflict, true); message = "Phone edit queued." }
+                        catch (e: Exception) { message = e.message ?: "Could not resolve this conflict." }
                     }
                 }, Modifier.fillMaxWidth())
-                SecondaryButton("Keep the other device", {
+                SecondaryButton("Keep the other device's edit", {
                     scope.launch {
-                        withContext(Dispatchers.IO) {
-                            val remote = LibrarySync.parse(conflict.remoteJson)
-                            applyDoc(app, conflict.entityType, conflict.entityId, remote)
-                            app.database.sync().resolve(conflict.id, "remote", System.currentTimeMillis())
-                            val row = app.database.sync().record(conflict.entityType, conflict.entityId)
-                            if (row != null) app.database.sync().synced(conflict.entityType, conflict.entityId, conflict.entityId, row.version, LibrarySync.sha256(conflict.remoteJson), remote.updatedAt, System.currentTimeMillis())
-                        }
+                        try { resolveConflict(app, conflict, false); message = "Other device's edit queued." }
+                        catch (e: Exception) { message = e.message ?: "Could not resolve this conflict." }
                     }
                 }, Modifier.fillMaxWidth())
             }

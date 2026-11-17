@@ -2,6 +2,7 @@ package com.hellfire.ass.sync
 
 import android.content.Context
 import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.room.withTransaction
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.hellfire.ass.HellFireApp
@@ -151,6 +152,7 @@ internal class LibrarySyncEngine(
     private var failed = 0
 
     suspend fun run(passphrase: CharArray): String {
+        if (LibrarySync.isPaused(app)) return "Paused"
         deadline = clock() + budgetMs
         val state = api.get("/api/library/state")
         val epoch = state.optString("epoch")
@@ -160,14 +162,20 @@ internal class LibrarySyncEngine(
             cursorFile = JSONObject()
         }
         base = app.secrets.read(LibrarySync.BASE) ?: JSONObject()
-        parked = runCatching { JSONObject(parkedFile(app).readText()) }.getOrDefault(JSONObject())
+        parked = app.secrets.read(PARKED) ?: runCatching { JSONObject(parkedFile(app).readText()) }.getOrDefault(JSONObject())
         val saltText = state.optStringOrNull("salt") ?: api.post("/api/library/salt",
             JSONObject().put("salt", Base64.getEncoder().encodeToString(ByteArray(16).also { java.security.SecureRandom().nextBytes(it) }))).getString("salt")
         salt = Base64.getDecoder().decode(saltText)
         keys = derive(passphrase.copyOf(), salt)
-        val check = state.optStringOrNull("keyCheck") ?: api.post("/api/library/key-check", JSONObject().put("keyCheck", LibrarySync.keyCheck(keys.cipher))).getString("keyCheck")
+        var check = state.optStringOrNull("keyCheck")
+        if (check == null) {
+            // Existing v1 libraries have no check. Prove the key before installing one.
+            val first = api.get("/api/library/changes?after=0&limit=1").optJSONArray("records")?.optJSONObject(0)
+            if (first != null && !canOpenRecord(keys, first)) return "The passphrase does not match the existing server library. Nothing was sent."
+            check = api.post("/api/library/key-check", JSONObject().put("keyCheck", LibrarySync.keyCheck(keys.cipher))).getString("keyCheck")
+        }
         if (!LibrarySync.checkKey(keys.cipher, check))
-            return "The passphrase on this phone does not match the server library. Nothing was sent. Enter the passphrase used before, or replace the server library."
+            return "The passphrase on this phone does not match the server library. Nothing was sent. Enter the passphrase used before."
         device = deviceId(app)
         db.sync().recoverInterrupted()
         db.sync().resumeAll()
@@ -195,7 +203,8 @@ internal class LibrarySyncEngine(
 
     private fun saveState() {
         app.secrets.save(LibrarySync.BASE, base)
-        parkedFile(app).writeText(parked.toString())
+        app.secrets.save(PARKED, parked)
+        parkedFile(app).delete()
     }
 
     // ---- local change discovery ----
@@ -213,7 +222,7 @@ internal class LibrarySyncEngine(
         }
         scan("media", stop, 25, "SELECT id FROM media_item WHERE syncEnabled = 1 AND storage = 'MANAGED' AND state NOT IN ('DELETING', 'SYNC_REMOVED') " +
             "AND id > ? ORDER BY id LIMIT 25") { media -> queueMedia(media, now) }
-        scan("inbox", stop, 25, "SELECT id FROM inbox_item WHERE origin IN ('DRAWER', 'SHARE', 'SYNC') AND syncState != 'LOCAL_ONLY' AND lifecycle != 'DELETED' " +
+        scan("inbox", stop, 25, "SELECT id FROM inbox_item WHERE origin IN ('DRAWER', 'SHARE', 'SYNC') AND syncState != 'LOCAL_ONLY' AND lifecycle NOT IN ('DELETED', 'TRASHED') " +
             "AND id > ? ORDER BY id LIMIT 25") { inbox -> queueInbox(inbox, now) }
     }
 
@@ -239,7 +248,15 @@ internal class LibrarySyncEngine(
         children(now, "media_bookmark", "SELECT id FROM media_bookmark WHERE mediaId IN ($marks)", args)
         children(now, "transcript_segment", "SELECT id FROM transcript_segment WHERE mediaId IN ($marks)", args)
         children(now, "media_item_tag", "SELECT itemId || ':' || tag FROM media_item_tag WHERE itemId IN ($marks)", args)
-        children(now, "media_category", "SELECT DISTINCT categoryId FROM media_item_category WHERE itemId IN ($marks)", args)
+        val categories = ids("SELECT DISTINCT categoryId FROM media_item_category WHERE itemId IN ($marks) UNION SELECT categoryId FROM media_bookmark WHERE mediaId IN ($marks) AND categoryId IS NOT NULL", args + args)
+        val seen = mutableSetOf<String>()
+        for (category in categories) {
+            var next: String? = category
+            while (next != null && seen.add(next)) {
+                queue("media_category", next, now)
+                next = db.library().category(next)?.parentId
+            }
+        }
         children(now, "media_item_category", "SELECT itemId || ':' || categoryId FROM media_item_category WHERE itemId IN ($marks)", args)
         children(now, "media_collection", "SELECT DISTINCT collectionId FROM collection_member WHERE itemId IN ($marks)", args)
         children(now, "collection_member", "SELECT collectionId || ':' || itemId FROM collection_member WHERE itemId IN ($marks)", args)
@@ -264,7 +281,7 @@ internal class LibrarySyncEngine(
         when {
             existing == null -> db.sync().markChanged(type, id, false, now)
             existing.deleted -> if (type !in hiddenByTombstone) db.sync().markChanged(type, id, false, now)
-            existing.state == SyncState.SYNCED.name && existing.localHash != LibrarySync.fieldsHash(fields) -> db.sync().markChanged(type, id, false, now)
+            existing.state == SyncState.SYNCED.name && (existing.localHash != LibrarySync.fieldsHash(fields) || existing.remoteId != keys.remoteId(type, id)) -> db.sync().markChanged(type, id, false, now)
         }
     }
 
@@ -301,6 +318,7 @@ internal class LibrarySyncEngine(
             if (rows.isEmpty()) return
             var progress = false
             for (row in rows) {
+                if (clock() >= deadline) return
                 val key = parkKey(row)
                 val outcome = incoming(row, count = key !in counted)
                 counted += key
@@ -315,17 +333,21 @@ internal class LibrarySyncEngine(
         val type = row.getString("entityType")
         val remoteId = row.getString("entityId")
         if (type !in LibrarySync.TYPES) return Outcome.SKIPPED
-        val opened = runCatching {
-            val sealed = Base64.getDecoder().decode(row.getJSONObject("envelope").getString("ct"))
-            LibrarySync.parseBody(keys.cipher.decrypt(sealed, LibrarySync.aad("record", "$type:$remoteId")).toString(Charsets.UTF_8))
-        }.getOrNull()?.takeIf { (id, _) -> keys.remoteId(type, id) == remoteId }
+        val envelope = row.getJSONObject("envelope")
+        val legacy = envelope.optInt("v", 1) == 1
+        val opened = openRecord(keys, row)
         if (opened == null) {
             mark(app, UNREADABLE, "$type/$remoteId")
             unpark(row)
             return Outcome.UNREADABLE
         }
         val (id, sealedDoc) = opened
-        val remote = sealedDoc.copy(deleted = row.optBoolean("deleted"), updatedAt = row.getLong("updatedAt"))
+        val remote = if (legacy) sealedDoc.copy(deleted = row.optBoolean("deleted"), updatedAt = row.getLong("updatedAt")) else sealedDoc
+        if (!legacy && (remote.deleted != row.optBoolean("deleted") || remote.updatedAt != row.getLong("updatedAt"))) {
+            mark(app, UNREADABLE, "$type/$remoteId")
+            unpark(row)
+            return Outcome.UNREADABLE
+        }
         val version = row.getLong("version")
         val tracked = db.sync().record(type, id)
         if (tracked != null && tracked.version >= version && tracked.remoteId == remoteId) { unpark(row); return Outcome.SKIPPED }
@@ -339,10 +361,10 @@ internal class LibrarySyncEngine(
         if (!applyDoc(app, type, id, merged.doc)) return park(row, count)
         val now = clock()
         if (merged.conflicts.isNotEmpty())
-            db.sync().saveConflict(SyncConflict(UUID.randomUUID().toString(), type, id, LibrarySync.canonical(local), LibrarySync.canonical(remote), now))
+            db.sync().saveConflict(SyncConflict(UUID.randomUUID().toString(), type, id, conflictChoice(merged.doc, local, merged.conflicts), conflictChoice(merged.doc, remote, merged.conflicts), now))
         setBase(type, id, remote)
         val record = tracked ?: SyncRecord(type, id, updatedAt = now)
-        if (LibrarySync.sameValues(merged.doc, remote)) {
+        if (!legacy && LibrarySync.sameValues(merged.doc, remote)) {
             db.sync().save(record.copy(deleted = merged.doc.deleted))
             db.sync().synced(type, id, remoteId, version, readFields(type, id)?.let(LibrarySync::fieldsHash), remote.updatedAt, now)
         } else {
@@ -350,6 +372,8 @@ internal class LibrarySyncEngine(
             db.sync().save(record.copy(state = SyncState.PENDING.name, deleted = merged.doc.deleted, remoteId = remoteId, version = version,
                 localHash = null, attempts = 0, nextAttemptAt = 0, error = null))
         }
+        clearMark(app, UNREADABLE, "$type/$remoteId")
+        clearMark(app, STUCK, "$type/$remoteId")
         pulled++
         unpark(row)
         return Outcome.APPLIED
@@ -362,13 +386,9 @@ internal class LibrarySyncEngine(
         val previous = parked.optJSONObject(key)
         if (previous != null && previous.getJSONObject("row").getLong("version") > row.getLong("version")) return Outcome.PARKED
         val attempts = (previous?.optInt("attempts") ?: 0) + if (count) 1 else 0
-        if (attempts > 20) {
-            // A parent that never arrives (or an original that never downloads) stops being retried every run.
-            parked.remove(key)
-            mark(app, STUCK, key)
-            return Outcome.UNREADABLE
-        }
-        parked.put(key, JSONObject().put("row", row).put("attempts", attempts))
+        if (attempts > 20) mark(app, STUCK, key)
+        // Keep the sealed row: a late parent must still be able to unblock it on a future run.
+        parked.put(key, JSONObject().put("row", row).put("attempts", attempts.coerceAtMost(21)))
         return Outcome.PARKED
     }
 
@@ -417,7 +437,7 @@ internal class LibrarySyncEngine(
         val item = if (type == "media_item" && !record.deleted) db.library().item(id) else null
         val hash = item?.contentHash
         if (item != null && LibrarySync.includeMedia(item.syncEnabled, item.storage) && item.size > 0 && !hash.isNullOrBlank()) {
-            blobId = prior.fields["blobId"]?.value?.takeIf { prior.fields["contentHash"]?.value == hash }
+            blobId = prior.fields["blobId"]?.value?.takeIf { prior.fields["contentHash"]?.value == hash && record.remoteId == remoteId }
             if (blobId == null) {
                 if (!app.media.file(id).exists()) { failRecord(record, "The original is missing on this phone"); return null }
                 blobId = try {
@@ -440,7 +460,9 @@ internal class LibrarySyncEngine(
                 } catch (e: WebSync.Rejected) {
                     if (e.status in 400..499 && e.status != 401 && e.status != 429) { failRecord(record, "The server refused the original (HTTP ${e.status})"); return null }
                     throw e
-                }
+                } catch (cancelled: CancellationException) { throw cancelled }
+                catch (network: IOException) { throw network }
+                catch (_: Exception) { failRecord(record, "The local original could not be read for sync"); return null }
             }
             stamped["blobId"] = LibrarySync.Field(blobId, prior.fields["blobId"]?.takeIf { it.value == blobId }?.updatedAt ?: record.updatedAt)
         }
@@ -452,6 +474,7 @@ internal class LibrarySyncEngine(
         val json = JSONObject().put("entityType", type).put("entityId", remoteId).put("baseVersion", record.version)
             .put("deleted", record.deleted).put("updatedAt", doc.updatedAt).put("deviceId", device).put("envelope", envelope)
         if (blobId != null) json.put("blobId", blobId)
+        record.remoteId?.takeIf { it != remoteId }?.let { json.put("previousId", it) }
         return Out(record, remoteId, fields, doc, json, size)
     }
 
@@ -465,7 +488,7 @@ internal class LibrarySyncEngine(
             val record = out.record
             val key = "${record.entityType}/${out.remoteId}"
             val ok = accepted[key]
-            val conflict = conflicts[key]
+            val conflict = conflicts[key] ?: record.remoteId?.let { conflicts["${record.entityType}/$it"] }
             val refusal = rejected[key]
             when {
                 ok != null -> {
@@ -499,7 +522,9 @@ internal class LibrarySyncEngine(
         val hash = remote.fields["contentHash"]?.value
         val size = remote.fields["size"]?.value?.toLongOrNull() ?: 0
         if (blob.isNullOrBlank() || hash.isNullOrBlank() || size <= 0) return true
-        if (db.library().item(id)?.storage == StorageMode.MANAGED.name) return true
+        db.library().item(id)?.let { existing ->
+            if (existing.storage == StorageMode.MANAGED.name && app.media.file(id).isFile && existing.contentHash == hash && existing.size == size) return true
+        }
         val context = currentCoroutineContext()
         return try {
             LibrarySync.chunkCount(size)
@@ -534,6 +559,8 @@ internal class LibrarySyncEngine(
 private fun JSONObject.optStringOrNull(name: String): String? = if (isNull(name)) null else optString(name).ifEmpty { null }
 private fun JSONArray?.rows(): List<JSONObject> = if (this == null) emptyList() else (0 until length()).map { getJSONObject(it) }
 
+private const val PARKED = "library-sync-parked"
+
 private fun parkedFile(app: HellFireApp) = File(app.noBackupFilesDir, "library-sync-parked.json")
 
 internal const val UNREADABLE = "unreadable"
@@ -543,6 +570,11 @@ internal const val STUCK = "stuck"
 private fun mark(app: HellFireApp, set: String, key: String) {
     val prefs = app.getSharedPreferences(LibrarySync.PREFS, Context.MODE_PRIVATE)
     prefs.edit().putStringSet(set, marked(app, set) + key).apply()
+}
+
+private fun clearMark(app: HellFireApp, set: String, key: String) {
+    val prefs = app.getSharedPreferences(LibrarySync.PREFS, Context.MODE_PRIVATE)
+    if (key in marked(app, set)) prefs.edit().putStringSet(set, marked(app, set) - key).apply()
 }
 
 internal fun marked(app: HellFireApp, set: String): Set<String> =
@@ -557,31 +589,74 @@ internal suspend fun resetLibrarySyncState(app: HellFireApp) {
         "localHash = NULL, version = 0, remoteId = NULL, bytesDone = 0, error = NULL")
     app.secrets.remove(LibrarySync.BASE)
     app.secrets.remove(LibrarySync.CURSOR)
+    app.secrets.remove(PARKED)
     parkedFile(app).delete()
     app.getSharedPreferences(LibrarySync.PREFS, Context.MODE_PRIVATE).edit()
         .remove(UNREADABLE).remove(STUCK).remove("scan-tracked").remove("scan-media").remove("scan-inbox").apply()
 }
 
-/**
- * Deletes the server's encrypted library (records, originals, key check, salt) so this phone can upload everything
- * again under its current passphrase. Website uploads this phone has not pulled yet are lost.
- */
-suspend fun replaceServerLibrary(app: HellFireApp) = withContext(Dispatchers.IO) {
+private fun openRecord(keys: LibrarySync.Keys, row: JSONObject): Pair<String, LibrarySync.Doc>? = runCatching {
+    val type = row.getString("entityType"); val remote = row.getString("entityId")
+    val envelope = row.getJSONObject("envelope")
+    val plain = keys.cipher.decrypt(Base64.getDecoder().decode(envelope.getString("ct")), LibrarySync.aad("record", "$type:$remote")).toString(Charsets.UTF_8)
+    if (envelope.optInt("v", 1) == 1) remote to LibrarySync.parse(plain)
+    else LibrarySync.parseBody(plain).also { (id, _) -> require(keys.remoteId(type, id) == remote) }
+}.getOrNull()
+
+private fun canOpenRecord(keys: LibrarySync.Keys, row: JSONObject) = openRecord(keys, row) != null
+
+/** Correct a local typo, but never silently start using another key for an existing library. */
+suspend fun saveLibraryPassphrase(app: HellFireApp, passphrase: String) = withContext(Dispatchers.IO) {
+    require(passphrase.length in 12..1024) { "Use a passphrase of 12 to 1024 characters" }
     LibrarySync.mutex.withLock {
-        val config = app.secrets.read(WebSync.CONFIG) ?: error("Web access is off")
-        LibraryClient(config.getString("url"), config.getString("token")).post("/api/library/reset", JSONObject())
-        resetLibrarySyncState(app)
+        val previous = app.secrets.read(LibrarySync.PASS)?.optString("passphrase")
+        val config = app.secrets.read(WebSync.CONFIG)
+        if (config != null) {
+            val api = LibraryClient(config.getString("url"), config.getString("token"))
+            val state = api.get("/api/library/state")
+            val salt = state.optStringOrNull("salt")
+            if (salt != null) {
+                val keys = LibrarySync.keys(passphrase.toCharArray(), Base64.getDecoder().decode(salt))
+                val check = state.optStringOrNull("keyCheck")
+                val first = if (check == null) api.get("/api/library/changes?after=0&limit=1").optJSONArray("records")?.optJSONObject(0) else null
+                require(if (check != null) LibrarySync.checkKey(keys.cipher, check) else first == null || canOpenRecord(keys, first)) {
+                    "This library already uses another passphrase. Enter its existing passphrase; changing encryption keys is not supported."
+                }
+            }
+        } else require(previous.isNullOrEmpty() || previous == passphrase) { "Connect to the server before changing a saved passphrase so its key can be verified." }
+        app.secrets.save(LibrarySync.PASS, JSONObject().put("passphrase", passphrase))
     }
-    LibrarySync.now(app)
 }
 
-/** Applies the chosen side of a conflict on this phone and queues it, so the server and other devices get the same value. */
-suspend fun resolveConflict(app: HellFireApp, conflict: SyncConflict, keepLocal: Boolean) {
-    val doc = LibrarySync.parse(if (keepLocal) conflict.localJson else conflict.remoteJson)
-    val now = System.currentTimeMillis()
-    check(applyDoc(app, conflict.entityType, conflict.entityId, doc)) { "That item can no longer be changed here" }
-    app.database.sync().resolve(conflict.id, if (keepLocal) "local" else "remote", now)
-    app.database.sync().markChanged(conflict.entityType, conflict.entityId, doc.deleted, now)
+private fun conflictChoice(merged: LibrarySync.Doc, choice: LibrarySync.Doc, fields: List<String>): String {
+    val selected = merged.fields.toMutableMap()
+    for (name in fields) choice.fields[name]?.let { selected[name] = it }
+    return JSONObject(LibrarySync.canonical(merged.copy(fields = selected, deleted = if ("*deleted" in fields) choice.deleted else merged.deleted)))
+        .put("conflicts", JSONArray(fields)).toString()
+}
+
+/** Only conflicting fields change; unrelated merged values and edits made since detection survive. */
+suspend fun resolveConflict(app: HellFireApp, conflict: SyncConflict, keepLocal: Boolean) = withContext(Dispatchers.IO) {
+    LibrarySync.mutex.withLock {
+        app.database.withTransaction {
+            val json = JSONObject(if (keepLocal) conflict.localJson else conflict.remoteJson)
+            val choice = LibrarySync.parse(json.toString())
+            val names = json.optJSONArray("conflicts")
+            val now = System.currentTimeMillis()
+            val current = readSyncFields(app, conflict.entityType, conflict.entityId)
+            val fields = current?.mapValues { LibrarySync.Field(it.value, now) }?.toMutableMap() ?: mutableMapOf()
+            if (names == null) fields.putAll(choice.fields) else for (index in 0 until names.length()) {
+                val name = names.getString(index)
+                choice.fields[name]?.let { fields[name] = it.copy(updatedAt = now) }
+            }
+            val deletionChanged = names == null || (0 until names.length()).any { names.getString(it) == "*deleted" }
+            val deleted = if (deletionChanged) choice.deleted else app.database.sync().record(conflict.entityType, conflict.entityId)?.deleted == true
+            val doc = LibrarySync.Doc(fields, deleted, now)
+            check(applyDoc(app, conflict.entityType, conflict.entityId, doc)) { "That item can no longer be changed here" }
+            app.database.sync().resolve(conflict.id, if (keepLocal) "local" else "remote", now)
+            app.database.sync().markChanged(conflict.entityType, conflict.entityId, doc.deleted, now)
+        }
+    }
     LibrarySync.now(app)
 }
 
@@ -655,7 +730,7 @@ internal suspend fun readSyncFields(app: HellFireApp, type: String, id: String):
             "processingState" to item.processingState, "backupState" to item.backupState,
             "capturedAt" to item.capturedAt.toString(), "originalRef" to item.originalRef.orEmpty())
     }
-    "media_bookmark" -> app.database.openHelper.readableDatabase.row("SELECT mediaId, startMs, endMs, title, note, favorite, hidden, origin FROM media_bookmark WHERE id = ?", id)
+    "media_bookmark" -> app.database.openHelper.readableDatabase.row("SELECT mediaId, startMs, endMs, title, note, favorite, hidden, origin, categoryId FROM media_bookmark WHERE id = ?", id)
     "media_category" -> app.database.openHelper.readableDatabase.row("SELECT name, parentId, origin, isPrivate, policy FROM media_category WHERE id = ?", id)
     "saved_location" -> app.database.openHelper.readableDatabase.row("SELECT label, latitude, longitude, address, sourceText, note, inboxId, itemId FROM saved_location WHERE id = ?", id)
     "transcript_segment" -> app.database.openHelper.readableDatabase.row("SELECT mediaId, startMs, endMs, speaker, text FROM transcript_segment WHERE id = ?", id)
@@ -695,6 +770,7 @@ internal suspend fun applyDoc(app: HellFireApp, type: String, id: String, doc: L
     if (doc.deleted) return applyTombstone(app, type, id)
     val f = doc.fields
     val now = System.currentTimeMillis()
+    fun flag(name: String) = f[name]?.value in setOf("1", "true")
     return try {
         when (type) {
             "media_item" -> {
@@ -705,7 +781,7 @@ internal suspend fun applyDoc(app: HellFireApp, type: String, id: String, doc: L
                     app.database.library().insertItem(MediaItem(id, null, f["name"]?.value ?: "Synced item", f["mime"]?.value ?: "application/octet-stream",
                         f["kind"]?.value ?: (f["contentKind"]?.value ?: "OTHER"), f["contentHash"]?.value, f["size"]?.value?.toLongOrNull() ?: 0, now,
                         f["recordedAt"]?.value?.toLongOrNull(), summary = f["summary"]?.value ?: "", durationMs = f["durationMs"]?.value?.toLongOrNull(),
-                        contentKind = f["contentKind"]?.value ?: "OTHER", origin = CaptureOrigin.SYNC.name, syncEnabled = true, favorite = f["favorite"]?.value == "true"))
+                        contentKind = f["contentKind"]?.value ?: "OTHER", origin = CaptureOrigin.SYNC.name, syncEnabled = true, favorite = flag("favorite")))
                 } else {
                     app.database.library().updateItem(existing.copy(name = f["name"]?.value ?: existing.name, summary = f["summary"]?.value ?: existing.summary,
                         favorite = f["favorite"]?.value?.toBooleanStrictOrNull() ?: existing.favorite,
@@ -718,7 +794,7 @@ internal suspend fun applyDoc(app: HellFireApp, type: String, id: String, doc: L
             }
             "inbox_item" -> {
                 val item = InboxItem(id, f["contentKind"]?.value ?: "OTHER", f["title"]?.value ?: "", f["summary"]?.value ?: "", f["notes"]?.value ?: "",
-                    f["originalRef"]?.value, f["origin"]?.value ?: "SYNC", lifecycle = f["lifecycle"]?.value ?: "ACTIVE", favorite = f["favorite"]?.value == "true",
+                    f["originalRef"]?.value, f["origin"]?.value ?: "SYNC", lifecycle = f["lifecycle"]?.value ?: "ACTIVE", favorite = flag("favorite"),
                     processingState = f["processingState"]?.value ?: "PENDING", syncState = SyncState.SYNCED.name, backupState = f["backupState"]?.value ?: "NOT_BACKED_UP",
                     capturedAt = f["capturedAt"]?.value?.toLongOrNull() ?: now, updatedAt = now)
                 if (app.database.inbox().item(id) == null) app.database.inbox().insert(item) else app.database.inbox().saveEdits(item)
@@ -728,13 +804,13 @@ internal suspend fun applyDoc(app: HellFireApp, type: String, id: String, doc: L
                 val mediaId = f["mediaId"]?.value ?: return false
                 if (app.database.library().item(mediaId) == null) return false
                 app.database.playback().saveBookmark(MediaBookmark(id, mediaId, f["startMs"]?.value?.toLongOrNull() ?: 0, f["endMs"]?.value?.toLongOrNull(),
-                    f["title"]?.value ?: "", f["note"]?.value ?: "", favorite = f["favorite"]?.value == "true", hidden = f["hidden"]?.value == "true",
-                    origin = f["origin"]?.value ?: "USER", createdAt = now, updatedAt = now))
+                    f["title"]?.value ?: "", f["note"]?.value ?: "", favorite = flag("favorite"), hidden = flag("hidden"),
+                    origin = f["origin"]?.value ?: "USER", categoryId = f["categoryId"]?.value?.ifBlank { null }, createdAt = now, updatedAt = now))
                 true
             }
             "media_category" -> {
                 val category = MediaCategory(id, f["parentId"]?.value?.ifBlank { null }, f["name"]?.value ?: "Category",
-                    f["origin"]?.value ?: "USER", f["isPrivate"]?.value == "true", f["policy"]?.value ?: "DEFAULT", createdAt = now, updatedAt = now)
+                    f["origin"]?.value ?: "USER", flag("isPrivate"), f["policy"]?.value ?: "DEFAULT", createdAt = now, updatedAt = now)
                 if (app.database.library().category(id) == null) app.database.library().insertCategory(category) else app.database.library().updateCategory(category)
                 true
             }
@@ -789,7 +865,7 @@ internal suspend fun applyDoc(app: HellFireApp, type: String, id: String, doc: L
             }
             "drawer_message" -> {
                 app.database.inbox().insertMessage(DrawerMessage(id, f["sessionId"]?.value ?: id, f["inboxId"]?.value?.ifBlank { null },
-                    f["role"]?.value ?: "USER", f["text"]?.value ?: "", f["createdAt"]?.value?.toLongOrNull() ?: now, f["inContext"]?.value != "false"))
+                    f["role"]?.value ?: "USER", f["text"]?.value ?: "", f["createdAt"]?.value?.toLongOrNull() ?: now, f["inContext"]?.value !in setOf("false", "0")))
                 true
             }
             "action_record" -> {
@@ -824,7 +900,7 @@ private suspend fun applyTombstone(app: HellFireApp, type: String, id: String): 
     return try {
         when (type) {
             "media_item" -> sql.execSQL("UPDATE media_item SET state = 'SYNC_REMOVED' WHERE id = ?", arrayOf(id))
-            "inbox_item" -> sql.execSQL("UPDATE inbox_item SET lifecycle = 'TRASHED', trashedAt = ? WHERE id = ?", arrayOf(System.currentTimeMillis(), id))
+            "inbox_item" -> sql.execSQL("UPDATE inbox_item SET lifecycle = 'TRASHED', trashedAt = ? WHERE id = ?", arrayOf<Any>(System.currentTimeMillis(), id))
             "media_item_category", "media_item_tag", "collection_member", "inbox_member" -> {
                 val parts = id.split(":", limit = 2)
                 if (parts.size != 2) return false

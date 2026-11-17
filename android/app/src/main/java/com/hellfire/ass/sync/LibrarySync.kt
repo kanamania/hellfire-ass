@@ -139,7 +139,7 @@ object LibrarySync {
         require(passphrase.size in 12..1024) { "Use a passphrase of at least 12 characters" }
         require(salt.size == 16)
         val spec = PBEKeySpec(passphrase, salt, BackupCrypto.ITERATIONS, 256)
-        val master = try { SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded } finally { spec.clearPassword() }
+        val master = try { SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded } finally { spec.clearPassword(); passphrase.fill('\u0000') }
         return try {
             Keys(PayloadCipher(SecretKeySpec(master, "AES")), hmac(master, "hellfire-library-ids-v1".toByteArray(Charsets.UTF_8) + byteArrayOf(1)))
         } finally { master.fill(0) }
@@ -222,7 +222,7 @@ object LibrarySync {
         val body = doc.fields.toSortedMap().entries.joinToString(",") { (name, field) ->
             "${jsonString(name)}:{\"t\":${field.updatedAt},\"v\":${jsonString(field.value)}}"
         }
-        return "{\"deleted\":${doc.deleted},\"fields\":{$body}}"
+        return "{\"deleted\":${doc.deleted},\"updatedAt\":${doc.updatedAt},\"fields\":{$body}}"
     }
 
     /** Sealed record body: the canonical document plus the local id, which only key holders can read. */
@@ -239,7 +239,7 @@ object LibrarySync {
             val field = raw.getJSONObject(name)
             fields[name] = Field(field.getString("v"), field.getLong("t"))
         }
-        return Doc(fields, obj.optBoolean("deleted"), fields.values.maxOfOrNull { it.updatedAt } ?: 0)
+        return Doc(fields, obj.optBoolean("deleted"), obj.optLong("updatedAt", fields.values.maxOfOrNull { it.updatedAt } ?: 0))
     }
 
     fun aad(kind: String, id: String): ByteArray = "library-$kind-v1:$id".toByteArray(Charsets.UTF_8)
