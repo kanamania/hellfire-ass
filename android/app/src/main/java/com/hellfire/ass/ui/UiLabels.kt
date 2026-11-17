@@ -468,67 +468,17 @@ object UiLabels {
         "Privacy settings could not be read. Nothing has changed." -> R.string.ui_eb5bb0e600
         "Loading privacy settings…" -> R.string.ui_9f2467da31
         "Retry" -> R.string.ui_942087cc2d
-        "Player" -> R.string.ui_64aee8c6cb
-        "Unlock" -> R.string.ui_4ac709aa58
-        "Lock screen" -> R.string.ui_f59d9abe42
-        "Original is not available." -> R.string.ui_d47f85a04c
-        "Notifications are off, so lock-screen controls may be hidden by Android." -> R.string.ui_77d99701fc
-        "Thumbnail unavailable" -> R.string.ui_7f7739d908
-        "Pause" -> R.string.ui_858e4ba7a2
-        "Play" -> R.string.ui_436e61016e
-        "Skip back" -> R.string.ui_2876c1f5c3
-        "Skip forward" -> R.string.ui_3284049794
-        "Previous" -> R.string.ui_a57b08a480
-        "Next" -> R.string.ui_1ff57a29d7
-        "Exit full screen" -> R.string.ui_897e0cf78b
-        "Full screen" -> R.string.ui_674fe2acd0
-        "Picture-in-picture" -> R.string.ui_3baa2d6ed4
-        "Speed" -> R.string.ui_c372fee9b4
-        "Shuffle" -> R.string.ui_317cb3a7ef
-        "Unfavorite" -> R.string.ui_5e87a7bd5a
-        "Favorite" -> R.string.ui_ea713ecd85
-        "Sleep timer" -> R.string.ui_336c84d8da
-        "End of item" -> R.string.ui_bfb99f7ddb
-        "Set A" -> R.string.ui_7781d909b9
-        "Set B" -> R.string.ui_bf8f310bda
-        "Clear loop" -> R.string.ui_9d10c311ca
-        "Save range" -> R.string.ui_67eaebc39f
-        "Previous chapter" -> R.string.ui_2bebdca31f
-        "Next chapter" -> R.string.ui_4344dde797
-        "Search in this item" -> R.string.ui_b318882ba8
-        "Indexed search" -> R.string.ui_bf1b7b8a4c
-        "Bookmark" -> R.string.ui_1bac400788
-        "Seek" -> R.string.ui_67ae3405bc
-        "Hide" -> R.string.ui_ac20a57bfd
-        "Delete" -> R.string.ui_e2d0a54968
-        "Convert to manual" -> R.string.ui_8bb41c4164
-        "Remove" -> R.string.ui_c3812fc4ac
-        "Transcript" -> R.string.ui_721164f0dc
-        "Copy" -> R.string.ui_e21f935f11
-        "Correct" -> R.string.ui_aca01a1a3a
-        "Playback history" -> R.string.ui_d34349bbcc
-        "No playback history yet." -> R.string.ui_5484a3a7f5
-        "Title" -> R.string.ui_7e8cd2056d
-        "Notes" -> R.string.ui_8a7525b149
-        "Save bookmark" -> R.string.ui_b63ed49a38
-        "Close" -> R.string.ui_7d9eb7acb1
-        "Volume" -> R.string.ui_b10fb966d7
-        "Brightness" -> R.string.ui_ec811d30a8
-        "No extra audio or subtitle tracks reported." -> R.string.ui_eeed1164fe
-        "Audio track" -> R.string.ui_e4a8479838
-        "Subtitles off" -> R.string.ui_6a5216300c
-        "No bookmarks or chapters yet." -> R.string.ui_b284a23c3c
-        "Open" -> R.string.ui_ed077f3d81
-        "System overlay is not available. Picture-in-picture is the supported floating player." -> R.string.ui_afd6047384
-        "Playback session could not start." -> R.string.ui_db9061fce2
-        "Storage permission was not granted. The external file was not opened." -> R.string.ui_fa1d54ecfb
-        "Picture-in-picture is not available on this device." -> R.string.ui_09da75e9c7
-        "Picture-in-picture was refused by this device. Playback continues in the app." -> R.string.ui_1198f84a2f
-        "Volume control was refused by this device." -> R.string.ui_e14509c412
-        "Waveform not available for this file. Playback can still continue." -> R.string.ui_554d3009ce
-        "No indexed match. Analysis was not started." -> R.string.ui_ca416eb41e
-        "This file cannot be played on this device. The codec or container is not supported. The original was not modified." -> R.string.ui_c730e1984e
-        "The original could not be read. Nothing was written out as a decrypted file." -> R.string.ui_b84bfebce5
-        "Playback failed. The original was not modified." -> R.string.ui_2cb0daa2e0
-        "This item is not audio or video." -> R.string.ui_1a00dd5a8a
-        "This external item has no content URI." -> R.string.ui_f0828a29ee
+        "Search" -> R.string.ui_intel_search
+        "Processing queue" -> R.string.ui_intel_queue
+        "Media intelligence" -> R.string.ui_intel_settings
+        "Pause" -> R.string.ui_intel_pause
+        "Resume" -> R.string.ui_intel_resume
+        "Charging only" -> R.string.ui_intel_charging
+        "Analyze library" -> R.string.ui_intel_analyze
+        "Fast" -> R.string.ui_intel_fast
+        "Balanced" -> R.string.ui_intel_balanced
+        "Deep" -> R.string.ui_intel_deep
+        "classifier not installed" -> R.string.ui_intel_absent
+        else -> null
+    }
+}

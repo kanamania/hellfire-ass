@@ -462,67 +462,15 @@
     <string name="ui_eb5bb0e600" formatted="false">Mipangilio ya faragha haikusomeka. Hakuna kilichobadilishwa.</string>
     <string name="ui_9f2467da31" formatted="false">Inapakia mipangilio ya faragha…</string>
     <string name="ui_942087cc2d" formatted="false">Jaribu tena</string>
-    <string name="ui_64aee8c6cb" formatted="false">Kicheza</string>
-    <string name="ui_4ac709aa58" formatted="false">Fungua</string>
-    <string name="ui_f59d9abe42" formatted="false">Funga skrini</string>
-    <string name="ui_d47f85a04c" formatted="false">Asili haipatikani.</string>
-    <string name="ui_77d99701fc" formatted="false">Arifa zimezimwa, hivyo vidhibiti vya skrini iliyofungwa vinaweza kufichwa na Android.</string>
-    <string name="ui_7f7739d908" formatted="false">Picha ndogo haipatikani</string>
-    <string name="ui_858e4ba7a2" formatted="false">Sitisha</string>
-    <string name="ui_436e61016e" formatted="false">Cheza</string>
-    <string name="ui_2876c1f5c3" formatted="false">Rudi nyuma</string>
-    <string name="ui_3284049794" formatted="false">Ruka mbele</string>
-    <string name="ui_a57b08a480" formatted="false">Iliyotangulia</string>
-    <string name="ui_1ff57a29d7" formatted="false">Inayofuata</string>
-    <string name="ui_897e0cf78b" formatted="false">Toka kwenye skrini nzima</string>
-    <string name="ui_674fe2acd0" formatted="false">Skrini nzima</string>
-    <string name="ui_3baa2d6ed4" formatted="false">Picha ndani ya picha</string>
-    <string name="ui_c372fee9b4" formatted="false">Kasi</string>
-    <string name="ui_317cb3a7ef" formatted="false">Changanya</string>
-    <string name="ui_5e87a7bd5a" formatted="false">Ondoa kipendwa</string>
-    <string name="ui_ea713ecd85" formatted="false">Kipendwa</string>
-    <string name="ui_336c84d8da" formatted="false">Kipima muda wa kulala</string>
-    <string name="ui_bfb99f7ddb" formatted="false">Mwisho wa kipengee</string>
-    <string name="ui_7781d909b9" formatted="false">Weka A</string>
-    <string name="ui_bf8f310bda" formatted="false">Weka B</string>
-    <string name="ui_9d10c311ca" formatted="false">Futa mzunguko</string>
-    <string name="ui_67eaebc39f" formatted="false">Hifadhi kipindi</string>
-    <string name="ui_2bebdca31f" formatted="false">Sura iliyotangulia</string>
-    <string name="ui_4344dde797" formatted="false">Sura inayofuata</string>
-    <string name="ui_b318882ba8" formatted="false">Tafuta katika kipengee hiki</string>
-    <string name="ui_bf1b7b8a4c" formatted="false">Tafuta kwenye faharasa</string>
-    <string name="ui_1bac400788" formatted="false">Alamisho</string>
-    <string name="ui_67ae3405bc" formatted="false">Nenda</string>
-    <string name="ui_ac20a57bfd" formatted="false">Ficha</string>
-    <string name="ui_e2d0a54968" formatted="false">Futa</string>
-    <string name="ui_8bb41c4164" formatted="false">Geuza kuwa ya mkono</string>
-    <string name="ui_c3812fc4ac" formatted="false">Ondoa</string>
-    <string name="ui_721164f0dc" formatted="false">Nakala</string>
-    <string name="ui_e21f935f11" formatted="false">Nakili</string>
-    <string name="ui_aca01a1a3a" formatted="false">Sahihisha</string>
-    <string name="ui_d34349bbcc" formatted="false">Historia ya kucheza</string>
-    <string name="ui_5484a3a7f5" formatted="false">Bado hakuna historia ya kucheza.</string>
-    <string name="ui_7e8cd2056d" formatted="false">Kichwa</string>
-    <string name="ui_8a7525b149" formatted="false">Maelezo</string>
-    <string name="ui_b63ed49a38" formatted="false">Hifadhi alamisho</string>
-    <string name="ui_7d9eb7acb1" formatted="false">Funga</string>
-    <string name="ui_b10fb966d7" formatted="false">Sauti</string>
-    <string name="ui_ec811d30a8" formatted="false">Mwangaza</string>
-    <string name="ui_eeed1164fe" formatted="false">Hakuna njia za ziada za sauti au manukuu zilizoripotiwa.</string>
-    <string name="ui_e4a8479838" formatted="false">Njia ya sauti</string>
-    <string name="ui_6a5216300c" formatted="false">Zima manukuu</string>
-    <string name="ui_b284a23c3c" formatted="false">Bado hakuna alamisho au sura.</string>
-    <string name="ui_ed077f3d81" formatted="false">Fungua</string>
-    <string name="ui_afd6047384" formatted="false">Dirisha la juu la mfumo halipatikani. Picha ndani ya picha ndiyo kicheza kinachoelea kinachotumika.</string>
-    <string name="ui_db9061fce2" formatted="false">Kipindi cha kucheza hakikuweza kuanza.</string>
-    <string name="ui_fa1d54ecfb" formatted="false">Ruhusa ya hifadhi haikutolewa. Faili ya nje haikufunguliwa.</string>
-    <string name="ui_09da75e9c7" formatted="false">Picha ndani ya picha haipatikani kwenye kifaa hiki.</string>
-    <string name="ui_1198f84a2f" formatted="false">Kifaa kimekataa picha ndani ya picha. Uchezaji unaendelea ndani ya programu.</string>
-    <string name="ui_e14509c412" formatted="false">Kifaa kimekataa udhibiti wa sauti.</string>
-    <string name="ui_554d3009ce" formatted="false">Umbo la wimbi halipatikani kwa faili hii. Uchezaji unaweza kuendelea.</string>
-    <string name="ui_ca416eb41e" formatted="false">Hakuna mechi kwenye faharasa. Uchambuzi haukuanzishwa.</string>
-    <string name="ui_c730e1984e" formatted="false">Faili hii haiwezi kuchezwa kwenye kifaa hiki. Kodeki au mfuko haukubaliwi. Asili haikubadilishwa.</string>
-    <string name="ui_b84bfebce5" formatted="false">Asili haikusomeka. Hakuna faili iliyofafanuliwa iliandikwa.</string>
-    <string name="ui_2cb0daa2e0" formatted="false">Uchezaji umeshindwa. Asili haikubadilishwa.</string>
-    <string name="ui_1a00dd5a8a" formatted="false">Kipengee hiki si sauti wala video.</string>
-    <string name="ui_f0828a29ee" formatted="false">Kipengee hiki cha nje hakina anwani ya maudhui.</string>
+    <string name="ui_intel_search" formatted="false">Tafuta</string>
+    <string name="ui_intel_queue" formatted="false">Foleni ya uchakataji</string>
+    <string name="ui_intel_settings" formatted="false">Ufahamu wa media</string>
+    <string name="ui_intel_pause" formatted="false">Simamisha</string>
+    <string name="ui_intel_resume" formatted="false">Endelea</string>
+    <string name="ui_intel_charging" formatted="false">Inapochaji tu</string>
+    <string name="ui_intel_analyze" formatted="false">Changanua maktaba</string>
+    <string name="ui_intel_fast" formatted="false">Haraka</string>
+    <string name="ui_intel_balanced" formatted="false">Wastani</string>
+    <string name="ui_intel_deep" formatted="false">Kina</string>
+    <string name="ui_intel_absent" formatted="false">Kiainishi hakijasakinishwa</string>
+</resources>

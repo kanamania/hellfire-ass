@@ -217,6 +217,7 @@ interface JobDao {
     suspend fun fail(id: String, error: String, retryAt: Long, maxAttempts: Int, now: Long)
     /** After process death: running jobs go back to PENDING and resume from their checkpoint. */
     @Query("UPDATE processing_job SET state = 'PENDING', claimToken = NULL WHERE state IN ('PREPARING', 'PROCESSING', 'INDEXING')") suspend fun recoverInterrupted(): Int
+    @Query("UPDATE processing_job SET state = 'PENDING', claimToken = NULL WHERE type = :type AND state IN ('PREPARING', 'PROCESSING', 'INDEXING')") suspend fun recoverType(type: String): Int
     @Query("UPDATE processing_job SET state = 'PAUSED', updatedAt = :now WHERE state IN ('PENDING', 'RETRY_PENDING') AND (:id IS NULL OR id = :id)") suspend fun pause(id: String?, now: Long): Int
     @Query("UPDATE processing_job SET state = 'PENDING', updatedAt = :now WHERE state = 'PAUSED' AND (:id IS NULL OR id = :id)") suspend fun resume(id: String?, now: Long): Int
     @Query("UPDATE processing_job SET state = 'PENDING', attempts = 0, error = NULL, notBefore = 0, updatedAt = :now WHERE state = 'FAILED' AND (:id IS NULL OR id = :id)") suspend fun retryFailed(id: String?, now: Long): Int
