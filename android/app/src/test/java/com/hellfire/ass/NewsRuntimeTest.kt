@@ -81,16 +81,47 @@ class NewsRuntimeTest {
         assertEquals("NEEDS_KEY", x.source.state)
     }
 
+    @Test fun `articles fetched in one refresh cluster before the next publisher is read`() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        val app = HellFireApp()
+        org.robolectric.util.ReflectionHelpers.callInstanceMethod<Unit>(app, "attach",
+            org.robolectric.util.ReflectionHelpers.ClassParameter.from(android.content.Context::class.java, context))
+        val db = Room.inMemoryDatabaseBuilder(context, EventDatabase::class.java).build()
+        try {
+            val now = System.currentTimeMillis()
+            NewsCatalog.defaults(now, false).forEach { db.news().saveSource(it.copy(state = "MUTED")) }
+            listOf("one", "two", "three").forEach { id ->
+                db.news().saveSource(NewsSource(id, id, "RSS", "https://$id.example/feed", "TANZANIA", "en", 75, createdAt = now, updatedAt = now))
+            }
+            val http = NewsHttp { url, _, _ ->
+                val link = url.replace("/feed", "/flood")
+                val rss = """<rss version="2.0"><channel><item><title>Floods kill 12 in Dar es Salaam</title><link>$link</link><description>12 people died after flooding in Dar es Salaam. Rescue teams are searching Jangwani.</description></item></channel></rss>"""
+                NewsResponse(200, rss.toByteArray(), emptyMap(), url)
+            }
+            val repository = NewsRepository(app, http, NewsPoster { false }, db)
+            val result = repository.refresh(true)
+            assertEquals(3, result.articlesNew); assertEquals(1, result.eventsNew)
+            val event = db.news().topEvents(10).single()
+            assertEquals(3, event.articleCount)
+            assertEquals(3, db.news().articlesFor(event.id).size)
+            assertEquals(0, repository.refresh(true).articlesNew)
+            assertTrue(runCatching { repository.dropIn("Your OTP is 123456", null) }.isFailure)
+            assertEquals(1, db.news().topEvents(10).size)
+        } finally { db.close() }
+    }
+
     @Test fun `schema 18 library upgrades to news 19 with portable table registration`() = runBlocking {
         val context = RuntimeEnvironment.getApplication()
         val name = "news-migration-fixture.db"
         MigrationFixture.create(context, name, 18) { old ->
-            old.execSQL("INSERT INTO media_collection (id,name,createdAt,updatedAt) VALUES ('saved','Saved',1,1)")
+            old.execSQL("INSERT INTO media_collection (id,name,kind,description,createdAt,updatedAt) VALUES ('saved','Saved','OWNER','',1,1)")
         }
         val db = Room.databaseBuilder(context, EventDatabase::class.java, name).addMigrations(*EventDatabase.ALL_MIGRATIONS).build()
         try {
             assertEquals(19, db.openHelper.writableDatabase.version)
-            assertEquals("Saved", db.library().collections().let { kotlinx.coroutines.flow.first(it) }.single().name)
+            db.openHelper.writableDatabase.query("SELECT name FROM media_collection WHERE id = ?", arrayOf("saved")).use { row ->
+                assertTrue(row.moveToFirst()); assertEquals("Saved", row.getString(0))
+            }
             db.news().saveSource(NewsSource("fixture", "Fixture", "RSS", "https://news.example/feed", "CUSTOM", "en", 60, createdAt = 1, updatedAt = 1))
             assertEquals("Fixture", db.news().source("fixture")!!.name)
             assertEquals(NewsSchema.tables.toSet(), (BackupTables.tablesFor(19) - BackupTables.tablesFor(18).toSet()).toSet())

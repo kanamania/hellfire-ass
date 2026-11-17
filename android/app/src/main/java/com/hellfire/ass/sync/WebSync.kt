@@ -6,6 +6,7 @@ import androidx.work.*
 import com.hellfire.ass.HellFireApp
 import com.hellfire.ass.data.EventDatabase
 import com.hellfire.ass.finance.FinanceRepository
+import com.hellfire.ass.news.NewsSync
 import com.hellfire.ass.security.PayloadCipher
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
@@ -44,7 +45,22 @@ object WebSync {
     class Rejected(val status: Int) : Exception("Web server answered HTTP $status")
     data class Counts(val upserted: Int, val deleted: Int, val bytes: Int = 0)
 
-    private class Kind(val name: String, val sql: String, val at: String, val enrich: ((SupportSQLiteDatabase, PayloadCipher, JSONObject) -> Unit)? = null)
+    private class Kind(val name: String, val sql: String, val at: String, val args: (Long) -> Array<Any> = { emptyArray() },
+        val enrich: ((SupportSQLiteDatabase, PayloadCipher, JSONObject) -> Unit)? = null)
+
+    // News: events with coverage in the last 90 days or saved by the owner, and what hangs off them. Public news only.
+    private const val NEWS_EVENTS = "SELECT ne.id FROM news_event ne LEFT JOIN news_event_state ns ON ns.eventId = ne.id " +
+        "WHERE ne.mergedInto IS NULL AND (ne.lastArticleAt >= ? OR ns.bookmarked = 1 OR ns.readLater = 1)"
+    private val newsWindow: (Long) -> Array<Any> = { now -> arrayOf(now - 90 * 86_400_000L) }
+    private val mediaFields = listOf("type", "url", "mime", "credit", "durationMs")
+
+    /** Replaces the JSON text in [column] with its parsed value under [name] ([fallback] when missing or invalid). */
+    private fun parsed(row: JSONObject, column: String, name: String, fallback: () -> Any) {
+        val text = row.opt(column) as? String
+        row.remove(column)
+        row.put(name, text?.let { runCatching { JSONTokener(it).nextValue() }.getOrNull() }?.takeIf { it is JSONObject || it is JSONArray } ?: fallback())
+    }
+    private fun booleans(row: JSONObject, vararg names: String) = names.forEach { row.put(it, row.optLong(it) != 0L) }
 
     // Only the listed columns leave the phone. Rows tied to a security-sensitive source (codes, OTPs) never do.
     private val eventFields = setOf("title", "text", "big_text", "text_lines", "sub_text", "messages", "sender_hint", "conversation_title")
@@ -65,27 +81,6 @@ object WebSync {
             "FROM memory_item m JOIN source_event e ON e.id = m.sourceId WHERE m.state = 'ACTIVE' AND e.securitySensitive = 0", "createdAt"),
         // SMS, plus notifications the classifier saw as messages or payments. payloadHash makes content changes visible to
         // the local hash; it is replaced by the decrypted text fields only when the row is uploaded.
-        Kind("news_event", "SELECT id, headline, eventType, topics, place, status, version, score, level, protectedPublic, independentSources, articleCount, verification, firstSeenAt, updatedAt, lastArticleAt, summaryJson, scoreJson FROM news_event WHERE mergedInto IS NULL", "lastArticleAt") { _, _, row ->
-            row.put("protectedPublic", row.optLong("protectedPublic") != 0L)
-            row.put("topics", JSONArray(row.optString("topics").split(',').map { it.trim() }.filter { it.isNotEmpty() }))
-            parsed(row, "summaryJson", "summary") { JSONObject.NULL }
-            parsed(row, "scoreJson", "scoreDetail") { JSONObject() }
-        },
-        Kind("news_version", "SELECT eventId || ':' || version AS id, eventId, version, at, classification, previously, whatsNew, whyItMatters, evidenceJson FROM news_event_version", "at") { _, _, row ->
-            parsed(row, "evidenceJson", "evidence") { JSONArray() }
-        },
-        Kind("news_article", "SELECT a.id, a.eventId, a.sourceId, s.name AS publisher, a.title, a.url, a.publishedAt, a.contentType, a.agency, a.language, a.mediaJson FROM news_article a LEFT JOIN news_source s ON s.id = a.sourceId", "publishedAt") { _, _, row ->
-            parsed(row, "mediaJson", "media") { JSONArray() }
-        },
-        Kind("news_briefing", "SELECT id, slot, title, scheduledFor, generatedAt, windowStart, windowEnd, itemsJson FROM news_briefing", "generatedAt") { _, _, row ->
-            parsed(row, "itemsJson", "items") { JSONArray() }
-        },
-        Kind("news_state", "SELECT eventId AS id, eventId, deliveredVersion, seenVersion, readAt, bookmarked, readLater, hidden, followed, fieldTimes, updatedAt FROM news_event_state", "updatedAt") { _, _, row ->
-            listOf("bookmarked", "readLater", "hidden", "followed").forEach { row.put(it, row.optLong(it) != 0L) }
-            parsed(row, "fieldTimes", "fieldTimes") { JSONObject() }
-        },
-        Kind("news_progress", "SELECT briefingId AS id, briefingId, position, audioMs, updatedAt FROM news_progress", "updatedAt"),
-        Kind("news_source", "SELECT id, name, kind, category, state, reliability, lastSuccessAt, failures, lastError, updatedAt FROM news_source", "updatedAt"),
         Kind("event", "SELECT e.id, e.source, e.packageName, e.occurredAt, e.kind, e.contentRedacted, p.label, e.payloadHash " +
             "FROM source_event e LEFT JOIN event_processing p ON p.eventId = e.id WHERE e.source IN ('android_sms', 'android_notification') " +
             "AND e.contentAvailable = 1 AND e.securitySensitive = 0 AND (e.source = 'android_sms' OR p.label IN ('MESSAGE', 'FINANCE_CANDIDATE'))", "occurredAt") { db, cipher, row ->
@@ -94,6 +89,34 @@ object WebSync {
             row.remove("payloadHash")
             row.put("fields", JSONObject().apply { eventFields.forEach { name -> fields.optJSONArray(name)?.let { put(name, it) } } })
         },
+        Kind("news_event", "SELECT id, headline, eventType, topics, place, status, version, score, level, protectedPublic, independentSources, articleCount, " +
+            "verification, firstSeenAt, updatedAt, lastArticleAt, summaryJson, scoreJson FROM news_event WHERE id IN ($NEWS_EVENTS)", "lastArticleAt", newsWindow) { _, _, row ->
+            booleans(row, "protectedPublic")
+            row.put("topics", JSONArray(row.optString("topics").split(',').map(String::trim).filter(String::isNotEmpty)))
+            parsed(row, "summaryJson", "summary") { JSONObject.NULL }
+            // `score` stays the 0..100 total; the factor breakdown and reasons go under scoreDetail.
+            parsed(row, "scoreJson", "scoreDetail") { JSONObject() }
+        },
+        Kind("news_version", "SELECT eventId || ':' || version AS id, eventId, version, at, classification, previously, whatsNew, whyItMatters, evidenceJson " +
+            "FROM news_event_version WHERE eventId IN ($NEWS_EVENTS)", "at", newsWindow) { _, _, row -> parsed(row, "evidenceJson", "evidence") { JSONArray() } },
+        Kind("news_article", "SELECT a.id, a.eventId, a.sourceId, s.name AS publisher, a.title, a.url, a.publishedAt, a.contentType, a.agency, a.language, a.mediaJson " +
+            "FROM news_article a LEFT JOIN news_source s ON s.id = a.sourceId WHERE a.eventId IN ($NEWS_EVENTS)", "publishedAt", newsWindow) { _, _, row ->
+            parsed(row, "mediaJson", "media") { JSONArray() }
+            val media = row.optJSONArray("media") ?: JSONArray()
+            row.put("media", JSONArray((0 until media.length()).mapNotNull { i ->
+                media.optJSONObject(i)?.let { item -> JSONObject().apply { mediaFields.forEach { if (item.has(it)) put(it, item.get(it)) } } }
+            }))
+        },
+        Kind("news_briefing", "SELECT id, slot, title, scheduledFor, generatedAt, windowStart, windowEnd, itemsJson FROM news_briefing WHERE generatedAt >= ?",
+            "generatedAt", { now -> arrayOf(now - 60 * 86_400_000L) }) { _, _, row -> parsed(row, "itemsJson", "items") { JSONArray() } },
+        Kind("news_state", "SELECT eventId AS id, eventId, deliveredVersion, seenVersion, readAt, bookmarked, readLater, hidden, followed, fieldTimes, updatedAt " +
+            "FROM news_event_state", "updatedAt") { _, _, row ->
+            booleans(row, "bookmarked", "readLater", "hidden", "followed")
+            parsed(row, "fieldTimes", "fieldTimes") { JSONObject() }
+        },
+        Kind("news_progress", "SELECT briefingId AS id, briefingId, position, audioMs, updatedAt FROM news_progress", "updatedAt"),
+        // Never the X token (kept in secrets), feed validators or connector cursors.
+        Kind("news_source", "SELECT id, name, kind, category, state, reliability, lastSuccessAt, failures, lastError, updatedAt FROM news_source", "updatedAt"),
     )
 
     fun validate(url: String, token: String) {
@@ -107,15 +130,9 @@ object WebSync {
     private fun hash(text: String): String =
         MessageDigest.getInstance("SHA-256").digest(text.toByteArray(Charsets.UTF_8)).take(16).joinToString("") { "%02x".format(it) }
 
-    private fun parsed(row: JSONObject, column: String, name: String, fallback: () -> Any) {
-        val text = row.opt(column) as? String
-        row.remove(column)
-        row.put(name, text?.let { runCatching { JSONTokener(it).nextValue() }.getOrNull() } ?: fallback())
-    }
-
-    private fun read(db: SupportSQLiteDatabase, kind: Kind): Map<String, Local> {
+    private fun read(db: SupportSQLiteDatabase, kind: Kind, now: Long): Map<String, Local> {
         val rows = linkedMapOf<String, Local>()
-        db.query(kind.sql).use { cursor ->
+        db.query(kind.sql, kind.args(now)).use { cursor ->
             while (cursor.moveToNext()) {
                 val row = JSONObject()
                 for (i in 0 until cursor.columnCount) row.put(cursor.getColumnName(i), when (cursor.getType(i)) {
@@ -152,10 +169,17 @@ object WebSync {
      */
     suspend fun run(db: EventDatabase, cipher: PayloadCipher, saved: JSONObject?, call: Call, save: (JSONObject) -> Unit, now: Long = System.currentTimeMillis()): Counts {
         val remote = call.send("GET", "/api/sync/state", null).getString("dataset")
-        val newsSeq = pullNews(db, call, saved)
-        val state = saved?.takeIf { it.optString("dataset") == remote && it.has("rows") } ?: JSONObject()
+        val previous = saved?.takeIf { it.optString("dataset") == remote && it.has("rows") }
+        // Owner news choices made on the web go into Room first, so this pass pushes the merged state.
+        var newsSeq = previous?.optLong("newsActionSeq") ?: 0L
+        val actions = newsActions(call, newsSeq)
+        if (!actions.isNullOrEmpty()) {
+            NewsSync.apply(db.news(), actions)
+            newsSeq = maxOf(newsSeq, actions.maxOf { it.seq })
+        }
+        val state = previous ?: JSONObject()
             .put("dataset", call.send("POST", "/api/sync/reset", JSONObject()).getString("dataset")).put("rows", JSONObject()).also(save)
-        if (newsSeq != null) state.put("newsActionSeq", newsSeq)
+        state.put("newsActionSeq", newsSeq)
         val dataset = state.getString("dataset")
         val held = state.getJSONObject("rows")
         val sql = db.openHelper.readableDatabase
@@ -165,7 +189,7 @@ object WebSync {
         for (kind in kinds.map { it.name } + "summary") {
             currentCoroutineContext().ensureActive()
             val spec = kinds.firstOrNull { it.name == kind }
-            val local = if (spec == null) summary(db, now) else read(sql, spec)
+            val local = if (spec == null) summary(db, now) else read(sql, spec, now)
             val server = held.optJSONObject(kind) ?: JSONObject().also { held.put(kind, it) }
             val changed = local.filter { server.optString(it.key) != it.value.hash }
             val gone = server.keys().asSequence().filter { it !in local }.toList()
@@ -193,29 +217,29 @@ object WebSync {
             save(state)
         }
         call.send("POST", "/api/sync/finish", JSONObject().put("dataset", dataset))
-        ackNews(call, state, save)
+        if (actions != null && newsSeq > state.optLong("newsActionAcked")) {
+            call.send("POST", "/api/sync/news-actions/ack", JSONObject().put("upTo", newsSeq))
+            save(state.put("newsActionAcked", newsSeq))
+        }
         return Counts(upserted, deleted, bytes)
     }
 
-    private suspend fun pullNews(db: EventDatabase, call: Call, saved: JSONObject?): Long? {
-        val after = saved?.optLong("newsActionSeq") ?: 0L
-        val page = try { call.send("GET", "/api/sync/news-actions?after=$after", null) }
-        catch (e: Rejected) { if (e.status == 404) return null else throw e }
-        val list = page.optJSONArray("actions") ?: return after
-        val actions = (0 until list.length()).map { com.hellfire.ass.news.NewsSync.parse(list.getJSONObject(it)) }
-        if (actions.isNotEmpty()) com.hellfire.ass.news.NewsSync.apply(db.news(), actions)
-        return actions.maxOfOrNull { it.seq } ?: after
+    /** Web actions after [after], oldest first; null when the server predates news (404). */
+    private fun newsActions(call: Call, after: Long): List<NewsSync.Action>? {
+        val all = mutableListOf<NewsSync.Action>()
+        var cursor = after
+        repeat(20) {
+            val page = try { call.send("GET", "/api/sync/news-actions?after=$cursor", null) }
+                catch (e: Rejected) { if (e.status == 404) return null else throw e }
+            val list = page.optJSONArray("actions") ?: return all
+            for (i in 0 until list.length()) all += NewsSync.parse(list.getJSONObject(i))
+            if (list.length() < 500 || all.isEmpty()) return all
+            cursor = all.last().seq
+        }
+        return all
     }
 
-    private fun ackNews(call: Call, state: JSONObject, save: (JSONObject) -> Unit) {
-        val seq = state.optLong("newsActionSeq")
-        if (seq <= state.optLong("newsActionAcked")) return
-        try { call.send("POST", "/api/sync/news-actions/ack", JSONObject().put("upTo", seq)) }
-        catch (e: Rejected) { if (e.status == 404) return else throw e }
-        save(state.put("newsActionAcked", seq))
-    }
-
-    /** JSON body, not gzip. The server parser does not advertise compression; gzip would break sync. */
+    /** JSON body, not gzip: the server parser does not advertise compression. */
     fun https(url: String, token: String) = Call { method, path, body ->
         val connection = URI(url.trim().trimEnd('/') + path).toURL().openConnection() as HttpsURLConnection
         connection.instanceFollowRedirects = false
