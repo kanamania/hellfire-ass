@@ -462,4 +462,18 @@
     <string name="ui_eb5bb0e600" formatted="false">Mipangilio ya faragha haikusomeka. Hakuna kilichobadilishwa.</string>
     <string name="ui_9f2467da31" formatted="false">Inapakia mipangilio ya faragha…</string>
     <string name="ui_942087cc2d" formatted="false">Jaribu tena</string>
+    <string name="share_with_ai" formatted="false">Shiriki na AI</string>
+    <string name="share_prepare" formatted="false">Andaa nakala iliyosafishwa</string>
+    <string name="share_open_sheet" formatted="false">Fungua laha ya kushiriki</string>
+    <string name="share_copy_caption" formatted="false">Nakili maelezo</string>
+    <string name="share_copy_summary" formatted="false">Nakili muhtasari</string>
+    <string name="share_export_json" formatted="false">Hamisha JSON</string>
+    <string name="share_sanitized_copy" formatted="false">Nakala iliyosafishwa</string>
+    <string name="share_preview" formatted="false">Onyesho la nakala iliyosafishwa</string>
+    <string name="share_not_published" formatted="false">Laha ya kushiriki imefunguliwa. HellFire Ass haijachapisha chochote.</string>
+    <string name="share_not_anonymous" formatted="false">Metadata iliyopachikwa imeondolewa kwenye nakala hii. Maudhui yanayoonekana au kusikika bado yanaweza kumtambua mtu au mahali.</string>
+    <string name="share_no_face_model" formatted="false">Utambuzi wa uso na namba za gari haupatikani.</string>
+    <string name="share_no_tracking" formatted="false">Kufuatilia eneo kwenye video hakujatekelezwa.</string>
+    <string name="share_original_kept" formatted="false">Faili asili haikubadilishwa.</string>
+    <string name="share_no_model" formatted="false">Modeli ya ndani haijasakinishwa.</string>
 </resources>

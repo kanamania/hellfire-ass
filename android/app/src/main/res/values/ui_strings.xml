@@ -462,4 +462,18 @@
     <string name="ui_eb5bb0e600" formatted="false">Privacy settings could not be read. Nothing has changed.</string>
     <string name="ui_9f2467da31" formatted="false">Loading privacy settings…</string>
     <string name="ui_942087cc2d" formatted="false">Retry</string>
+    <string name="share_with_ai" formatted="false">Share with AI</string>
+    <string name="share_prepare" formatted="false">Prepare sanitized copy</string>
+    <string name="share_open_sheet" formatted="false">Open share sheet</string>
+    <string name="share_copy_caption" formatted="false">Copy caption</string>
+    <string name="share_copy_summary" formatted="false">Copy summary</string>
+    <string name="share_export_json" formatted="false">Export JSON</string>
+    <string name="share_sanitized_copy" formatted="false">Sanitized copy</string>
+    <string name="share_preview" formatted="false">Sanitized preview</string>
+    <string name="share_not_published" formatted="false">Share sheet opened. HellFire Ass did not publish this.</string>
+    <string name="share_not_anonymous" formatted="false">Embedded metadata was removed from this copy. Visible or audible content can still identify people and places.</string>
+    <string name="share_no_face_model" formatted="false">Face and plate detection is not available.</string>
+    <string name="share_no_tracking" formatted="false">Video region tracking is not implemented.</string>
+    <string name="share_original_kept" formatted="false">The original file was not changed.</string>
+    <string name="share_no_model" formatted="false">Local model is not installed.</string>
 </resources>
