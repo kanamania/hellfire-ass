@@ -16,6 +16,9 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
+import java.io.InputStream
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import java.net.URI
 import java.util.Base64
 import java.util.UUID
@@ -120,7 +123,12 @@ private suspend fun discover(app: HellFireApp) {
     val sql = db.openHelper.readableDatabase
     val now = System.currentTimeMillis()
     val base = app.secrets.read(LibrarySync.BASE) ?: JSONObject()
-    val media = ids(sql, "SELECT id FROM media_item WHERE syncEnabled = 1 AND storage = 'MANAGED' AND state != 'DELETING' LIMIT 40")
+    val tracked = mutableListOf<Pair<String, String>>()
+    sql.query("SELECT entityType, entityId FROM sync_record WHERE deleted = 0").use { rows ->
+        while (rows.moveToNext()) tracked += rows.getString(0) to rows.getString(1)
+    }
+    for ((type, id) in tracked) if (readFields(app, type, id) == null) db.sync().markChanged(type, id, true, now)
+    val media = ids(sql, "SELECT id FROM media_item WHERE syncEnabled = 1 AND storage = 'MANAGED' AND state NOT IN ('DELETING', 'SYNC_REMOVED') LIMIT 40")
     for (id in media) queue(app, base, "media_item", id, now)
     if (media.isEmpty()) return
     val marks = media.joinToString(",") { "?" }
@@ -155,7 +163,7 @@ private suspend fun queue(app: HellFireApp, base: JSONObject, type: String, id: 
     val fields = readFields(app, type, id) ?: return
     val hash = LibrarySync.sha256(LibrarySync.canonical(LibrarySync.doc(LibrarySync.stamp(fields, clocks(base, type, id), now))))
     val existing = app.database.sync().record(type, id)
-    if (existing?.localHash == hash && !existing.deleted) return
+    if (existing?.deleted == true || existing?.localHash == hash) return
     app.database.sync().markChanged(type, id, false, now)
 }
 
@@ -171,15 +179,16 @@ private suspend fun push(app: HellFireApp, client: LibraryClient, cipher: Payloa
     val device = deviceId(app)
     val base = app.secrets.read(LibrarySync.BASE) ?: JSONObject()
     for (record in due) {
-        val fields = readFields(app, record.entityType, record.entityId) ?: run {
-            if (!record.deleted) app.database.sync().markChanged(record.entityType, record.entityId, true, now)
+        val fields = readFields(app, record.entityType, record.entityId)
+        if (fields == null && !record.deleted) {
+            app.database.sync().markChanged(record.entityType, record.entityId, true, now)
             continue
         }
         val clocks = clocks(base, record.entityType, record.entityId)
-        val stamped = LibrarySync.stamp(fields, clocks, record.updatedAt)
+        val stamped = outgoingDoc(record, fields, clocks).fields
         var blobId = stamped["blobId"]?.value
         val item = if (record.entityType == "media_item") app.database.library().item(record.entityId) else null
-        if (item != null && LibrarySync.includeMedia(item.syncEnabled, item.storage) && item.size > 0 && !item.contentHash.isNullOrBlank()) {
+        if (!record.deleted && item != null && LibrarySync.includeMedia(item.syncEnabled, item.storage) && item.size > 0 && !item.contentHash.isNullOrBlank()) {
             val hash = item.contentHash
             app.database.sync().progress(record.entityType, record.entityId, item.size, record.bytesDone, record.uploadSession)
             ChunkedMedia.Reader(app.media.file(item.id), app.cipher, item.id, item.size).use { reader ->
@@ -239,7 +248,7 @@ private suspend fun pull(app: HellFireApp, client: LibraryClient, cipher: Payloa
         val sealed = Base64.getDecoder().decode(envelope.getString("ct"))
         val remote = LibrarySync.parse(cipher.decrypt(sealed, LibrarySync.aad("record", "$type:$id")).toString(Charsets.UTF_8))
             .copy(deleted = row.optBoolean("deleted"), updatedAt = row.getLong("updatedAt"))
-        if (type == "media_item") {
+        if (type == "media_item" && !remote.deleted) {
             val blob = remote.fields["blobId"]?.value
             val hash = remote.fields["contentHash"]?.value
             val size = remote.fields["size"]?.value?.toLongOrNull() ?: 0
@@ -250,13 +259,17 @@ private suspend fun pull(app: HellFireApp, client: LibraryClient, cipher: Payloa
         }
         val localFields = readFields(app, type, id)
         val prior = baseDoc(base, type, id)
-        val local = if (localFields == null) LibrarySync.Doc() else LibrarySync.doc(LibrarySync.stamp(localFields, clocks(base, type, id), prior.updatedAt))
+        val tracked = app.database.sync().record(type, id)
+        val local = if (localFields == null) LibrarySync.Doc(deleted = tracked?.deleted == true, updatedAt = tracked?.updatedAt ?: 0)
+            else LibrarySync.doc(LibrarySync.stamp(localFields, clocks(base, type, id), prior.updatedAt), tracked?.deleted == true, tracked?.updatedAt ?: prior.updatedAt)
         val merged = LibrarySync.merge(prior, local, remote)
         if (merged.conflicts.isNotEmpty()) {
             app.database.sync().saveConflict(SyncConflict(UUID.randomUUID().toString(), type, id, LibrarySync.canonical(local), LibrarySync.canonical(remote), System.currentTimeMillis()))
         }
         if (!applyDoc(app, type, id, merged.doc)) return cursor
         val now = System.currentTimeMillis()
+        val status = app.database.sync().record(type, id)
+        app.database.sync().save((status ?: SyncRecord(type, id, updatedAt = now)).copy(deleted = merged.doc.deleted))
         app.database.sync().synced(type, id, id, row.getLong("version"), LibrarySync.sha256(LibrarySync.canonical(merged.doc)), remote.updatedAt, now)
         saveClocks(base, type, id, merged.doc)
         if (type == "media_item" && merged.doc.fields["needsAnalysis"]?.value == "1") {
@@ -297,23 +310,52 @@ private fun saveClocks(base: JSONObject, type: String, id: String, doc: LibraryS
     base.put("$type/$id", JSONObject().put("doc", LibrarySync.canonical(doc)))
 }
 
-private suspend fun download(app: HellFireApp, client: LibraryClient, cipher: PayloadCipher, id: String, blobId: String, hash: String, size: Long, name: String, mime: String): Boolean {
-    val file = java.io.File(app.noBackupFilesDir, "sync-$id.bin")
-    return try {
-        val count = LibrarySync.chunkCount(size)
-        file.outputStream().use { out ->
-            for (index in 0 until count) {
-                val chunk = client.get("/api/library/blobs/$blobId/chunks/$index")
-                val bytes = Base64.getDecoder().decode(chunk.getString("bytes"))
-                require(LibrarySync.sha256(bytes) == chunk.getString("sha256"))
-                val plain = cipher.decrypt(bytes, LibrarySync.aad("chunk", "$hash:$index"))
-                out.write(plain)
-                plain.fill(0)
-            }
+internal fun outgoingDoc(record: SyncRecord, fields: Map<String, String>?, clocks: Map<String, LibrarySync.Clock>): LibrarySync.Doc =
+    LibrarySync.doc(LibrarySync.stamp(if (record.deleted) emptyMap() else fields.orEmpty(), clocks, record.updatedAt), record.deleted, record.updatedAt)
+
+/** One decrypted chunk in memory at a time; downloaded originals are never staged as plaintext files. */
+internal class SyncChunkInput(private val size: Long, private val load: (Int) -> ByteArray) : InputStream() {
+    private var chunk = ByteArray(0)
+    private var offset = 0
+    private var position = 0L
+    private var index = 0
+    override fun read(): Int {
+        val one = ByteArray(1)
+        return if (read(one, 0, 1) < 0) -1 else one[0].toInt() and 255
+    }
+    override fun read(target: ByteArray, off: Int, length: Int): Int {
+        require(off >= 0 && length >= 0 && off <= target.size - length)
+        if (length == 0) return 0
+        if (position == size) return -1
+        if (offset == chunk.size) {
+            chunk.fill(0)
+            chunk = load(index++)
+            offset = 0
+            require(chunk.size.toLong() == minOf(LibrarySync.CHUNK.toLong(), size - position)) { "Unexpected sync chunk size" }
         }
-        file.inputStream().use { app.media.adoptSynced(id, it, name, mime, hash) }
+        val count = minOf(length, chunk.size - offset)
+        chunk.copyInto(target, off, offset, offset + count)
+        offset += count
+        position += count
+        return count
+    }
+    override fun close() { chunk.fill(0); chunk = ByteArray(0) }
+}
+
+private suspend fun download(app: HellFireApp, client: LibraryClient, cipher: PayloadCipher, id: String, blobId: String, hash: String, size: Long, name: String, mime: String): Boolean {
+    val context = currentCoroutineContext()
+    return try {
+        LibrarySync.chunkCount(size)
+        SyncChunkInput(size) { index ->
+            context.ensureActive()
+            val chunk = client.get("/api/library/blobs/$blobId/chunks/$index")
+            val bytes = Base64.getDecoder().decode(chunk.getString("bytes"))
+            require(LibrarySync.sha256(bytes) == chunk.getString("sha256"))
+            cipher.decrypt(bytes, LibrarySync.aad("chunk", "$hash:$index"))
+        }.use { app.media.adoptSynced(id, it, name, mime, hash) }
         true
-    } catch (_: Exception) { false } finally { file.delete() }
+    } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+    catch (_: Exception) { false }
 }
 
 private suspend fun readFields(app: HellFireApp, type: String, id: String): Map<String, String>? = when (type) {
@@ -338,19 +380,23 @@ private suspend fun readFields(app: HellFireApp, type: String, id: String): Map<
     "media_collection" -> app.database.openHelper.readableDatabase.row("SELECT name, kind, description, coverItemId FROM media_collection WHERE id = ?", id)
     "drawer_message" -> app.database.openHelper.readableDatabase.row("SELECT sessionId, inboxId, role, text, createdAt, inContext FROM drawer_message WHERE id = ?", id)
     "action_record" -> app.database.openHelper.readableDatabase.row("SELECT inboxId, itemId, actionType, label, payload, state FROM action_record WHERE id = ?", id)
-    "media_item_category", "media_item_tag", "collection_member", "inbox_member" -> linkFields(type, id)
+    "media_item_category", "media_item_tag", "collection_member", "inbox_member" -> linkFields(app, type, id)
     else -> null
 }
 
-private fun linkFields(type: String, id: String): Map<String, String>? {
+private fun linkFields(app: HellFireApp, type: String, id: String): Map<String, String>? {
     val parts = id.split(":", limit = 2)
     if (parts.size != 2) return null
-    return when (type) {
-        "media_item_category" -> mapOf("itemId" to parts[0], "categoryId" to parts[1])
-        "media_item_tag" -> mapOf("itemId" to parts[0], "tag" to parts[1])
-        "collection_member" -> mapOf("collectionId" to parts[0], "itemId" to parts[1])
-        "inbox_member" -> mapOf("inboxId" to parts[0], "itemId" to parts[1])
-        else -> null
+    val columns = when (type) {
+        "media_item_category" -> "itemId" to "categoryId"
+        "media_item_tag" -> "itemId" to "tag"
+        "collection_member" -> "collectionId" to "itemId"
+        "inbox_member" -> "inboxId" to "itemId"
+        else -> return null
+    }
+    app.database.openHelper.readableDatabase.query("SELECT * FROM $type WHERE ${columns.first} = ? AND ${columns.second} = ?", parts.toTypedArray()).use { row ->
+        if (!row.moveToFirst()) return null
+        return (0 until row.columnCount).associate { row.getColumnName(it) to (row.getString(it) ?: "") }
     }
 }
 
@@ -362,7 +408,7 @@ private fun SupportSQLiteDatabase.row(query: String, id: String): Map<String, St
 }
 
 internal suspend fun applyDoc(app: HellFireApp, type: String, id: String, doc: LibrarySync.Doc): Boolean {
-    if (doc.deleted) return true
+    if (doc.deleted) return applyTombstone(app, type, id)
     val f = doc.fields
     val now = System.currentTimeMillis()
     return try {
@@ -378,7 +424,9 @@ internal suspend fun applyDoc(app: HellFireApp, type: String, id: String, doc: L
                         contentKind = f["contentKind"]?.value ?: "OTHER", origin = CaptureOrigin.SYNC.name, syncEnabled = true, favorite = f["favorite"]?.value == "true"))
                 } else {
                     app.database.library().updateItem(existing.copy(name = f["name"]?.value ?: existing.name, summary = f["summary"]?.value ?: existing.summary,
-                        favorite = f["favorite"]?.value?.toBooleanStrictOrNull() ?: existing.favorite))
+                        favorite = f["favorite"]?.value?.toBooleanStrictOrNull() ?: existing.favorite,
+                        state = if (existing.state == "SYNC_REMOVED") "RETAINED" else existing.state,
+                        syncEnabled = if (existing.state == "SYNC_REMOVED") true else existing.syncEnabled))
                 }
                 if (f["needsAnalysis"]?.value == "1") app.database.jobs().enqueue(ProcessingJob(UUID.randomUUID().toString(), "ANALYZE", id, priority = JobPriority.CAPTURE, createdAt = now, updatedAt = now))
                 true
@@ -479,5 +527,30 @@ internal suspend fun applyDoc(app: HellFireApp, type: String, id: String, doc: L
             }
             else -> true
         }
+    } catch (_: Exception) { false }
+}
+
+/** Remote removal hides retained originals; it never calls MediaVault.delete or deletes source evidence. */
+private suspend fun applyTombstone(app: HellFireApp, type: String, id: String): Boolean {
+    val sql = app.database.openHelper.writableDatabase
+    return try {
+        when (type) {
+            "media_item" -> sql.execSQL("UPDATE media_item SET state = 'SYNC_REMOVED', syncEnabled = 0 WHERE id = ?", arrayOf(id))
+            "inbox_item" -> sql.execSQL("UPDATE inbox_item SET lifecycle = 'TRASHED', trashedAt = ? WHERE id = ?", arrayOf(System.currentTimeMillis(), id))
+            "media_item_category", "media_item_tag", "collection_member", "inbox_member" -> {
+                val parts = id.split(":", limit = 2)
+                if (parts.size != 2) return false
+                val columns = when (type) {
+                    "media_item_category" -> "itemId" to "categoryId"
+                    "media_item_tag" -> "itemId" to "tag"
+                    "collection_member" -> "collectionId" to "itemId"
+                    else -> "inboxId" to "itemId"
+                }
+                sql.execSQL("DELETE FROM $type WHERE ${columns.first} = ? AND ${columns.second} = ?", parts.toTypedArray())
+            }
+            in LibrarySync.TYPES -> sql.execSQL("DELETE FROM $type WHERE id = ?", arrayOf(id))
+            else -> return false
+        }
+        true
     } catch (_: Exception) { false }
 }
