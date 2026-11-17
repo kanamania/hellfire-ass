@@ -34,7 +34,7 @@ data class OperatingProfile(
     val deferHeavy: Boolean,
 ) {
     companion object {
-        const val THERMAL_SEVERE = 4
+        const val THERMAL_SEVERE = 3
         fun of(signals: DeviceSignals): OperatingProfile {
             val severe = signals.thermal >= THERMAL_SEVERE || signals.lowMemory || signals.batteryPercent in 0..15 || signals.powerSave
             val comfortable = signals.charging && signals.thermal <= 1 && signals.batteryPercent >= 30 && !signals.lowMemory && !signals.powerSave
@@ -89,13 +89,16 @@ object ModelSlots {
  * This is not a second queue.
  */
 object ExecutionScheduler {
-    private val waiting = mutableSetOf<WorkPriority>()
+    private val waiting = mutableMapOf<WorkPriority, Int>()
 
-    @Synchronized fun noteWaiting(priority: WorkPriority) { waiting += priority }
-    @Synchronized fun clearWaiting(priority: WorkPriority) { waiting -= priority }
+    @Synchronized fun noteWaiting(priority: WorkPriority) { waiting[priority] = (waiting[priority] ?: 0) + 1 }
+    @Synchronized fun clearWaiting(priority: WorkPriority) {
+        val remaining = (waiting[priority] ?: 0) - 1
+        if (remaining > 0) waiting[priority] = remaining else waiting.remove(priority)
+    }
     @Synchronized fun shouldYield(holder: WorkPriority): Boolean =
-        holder == WorkPriority.DEFERRED && waiting.any { it == WorkPriority.INTERACTIVE }
-    @Synchronized fun waitingSnapshot(): Set<WorkPriority> = waiting.toSet()
+        holder == WorkPriority.DEFERRED && waiting.containsKey(WorkPriority.INTERACTIVE)
+    @Synchronized fun waitingSnapshot(): Set<WorkPriority> = waiting.keys.toSet()
     @Synchronized fun reset() { waiting.clear() }
 }
 
