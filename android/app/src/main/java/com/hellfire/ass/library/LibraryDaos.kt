@@ -69,7 +69,8 @@ interface LibraryDao {
     @RawQuery suspend fun queryItems(query: SupportSQLiteQuery): List<MediaItem>
 
     // ---- analysis ----
-    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertAnalysis(analysis: MediaAnalysis)
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertAnalysis(analysis: MediaAnalysis): Long
+    @Update suspend fun updateAnalysis(analysis: MediaAnalysis)
     @Query("SELECT * FROM media_analysis WHERE mediaId = :mediaId ORDER BY createdAt DESC") fun analyses(mediaId: String): Flow<List<MediaAnalysis>>
     @Query("SELECT * FROM media_analysis WHERE mediaId = :mediaId AND analyzer = :analyzer ORDER BY createdAt DESC LIMIT 1") suspend fun latestAnalysis(mediaId: String, analyzer: String): MediaAnalysis?
     @Query("SELECT * FROM media_analysis WHERE mediaId = :mediaId ORDER BY createdAt DESC LIMIT 1") suspend fun latestAny(mediaId: String): MediaAnalysis?
@@ -81,7 +82,8 @@ interface LibraryDao {
     @Query("SELECT DISTINCT a.mediaId FROM media_analysis a WHERE a.analyzer IN (:analyzers) AND a.modelVersion = 'absent' AND NOT EXISTS (SELECT 1 FROM media_analysis b WHERE b.mediaId = a.mediaId AND b.analyzer = a.analyzer AND b.createdAt > a.createdAt) LIMIT :limit")
     suspend fun analysedWithoutModel(analyzers: List<String>, limit: Int): List<String>
     @Transaction suspend fun saveAnalysis(analysis: MediaAnalysis) {
-        insertAnalysis(analysis); deleteSearch(analysis.id)
+        if (insertAnalysis(analysis) == -1L) updateAnalysis(analysis)
+        deleteSearch(analysis.id)
         if (analysis.text.isNotBlank()) insertSearch(LibrarySearch(analysis.id, analysis.mediaId, "ANALYSIS", analysis.text))
     }
 
@@ -431,6 +433,7 @@ interface SyncDao {
     @Query("UPDATE sync_record SET state = 'PENDING' WHERE state = 'UPLOADING'") suspend fun recoverInterrupted(): Int
     @Query("UPDATE sync_record SET state = 'PAUSED' WHERE state IN ('PENDING', 'FAILED')") suspend fun pauseAll(): Int
     @Query("UPDATE sync_record SET state = 'PENDING', nextAttemptAt = 0 WHERE state = 'PAUSED'") suspend fun resumeAll(): Int
+    @Query("SELECT * FROM sync_record WHERE state != 'SYNCED' ORDER BY updatedAt LIMIT 30") fun queueChanges(): Flow<List<SyncRecord>>
     @Query("SELECT state, COUNT(*) AS count FROM sync_record GROUP BY state") fun counts(): Flow<List<StateCount>>
     @Query("SELECT COALESCE(SUM(bytesTotal - bytesDone), 0) FROM sync_record WHERE state IN ('PENDING', 'UPLOADING', 'FAILED')") fun pendingBytes(): Flow<Long>
     @Query("DELETE FROM sync_record WHERE deleted = 1 AND state = 'SYNCED'") suspend fun purgeSentTombstones(): Int

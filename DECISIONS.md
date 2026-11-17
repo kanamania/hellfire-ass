@@ -294,3 +294,42 @@ No new runtime dependencies. Existing action approvals and capture-all policy st
   [files.list pagination contract](https://developers.google.com/workspace/drive/api/reference/rest/v3/files/list).
 - Cache cleanup removes orphan thumbnails only. Referenced thumbnails, active
   plaintext copies, share outputs, model caches and downloads are retained.
+
+## 2026-11-17 — Sequential sync/web review
+
+- Protocol 2 keeps AES-GCM/PBKDF2-SHA256 (600,000 iterations) and derives a
+  separate HMAC key for opaque record IDs and blob deduplication. Local IDs, tag
+  text and original SHA-256 hashes live inside ciphertext. An authenticated
+  phone initializes an immutable encrypted key check; the browser must verify it
+  before unlocking. Changing a nonempty library's encryption key is blocked;
+  correcting a local passphrase is allowed only after server verification.
+- Existing protocol-1 records remain readable. The phone upgrades each in place
+  using its previous server ID/version and uploads originals with keyed dedupe
+  IDs. Legacy browser edits wait for that upgrade. Old unreferenced blobs have a
+  24-hour grace; completed legacy blobs are retained until legacy records have
+  migrated because their references cannot be inspected by the server.
+- Discovery pages all eligible items; pulls drain pages and atomically save
+  encrypted parked records before advancing the cursor. Missing parents do not
+  block later rows. Invalid ciphertext and oversized records are isolated and
+  reported. Epoch changes reset versions and local base documents.
+- Three-way merges compare values, preserve unrelated edits and requeue merged
+  results. Conflict choices apply the selected conflicting fields to the current
+  row, then push. Remote removal hides originals and excludes them from the
+  ordinary plaintext mirror. Missing originals can repair an existing row
+  without deleting its bookmarks or analysis.
+- One persistent `LibrarySync.setPaused/isPaused` switch governs sync. New edits
+  remain queued while paused. The dashboard observes status and per-item queue
+  changes, with bytes transferred and individual errors.
+- Removed the unused library plaintext-search API/toggle and its derived index.
+  Library search runs locally after decryption. The separate owner-authorized
+  ordinary web mirror retains its own existing search behavior.
+- Browser notes, collection names/descriptions, categories and bookmark edits
+  are connected. Inbox membership opens originals; bookmarks/transcripts seek
+  the media player; summaries are visible. Thumbnails are honestly labeled
+  unsynced. Browser originals are limited to 256 MiB to bound memory; the phone
+  streams larger originals. Downloads use three concurrent chunk requests and
+  verify chunk and whole-file integrity. Authenticated chunk limits are raised
+  with bounded 429 retries in both clients.
+- No device, model, private-media or live-account result follows from these host
+  tests. The installed Next.js build still reports a pre-existing security
+  advisory; its suggested patch is separate from this media review.

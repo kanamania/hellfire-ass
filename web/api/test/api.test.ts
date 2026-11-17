@@ -1,8 +1,10 @@
 // Runs against a real, disposable Postgres: TEST_DATABASE_URL must point at an empty database.
 import assert from 'node:assert/strict';
-import { createHash, webcrypto } from 'node:crypto';
+import { createHash, createHmac, pbkdf2Sync, webcrypto } from 'node:crypto';
 import { after, before, beforeEach, describe, it } from 'node:test';
 import pg from 'pg';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { createApp } from '../src/app.js';
 import { hashPassword, issueSession, validSession, verifyPassword } from '../src/auth.js';
 import type { Config } from '../src/config.js';
@@ -208,7 +210,7 @@ describe('encrypted library', () => {
   });
 
   it('serializes concurrent first writes and rejects nonexistent base versions', async () => {
-    assert.equal((await phone('/api/library/records', { records: [record('missing-base', 9)] })).status, 400);
+    assert.equal((await phone('/api/library/records', { records: [record('missing-base', 9)] })).body.rejected[0].error, 'missing base record');
     const responses = await Promise.all(Array.from({ length: 5 }, () => phone('/api/library/records', { records: [record('concurrent', 0)] })));
     assert.ok(responses.every((result) => result.status === 200));
     assert.equal(responses.reduce((n, result) => n + result.body.accepted.length, 0), 1);
@@ -216,8 +218,8 @@ describe('encrypted library', () => {
   });
 
   it('publishes a change feed, tombstones and version conflicts without storing plaintext search', async () => {
-    assert.equal((await owner('/api/library/search?q=secret')).status, 403);
-    assert.equal((await phone('/api/library/records', { records: [{ ...record('b1', 0), searchText: 'secret note' }] })).status, 400);
+    assert.equal((await owner('/api/library/search?q=secret')).status, 404);
+    assert.equal((await phone('/api/library/records', { records: [{ ...record('b1', 0), searchText: 'secret note' }] })).body.rejected[0].error, 'plaintext library indexing is not supported');
     const saved = await phone('/api/library/records', { records: [record('b1', 0)] });
     assert.equal(saved.body.accepted[0].version, 1);
     const conflict = await phone('/api/library/records', { records: [record('b1', 0)] });
@@ -228,15 +230,56 @@ describe('encrypted library', () => {
     const feed = await owner('/api/library/changes?after=0');
     assert.equal(feed.body.records.at(-1).deleted, true);
     assert.equal(feed.body.records.at(-1).envelope.ct, 'Y2lwaGVydGV4dA==');
-    assert.equal((await phone('/api/library/records', { records: [{ ...record('nope', 0), entityType: 'contact' }] })).status, 400);
-    await ownerPost('/api/library/search-opt-in', { enabled: true });
-    await phone('/api/library/records', { records: [{ ...record('b2', 0), searchText: 'harbour note' }] });
-    const found = await owner('/api/library/search?q=harbour');
-    assert.deepEqual(found.body.rows.map((row: { entityId: string }) => row.entityId), ['b2']);
-    await phone('/api/library/records', { records: [record('b2', 1, true)] });
-    assert.deepEqual((await owner('/api/library/search?q=harbour')).body.rows, []);
-    await ownerPost('/api/library/search-opt-in', { enabled: false });
-    assert.equal((await owner('/api/library/search?q=harbour')).status, 403);
+    assert.equal((await phone('/api/library/records', { records: [{ ...record('nope', 0), entityType: 'contact' }] })).body.rejected[0].error, 'unknown entity');
+    assert.equal((await ownerPost('/api/library/search-opt-in', { enabled: true })).status, 404);
+  });
+
+  it('isolates malformed ids and oversized records while saving later valid rows', async () => {
+    const result = await phone('/api/library/records', { records: [
+      record('item:tag with spaces 旅行', 0),
+      { ...record('too-large', 0), envelope: { v: 2, salt: 'salt', ct: 'a'.repeat(300_001) } },
+      record('after-invalid', 0),
+    ] });
+    assert.equal(result.status, 200);
+    assert.deepEqual(result.body.accepted.map((row: { entityId: string }) => row.entityId), ['after-invalid']);
+    assert.equal(result.body.rejected.length, 2);
+  });
+
+  it('upgrades a legacy id in place and returns the current row on a competing upgrade', async () => {
+    await phone('/api/library/records', { records: [record('legacy-tag', 0)] });
+    const upgrade = { ...record('f'.repeat(64), 1), previousId: 'legacy-tag', envelope: { ...record('', 0).envelope, v: 2 } };
+    const result = await phone('/api/library/records', { records: [upgrade] });
+    assert.equal(result.body.accepted[0].version, 2);
+    const feed = (await phone('/api/library/changes?after=0')).body.records;
+    assert.equal(feed.some((row: { entityId: string }) => row.entityId === 'legacy-tag'), false);
+    assert.equal(feed.find((row: { entityId: string }) => row.entityId === 'f'.repeat(64)).envelope.v, 2);
+    const competing = await phone('/api/library/records', { records: [upgrade] });
+    assert.equal(competing.body.conflicts[0].entityId, 'f'.repeat(64));
+  });
+
+  it('only allows the phone to initialize an immutable key check', async () => {
+    const first = Buffer.alloc(40, 7).toString('base64');
+    assert.equal((await owner('/api/library/key-check', { keyCheck: first })).status, 401);
+    assert.equal((await phone('/api/library/key-check', { keyCheck: first })).body.keyCheck, first);
+    assert.equal((await phone('/api/library/key-check', { keyCheck: Buffer.alloc(40, 8).toString('base64') })).body.keyCheck, first);
+    assert.equal((await owner('/api/library/state')).body.keyCheck, first);
+  });
+
+  it('uses the browser crypto implementation for Android-compatible opaque ids and key checks', async () => {
+    // Node 24 loads this dependency-free TypeScript module directly, exercising the browser source.
+    const cryptoModule = await import(pathToFileURL(resolve('../frontend/lib/library-crypto.ts')).href);
+    const salt = new Uint8Array(16).fill(11);
+    const keys = await cryptoModule.deriveKeys('correct horse', salt);
+    const master = pbkdf2Sync('correct horse', salt, 600_000, 32, 'sha256');
+    const idKey = createHmac('sha256', master).update(Buffer.concat([Buffer.from('hellfire-library-ids-v1'), Buffer.from([1])])).digest();
+    const message = 'record:media_item_tag:item-1:travel 旅行';
+    const expected = createHmac('sha256', idKey).update(message).digest('hex');
+    assert.equal(await cryptoModule.keyedId(keys, message), expected);
+    const check = await cryptoModule.seal(keys.cipher, new TextEncoder().encode('hellfire-library-key-check-v1'), cryptoModule.aad('keycheck', 'v1'));
+    assert.equal(await cryptoModule.verifyKey(keys, cryptoModule.b64(check)), true);
+    const wrong = await cryptoModule.deriveKeys('another password', salt);
+    assert.equal(await cryptoModule.verifyKey(wrong, cryptoModule.b64(check)), false);
+    assert.equal(await cryptoModule.keyedId(keys, 'blob:abc') === await cryptoModule.keyedId(wrong, 'blob:abc'), false);
   });
 
   it('matches the Android passphrase envelope', async () => {
@@ -263,6 +306,36 @@ describe('encrypted library', () => {
     assert.equal(after.salt, salt);
     assert.equal(after.used, before.used);
   });
+  it('expires abandoned uploads, preserves legacy and live references, and reclaims tombstoned originals', async () => {
+    const admin = new pg.Client({ connectionString: databaseUrl }); await admin.connect();
+    try {
+      await admin.query('TRUNCATE library_record, library_blob CASCADE');
+      const live = (await phone('/api/library/blobs', { contentHash: '1'.repeat(64), size: 1, chunkSize: 1, chunkCount: 1 })).body.blobId;
+      const orphan = (await phone('/api/library/blobs', { contentHash: '2'.repeat(64), size: 1, chunkSize: 1, chunkCount: 1 })).body.blobId;
+      const unfinished = (await phone('/api/library/blobs', { contentHash: '3'.repeat(64), size: 1, chunkSize: 1, chunkCount: 1 })).body.blobId;
+      await phone(`/api/library/blobs/${live}/chunks/0`, chunk(1, 30));
+      await phone(`/api/library/blobs/${orphan}/chunks/0`, chunk(2, 30));
+      await phone('/api/library/records', { records: [record('gc-legacy', 0), { ...record('gc-live', 0), blobId: live, envelope: { ...record('', 0).envelope, v: 2 } }] });
+      await admin.query("UPDATE library_blob SET updated_at = now() - interval '25 hours'");
+      await phone('/api/library/blobs', { contentHash: '4'.repeat(64), size: 1, chunkSize: 1, chunkCount: 1 });
+      assert.equal((await phone(`/api/library/blobs/${unfinished}`)).status, 400);
+      assert.equal((await phone(`/api/library/blobs/${orphan}`)).status, 200); // legacy encrypted refs are unknown
+      await phone('/api/library/records', { records: [record('gc-legacy', 1, true)] });
+      await phone('/api/library/blobs', { contentHash: '5'.repeat(64), size: 1, chunkSize: 1, chunkCount: 1 });
+      assert.equal((await phone(`/api/library/blobs/${orphan}`)).status, 400);
+      assert.equal((await phone(`/api/library/blobs/${live}`)).status, 200);
+      await phone('/api/library/records', { records: [{ ...record('gc-live', 1, true), envelope: { ...record('', 0).envelope, v: 2 } }] });
+      await phone('/api/library/blobs', { contentHash: '6'.repeat(64), size: 1, chunkSize: 1, chunkCount: 1 });
+      assert.equal((await phone(`/api/library/blobs/${live}`)).status, 400);
+    } finally { await admin.end(); }
+  });
+
+  it('allows more than 300 authenticated chunk reads per minute', async () => {
+    const opened = await phone('/api/library/blobs', { contentHash: '7'.repeat(64), size: 1, chunkSize: 1, chunkCount: 1 });
+    await phone(`/api/library/blobs/${opened.body.blobId}/chunks/0`, chunk(7, 30));
+    for (let index = 0; index < 305; index++) assert.equal((await owner(`/api/library/blobs/${opened.body.blobId}/chunks/0`)).status, 200);
+  });
+
 });
 
 function ownerPost(path: string, body: unknown) {

@@ -155,17 +155,28 @@ class MediaVault(private val app: HellFireApp) {
         } catch (error: Exception) { temporary.delete(); throw error }
     }
 
-    /** Store a remote original under its stable id. An existing managed row with the same id is returned. */
+    /** Repair a missing synced original without replacing a row or its dependent records. */
     suspend fun adoptSynced(id: String, input: InputStream, name: String, mime: String, expectedHash: String): MediaItem = withContext(Dispatchers.IO) {
         UUID.fromString(id)
         lock.withLock {
-            app.database.library().item(id)?.let { if (it.storage == StorageMode.MANAGED.name) return@withLock it }
+            val existing = app.database.library().item(id)
+            if (file(id).exists()) {
+                require(existing?.storage == StorageMode.MANAGED.name && existing.contentHash == expectedHash) { "A different local original already uses this id" }
+                return@withLock existing
+            }
+            require(existing == null || existing.contentHash.isNullOrBlank() || existing.contentHash == expectedHash) { "A different local original already uses this id" }
             val (hash, size) = encrypt(input, id)
             if (hash != expectedHash) { File(directory, "$id.importing").delete(); error("Synced original failed integrity check") }
-            // Remote relationships refer to this stable id, even when another local item has identical bytes.
-            java.nio.file.Files.move(File(directory, "$id.importing").toPath(), file(id).toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            java.nio.file.Files.move(File(directory, "$id.importing").toPath(), file(id).toPath())
             try {
-                register(id, name.take(200), mime, ContentKind.fromMime(mime).name, hash, size, null, false, "", null, ContentKind.fromMime(mime), CaptureOrigin.SYNC, true)
+                if (existing == null) register(id, name.take(200), mime, ContentKind.fromMime(mime).name, hash, size, null, false, "", null, ContentKind.fromMime(mime), CaptureOrigin.SYNC, true)
+                else app.database.withTransaction {
+                    val sourceId = existing.sourceId ?: source(id, name, mime, existing.kind, hash, existing.recordedAt, "")
+                    val repaired = existing.copy(sourceId = sourceId, name = name.take(200), mime = mime, contentHash = hash, size = size,
+                        storage = StorageMode.MANAGED.name, availability = "AVAILABLE", state = "RETAINED", syncEnabled = true)
+                    app.database.library().updateItem(repaired)
+                    repaired
+                }
             } catch (error: Exception) { file(id).delete(); throw error }
         }
     }
