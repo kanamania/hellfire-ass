@@ -141,7 +141,7 @@ class IntelligenceTest {
         val hits = db.library().searchWithin("v", "boat")
         assertEquals(listOf(12_000L), hits.map { it.startMs })
         assertEquals("SEGMENT", hits.single().kind)
-        assertEquals(listOf(40_000L), LibrarySearch(db.library()).searchWithin("v", "budget").map { it.startMs })
+        assertEquals(listOf(40_000L), LibraryTimestampSearch(db.library()).searchWithin("v", "budget").map { it.startMs })
     }
 
     @Test fun `missing adult classifier is reported and timings are not invented`() {

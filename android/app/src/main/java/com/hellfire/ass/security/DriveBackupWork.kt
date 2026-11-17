@@ -68,7 +68,7 @@ class DriveBackupWorker(context: Context, params: WorkerParameters) : CoroutineW
                 val token = DriveAuthorization.token(DriveAuthorization.authorize(app, config.getString("account")))
                 password = config.getString("passphrase").toCharArray()
                 var blocked: BackupBlocked? = null
-                try { PortableBackup(app).export(file, password, incremental = true) }
+                try { PortableBackup(app).export(file, password, incremental = false) }
                 catch (e: BackupBlocked) { blocked = e }
                 if (!file.exists() || file.length() == 0L) {
                     DriveBackupWork.status(app, if (blocked == null) "No new originals since the last verified backup" else "Backup blocked; nothing was uploaded. ${blocked.blocked.size} originals did not fit.")

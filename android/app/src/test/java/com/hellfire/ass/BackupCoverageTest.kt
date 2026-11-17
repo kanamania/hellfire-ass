@@ -93,6 +93,7 @@ class BackupCoverageTest {
         assertEquals(listOf("mid", "old"), BackupPlanner.retain(rows, 2))
         assertEquals(emptyList<String>(), BackupPlanner.retain(rows, 0))
         assertEquals(emptyList<String>(), BackupPlanner.retain(rows, 4))
+        assertEquals(listOf("mid"), BackupPlanner.retain(rows, 1, mapOf("newest" to "new", "new" to "old")))
     }
 
     @Test fun `recovery metadata never carries a key`() {
@@ -188,7 +189,7 @@ class BackupCoverageTest {
         ReflectionHelpers.callInstanceMethod<Unit>(app, "attach", ClassParameter.from(Context::class.java, context))
         ReflectionHelpers.setField(app, "database\$delegate", lazyOf(source))
         ReflectionHelpers.setField(app, "cipher\$delegate", lazyOf(PayloadCipher(KeyGenerator.getInstance("AES").apply { init(256) }.generateKey())))
-        source.finance().addAccount(com.hellfire.ass.finance.FinanceAccount("cash", "Cash", createdAt = 1))
+        source.finances().addAccount(com.hellfire.ass.finance.FinanceAccount("cash", "Cash", createdAt = 1))
         val file = File(context.cacheDir, "metadata-${UUID.randomUUID()}.hfb")
         val encrypted = File(context.cacheDir, "metadata-${UUID.randomUUID()}.hfm")
         val password = "synthetic-passphrase".toCharArray()
@@ -241,6 +242,12 @@ class BackupCoverageTest {
             assertTrue(again.id.isNotBlank())
             assertEquals(0, again.included)
             assertEquals(1, again.omitted)
+            file.delete()
+            val missingBase = PortableBackup(app).export(File(context.cacheDir, "missing-base.hfb"), "synthetic-passphrase".toCharArray(), incremental = true)
+            assertEquals(1, missingBase.included)
+            assertEquals(0, missingBase.omitted)
+            // Recreate a standalone archive for the native/device restore portion below.
+            PortableBackup(app).export(file, "synthetic-passphrase".toCharArray())
             val fresh = Room.inMemoryDatabaseBuilder(context, EventDatabase::class.java).build()
             val restored = HellFireApp()
             ReflectionHelpers.callInstanceMethod<Unit>(restored, "attach", ClassParameter.from(Context::class.java, context))
