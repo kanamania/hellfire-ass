@@ -130,7 +130,12 @@ class NewsRepository(
         ensureDefaults()
         val prefs = settings()
         val zone = zone(prefs)
-        val id = if (slot == "ON_DEMAND") "ON_DEMAND:$now" else "$slot:${ZonedDateTime.ofInstant(Instant.ofEpochMilli(now), zone).toLocalDate()}"
+        val local = ZonedDateTime.ofInstant(Instant.ofEpochMilli(now), zone)
+        val id = when (slot) {
+            "ON_DEMAND" -> "ON_DEMAND:$now"
+            "CUSTOM" -> "CUSTOM:${local.toLocalDate()}:${local.toLocalTime().withSecond(0).withNano(0)}"
+            else -> "$slot:${local.toLocalDate()}"
+        }
         if (slot != "ON_DEMAND") dao.briefing(id)?.let { return it }
         val window = window(slot, now, prefs)
         val events = dao.eventsBetween(window.first, window.last + 1, 400)
@@ -330,13 +335,19 @@ class NewsRepository(
     override suspend fun ask(question: String, now: Long): NewsAnswer? {
         val parsed = NewsAsk.parse(question, now, zone(settings())) ?: return null
         val matched = ArrayList<NewsEvent>()
-        for (event in dao.eventsBetween(parsed.from, parsed.to + 1, 80)) {
+        for (event in dao.eventsBetween(parsed.from, parsed.to, 500)) {
             val topics = event.topics.split(',')
             val placeOk = parsed.places.isEmpty() || parsed.places.any { it == event.place || it in event.signature }
             val topicOk = parsed.topics.isEmpty() || parsed.topics.any { it in topics }
             val termOk = parsed.terms.isEmpty() || parsed.terms.any { event.headline.lowercase().contains(it) }
-            val savedOk = !parsed.saved || dao.state(event.id)?.let { it.bookmarked || it.readLater } == true
-            if (placeOk && topicOk && termOk && savedOk) matched += event
+            val state = dao.state(event.id)
+            val savedOk = !parsed.saved || state?.let { it.bookmarked || it.readLater } == true
+            val importantOk = !parsed.important || event.level in setOf("CRITICAL", "HIGH")
+            val socialOk = !parsed.social || dao.articlesFor(event.id).any { it.contentType == "SOCIAL_POST" }
+            val changedOk = !parsed.changed || ((state?.seenVersion ?: 0) > 0 && dao.versions(event.id).any {
+                it.version > state!!.seenVersion && it.classification in setOf("MAJOR", "CORRECTION", "RESOLVED")
+            })
+            if (placeOk && topicOk && termOk && savedOk && importantOk && socialOk && changedOk && state?.hidden != true) matched += event
         }
         val events = matched
         if (events.isEmpty()) return NewsAnswer("No saved briefing matches that.", emptyList())
@@ -344,7 +355,8 @@ class NewsRepository(
             val change = if (parsed.changed) dao.versions(event.id).lastOrNull { it.classification != "NEW" }?.whatsNew else null
             if (change.isNullOrBlank()) event.headline else "${event.headline} — $change"
         }
-        return NewsAnswer(lines.joinToString("\n"), events.take(6).map { it.id })
+        val prefix = if (parsed.social) "Social posts are unverified reports.\n" else "From saved news (${parsed.window}):\n"
+        return NewsAnswer(prefix + lines.joinToString("\n"), events.take(6).map { it.id })
     }
 
     override suspend fun health(days: Int): List<NewsStageCount> = dao.runSummary(System.currentTimeMillis() - days * 86_400_000L)
