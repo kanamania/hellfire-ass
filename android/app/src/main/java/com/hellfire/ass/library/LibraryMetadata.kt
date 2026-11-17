@@ -53,7 +53,7 @@ object LibraryMetadata {
                 listOf(
                     MediaMetadataRetriever.METADATA_KEY_TITLE, MediaMetadataRetriever.METADATA_KEY_ARTIST,
                     MediaMetadataRetriever.METADATA_KEY_ALBUM, MediaMetadataRetriever.METADATA_KEY_DURATION,
-                    MediaMetadataRetriever.METADATA_KEY_MIME_TYPE, MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH,
+                    MediaMetadataRetriever.METADATA_KEY_MIMETYPE, MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH,
                     MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT,
                 ).forEach { key -> retriever.extractMetadata(key)?.let { container.put(key.toString(), it) } }
                 json.put("container", container)

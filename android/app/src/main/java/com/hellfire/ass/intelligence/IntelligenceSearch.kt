@@ -2,7 +2,7 @@ package com.hellfire.ass.intelligence
 
 import com.hellfire.ass.data.SearchText
 import com.hellfire.ass.HellFireApp
-import com.hellfire.ass.library.LibrarySearch
+import com.hellfire.ass.library.LibraryTimestampSearch
 import com.hellfire.ass.library.TimestampHit
 import com.hellfire.ass.memory.VectorMath
 import kotlinx.coroutines.Dispatchers
@@ -24,7 +24,7 @@ data class SearchHit(
 
 class IntelligenceSearch(private val app: HellFireApp) {
     suspend fun searchWithin(itemId: String, query: String): List<TimestampHit> =
-        LibrarySearch(app.database.library()).searchWithin(itemId, query)
+        LibraryTimestampSearch(app.database.library()).searchWithin(itemId, query)
 
     suspend fun search(constraints: SearchConstraints, limit: Int = 40): List<SearchHit> = withContext(Dispatchers.IO) {
         val dao = app.database.library()

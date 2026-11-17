@@ -2,7 +2,7 @@ package com.hellfire.ass.intelligence
 
 import android.content.Context
 
-class IntelligencePrefs(context: Context) {
+class IntelligencePrefs(private val context: Context) {
     private val prefs = context.getSharedPreferences("intelligence", 0)
     var chargingOnly: Boolean
         get() = prefs.getBoolean("charging", true)
