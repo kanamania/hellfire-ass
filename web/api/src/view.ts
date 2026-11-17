@@ -16,19 +16,25 @@ const FILTERS: Record<string, string[]> = {
   transcript: ['mediaId'],
   memory: ['kind'],
   event: ['source', 'label'],
+  news_event: ['level', 'eventType', 'status'],
+  news_article: ['eventId'],
+  news_version: ['eventId'],
+  news_briefing: ['slot'],
 };
 const LISTABLE = KINDS.filter((kind) => kind !== 'summary');
+// News has its own views (news.ts); the general listing and search include it only when asked by kind.
+const DEFAULT_KINDS = LISTABLE.filter((kind) => !kind.startsWith('news_'));
 
 export interface RecordRow { kind: string; id: string; at: number; data: Record<string, any> }
 
-type Params = Record<string, unknown>;
-const text = (params: Params, name: string): string | undefined => {
+export type Params = Record<string, unknown>;
+export const text = (params: Params, name: string): string | undefined => {
   const value = params[name];
   if (value === undefined || value === '') return undefined;
   if (typeof value !== 'string' || value.length > 300) throw new BadRequestException(`invalid ${name}`);
   return value;
 };
-const integer = (params: Params, name: string): number | undefined => {
+export const integer = (params: Params, name: string): number | undefined => {
   const value = text(params, name);
   if (value === undefined) return undefined;
   if (!/^-?\d{1,16}$/.test(value)) throw new BadRequestException(`invalid ${name}`);
@@ -71,7 +77,7 @@ export class ViewService {
    * keyset paging on (at, id). Field names come from an allow-list; values are parameters.
    */
   async records(params: Params) {
-    const kinds = (text(params, 'kinds') ?? LISTABLE.join(',')).split(',');
+    const kinds = (text(params, 'kinds') ?? DEFAULT_KINDS.join(',')).split(',');
     if (!kinds.every((kind) => (LISTABLE as readonly string[]).includes(kind))) throw new BadRequestException('unknown kind');
     const limit = Math.min(Math.max(integer(params, 'limit') ?? 50, 1), 200);
     const ascending = text(params, 'order') === 'asc';
