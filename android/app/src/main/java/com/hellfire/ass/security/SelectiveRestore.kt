@@ -41,6 +41,7 @@ object SelectiveRestore {
         val marks = ids.joinToString(",") { "?" }
         val args = ids.toTypedArray()
         copyWhere(from, to, "source_event", "id IN (SELECT sourceId FROM media_item WHERE id IN ($marks) AND sourceId IS NOT NULL)", args)
+        copyWhere(from, to, "source_event", "id IN (SELECT sourceId FROM transcript_segment WHERE mediaId IN ($marks))", args)
         copyWhere(from, to, "media_item", "id IN ($marks)", args)
         copyWhere(from, to, "transcript_segment", "mediaId IN ($marks)", args)
         copyWhere(from, to, "speech_span", "mediaId IN ($marks)", args)

@@ -165,8 +165,12 @@ data class LabelledEvent(@Embedded val event: SourceEvent, val label: String?, v
     com.hellfire.ass.library.InboxItem::class, com.hellfire.ass.library.InboxMember::class, com.hellfire.ass.library.DrawerMessage::class,
     com.hellfire.ass.library.ActionRecord::class, com.hellfire.ass.library.SavedLocation::class, com.hellfire.ass.library.ShareExport::class,
     com.hellfire.ass.library.PrivacyFinding::class, com.hellfire.ass.library.SyncRecord::class, com.hellfire.ass.library.SyncConflict::class,
-    com.hellfire.ass.library.BackupManifest::class, com.hellfire.ass.library.BackupItemRecord::class, com.hellfire.ass.library.LibrarySearch::class],
-    version = 18, exportSchema = true)
+    com.hellfire.ass.library.BackupManifest::class, com.hellfire.ass.library.BackupItemRecord::class, com.hellfire.ass.library.LibrarySearch::class,
+    com.hellfire.ass.news.NewsSource::class, com.hellfire.ass.news.NewsArticle::class, com.hellfire.ass.news.NewsEvent::class,
+    com.hellfire.ass.news.NewsEventVersion::class, com.hellfire.ass.news.NewsBriefing::class, com.hellfire.ass.news.NewsEventState::class,
+    com.hellfire.ass.news.NewsProgress::class, com.hellfire.ass.news.NewsPreference::class, com.hellfire.ass.news.NewsFeedback::class,
+    com.hellfire.ass.news.NewsRun::class],
+    version = 19, exportSchema = true)
 abstract class EventDatabase : RoomDatabase() {
     abstract fun events(): EventDao
     abstract fun finances(): FinanceDao
@@ -177,6 +181,7 @@ abstract class EventDatabase : RoomDatabase() {
     abstract fun memory(): MemoryDao
     abstract fun semantic(): com.hellfire.ass.memory.SemanticDao
     abstract fun aiUsage(): AiUsageDao
+    abstract fun news(): com.hellfire.ass.news.NewsDao
     abstract fun widgetData(): WidgetDataDao
     abstract fun templates(): com.hellfire.ass.templates.TemplateDao
     abstract fun debts(): com.hellfire.ass.insights.DebtDao
@@ -291,8 +296,11 @@ abstract class EventDatabase : RoomDatabase() {
         val MIGRATION_17_18 = object : Migration(17, 18) {
             override fun migrate(db: SupportSQLiteDatabase) { com.hellfire.ass.library.LibrarySchema.migrate(db) }
         }
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) { com.hellfire.ass.news.NewsSchema.migrate(db) }
+        }
         const val SOURCE_SEARCH_SQL = "CREATE VIRTUAL TABLE IF NOT EXISTS `source_search` USING FTS4(`eventId` TEXT NOT NULL, `text` TEXT NOT NULL, tokenize=unicode61, notindexed=`eventId`)"
-        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
+        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
         fun open(context: Context): EventDatabase = Room.databaseBuilder(
             context.applicationContext, EventDatabase::class.java, "hellfire.db"
         ).openHelperFactory(EncryptedDatabase.factory(context)).addMigrations(*ALL_MIGRATIONS).build()

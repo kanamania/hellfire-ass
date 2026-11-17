@@ -6,6 +6,20 @@ import com.hellfire.ass.data.EventDatabase
 import com.hellfire.ass.library.SyncRecord
 import com.hellfire.ass.security.BackupCrypto
 import com.hellfire.ass.sync.LibrarySync
+import com.hellfire.ass.sync.SyncChunkInput
+import com.hellfire.ass.sync.outgoingDoc
+import com.hellfire.ass.sync.applyDoc
+import com.hellfire.ass.library.CaptureOrigin
+import com.hellfire.ass.library.LibraryFilter
+import com.hellfire.ass.library.LibraryQuery
+import com.hellfire.ass.library.ContentKind
+import com.hellfire.ass.security.PayloadCipher
+import org.robolectric.util.ReflectionHelpers
+import org.robolectric.util.ReflectionHelpers.ClassParameter
+import android.content.Context
+import javax.crypto.KeyGenerator
+import kotlinx.coroutines.runBlocking
+import java.util.UUID
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.After
@@ -143,6 +157,82 @@ class LibrarySyncTest {
         assertEquals("PAUSED", db.sync().record("media_item", "item-1")!!.state)
         db.sync().resumeAll()
         assertEquals("PENDING", db.sync().record("media_item", "item-1")!!.state)
+    }
+
+    @Test fun `outgoing tombstone remains sendable after its entity was removed`() = runBlocking {
+        db.sync().markChanged("media_item", "removed", true, 12)
+        val record = db.sync().due(12, 10).single()
+        val doc = outgoingDoc(record, null, emptyMap())
+        assertTrue(doc.deleted)
+        assertTrue(doc.fields.isEmpty())
+        assertEquals(12L, doc.updatedAt)
+        assertTrue(LibrarySync.parse(LibrarySync.canonical(doc)).deleted)
+    }
+
+    @Test fun `chunk stream bounds reads validates lengths and clears decrypted buffers`() {
+        val first = ByteArray(LibrarySync.CHUNK) { 3 }
+        val last = byteArrayOf(4, 5)
+        val loaded = mutableListOf<Int>()
+        val input = SyncChunkInput(first.size + 2L) { index -> loaded += index; if (index == 0) first else last }
+        val output = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(7001)
+        while (true) {
+            val count = input.read(buffer, 0, buffer.size)
+            if (count < 0) break
+            output.write(buffer, 0, count)
+        }
+        input.close()
+        assertEquals(listOf(0, 1), loaded)
+        val bytes = output.toByteArray()
+        assertEquals(LibrarySync.CHUNK + 2, bytes.size)
+        assertEquals(3, bytes.first().toInt())
+        assertArrayEquals(byteArrayOf(4, 5), bytes.takeLast(2).toByteArray())
+        assertTrue(first.all { it == 0.toByte() })
+        assertTrue(last.all { it == 0.toByte() })
+        SyncChunkInput(10) { ByteArray(9) }.use { bad -> assertTrue(runCatching { bad.read() }.isFailure) }
+    }
+
+    private fun attachedApp(): HellFireApp = HellFireApp().also { app ->
+        ReflectionHelpers.callInstanceMethod<Unit>(app, "attach", ClassParameter.from(Context::class.java, context))
+        ReflectionHelpers.setField(app, "database\$delegate", lazyOf(db))
+        ReflectionHelpers.setField(app, "cipher\$delegate", lazyOf(PayloadCipher(KeyGenerator.getInstance("AES").apply { init(256) }.generateKey())))
+    }
+
+    @Test fun `remote media tombstone hides library entry while preserving original and source evidence`() = runBlocking {
+        val app = attachedApp()
+        app.media.directory.deleteRecursively()
+        try {
+            val bytes = byteArrayOf(9, 8, 7)
+            val item = app.media.capture(bytes, "kept.jpg", "image/jpeg", CaptureOrigin.DRAWER)
+            assertTrue(applyDoc(app, "media_item", item.id, LibrarySync.Doc(deleted = true, updatedAt = 10)))
+            db.media().state(item.id, "INDEXED", null)
+            db.media().state(item.id, "QUEUED", "PROCESSING_INTERRUPTED")
+            val retained = db.media().item(item.id)!!
+            assertEquals("SYNC_REMOVED", retained.state)
+            assertFalse(retained.syncEnabled)
+            assertArrayEquals(bytes, app.media.openStream(retained).use { it.readBytes() })
+            assertNotNull(db.events().find(retained.sourceId!!))
+            assertTrue(db.library().queryItems(LibraryQuery.sql(LibraryFilter(kinds = listOf(ContentKind.IMAGE.name)))).isEmpty())
+            assertEquals(1, db.media().all().size)
+        } finally { app.media.directory.deleteRecursively() }
+    }
+
+    @Test fun `synced duplicate bytes keep remote stable id for bookmarks and transcript relationships`() = runBlocking {
+        val app = attachedApp()
+        app.media.directory.deleteRecursively()
+        try {
+            val bytes = byteArrayOf(2, 3, 4)
+            val local = app.media.capture(bytes, "local.jpg", "image/jpeg", CaptureOrigin.IMPORT)
+            val id = UUID.randomUUID().toString()
+            val synced = app.media.adoptSynced(id, bytes.inputStream(), "remote.jpg", "image/jpeg", local.contentHash!!)
+            assertEquals(id, synced.id)
+            assertNotEquals(local.id, synced.id)
+            assertEquals(local.contentHash, synced.contentHash)
+            assertArrayEquals(bytes, app.media.openStream(synced).use { it.readBytes() })
+            val doc = LibrarySync.doc(mapOf("mediaId" to LibrarySync.Field(id, 1), "title" to LibrarySync.Field("Remote marker", 1)))
+            assertTrue(applyDoc(app, "media_bookmark", "remote-mark", doc))
+            assertEquals(id, db.playback().bookmark("remote-mark")!!.mediaId)
+        } finally { app.media.directory.deleteRecursively() }
     }
 
     @Test fun `derived key is a 256-bit AES key`() {

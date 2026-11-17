@@ -1,8 +1,37 @@
 # HellFire Ass — implementation and feasibility
 
-Latest update: 2026-11-17 (adaptive performance, directly below). Earlier
+Latest update: 2026-11-17 (news/media/performance integration, directly below). Earlier
 checkpoints keep the test counts and APK checksums that were true when they were
 written; the newest checkpoint has the current ones.
+
+## News, media and performance integration — 2026-11-17
+
+Room/backup schema **19** preserves the media-library schema 18 and adds news.
+Pending news and seven media implementations were consolidated with adaptive
+performance. Source worktrees were preserved during integration.
+
+- News: feeds/source settings, clustering/ranking, versioned stories, scheduled
+  briefings, quiet-hour alerts, reader/TTS controls, saved/followed stories, Ask
+  routing and web state synchronization. Publisher availability, licensed sources,
+  X access and actual phone speech/delivery remain unverified.
+- Media: external library references and managed originals, library scanning,
+  playback/PiP/bookmarks, content analysis/search, drawer/inbox, sanitized sharing,
+  encrypted optional library sync and backup/selective recovery pages.
+- Corrected severe thermal threshold (Android status 3), concurrent interactive
+  waiter accounting, capped concurrent media queue requests, nullable video hashes,
+  and cached-model eviction before benchmarks.
+- Integration/recovery fixes cover metadata-only archives, selective transcript
+  evidence, stable encrypted chunk identity, bounded upload geometry, concurrent
+  record versions, deleted search entries and preservation of library data/salt
+  during ordinary mirror resets.
+
+| Check | Result | Evidence / limit |
+|---|---|---|
+| Performance/media regression subset | PASS (host) | 49 tests, zero failures/errors/skips, including concurrent queue cap and media foundation/vault/speech/semantic tests |
+| Combined web API | PASS (host) | 24 tests against disposable `hellfire_test`, including news actions, encrypted chunks, version conflicts, quota checks and mirror-reset preservation |
+| Combined frontend typecheck | PASS (host) | `npm run typecheck`; no browser rendering claim |
+| Final integrated Android tests, lint and APK | PENDING | Updated after final combined verification |
+| Physical device | NOT TESTED | `adb devices -l` lists no connected devices; codecs, Keystore/native SQLCipher, actual inference, battery, thermals, permission flows and OEM behavior are not established by host tests |
 
 ## Adaptive performance — 2026-11-17
 

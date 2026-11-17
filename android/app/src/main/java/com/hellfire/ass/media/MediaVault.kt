@@ -162,11 +162,7 @@ class MediaVault(private val app: HellFireApp) {
             app.database.library().item(id)?.let { if (it.storage == StorageMode.MANAGED.name) return@withLock it }
             val (hash, size) = encrypt(input, id)
             if (hash != expectedHash) { File(directory, "$id.importing").delete(); error("Synced original failed integrity check") }
-            app.database.media().hash(hash)?.let { existing ->
-                File(directory, "$id.importing").delete()
-                if (!existing.syncEnabled) app.database.library().setSyncEnabled(existing.id, true)
-                return@withLock app.database.library().item(existing.id)!!
-            }
+            // Remote relationships refer to this stable id, even when another local item has identical bytes.
             java.nio.file.Files.move(File(directory, "$id.importing").toPath(), file(id).toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
             try {
                 register(id, name.take(200), mime, ContentKind.fromMime(mime).name, hash, size, null, false, "", null, ContentKind.fromMime(mime), CaptureOrigin.SYNC, true)
@@ -232,6 +228,8 @@ class MediaVault(private val app: HellFireApp) {
                 app.database.media().state(id, "DELETE_FAILED", "FILE_DELETION_FAILED")
                 error("Original could not be deleted")
             }
+            if (item.syncEnabled || app.database.sync().record("media_item", id) != null)
+                app.database.sync().markChanged("media_item", id, true, System.currentTimeMillis())
             app.database.media().delete(item.id)
             com.hellfire.ass.performance.ProcessingCheckpoint.clear(app, id)
         }

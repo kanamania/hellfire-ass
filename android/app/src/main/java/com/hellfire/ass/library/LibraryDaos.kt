@@ -36,12 +36,12 @@ interface LibraryDao {
     suspend fun duplicates(limit: Int): List<MediaItem>
 
     /** One keyset page, newest import first. kinds: ContentKind names (pass all for no filter); storage: StorageMode names. */
-    @Query("SELECT * FROM media_item WHERE state != 'DELETING' AND contentKind IN (:kinds) AND storage IN (:storage) AND (:favoritesOnly = 0 OR favorite = 1) AND (importedAt < :beforeAt OR (importedAt = :beforeAt AND id < :beforeId)) ORDER BY importedAt DESC, id DESC LIMIT :limit")
+    @Query("SELECT * FROM media_item WHERE state NOT IN ('DELETING', 'SYNC_REMOVED') AND contentKind IN (:kinds) AND storage IN (:storage) AND (:favoritesOnly = 0 OR favorite = 1) AND (importedAt < :beforeAt OR (importedAt = :beforeAt AND id < :beforeId)) ORDER BY importedAt DESC, id DESC LIMIT :limit")
     suspend fun page(kinds: List<String>, storage: List<String>, favoritesOnly: Boolean, beforeAt: Long, beforeId: String, limit: Int): List<MediaItem>
-    @Query("SELECT * FROM media_item WHERE state != 'DELETING' ORDER BY importedAt DESC, id DESC LIMIT :limit") fun recent(limit: Int): Flow<List<MediaItem>>
-    @Query("SELECT * FROM media_item WHERE favorite = 1 AND state != 'DELETING' ORDER BY importedAt DESC LIMIT :limit") fun favorites(limit: Int): Flow<List<MediaItem>>
-    @Query("SELECT m.* FROM media_item m JOIN playback_state p ON p.mediaId = m.id ORDER BY p.lastPlayedAt DESC LIMIT :limit") fun recentlyPlayed(limit: Int): Flow<List<MediaItem>>
-    @Query("SELECT contentKind, COUNT(*) AS count FROM media_item WHERE state != 'DELETING' GROUP BY contentKind") fun kindCounts(): Flow<List<KindCount>>
+    @Query("SELECT * FROM media_item WHERE state NOT IN ('DELETING', 'SYNC_REMOVED') ORDER BY importedAt DESC, id DESC LIMIT :limit") fun recent(limit: Int): Flow<List<MediaItem>>
+    @Query("SELECT * FROM media_item WHERE favorite = 1 AND state NOT IN ('DELETING', 'SYNC_REMOVED') ORDER BY importedAt DESC LIMIT :limit") fun favorites(limit: Int): Flow<List<MediaItem>>
+    @Query("SELECT m.* FROM media_item m JOIN playback_state p ON p.mediaId = m.id WHERE m.state NOT IN ('DELETING', 'SYNC_REMOVED') ORDER BY p.lastPlayedAt DESC LIMIT :limit") fun recentlyPlayed(limit: Int): Flow<List<MediaItem>>
+    @Query("SELECT contentKind, COUNT(*) AS count FROM media_item WHERE state NOT IN ('DELETING', 'SYNC_REMOVED') GROUP BY contentKind") fun kindCounts(): Flow<List<KindCount>>
     @Query("UPDATE media_item SET favorite = :favorite WHERE id = :id") suspend fun setFavorite(id: String, favorite: Boolean)
     @Query("UPDATE media_item SET availability = :availability WHERE id = :id") suspend fun setAvailability(id: String, availability: String)
     @Query("UPDATE media_item SET contentHash = :hash WHERE id = :id") suspend fun setHash(id: String, hash: String)
@@ -94,7 +94,7 @@ interface LibraryDao {
     fun itemCategories(itemId: String): Flow<List<CategoryLink>>
     @Query("SELECT c.*, l.origin AS linkOrigin, l.state AS linkState, l.confidence AS confidence FROM media_item_category l JOIN media_category c ON c.id = l.categoryId WHERE l.itemId = :itemId ORDER BY c.name")
     suspend fun itemCategoriesNow(itemId: String): List<CategoryLink>
-    @Query("SELECT m.* FROM media_item m JOIN media_item_category l ON l.itemId = m.id WHERE l.categoryId = :categoryId AND l.state = 'ASSIGNED' AND m.state != 'DELETING' ORDER BY m.importedAt DESC LIMIT :limit OFFSET :offset")
+    @Query("SELECT m.* FROM media_item m JOIN media_item_category l ON l.itemId = m.id WHERE l.categoryId = :categoryId AND l.state = 'ASSIGNED' AND m.state NOT IN ('DELETING', 'SYNC_REMOVED') ORDER BY m.importedAt DESC LIMIT :limit OFFSET :offset")
     suspend fun inCategory(categoryId: String, limit: Int, offset: Int): List<MediaItem>
     @Query("INSERT OR IGNORE INTO media_item_category (itemId, categoryId, origin, state, confidence, updatedAt) SELECT itemId, :into, origin, state, confidence, :now FROM media_item_category WHERE categoryId = :from")
     suspend fun copyLinks(from: String, into: String, now: Long)

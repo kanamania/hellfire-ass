@@ -59,7 +59,7 @@ interface MediaDao {
     /** The managed original with this SHA-256, used for capture deduplication. */
     @Query("SELECT * FROM media_item WHERE contentHash=:hash AND storage = 'MANAGED' LIMIT 1") suspend fun hash(hash: String): MediaItem?
     @Query("SELECT * FROM media_item WHERE id=:id") fun observe(id: String): Flow<MediaItem?>
-    @Query("UPDATE media_item SET state=:state, error=:error WHERE id=:id") suspend fun state(id: String, state: String, error: String?)
+    @Query("UPDATE media_item SET state=:state, error=:error WHERE id=:id AND state != 'SYNC_REMOVED'") suspend fun state(id: String, state: String, error: String?)
     @Query("UPDATE media_item SET processedMs=:time WHERE id=:id") suspend fun progress(id: String, time: Long)
     @Query("UPDATE media_item SET summary=:text, summaryState=:state WHERE id=:id") suspend fun summary(id: String, text: String, state: String)
     @Query("UPDATE media_item SET name=:name, recordedAt=:time WHERE id=:id") suspend fun rename(id: String, name: String, time: Long?)
