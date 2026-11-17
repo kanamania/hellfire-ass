@@ -5,7 +5,7 @@ import com.hellfire.ass.data.EventDatabase
 import com.hellfire.ass.events.NotificationNormalizer
 import java.util.UUID
 
-class FinanceRepository(private val db: EventDatabase) {
+class FinanceRepository(private val db: EventDatabase, private val suppress: suspend (String, String) -> Boolean = { _, _ -> false }) {
     private val dao get() = db.finances()
     suspend fun approve(candidateId: String, accountId: String, kind: String, category: String,
         description: String, transferTo: String? = null, amount: Long? = null, fee: Long? = null, occurredAt: Long? = null, personKey: String? = null): String = db.withTransaction {
@@ -157,6 +157,7 @@ class FinanceRepository(private val db: EventDatabase) {
         val parsed = FinanceParser.parse(sender, text) ?: return@withTransaction
         val id = NotificationNormalizer.sha256("finance:$sourceId:0")
         if (dao.findCandidate(id) != null) return@withTransaction
+        if (suppress(sourceId, text)) return@withTransaction
         val referenced = parsed.reference != null && dao.hasReference(parsed.provider, parsed.reference)
         // An SMS and the SMS app's notification about it rarely share a parsed reference. Only a different kind of
         // source counts, so two genuine equal payments arriving as two SMS both stay in review.

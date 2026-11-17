@@ -60,7 +60,12 @@ fun CandidateReviewSheet(c: FinanceCandidate, accounts: List<FinanceAccount>, al
         if (!defaultsLoaded) withContext(Dispatchers.IO) {
             val key = com.hellfire.ass.finance.ReviewChoices.key(app, c)
             choiceKey = key
-            runCatching { com.hellfire.ass.finance.ReviewChoices.read(app, key) }.getOrNull()?.takeIf { saved -> accounts.any { it.id == saved.first } }?.let { saved ->
+            (app.skills.payment(key, c.id, c.sourceId, c.accountId == null || c.category == null)?.second ?: runCatching {
+                com.hellfire.ass.finance.ReviewChoices.read(app, key)?.let { legacy ->
+                    com.hellfire.ass.finance.ReviewChoices.save(app, key, legacy.first, legacy.second)
+                    app.skills.payment(key, c.id, c.sourceId, c.accountId == null || c.category == null)?.second
+                }
+            }.getOrNull())?.takeIf { saved -> accounts.any { it.id == saved.first } }?.let { saved ->
                 if (c.accountId == null) accountId = saved.first
                 if (c.category == null) category = saved.second
                 suggestion = true
@@ -75,6 +80,8 @@ fun CandidateReviewSheet(c: FinanceCandidate, accounts: List<FinanceAccount>, al
         Text(candidateTitle(c, alias), style = Hf.type.rowSubtitle, color = Hf.colors.muted)
         EvidenceCard(if (c.provider == "MANUAL") "Your cash entry" else "Source message", c.evidence.take(1500))
         if (c.reference == null && c.provider != "MANUAL") Note("No reference in this message, so duplicates from other sources can't be detected automatically.")
+        Note("Why suggested: a payment parser recognized ${c.provider} ${c.kind.lowercase()} wording and kept this source for review. Parsed fields can be wrong.")
+        choiceKey?.let { Note("Sender/merchant key: $it") }
         GroupLabel(com.hellfire.ass.ui.tr("Category"))
         ChipPicker(Categories, category) { category = it }
         GroupLabel(com.hellfire.ass.ui.tr("Type"))
@@ -118,14 +125,21 @@ fun CandidateReviewSheet(c: FinanceCandidate, accounts: List<FinanceAccount>, al
                             result
                         }
                     }
+                    val learningSaved = withContext(Dispatchers.IO) { runCatching {
+                        if (!rememberChoice && (c.category != category || c.accountId != accountId)) app.skills.suggest("Payment choices for ${c.provider}", "PAYMENT_DEFAULT", requireNotNull(choiceKey),
+                            org.json.JSONObject().put("account", accountId).put("category", category).toString(), "You confirmed this account/category while reviewing a payment. Review before applying to later matches.", c.sourceId)
+                    }.isSuccess }
                     val savedDefaults = if (rememberChoice) withContext(Dispatchers.IO) { runCatching { choiceKey?.let { com.hellfire.ass.finance.ReviewChoices.save(app, it, accountId!!, category) } }.isSuccess } else true
-                    onDone(msg + if (!savedDefaults) " Defaults could not be saved; the payment itself was posted." else "")
+                    onDone(msg + (if (!learningSaved) " Skill suggestion was not saved." else "") + if (!savedDefaults) " Defaults could not be saved; the payment itself was posted." else "")
                 } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); error = "Not posted. Check the account, amounts (whole shillings), date and duplicate status." }
                 finally { busy = false }
             }
         }, Modifier.fillMaxWidth(), enabled = ready, height = 52.dp)
         QuietButton(com.hellfire.ass.ui.tr("Not a payment"), {
-            scope.launch { withContext(Dispatchers.IO) { app.finances.reject(c.id) }; onDone("Marked as not a payment. Nothing was posted.") }
+            scope.launch { withContext(Dispatchers.IO) {
+                app.finances.reject(c.id)
+                app.skills.feedbackFor(app, "IGNORE_FINANCE", c.sourceId, "You marked this captured item as not a payment. An exact-match rule can avoid repeating this false suggestion.")
+            }; onDone("Marked as not a payment. Nothing was posted.") }
         }, Modifier.fillMaxWidth())
         Note(com.hellfire.ass.ui.tr("Only confirmed payments count toward your totals."))
     }

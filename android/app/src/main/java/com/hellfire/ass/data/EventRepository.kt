@@ -35,7 +35,7 @@ class EventRepository(private val dao: EventDao, private val cipher: () -> Paylo
             put("remote_input_count", safe.remoteInputCount)
             put("content_status", if (event.contentAvailable) "AVAILABLE_AS_DELIVERED" else "UNAVAILABLE")
         }.toString().toByteArray(Charsets.UTF_8)
-        val searchable = if (!event.contentAvailable || event.securitySensitive) null
+        val searchable = if (!event.contentAvailable || event.securitySensitive || safe.source == "owner_skill_use") null
             else SearchText.of(safe.fields)
         val created = dao.insertCaptured(SourceEvent(
             id = event.id, ingestVersion = if (event.legacyId != event.id) 3 else 2, source = safe.source, externalId = event.externalId, packageName = safe.packageName,
@@ -56,7 +56,7 @@ object SearchText {
     fun of(fields: JSONObject): String? = of(fields.keys().asSequence().associateWith { key ->
         fields.optJSONArray(key)?.let { array -> (0 until array.length()).map { array.optString(it) } }.orEmpty() })
 
-    private val questionWords = setOf("what", "when", "where", "how", "why", "which", "who", "did", "do", "does", "is", "are", "was", "were", "the", "a", "an", "i", "we", "me", "my", "our", "your", "you", "have", "has", "tell", "show", "can", "could", "please", "know", "about", "search", "find", "remember", "saved", "to", "of", "at", "and", "or", "nini", "nani", "lini", "wapi", "kwa", "na", "je", "yangu", "kuhusu", "tafuta")
+    private val questionWords = setOf("what", "when", "where", "how", "why", "which", "who", "did", "do", "does", "is", "are", "was", "were", "the", "a", "an", "i", "we", "me", "my", "our", "your", "you", "have", "has", "tell", "show", "can", "could", "please", "know", "about", "search", "find", "remember", "saved", "to", "of", "at", "for", "from", "with", "in", "on", "and", "or", "nini", "nani", "lini", "wapi", "kwa", "na", "je", "yangu", "kuhusu", "tafuta")
     fun keywords(text: String): List<String> = Regex("[\\p{L}\\p{N}]+").findAll(text).map { it.value.lowercase(java.util.Locale.ROOT) }
         .filter { it.length >= 2 && it !in questionWords }.distinct().take(8).toList()
     fun anyQuery(words: List<String>): String? = words.flatMap { keywords(it) }.distinct().take(8).joinToString(" OR ") { "$it*" }.ifBlank { null }

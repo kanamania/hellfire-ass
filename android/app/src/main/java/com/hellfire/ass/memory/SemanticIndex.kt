@@ -35,9 +35,9 @@ class SemanticVector(@PrimaryKey val sourceId: String, val model: String, val ve
 @Dao
 interface SemanticDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun put(values: List<SemanticVector>)
-    @Query("SELECT e.* FROM source_event e WHERE e.contentAvailable = 1 AND e.securitySensitive = 0 AND NOT EXISTS (SELECT 1 FROM semantic_vector v WHERE v.sourceId = e.id AND v.model = :model) ORDER BY e.receivedAt DESC LIMIT :limit")
+    @Query("SELECT e.* FROM source_event e WHERE e.contentAvailable = 1 AND e.securitySensitive = 0 AND e.source != 'owner_skill_use' AND NOT EXISTS (SELECT 1 FROM semantic_vector v WHERE v.sourceId = e.id AND v.model = :model) ORDER BY e.receivedAt DESC LIMIT :limit")
     suspend fun pending(model: String, limit: Int): List<SourceEvent>
-    @Query("SELECT COUNT(*) FROM source_event e WHERE e.contentAvailable = 1 AND e.securitySensitive = 0 AND NOT EXISTS (SELECT 1 FROM semantic_vector v WHERE v.sourceId = e.id AND v.model = :model)")
+    @Query("SELECT COUNT(*) FROM source_event e WHERE e.contentAvailable = 1 AND e.securitySensitive = 0 AND e.source != 'owner_skill_use' AND NOT EXISTS (SELECT 1 FROM semantic_vector v WHERE v.sourceId = e.id AND v.model = :model)")
     suspend fun pendingCount(model: String): Int
     @Query("SELECT COUNT(*) FROM semantic_vector WHERE model = :model AND length(vector) > 0") suspend fun indexedCount(model: String): Int
     @Query("SELECT * FROM semantic_vector WHERE model = :model AND length(vector) > 0 AND sourceId > :after ORDER BY sourceId LIMIT :limit")
@@ -122,6 +122,7 @@ class SemanticIndex(private val app: HellFireApp) {
                 require(works) { "Select a MediaPipe text-embedder .tflite model (arm64-v8a device required)." }
                 java.nio.file.Files.move(temp.toPath(), modelFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
                 cachedId = null
+                app.getSharedPreferences("model-catalog", 0).edit().remove("installed-EMBEDDING").apply()
                 dao.dropOtherModels(modelId())
             } finally { temp.delete() }
         }

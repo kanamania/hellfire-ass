@@ -10,7 +10,7 @@ data class FinanceQuestion(val start: Long, val end: Long, val income: Boolean, 
     val scope: String get() = listOfNotNull(category, accountLabel, merchant?.let { "Merchant: $it" }, personLabel?.let { "Person: $it" }).joinToString(" · ").ifEmpty { "All accounts and categories" }
 
     companion object {
-        fun isQuestion(text: String) = Regex("\\b(spend|spent|spending|expenses|income|earned|earn|matumizi|mapato)\\b", RegexOption.IGNORE_CASE).containsMatchIn(text)
+        fun isQuestion(text: String) = Regex("\\b(spend|spent|spending|expenses|income|earned|earn|matumizi|mapato|budget|bajeti)\\b", RegexOption.IGNORE_CASE).containsMatchIn(text)
         fun followUp(text: String) = Regex("^(and|what about|how about|na|je)\\b", RegexOption.IGNORE_CASE).containsMatchIn(text.trim())
 
         fun parse(text: String, now: Instant, accounts: List<FinanceAccount>, categories: List<String>, previous: FinanceQuestion? = null, people: List<com.hellfire.ass.contacts.PersonContact> = emptyList()): FinanceQuestion {
@@ -56,7 +56,7 @@ data class FinanceQuestion(val start: Long, val end: Long, val income: Boolean, 
             if (Regex("\\ball categories\\b").containsMatchIn(rest)) result = result.copy(category = null)
             rest = rest.replace(Regex("\\b20[0-9]{2}-[0-9]{2}-[0-9]{2}\\b"), " ")
                 .replace(Regex("\\b(?:last|past) [0-9]+ days\\b"), " ")
-                .replace(Regex("\\b(?:how|much|did|do|have|has|i|we|my|our|me|the|a|an|on|in|from|for|of|to|and|what|about|all|accounts|account|wallet|wallets|categories|category|spend|spent|spending|expenses|income|earned|earn|today|yesterday|tomorrow|this|last|next|month|week|year|total|please|na|je|matumizi|mapato|leo|jana|kesho|mwezi|wiki|mwaka|uliopita|iliyopita|ujao|ijayo|huu|kwa|kiasi|gani|nime|nini)\\b"), " ")
+                .replace(Regex("\\b(?:how|much|did|do|have|has|i|we|my|our|me|the|a|an|on|in|from|for|of|to|and|what|about|all|accounts|account|wallet|wallets|categories|category|budget|variance|remaining|bajeti|tofauti|iliyobaki|ya|spend|spent|spending|expenses|income|earned|earn|today|yesterday|tomorrow|this|last|next|month|week|year|total|please|na|je|matumizi|mapato|leo|jana|kesho|mwezi|wiki|mwaka|uliopita|iliyopita|ujao|ijayo|huu|kwa|kiasi|gani|nime|nini)\\b"), " ")
                 .replace(Regex("[^\\p{L}\\p{N}]+"), " ").trim()
             require(rest.isBlank()) { "I could not match \"$rest\" to an account, category or supported period. Try \"spending on Fuel this month\", an account name, or merchant \"name\"." }
             return result

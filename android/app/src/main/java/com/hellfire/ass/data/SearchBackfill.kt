@@ -46,7 +46,7 @@ object SearchBackfill {
             if (batch.isEmpty()) break
             app.database.withTransaction {
                 for (event in batch) {
-                    if (!event.contentAvailable || event.securitySensitive) continue
+                    if (!event.contentAvailable || event.securitySensitive || event.source == "owner_skill_use") continue
                     val text = runCatching {
                         SearchText.of(JSONObject(app.cipher.decrypt(event.encryptedPayload).toString(Charsets.UTF_8)).getJSONObject("fields"))
                     }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }.getOrNull() ?: continue

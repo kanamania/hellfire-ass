@@ -33,6 +33,7 @@ fun HomeScreen() {
     val env = LocalEnv.current
     val nav = LocalNav.current
     val app = env.app
+    val skillCount by remember { app.database.skills().pendingCount() }.collectAsStateWithLifecycle(0)
     val db = app.database
     val candidates by remember { db.finances().candidates() }.collectAsStateWithLifecycle(emptyList())
     val drafts by remember { db.communications().drafts() }.collectAsStateWithLifecycle(emptyList())
@@ -61,13 +62,16 @@ fun HomeScreen() {
         AskBar(onAsk = { nav.tab(MainTab.Ask) }, onVoice = { nav.tab(MainTab.Ask, "voice") })
         Row(Modifier.padding(start = 4.dp).offset(y = (-8).dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Icon(if (cloudOn) HfIcons.Cloud else HfIcons.Lock, null, Modifier.size(14.dp), tint = Hf.colors.muted)
-            Text(if (cloudOn) "Cloud AI on · used only when you choose a cloud model" else "Private on this phone · Cloud AI off",
+            Text(if (cloudOn) "Cloud AI on · used only when you choose a cloud model" else "Encrypted on this phone · Cloud AI off",
                 style = Hf.type.rowSubtitle, color = Hf.colors.muted)
         }
 
+        ListCard {
+            ListRow(tr("Needs attention"), subtitle = tr("Connections, models, backups and recovery"), chevron = true, onClick = { nav.push(Screen.Recovery) })
+        }
         val gaps = brief?.sections?.firstOrNull { it.title == "Capture" }?.lines.orEmpty()
         if (gaps.isNotEmpty()) Banner(gaps.first().text + (if (gaps.size > 1) " · and ${gaps.size - 1} more" else "") + ". Tap to fix.", Tone.Warning, HfIcons.Info,
-            Modifier.clickableRow { nav.push(Screen.Settings); nav.push(Screen.Permissions) })
+            Modifier.clickableRow { nav.push(Screen.Recovery) })
         ListCard {
             ListRow(if (brief?.evening ?: com.hellfire.ass.insights.Briefs.isEvening(System.currentTimeMillis())) "Evening wrap-up" else "Morning brief",
                 subtitle = brief?.headline ?: "Tasks, bills, replies and money in one place", icon = HfIcons.Bell, tone = Tone.Primary, chevron = true,
@@ -85,10 +89,11 @@ fun HomeScreen() {
 
         val pendingDrafts = drafts.filter { it.state == "DRAFT" }
         val proposals = tasks.filter { it.state == "REVIEW" }
-        val needs = candidates.size + pendingDrafts.size + proposals.size + reviews.size
+        val needs = candidates.size + pendingDrafts.size + proposals.size + reviews.size + skillCount
         if (needs > 0) ListCard(title = "Needs you", count = needs) {
             ListRow(com.hellfire.ass.ui.tr("Review next"), subtitle = "One queue for payments, tasks and replies", chevron = true, onClick = { nav.push(Screen.Review) })
             ListDivider()
+            if (skillCount > 0) ListRow(tr("Review AI skills") + " ($skillCount)", subtitle = tr("Learned from your corrections"), chevron = true, onClick = { nav.push(Screen.Skills) })
             var first = true
             @Composable fun divider() { if (!first) ListDivider(); first = false }
             if (candidates.isNotEmpty()) {

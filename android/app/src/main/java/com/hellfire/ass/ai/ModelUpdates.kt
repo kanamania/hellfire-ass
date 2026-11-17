@@ -63,7 +63,7 @@ class ModelDownloader(private val connect: (URL) -> HttpURLConnection = { it.ope
         } finally { connection.disconnect() }
     }
 
-    fun download(release: ModelRelease, part: File, checkActive: () -> Unit = {}, progress: (Long) -> Unit = {}) {
+    fun download(release: ModelRelease, part: File, checkActive: () -> Unit = {}, progress: (Long) -> Unit = {}, downloadUrl: String = GemmaModel.downloadUrl(release)) {
         require(release.size in 1..GemmaModel.MAX_BYTES)
         if (part.length() > release.size) part.delete()
         val digest = MessageDigest.getInstance("SHA-256")
@@ -71,7 +71,7 @@ class ModelDownloader(private val connect: (URL) -> HttpURLConnection = { it.ope
         // Re-hash what an earlier attempt already saved so the final check covers the whole file.
         if (have > 0) part.inputStream().use { input -> copy(input, null, digest, checkActive) }
         if (have < release.size) {
-            val connection = open(URL(GemmaModel.downloadUrl(release)), have)
+            val connection = open(URL(downloadUrl), have)
             try {
                 val append = when (connection.responseCode) {
                     206 -> {
@@ -190,6 +190,8 @@ object ModelUpdates {
             .setConstraints(constraints()).setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 5, TimeUnit.MINUTES).build())
     }
 
+    fun suppressAutomaticDownload(context: Context) = edit(context) { putBoolean("declined", true) }
+
     fun cancel(context: Context) {
         WorkManager.getInstance(context).cancelUniqueWork(DOWNLOAD)
         partFile(context).delete()
@@ -228,14 +230,14 @@ class ModelDownloadWorker(context: Context, params: WorkerParameters) : Coroutin
             runCatching { setForeground(foreground(app, "Downloading", part.length(), release.size)) }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }
             var lastShown = -1L
             val context = currentCoroutineContext()
-            ModelDownloader().download(release, part, { context.ensureActive() }) { done ->
+            ModelDownloader().download(release, part, { context.ensureActive() }, { done ->
                 val percent = done * 100 / release.size
                 if (percent != lastShown) {
                     lastShown = percent
                     ModelUpdates.status(app, "Downloading ${GemmaModel.NAME}: $percent%", done, release.size)
                     runCatching { setForegroundAsync(foreground(app, "Downloading $percent%", done, release.size)) }
                 }
-            }
+            })
             ModelUpdates.status(app, "Checking that ${GemmaModel.NAME} loads on this phone", release.size, release.size)
             runCatching { setForeground(foreground(app, "Checking the model loads", release.size, release.size)) }
             if (!app.localModel.loads(part)) {

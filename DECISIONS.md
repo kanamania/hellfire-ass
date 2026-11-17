@@ -216,3 +216,21 @@ Android tests passed, 4 live-AI tests skipped; lint has no errors. Debug and sig
 release APKs verify. Primary-checkout frontend typecheck/Turbopack build pass; the
 local systemd frontend was restarted and its HTTPS login/CSS checked. Physical
 phone, live account/model, real-corpus and hosted CI checks remain NOT TESTED.
+
+
+## Everyday reliability and AI skills — 2026-11-17 (in progress)
+
+Owner authorized the eight follow-up recommendations, editable learned AI skills
+with reasons/evidence/usage history, and trusted selectable local model downloads.
+No new runtime dependencies. Existing action approvals and capture-all policy stay.
+
+- [ ] Durable drafts and resumable, duplicate-safe shared imports.
+- [ ] Guided setup and a consolidated recovery screen.
+- [ ] Explain suggestions; learn owner-reviewed, scoped AI skills from corrections.
+- [ ] Add/edit/disable/remove skills, provenance, use counts and navigable use history.
+- [ ] Searchable memory with paging and correction history.
+- [ ] Deterministic finance comparisons and budget variance.
+- [ ] Data-location/storage dashboard and accurate privacy messages.
+- [ ] Language/accessibility completion for the affected daily flows.
+- [ ] Curated compatible model catalog with trusted provenance and verified downloads.
+- [ ] Regression tests, migrations/backup compatibility, lint/APKs, merge and cleanup.

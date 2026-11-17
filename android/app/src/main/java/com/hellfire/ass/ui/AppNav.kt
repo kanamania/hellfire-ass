@@ -46,7 +46,7 @@ enum class Screen {
     Setup, Settings, Permissions, CloudAi, LocalModels, Email, WhatsApp, Backup, Device, Recordings, Reminders, Memory, Widgets, WebAccess,
     Accounts, Budgets, Transaction, Source, Task, Message, MediaItem,
     Reports, ReportMoney, ReportCategory, ReportAccounts, ReportStatement, ReportCapture, FixSms, ReportTasks, ReportMessages, ReportMedia, ReportAi,
-    Brief, Waiting, People, Person, Debts, Bills, Templates, TemplateEdit, Review, Share, Reconcile, Language,
+    Brief, Waiting, People, Person, Debts, Bills, Templates, TemplateEdit, Review, Share, Reconcile, Language, Skills, Recovery, GuidedSetup, Privacy,
 }
 
 /** A pushed screen plus one string argument (an id, or an encoded filter). */
@@ -123,6 +123,7 @@ private val routeSaver = listSaver<SnapshotStateList<Route>, String>(
 fun HellFireRoot(app: HellFireApp, permissions: PermissionStatus, actions: PermissionActions, initialTab: MainTab,
     deepLink: Uri?, onDeepLinkHandled: () -> Unit, message: String?, onMessageShown: () -> Unit) {
     val storage by app.storageStatus.collectAsStateWithLifecycle()
+    val draftError by PrivateDrafts.error.collectAsStateWithLifecycle()
     HellFireTheme {
         if (storage != "READY") {
             Surface(Modifier.fillMaxSize(), color = Hf.colors.background) {
@@ -138,7 +139,7 @@ fun HellFireRoot(app: HellFireApp, permissions: PermissionStatus, actions: Permi
         val tabState = rememberSaveable { mutableStateOf(initialTab) }
         val stack = rememberSaveable(saver = routeSaver) {
             val firstRun = !app.getSharedPreferences("ui", 0).getBoolean("setup_done", false)
-            if (firstRun) mutableStateListOf(Route(Screen.Setup)) else mutableStateListOf()
+            if (firstRun) mutableStateListOf(Route(Screen.GuidedSetup)) else mutableStateListOf()
         }
         val nav = remember { Nav(stack, tabState) }
         val env = AppEnv(app, permissions, actions)
@@ -157,6 +158,7 @@ fun HellFireRoot(app: HellFireApp, permissions: PermissionStatus, actions: Permi
                     key(tabState.value, route, stack.size) {
                         if (route == null) TabContent(tabState.value) else RouteContent(route)
                     }
+                    draftError?.let { Banner(it, Tone.Danger, HfIcons.Info, Modifier.align(Alignment.TopCenter).padding(16.dp)) }
                     if (message != null) Banner(message, Tone.Info, HfIcons.Info,
                         Modifier.align(Alignment.TopCenter).padding(horizontal = ScreenPadding, vertical = 8.dp).clickableRow(onMessageShown))
                 }
@@ -195,14 +197,14 @@ private fun HellFireBottomBar(current: MainTab, onSelect: (MainTab) -> Unit) {
         },
     ) {
         Row(
-            Modifier.fillMaxWidth().height(64.dp).padding(start = 6.dp, end = 6.dp, top = 6.dp).selectableGroup(),
+            Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(start = 6.dp, end = 6.dp, top = 6.dp).selectableGroup(),
             horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.Top,
         ) {
             MainTab.entries.forEach { t ->
                 val on = t == current
                 val tint = if (on) c.primary else c.muted
                 Column(
-                    Modifier.width(68.dp).heightIn(min = 52.dp)
+                    Modifier.weight(1f).heightIn(min = 52.dp)
                         .selectable(selected = on, role = Role.Tab, interactionSource = null, indication = null) { onSelect(t) },
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {

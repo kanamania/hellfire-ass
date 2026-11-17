@@ -14,6 +14,7 @@ object UiLanguage {
     var code by mutableStateOf("en")
     val locale get() = Locale.forLanguageTag(if (code == "sw") "sw-TZ" else "en-TZ")
     fun context(base: Context): Context = base.createConfigurationContext(Configuration(base.resources.configuration).apply { setLocale(UiLanguage.locale) })
+    fun text(context: Context, text: String): String = UiLabels.id(text)?.let { context(context).getString(it) } ?: text
     fun set(context: Context, value: String) {
         require(value in setOf("en", "sw"))
         context.getSharedPreferences("ui", 0).edit().putString("language", value).apply()

@@ -9,20 +9,22 @@ import java.util.zip.*
 /** Fixed table/column allowlists; archives cannot supply executable SQL. */
 object BackupTables {
     /** Backup schema written by this version. Schema 8 archives (before the v10 database) still restore. The full-text index is rebuilt, not backed up. */
-    const val SCHEMA = 16
+    const val SCHEMA = 17
     private val schema8 = listOf("source_event", "event_processing", "capture_audit", "notification_policy", "finance_account",
         "finance_candidate", "ledger_entry", "ledger_evidence", "merchant_alias", "communication_message", "outbound_draft",
         "action_audit", "assistant_task", "daily_review", "media_item", "transcript_segment", "speech_span", "memory_item")
     private val schema10 = schema8 + "ai_usage"
     private val schema11 = schema10 + listOf("category_budget", "provider_balance")
     private val schema14 = schema11 + listOf("action_template", "debt_entry", "person_alias")
-    val tables = schema14 + "person_contact"
+    private val schema16 = schema14 + "person_contact"
+    val tables = schema16 + listOf("ai_skill", "skill_use", "memory_revision")
     fun tablesFor(schema: Int): List<String> = when (schema) {
         8 -> schema8
         10 -> schema10
         11, 12, 13 -> schema11
         14 -> schema14
-        15, SCHEMA -> tables
+        15, 16 -> schema16
+        SCHEMA -> tables
         else -> throw IllegalArgumentException("Backup schema requires a matching app version")
     }
     /** Columns added after schema 8. Older archives may omit exactly these; they restore as the column default (NULL, NONE, TASK, 0). */
@@ -113,6 +115,7 @@ object BackupTables {
         return count
     }
     fun revokeRestoredApprovals(db: SupportSQLiteDatabase) {
+        db.execSQL("UPDATE ai_skill SET state='PENDING' WHERE state='ACTIVE'")
         db.execSQL("UPDATE outbound_draft SET state='DRAFT' WHERE state='APPROVED'")
         db.execSQL("UPDATE outbound_draft SET state='UNKNOWN', error='RESTORED_DELIVERY_UNCONFIRMED' WHERE state='SENDING'")
         db.execSQL("UPDATE outbound_draft SET approvalId=NULL, approvedAt=NULL")

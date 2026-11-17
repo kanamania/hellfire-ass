@@ -98,7 +98,8 @@ fun TasksTab() {
                                 .fold({ "Task added. Reminder set for ${Fmt.weekdayDayTime(t.dueAt)}." }, { "Not added. Check the date and reminder access." })
                         } })
                         SecondaryButton(com.hellfire.ass.ui.tr("Edit"), { editing = TaskDraft.of(t) })
-                        QuietButton(com.hellfire.ass.ui.tr("Not a task"), { scope.launch { withContext(Dispatchers.IO) { TaskScheduler.action(app, t.id, "REJECTED") } } })
+                        Note("Why suggested: time/commitment wording was found in the source. Check who promised, and the date.")
+                        QuietButton(com.hellfire.ass.ui.tr("Not a task"), { scope.launch { withContext(Dispatchers.IO) { TaskScheduler.action(app, t.id, "REJECTED"); app.skills.feedbackFor(app, "IGNORE_TASK", t.sourceId, "You marked this proposal as not a task. Review this exact-match rule before using it.") } } })
                     },
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
