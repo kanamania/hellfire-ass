@@ -47,6 +47,7 @@ object IntelligenceWork {
     }
 
     suspend fun schedule(context: Context) = withContext(Dispatchers.IO) {
+        if (context.getSharedPreferences("media", 0).getBoolean("analysis_paused", false)) return@withContext
         val prefs = IntelligencePrefs(context)
         WorkManager.getInstance(context).enqueueUniqueWork(NAME, ExistingWorkPolicy.KEEP, request(prefs)).result.get()
         Unit
@@ -90,6 +91,7 @@ object IntelligenceWork {
 class IntelligenceWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val app = applicationContext as HellFireApp
+        if (app.getSharedPreferences("media", 0).getBoolean("analysis_paused", false)) return@withContext Result.success()
         val prefs = IntelligencePrefs(app)
         val blocked = DeviceGate.blockReason(prefs.policy(), IntelligenceWork.snapshot(app))
         if (blocked != null) return@withContext Result.retry()
