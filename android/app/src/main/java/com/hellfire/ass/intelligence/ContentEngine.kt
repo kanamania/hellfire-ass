@@ -69,10 +69,16 @@ class ContentEngine(private val app: HellFireApp) {
 
     private suspend fun video(item: MediaItem, checkpoint: AnalysisCheckpoint, policy: CategoryPolicy): Pair<Boolean, AnalysisCheckpoint> {
         if (checkpoint.phase == "audio" || checkpoint.phase == "summary") return audio(item, checkpoint, policy)
+        if (checkpoint.doneMs == 0L) {
+            dao.segmentsNow(item.id).filter { it.kind in setOf("SCENE", "CHAPTER") }.forEach { scene ->
+                scene.thumbnailPath?.takeIf { it.startsWith("intelligence-thumbs/") && !it.contains("..") }?.let { File(app.cacheDir, it).delete() }
+            }
+            dao.clearSegments(item.id, listOf("SCENE", "CHAPTER"))
+        }
         val duration = duration(item) ?: 0L
         val times = Sampling.schedule(duration, IntelligencePrefs(app).mode(), checkpoint.sceneChangesMs).filter { !AnalysisCheckpoint.skipFrame(checkpoint, it) }
         val batch = times.take(6)
-        if (batch.isEmpty()) return audio(item, checkpoint.copy(phase = "audio", doneMs = duration), policy)
+        if (batch.isEmpty()) { finishScenes(item, duration, checkpoint.sceneChangesMs); return audio(item, checkpoint.copy(phase = "audio", doneMs = duration), policy) }
         var last = checkpoint.doneMs
         val frames = ArrayList<RgbFrame>()
         batch.forEach { at ->
@@ -81,23 +87,47 @@ class ContentEngine(private val app: HellFireApp) {
             val pixels = pixels(bitmap)
             frames += RgbFrame(at, pixels)
             val observed = observe(bitmap)
-            val segmentId = UUID.randomUUID().toString()
+            val segmentId = segmentId(item.id, at)
             val thumb = saveThumb(segmentId, bitmap)
             val description = observedText(observed)
-            dao.saveSegment(MediaSegment(segmentId, item.id, null, SegmentKind.SCENE.name, at, at, title = titleFrom(observed.labels, item.name),
+            dao.saveSegment(MediaSegment(segmentId, item.id, null, SegmentKind.SCENE.name, at, minOf(duration, at + when (IntelligencePrefs(app).mode()) { SampleMode.FAST -> 10_000; SampleMode.BALANCED -> 5_000; SampleMode.DEEP -> 1_000 }), title = titleFrom(observed.labels, item.name),
                 description = description, labels = JSONArray(observed.labels).toString(), thumbnailPath = thumb, confidence = observed.labels.firstOrNull()?.let { 0.6 }, createdAt = System.currentTimeMillis()))
             adultResult(item, bitmap, System.currentTimeMillis(), at)
             bitmap.recycle()
             last = at + 1
         }
-        val boundaries = SceneMath.boundaries(frames)
+        val boundaries = SceneMath.boundaries(frames).toMutableList()
+        frames.firstOrNull()?.let { first ->
+            if (checkpoint.histogram.isNotEmpty() && (SceneMath.histogramDistance(checkpoint.histogram.toIntArray(), SceneMath.histogram(first.pixels)) >= 0.35 ||
+                    kotlin.math.abs((checkpoint.luma ?: SceneMath.luma(first.pixels)) - SceneMath.luma(first.pixels)) >= 0.18)) boundaries.add(0, first.atMs)
+        }
         if (boundaries.isNotEmpty()) {
             save(item.id, "scenes", "histogram-luma", "1", "PARTIAL", JSONObject().put("boundariesMs", JSONArray(boundaries)),
                 "Scene boundaries from colour-histogram and luma difference. ${boundaries.size} change(s) in this batch.", null)
         }
-        val next = checkpoint.copy(doneMs = last, sceneChangesMs = (checkpoint.sceneChangesMs + boundaries).distinct().sorted())
+        val next = checkpoint.copy(doneMs = last, sceneChangesMs = (checkpoint.sceneChangesMs + boundaries).distinct().sorted(),
+            histogram = frames.lastOrNull()?.let { SceneMath.histogram(it.pixels).toList() } ?: checkpoint.histogram, luma = frames.lastOrNull()?.let { SceneMath.luma(it.pixels) } ?: checkpoint.luma)
         val more = Sampling.schedule(duration, IntelligencePrefs(app).mode(), next.sceneChangesMs).any { !AnalysisCheckpoint.skipFrame(next, it) }
-        return if (more) false to next else audio(item, next.copy(phase = "audio"), policy)
+        return if (more) false to next else { finishScenes(item, duration, next.sceneChangesMs); audio(item, next.copy(phase = "audio"), policy) }
+    }
+
+    private suspend fun finishScenes(item: MediaItem, duration: Long, boundaries: List<Long>) {
+        val scenes = dao.segmentsNow(item.id).filter { it.kind == SegmentKind.SCENE.name }
+        scenes.forEachIndexed { index, scene ->
+            val end = scenes.getOrNull(index + 1)?.startMs ?: duration
+            dao.saveSegment(scene.copy(endMs = end.coerceAtLeast(scene.startMs)))
+
+        }
+        dao.clearSegments(item.id, listOf("CHAPTER"))
+        val starts = (listOf(0L) + boundaries).filter { it < duration }.distinct().sorted()
+        starts.forEachIndexed { index, start ->
+            val end = starts.getOrNull(index + 1) ?: duration
+            val samples = scenes.filter { it.startMs >= start && it.startMs < end }
+            if (samples.isNotEmpty()) dao.saveSegment(samples.first().copy(id = "${item.id}:chapter:$start", kind = "CHAPTER", startMs = start, endMs = end,
+                description = samples.joinToString("\n") { it.description }.take(4000)))
+        }
+        save(item.id, "video_summary", "labels-ocr", "1", "PARTIAL", JSONObject().put("sampled", true),
+            scenes.joinToString("\n") { "${it.startMs} ms: ${it.title} — ${it.description}" }.take(8000), null)
     }
 
     private suspend fun audio(item: MediaItem, checkpoint: AnalysisCheckpoint, policy: CategoryPolicy): Pair<Boolean, AnalysisCheckpoint> {
@@ -193,8 +223,8 @@ class ContentEngine(private val app: HellFireApp) {
         save(item.id, "adult", if (verdict.installed) "adult.onnx" else "none", if (verdict.installed) "user-imported" else "absent",
             "PARTIAL", JSONObject().put("label", verdict.label ?: JSONObject.NULL).put("verified", false).put("message", verdict.message).put("atMs", atMs ?: JSONObject.NULL),
             verdict.message, verdict.confidence)
-        if (verdict.applied && verdict.label != null && (verdict.confidence ?: 0.0) >= 0.7) {
-            CategoryApply.suggest(dao, item.id, listOf(CategorySuggestion("Adult", verdict.label, verdict.confidence ?: 0.7)), now)
+        if (verdict.applied && isAdultLabel(verdict.label) && (verdict.confidence ?: 0.0) >= 0.7) {
+            CategoryApply.suggest(dao, item.id, listOf(CategorySuggestion(com.hellfire.ass.library.LibraryOrganize.ADULT_ROOT, verdict.label!!, verdict.confidence ?: 0.7)), now)
         }
     }
 
@@ -263,8 +293,8 @@ class ContentEngine(private val app: HellFireApp) {
         val source = managedSource(item)
         try {
             if (source != null) retriever.setDataSource(source) else retriever.setDataSource(app, Uri.parse(item.externalUri))
-            retriever.getScaledFrameAtTime(atMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 320, 180)
-                ?: retriever.getFrameAtTime(atMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+            retriever.getScaledFrameAtTime(atMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST, 320, 180)
+                ?: retriever.getFrameAtTime(atMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
         } finally {
             runCatching { retriever.release() }
             runCatching { source?.close() }
@@ -320,7 +350,7 @@ class ContentEngine(private val app: HellFireApp) {
     }
 
     private fun saveThumb(id: String, bitmap: Bitmap): String {
-        val dir = File(app.filesDir, "intelligence-thumbs").apply { mkdirs() }
+        val dir = File(app.cacheDir, "intelligence-thumbs").apply { mkdirs() }
         val file = File(dir, "$id.jpg")
         file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 70, it) }
         return "intelligence-thumbs/$id.jpg"
@@ -331,7 +361,9 @@ class ContentEngine(private val app: HellFireApp) {
     private fun languageModelVersion() = if (app.localModel.configured) app.localModel.modelFile.length().toString() else "absent"
 
     companion object {
-        const val PIPELINE = 1
+        fun segmentId(itemId: String, atMs: Long) = "$itemId:scene:$atMs"
+        fun isAdultLabel(label: String?) = label?.lowercase() in setOf("porn", "pornography", "hentai", "explicit", "sexual", "nudity", "sexy")
+        const val PIPELINE = 2
         const val JOB = "intelligence"
         fun newJob(itemId: String, now: Long) = com.hellfire.ass.library.ProcessingJob(
             UUID.randomUUID().toString(), JOB, itemId, priority = JobPriority.BACKGROUND, createdAt = now, updatedAt = now)

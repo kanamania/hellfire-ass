@@ -47,8 +47,9 @@ object CategoryApply {
     }
 
     private suspend fun ensure(dao: LibraryDao, parentId: String?, name: String, now: Long): MediaCategory {
+        if (parentId == null && name in setOf("Adult", "Adult content")) return com.hellfire.ass.library.LibraryOrganize.adultRoot(dao, now)
         dao.findCategory(parentId, name)?.let { return it }
-        val created = MediaCategory(UUID.randomUUID().toString(), parentId, name, Origin.AI.name, isPrivate = name == "Adult", createdAt = now, updatedAt = now)
+        val created = MediaCategory(UUID.randomUUID().toString(), parentId, name, Origin.AI.name, isPrivate = parentId?.let { dao.category(it)?.isPrivate } == true || name == "Adult", policy = if (parentId?.let { dao.category(it)?.isPrivate } == true) "LOCAL_ONLY" else "DEFAULT", createdAt = now, updatedAt = now)
         dao.insertCategory(created)
         return dao.findCategory(parentId, name) ?: created
     }

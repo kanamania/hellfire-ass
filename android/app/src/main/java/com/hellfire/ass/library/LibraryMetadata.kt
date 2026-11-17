@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.provider.MediaStore
 import android.util.Size
 import androidx.exifinterface.media.ExifInterface
 import com.hellfire.ass.HellFireApp
@@ -41,7 +42,7 @@ object LibraryMetadata {
         val kind = runCatching { ContentKind.valueOf(item.contentKind) }.getOrDefault(ContentKind.OTHER)
         if (kind == ContentKind.IMAGE) {
             runCatching {
-                open(app, item).use { json.put("exif", exifJson(it, locationGranted)) }
+                openOriginal(app, item, locationGranted).use { json.put("exif", exifJson(it, locationGranted)) }
             }.onFailure { json.put("exifError", "Could not read embedded image metadata") }
         }
         if (kind == ContentKind.AUDIO || kind == ContentKind.VIDEO) {
@@ -54,7 +55,7 @@ object LibraryMetadata {
                     MediaMetadataRetriever.METADATA_KEY_TITLE, MediaMetadataRetriever.METADATA_KEY_ARTIST,
                     MediaMetadataRetriever.METADATA_KEY_ALBUM, MediaMetadataRetriever.METADATA_KEY_DURATION,
                     MediaMetadataRetriever.METADATA_KEY_MIMETYPE, MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH,
-                    MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT,
+                    MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT, MediaMetadataRetriever.METADATA_KEY_DATE,
                 ).forEach { key -> retriever.extractMetadata(key)?.let { container.put(key.toString(), it) } }
                 json.put("container", container)
             } catch (_: Exception) {
@@ -64,6 +65,37 @@ object LibraryMetadata {
             }
         }
         return json
+    }
+
+    /**
+     * With ACCESS_MEDIA_LOCATION granted, a MediaStore item is opened with setRequireOriginal so Android does not redact its GPS
+     * tags. Other URIs (SAF documents, managed items) are returned unchanged.
+     */
+    fun originalUri(uri: Uri, locationGranted: Boolean): Uri =
+        if (locationGranted && uri.scheme == "content" && uri.authority == MediaStore.AUTHORITY) MediaStore.setRequireOriginal(uri) else uri
+
+    private fun openOriginal(app: HellFireApp, item: MediaItem, locationGranted: Boolean): InputStream {
+        val uri = item.externalUri?.takeIf { item.storage == StorageMode.EXTERNAL.name }?.let(Uri::parse)
+        if (uri != null && locationGranted) {
+            val original = originalUri(uri, true)
+            if (original != uri) runCatching { app.contentResolver.openInputStream(original) }.getOrNull()?.let { return it }
+        }
+        return open(app, item)
+    }
+
+    /** Capture time from metadata already read by [read]: EXIF DateTimeOriginal (device zone) or the container date tag. */
+    fun takenAt(metadata: JSONObject, zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): Long? {
+        metadata.optJSONObject("exif")?.let { exif ->
+            val raw = exif.optString(ExifInterface.TAG_DATETIME_ORIGINAL).ifBlank { exif.optString(ExifInterface.TAG_DATETIME) }
+            runCatching {
+                java.time.LocalDateTime.parse(raw.trim(), java.time.format.DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss")).atZone(zone).toInstant().toEpochMilli()
+            }.getOrNull()?.let { return it }
+        }
+        val date = metadata.optJSONObject("container")?.optString(MediaMetadataRetriever.METADATA_KEY_DATE.toString()).orEmpty()
+        return runCatching {
+            java.time.LocalDateTime.parse(date.trim().take(15), java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss"))
+                .atZone(java.time.ZoneOffset.UTC).toInstant().toEpochMilli().takeIf { it > 0 }
+        }.getOrNull()
     }
 
     fun dHash(app: HellFireApp, item: MediaItem): Long? {

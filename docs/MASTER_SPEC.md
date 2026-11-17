@@ -40,6 +40,13 @@ behavior, Google authorization and real backup/restore round trips NOT TESTED
 until verified. This adds Google Drive backup as an owner-approved cloud destination;
 it does not authorize cloud AI or upload account credentials.
 
+**Owner target-device update — 2026-11-17:** The intended handset is now a
+OnePlus 16, described by the owner as Snapdragon 8 Elite Gen 6. This supersedes
+the original OPPO model references below. Verify model/build, CPU feature flags,
+codecs, assistant integration, permissions and accelerators on the actual device;
+no precise chipset variant, ISA extension, RAM size or OEM behavior is established
+by the product name. Physical tests remain deferred and NOT TESTED.
+
 ## 0. Requirements locked by the owner
 
 These are explicit decisions, not suggestions to reconsider:

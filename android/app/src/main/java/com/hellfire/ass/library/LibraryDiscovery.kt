@@ -21,7 +21,15 @@ data class ScannedMedia(
     val width: Int? = null,
     val height: Int? = null,
     val durationMs: Long? = null,
+    /** Capture time (MediaStore DATE_TAKEN) when the provider reports one. */
+    val takenAt: Long? = null,
 )
+
+/** One child row of a SAF folder listing. */
+data class DocRow(val docId: String, val name: String, val mime: String, val size: Long, val modifiedAt: Long)
+
+/** A folder walk; complete is false when the cap was hit or any folder could not be listed. */
+data class TreeWalk(val files: List<DocRow>, val complete: Boolean, val error: String?)
 
 data class IndexedMedia(
     val id: String,
@@ -37,6 +45,7 @@ data class IndexedMedia(
 
 data class IndexDecision(val change: IndexChange, val id: String?, val scanned: ScannedMedia?)
 
+/** [dropId] is a MISSING external entry whose content still exists as the live entry [keepId] (at [uri]). */
 data class HashMove(val keepId: String, val dropId: String, val uri: String)
 
 data class SimilarPair(val leftId: String, val rightId: String, val distance: Int)
@@ -102,15 +111,48 @@ object LibraryDiscovery {
         return out
     }
 
-    /** A missing external row and a newer available row with the same hash are the same file at a new URI. */
+    /**
+     * Each MISSING external entry whose content hash matches a live (AVAILABLE) external entry is the same file seen at a new
+     * URI. The live entry survives (one per missing entry: same name first, else the oldest import); live entries are never dropped.
+     */
     fun hashMoves(items: List<MediaItem>): List<HashMove> {
         val external = items.filter { it.storage == StorageMode.EXTERNAL.name && !it.contentHash.isNullOrBlank() && !it.externalUri.isNullOrBlank() }
         return external.groupBy { it.contentHash }.values.flatMap { group ->
-            val missing = group.filter { it.availability == Availability.MISSING.name }.minByOrNull { it.importedAt } ?: return@flatMap emptyList()
-            group.filter { it.availability == Availability.AVAILABLE.name && it.id != missing.id }.map { drop ->
-                HashMove(missing.id, drop.id, drop.externalUri!!)
+            val live = group.filter { it.availability == Availability.AVAILABLE.name }.sortedWith(compareBy({ it.importedAt }, { it.id }))
+            if (live.isEmpty()) return@flatMap emptyList()
+            group.filter { it.availability == Availability.MISSING.name }.map { missing ->
+                val keep = live.firstOrNull { it.name == missing.name } ?: live.first()
+                HashMove(keep.id, missing.id, keep.externalUri!!)
             }
         }
+    }
+
+    /** Breadth-first SAF walk from [rootId]; [children] returns null when a folder cannot be listed (walk is then incomplete). */
+    fun walkTree(rootId: String, cap: Int, children: (String) -> List<DocRow>?): TreeWalk {
+        val pending = ArrayDeque<String>()
+        pending += rootId
+        val files = mutableListOf<DocRow>()
+        var seen = 0
+        var error: String? = null
+        while (pending.isNotEmpty()) {
+            val rows = children(pending.removeFirst())
+            if (rows == null) { error = error ?: "A folder could not be listed"; continue }
+            for (row in rows) {
+                if (seen >= cap) return TreeWalk(files, false, "Folder listing stopped at $cap entries")
+                seen++
+                if (row.mime == FOLDER_MIME) pending += row.docId else files += row
+            }
+        }
+        return TreeWalk(files, error == null, error)
+    }
+
+    const val FOLDER_MIME = "vnd.android.document/directory"
+
+    /** Only a complete walk of a held folder may mark unseen entries missing. */
+    fun treeVisibility(held: Boolean, walk: TreeWalk?): ScanVisibility = when {
+        !held || walk == null -> ScanVisibility.DENIED
+        !walk.complete -> ScanVisibility.PARTIAL
+        else -> ScanVisibility.FULL
     }
 
     fun dHash(argb: IntArray, width: Int, height: Int): Long {

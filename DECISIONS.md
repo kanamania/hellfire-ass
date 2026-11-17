@@ -234,3 +234,39 @@ No new runtime dependencies. Existing action approvals and capture-all policy st
 - [ ] Language/accessibility completion for the affected daily flows.
 - [ ] Curated compatible model catalog with trusted provenance and verified downloads.
 - [ ] Regression tests, migrations/backup compatibility, lint/APKs, merge and cleanup.
+
+## Media review: library and processing — 2026-11-17
+
+- Analysis uses one `intelligence` job type, including legacy `ANALYZE`/`transcribe`
+  rows. Audio/video transcription has one owner (ContentEngine); the legacy media
+  worker delegates instead of writing a second transcript stream.
+- Discovery selects items without a job rather than repeatedly scanning the newest
+  forty. Bounded sequential runs drain the queue. Interrupted steps count toward
+  the retry limit; explicit pauses survive checkpoint/release/failure.
+- External capture dates come from DATE_TAKEN, with modified/imported date fallback.
+  Missing external duplicates retire into live rows; live rows are never deleted
+  during reconciliation. USER category assignments/exclusions beat AI links.
+- User descriptions have a stable analysis row and survive reanalysis/search rebuild.
+  Media-type/date-only searches retrieve candidates directly; refinements intersect
+  text and category constraints. Scene sampling modes differ before a scene cut is
+  found, carry histogram state across batches, and use deterministic segment IDs.
+- Adult classifier output remains uncertain. Neutral/drawing labels are excluded;
+  supported adult labels use the canonical private/local-only root. Derived scene
+  thumbnails use disposable app-private cache, outside portable backups.
+
+## Media review: playback and sharing — 2026-11-17
+
+- A–B messages run on the player's application looper; a position ticker updates
+  controls while playing. Transition persistence saves the outgoing item. Playback
+  controllers are restricted to this app and trusted system/media controllers.
+- The legacy audio screen uses the same Media3 session. PiP has a video-only layout,
+  measured aspect ratio and pause-on-dismiss behavior; actual OEM behavior is untested.
+- MP4 metadata is zeroed inside same-sized `free` boxes. Sample offsets and media
+  bytes remain unchanged, including fast-start files. Export verification reads
+  samples and decodes a video frame before making the copy available.
+- Redaction overlays use frame dimensions. OCR suggestions use the EXIF-baked image
+  coordinate space. Video uses a static cover; tracking and video blur are not implemented.
+- Clip captions exclude whole-file analysis/category/tag claims. Range changes clear
+  clip-relative mute ranges and rebuild facts. Timestamp edits are parsed into export
+  values. Each export has its own cache directory and expires after 24 hours; JSON
+  sidecars use a MIME type that supports mixed content. Originals stay encrypted.

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,6 +60,14 @@ fun SearchScreen(route: Route) {
     var constraints by remember { mutableStateOf<SearchConstraints?>(null) }
     var hits by remember { mutableStateOf<List<SearchHit>>(emptyList()) }
     var status by remember { mutableStateOf("") }
+    LaunchedEffect(route.arg) {
+        if (query.isNotBlank()) {
+            val parsed = QueryParser.parse(query, System.currentTimeMillis())
+            constraints = parsed
+            hits = IntelligenceSearch(app).search(parsed)
+            status = if (hits.isEmpty()) "No matching saved items." else "${hits.size} results."
+        }
+    }
     PushedPage(tr("Search"), breadcrumb = tr("Media intelligence")) {
         OutlinedTextField(query, { query = it }, modifier = Modifier.fillMaxWidth(), label = { Text(tr("Search")) }, singleLine = true)
         PrimaryButton(tr("Search"), {
@@ -82,6 +91,7 @@ fun SearchScreen(route: Route) {
                     else -> LibraryRoutes.mediaDetail(hit.itemId)
                 })
             }.padding(vertical = 8.dp)) {
+                com.hellfire.ass.ui.library.SceneThumbnail(hit.thumbnailPath)
                 Text(hit.title, style = Hf.type.rowTitle, color = Hf.colors.onSurface)
                 Text("${hit.contentKind} · ${hit.matchSource} · ${"%.2f".format(hit.relevance)}", style = Hf.type.caption, color = Hf.colors.muted)
                 if (hit.startMs != null) Text("At ${hit.startMs} ms", style = Hf.type.caption, color = Hf.colors.muted)
@@ -219,6 +229,14 @@ fun MediaSettingsScreen() {
                 IntelligenceWork.enqueueMissing(app, 30)
                 IntelligenceWork.schedule(app)
                 note = "Queued. Local analysis runs when charging, battery, thermal and storage constraints allow."
+            }
+        })
+        SecondaryButton("Reanalyse with installed models", {
+            scope.launch {
+                val ids = app.database.library().analysedWithoutModel(listOf("transcript", "description", "adult"), 5000)
+                ids.forEach { app.database.jobs().enqueue(com.hellfire.ass.intelligence.ContentEngine.newJob(it, System.currentTimeMillis())) }
+                IntelligenceWork.schedule(app)
+                note = "Queued ${ids.size} items that previously lacked a model. Jobs run sequentially."
             }
         })
         SecondaryButton("Run diagnostic", {

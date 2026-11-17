@@ -123,19 +123,26 @@ fun ShareWithAiPage(route: Route) {
         val loaded = ShareSession.load(app, itemId, startMs, endMs)
         facts = loaded
         missing = loaded == null
-        if (loaded != null && title.isEmpty() && caption.isEmpty()) apply(ShareTemplates.fromFacts(loaded, style))
+        if (loaded != null) apply(ShareTemplates.fromFacts(loaded, style))
+        muteRanges = emptyList()
+        suggestion = ""
+        prepared = null
+        ShareSession.cleanup(app)
         extras = app.database.library().page(listOf("IMAGE"), listOf(StorageMode.MANAGED.name, StorageMode.EXTERNAL.name), false, Long.MAX_VALUE, "", 12)
             .map { it.id }.filter { it != itemId }
     }
 
     val askPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
-        status = if (granted.values.all { it }) "Media read permission granted. Prepare the copy again." else "Media read permission is not granted. Nothing was shared."
+        status = if (com.hellfire.ass.sharing.MediaReadAccess.granted(granted)) "Media read permission granted. Prepare the copy again." else "Media read permission is not granted. Nothing was shared."
     }
 
     fun approved(): ApprovedShare? {
         val current = facts ?: return null
+        if (current.range != ClipRanges.valid(startMs, endMs, current.durationMs)) { status = "Wait for the selected range to load."; return null }
+        val editedTimes = ShareTemplates.parseTimestampNotes(timestamps)
+        if (editedTimes == null) { status = "Use timestamps such as 0:10–0:20 label."; return null }
         return ApprovedShare(title.trim(), shortSummary.trim(), detailed.trim(), caption.trim(), split(categories), split(tags), split(hashtags),
-            timestampNotes, excerpts.lines().map { it.trim() }.filter { it.isNotEmpty() }, style, profile, current.range, includeTranscript, notice)
+            editedTimes, excerpts.lines().map { it.trim() }.filter { it.isNotEmpty() }, style, profile, current.range, includeTranscript, notice)
     }
 
     fun prepare() {
@@ -144,9 +151,9 @@ fun ShareWithAiPage(route: Route) {
             busy = true
             status = ""
             val item = withContext(Dispatchers.IO) { app.database.library().item(itemId) }
-            if (item?.storage == StorageMode.EXTERNAL.name && !canReadMedia(context)) {
+            if (item?.storage == StorageMode.EXTERNAL.name && com.hellfire.ass.sharing.MediaReadAccess.requiresMediaPermission(item.externalUri) && !com.hellfire.ass.sharing.MediaReadAccess.canRead(context, com.hellfire.ass.sharing.MediaReadAccess.kindOf(item.contentKind, item.mime))) {
                 busy = false
-                askPermission.launch(mediaPermissions())
+                askPermission.launch(com.hellfire.ass.sharing.MediaReadAccess.request(com.hellfire.ass.sharing.MediaReadAccess.kindOf(item.contentKind, item.mime)))
                 return@launch
             }
             val result = ShareSession.prepare(app, context, itemId, extraIds.toList(), current, rects, mode, muteRanges)
@@ -230,7 +237,7 @@ fun ShareWithAiPage(route: Route) {
         SectionCard("Redaction") {
             Note(ShareSession.DETECTORS)
             Note(ShareSession.TRACKING)
-            ChipPicker(RedactMode.entries.map { it.name }, mode.name) { mode = RedactMode.valueOf(it) }
+            ChipPicker((if (facts!!.contentKind == "VIDEO") listOf(RedactMode.COVER) else RedactMode.entries).map { it.name }, mode.name) { mode = RedactMode.valueOf(it) }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SecondaryButton("Scan text", {
                     scope.launch {
@@ -239,7 +246,9 @@ fun ShareWithAiPage(route: Route) {
                             val item = app.database.library().item(itemId) ?: return@withContext emptyList()
                             app.media.withPlainCopy(item) { file ->
                                 val bitmap = BitmapFactory.decodeFile(file.absolutePath) ?: return@withPlainCopy emptyList()
-                                try { ShareSession.textBoxes(bitmap) } finally { bitmap.recycle() }
+                                val orientation = runCatching { androidx.exifinterface.media.ExifInterface(file.path).getAttributeInt(androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION, 1) }.getOrDefault(1)
+                                val oriented = com.hellfire.ass.sharing.ImageOrientation.bake(bitmap, orientation)
+                                try { ShareSession.textBoxes(oriented) } finally { if (oriented !== bitmap) oriented.recycle(); bitmap.recycle() }
                             }
                         }
                         status = if (suggestions.isEmpty()) "No phone, email or address text was found. Nothing was changed." else "Review the suggested regions before adding them."
@@ -333,11 +342,4 @@ private fun profileLabel(profile: ShareProfile) = when (profile) {
 
 private fun copy(context: android.content.Context, text: String) {
     context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText("share", text))
-}
-
-private fun mediaPermissions() = if (Build.VERSION.SDK_INT >= 33) arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_AUDIO)
-else arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-
-private fun canReadMedia(context: android.content.Context) = mediaPermissions().all {
-    ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
 }

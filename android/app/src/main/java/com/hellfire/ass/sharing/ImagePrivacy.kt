@@ -268,8 +268,13 @@ object ImageSanitizer {
             else -> "image/jpeg"
         }
         val note = if (requested == "image/webp" && !webp) "WebP encoding is not available on this Android version; JPEG was written instead." else ""
+        // A fresh SDR bitmap drops an Ultra HDR gain map rather than re-encoding its identifying XMP.
+        val sdr = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+        android.graphics.Canvas(sdr).drawBitmap(bitmap, 0f, 0f, null)
         val stream = ByteArrayOutputStream()
-        if (!bitmap.compress(format, 90, stream)) return null
+        val compressed = sdr.compress(format, 90, stream)
+        sdr.recycle()
+        if (!compressed) return null
         return Encoded(stream.toByteArray(), mime, bitmap.width, bitmap.height, note)
     }
 
