@@ -253,3 +253,20 @@ No new runtime dependencies. Existing action approvals and capture-all policy st
 - Adult classifier output remains uncertain. Neutral/drawing labels are excluded;
   supported adult labels use the canonical private/local-only root. Derived scene
   thumbnails use disposable app-private cache, outside portable backups.
+
+## Media review: playback and sharing — 2026-11-17
+
+- A–B messages run on the player's application looper; a position ticker updates
+  controls while playing. Transition persistence saves the outgoing item. Playback
+  controllers are restricted to this app and trusted system/media controllers.
+- The legacy audio screen uses the same Media3 session. PiP has a video-only layout,
+  measured aspect ratio and pause-on-dismiss behavior; actual OEM behavior is untested.
+- MP4 metadata is zeroed inside same-sized `free` boxes. Sample offsets and media
+  bytes remain unchanged, including fast-start files. Export verification reads
+  samples and decodes a video frame before making the copy available.
+- Redaction overlays use frame dimensions. OCR suggestions use the EXIF-baked image
+  coordinate space. Video uses a static cover; tracking and video blur are not implemented.
+- Clip captions exclude whole-file analysis/category/tag claims. Range changes clear
+  clip-relative mute ranges and rebuild facts. Timestamp edits are parsed into export
+  values. Each export has its own cache directory and expires after 24 hours; JSON
+  sidecars use a MIME type that supports mixed content. Originals stay encrypted.
