@@ -13,6 +13,27 @@ import java.util.concurrent.TimeUnit
 
 object FolderImport {
     const val MAX_IMPORTS_PER_SCAN = 25
+    const val LIBRARY_TREES = "library-trees"
+    fun libraryTrees(app: HellFireApp): List<String> {
+        val array = app.secrets.read(LIBRARY_TREES)?.optJSONArray("uris") ?: return emptyList()
+        return (0 until array.length()).map { array.optString(it) }.filter { it.isNotBlank() }
+    }
+    suspend fun addLibraryTree(app: HellFireApp, uri: Uri) = withContext(Dispatchers.IO) {
+        app.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        val current = app.secrets.read(LIBRARY_TREES) ?: JSONObject()
+        val trees = current.optJSONArray("uris") ?: org.json.JSONArray()
+        val value = uri.toString()
+        if ((0 until trees.length()).none { trees.optString(it) == value }) trees.put(value)
+        app.secrets.save(LIBRARY_TREES, current.put("uris", trees))
+    }
+    suspend fun removeLibraryTree(app: HellFireApp, uri: String) = withContext(Dispatchers.IO) {
+        runCatching { app.contentResolver.releasePersistableUriPermission(Uri.parse(uri), Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+        val current = app.secrets.read(LIBRARY_TREES) ?: JSONObject()
+        val trees = org.json.JSONArray()
+        val existing = current.optJSONArray("uris")
+        if (existing != null) for (i in 0 until existing.length()) if (existing.optString(i) != uri) trees.put(existing.optString(i))
+        app.secrets.save(LIBRARY_TREES, current.put("uris", trees))
+    }
     suspend fun select(app: HellFireApp, uri: Uri) = withContext(Dispatchers.IO) {
         app.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         app.secrets.save("media-folder", JSONObject().put("uri", uri.toString()).put("seen", JSONObject()))

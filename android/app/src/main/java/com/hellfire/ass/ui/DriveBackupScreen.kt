@@ -174,20 +174,35 @@ fun DriveBackupScreen(app: HellFireApp) {
                 val password = passphrase.toCharArray(); passphrase = ""
                 scope.launch {
                     val file = File(app.noBackupFilesDir, "drive-restore-${UUID.randomUUID()}.hfb")
+                    val extra = mutableListOf<File>()
                     try {
                         withContext(Dispatchers.IO) {
                             DriveBackupWork.mutex.withLock {
                                 PortableBackup(app).checkRestoreAllowed()
                                 val coroutine = currentCoroutineContext()
-                                GoogleDriveBackup().download(selected, file, requireNotNull(token)) { coroutine.ensureActive() }
-                                PortableBackup(app).restore(file, password)
+                                val drive = GoogleDriveBackup()
+                                drive.download(selected, file, requireNotNull(token)) { coroutine.ensureActive() }
+                                val files = mutableListOf(file)
+                                val missing = PortableBackup(app).catalog(file, password.copyOf()).filter { it.action == BackupAction.OMITTED }.map { it.contentHash }.toMutableSet()
+                                val older = snapshots.filter { it.id != selected.id && it.createdAt <= selected.createdAt }.sortedByDescending { it.createdAt }
+                                for (olderSnapshot in older) {
+                                    if (missing.isEmpty()) break
+                                    val parent = File(app.noBackupFilesDir, "drive-parent-${UUID.randomUUID()}.hfb")
+                                    extra += parent
+                                    files += parent
+                                    drive.download(olderSnapshot, parent, requireNotNull(token)) { coroutine.ensureActive() }
+                                    val covered = PortableBackup(app).catalog(parent, password.copyOf())
+                                    missing.removeAll(covered.filter { it.action == BackupAction.INCLUDE || it.action == BackupAction.DEDUPE }.map { it.contentHash }.toSet())
+                                }
+                                PortableBackup(app).restore(file, password, files.drop(1))
+                                files.drop(1).forEach { it.delete() }
                             }
                         }
                         message = "Backup authenticated and restored. Regrant permissions and reconnect accounts as needed."
                     } catch (e: CancellationException) { throw e }
                     catch (_: DriveReconnectRequired) { token = null; message = "Reconnect Google Drive and try restore again." }
                     catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); message = "Restore failed: check passphrase, empty local database, disconnected capture/accounts and free space. Existing local data retained." }
-                    finally { password.fill('\u0000'); file.delete(); busy = false }
+                    finally { password.fill('\u0000'); file.delete(); extra.forEach { it.delete() }; busy = false }
                 }
             }) { Text("Download and restore") } },
             dismissButton = { TextButton(onClick = { restore = null }) { Text(com.hellfire.ass.ui.tr("Cancel")) } })

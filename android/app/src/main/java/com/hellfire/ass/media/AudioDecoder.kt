@@ -7,7 +7,7 @@ import java.nio.ByteOrder
 
 object AudioDecoder {
     data class Chunk(val samples: FloatArray, val end: Boolean)
-    suspend fun chunk(source: EncryptedMediaSource, startMs: Long, maxSeconds: Int = 120): Chunk {
+    suspend fun chunk(source: MediaDataSource, startMs: Long, maxSeconds: Int = 120): Chunk {
         val extractor = MediaExtractor()
         var codec: MediaCodec? = null
         try {

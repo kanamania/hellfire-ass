@@ -98,6 +98,21 @@ class Nav(private val stack: SnapshotStateList<Route>, private val tabState: Mut
             }
             "tasks" -> tab(MainTab.Tasks)
             "task" -> { tab(MainTab.Tasks); parts.firstOrNull()?.let { push(Screen.Task, it) } }
+            "library" -> {
+                tab(MainTab.Home)
+                val kind = when (parts.firstOrNull()) {
+                    "pictures" -> com.hellfire.ass.library.ContentKind.IMAGE
+                    "videos" -> com.hellfire.ass.library.ContentKind.VIDEO
+                    "audio" -> com.hellfire.ass.library.ContentKind.AUDIO
+                    else -> null
+                }
+                push(com.hellfire.ass.library.LibraryRoutes.library(kind))
+                when (parts.firstOrNull()) {
+                    "collections" -> action = "collections"
+                    "categories" -> action = "categories"
+                    "duplicates" -> action = "duplicates"
+                }
+            }
             "inbox" -> tab(MainTab.Inbox)
             "draft" -> tab(MainTab.Inbox, parts.firstOrNull()?.let { "draft:$it" })
             "message" -> { tab(MainTab.Inbox); parts.firstOrNull()?.let { push(Screen.Message, it) } }
@@ -160,6 +175,7 @@ fun HellFireRoot(app: HellFireApp, permissions: PermissionStatus, actions: Permi
                     key(tabState.value, route, stack.size) {
                         if (route == null) TabContent(tabState.value) else RouteContent(route)
                     }
+                    com.hellfire.ass.ui.player.MiniPlayerOverlay(Modifier.align(Alignment.BottomCenter))
                     draftError?.let { Banner(it, Tone.Danger, HfIcons.Info, Modifier.align(Alignment.TopCenter).padding(16.dp)) }
                     if (message != null) Banner(message, Tone.Info, HfIcons.Info,
                         Modifier.align(Alignment.TopCenter).padding(horizontal = ScreenPadding, vertical = 8.dp).clickableRow(onMessageShown))

@@ -6,6 +6,7 @@ export interface Config {
   ownerPasswordHash: string;
   port: number;
   host: string;
+  quotaBytes: number;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -24,7 +25,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     port: Number(env.PORT ?? 3911),
     // Loopback only: the website on the same host is the API's only client.
     host: env.HOST ?? '127.0.0.1',
+    quotaBytes: quota(env.LIBRARY_QUOTA_BYTES),
   };
+}
+
+function quota(value: string | undefined): number {
+  const bytes = Number(value ?? 8 * 1024 * 1024 * 1024);
+  if (!Number.isSafeInteger(bytes) || bytes < 1) throw new Error('LIBRARY_QUOTA_BYTES must be a positive integer');
+  return bytes;
 }
 
 export const CONFIG = Symbol('CONFIG');

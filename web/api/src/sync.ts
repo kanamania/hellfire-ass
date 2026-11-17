@@ -52,6 +52,12 @@ export class SyncService {
       await client.query("UPDATE meta SET value = $1 WHERE key = 'dataset'", [dataset]);
       await client.query("DELETE FROM meta WHERE key = 'last_sync_at'");
       await client.query('DELETE FROM record');
+      await client.query('DELETE FROM library_chunk');
+      await client.query('DELETE FROM library_blob');
+      await client.query('DELETE FROM library_record');
+      await client.query('DELETE FROM library_search');
+      await client.query('DELETE FROM library_meta');
+      await client.query("INSERT INTO library_meta (key, value) VALUES ('epoch', gen_random_uuid()::text)");
     });
     return { dataset };
   }

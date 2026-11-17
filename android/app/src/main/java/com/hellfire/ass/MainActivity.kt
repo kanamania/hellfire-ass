@@ -33,12 +33,17 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import com.hellfire.ass.assistant.HellFireVoiceService
 import com.hellfire.ass.notifications.HellFireNotificationListener
+import com.hellfire.ass.player.PipControls
+import com.hellfire.ass.player.PlaybackFlags
+import com.hellfire.ass.player.PlaybackLogic
+import com.hellfire.ass.player.PresentationEvent
 import com.hellfire.ass.ui.HellFireRoot
 import com.hellfire.ass.ui.MainTab
 import com.hellfire.ass.ui.PermissionActions
 import com.hellfire.ass.sms.SmsCaptureSettings
 import com.hellfire.ass.sms.SmsSyncWorker
 import androidx.work.WorkManager
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -68,11 +73,17 @@ class MainActivity : ComponentActivity() {
             else "SMS access was not granted. Android or the installer may restrict this permission."
     }
     private val requestRole = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { refreshStatus() }
+    private val pipScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        pipScope.launch {
+            kotlinx.coroutines.flow.combine(PlaybackFlags.playing, PlaybackFlags.video, PlaybackFlags.presentation) { playing, video, presentation ->
+                PlaybackLogic.shouldAutoEnterPip(video, playing, presentation)
+            }.collect { syncPip(it) }
+        }
         lockEnabled = AppLock.enabled(this)
         locked = lockSession.requiresUnlock(lockEnabled)
         deepLink = linkFor(intent)
@@ -205,6 +216,26 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onUserLeaveHint() {
+        if (PlaybackLogic.shouldAutoEnterPip(PlaybackFlags.video.value, PlaybackFlags.playing.value, PlaybackFlags.presentation.value)) {
+            val entered = runCatching { enterPictureInPictureMode(PipControls.params(this, true, true)) }.getOrDefault(false)
+            PlaybackFlags.present(if (entered) PresentationEvent.ENTER_PIP else PresentationEvent.PIP_REFUSED)
+        }
+        super.onUserLeaveHint()
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        if (isInPictureInPictureMode) PlaybackFlags.present(PresentationEvent.ENTER_PIP)
+        else PlaybackFlags.present(PresentationEvent.LEAVE_PIP)
+    }
+
+    private fun syncPip(autoEnter: Boolean) {
+        if (Build.VERSION.SDK_INT >= 31 && packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
+            runCatching { setPictureInPictureParams(PipControls.params(this, autoEnter, PlaybackFlags.playing.value)) }
+        }
+    }
+
     override fun onStop() {
         lockSession.lock()
         locked = lockSession.requiresUnlock(lockEnabled)
@@ -213,6 +244,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        pipScope.cancel()
         val pending = authentication
         authentication = null
         pending?.cancel()

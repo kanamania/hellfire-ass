@@ -34,6 +34,7 @@ fun BackupScreen(app: HellFireApp) {
     var busy by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<String?>(null) }
     var verifyOnly by rememberSaveable { mutableStateOf(false) }
+    var incremental by rememberSaveable { mutableStateOf(false) }
     var confirmRestore by remember { mutableStateOf(false) }
     val backup = remember { PortableBackup(app) }
     val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
@@ -42,11 +43,12 @@ fun BackupScreen(app: HellFireApp) {
             scope.launch {
                 busy = true
                 try {
-                    backup.export(uri, secret)
+                    backup.export(uri, secret, incremental)
                     app.getSharedPreferences("ui", 0).edit().putLong("last_backup_at", System.currentTimeMillis()).apply()
                     result = "Encrypted portable backup saved. Keep its passphrase separately; there is no recovery without it. Test restore on an empty installation before relying on this backup."
                 }
                 catch (e: CancellationException) { result = "Backup interrupted; the selected destination may contain an incomplete encrypted file."; throw e }
+                catch (blocked: com.hellfire.ass.security.BackupBlocked) { result = blocked.message ?: "Backup blocked." }
                 catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); result = "Backup failed. Check free storage, destination, passphrase length and encrypted staging space and the 1 GiB database limit. Partial output is incomplete." }
                 finally { secret.fill('\u0000'); busy = false }
             }
@@ -83,12 +85,14 @@ fun BackupScreen(app: HellFireApp) {
     SectionCard(com.hellfire.ass.ui.tr("Back up or restore")) {
         HfTextField(password, { password = it }, "Backup passphrase · at least 12 characters", password = true)
         PrimaryButton(com.hellfire.ass.ui.tr("Export encrypted backup…"), { pending.set(password); password = ""; exporter.launch("HellFire-Ass-backup.hfb") }, Modifier.fillMaxWidth(), enabled = !busy && password.length >= 12)
+        QuietButton(if (incremental) "Incremental export on" else "Incremental export off", { incremental = !incremental }, enabled = !busy)
+        if (incremental) Note("Incremental archives omit originals already verified in a retained backup. Keep those older archives. A full export is one file and restores alone.")
         SecondaryButton(com.hellfire.ass.ui.tr("Restore into empty local database…"), { verifyOnly = false; confirmRestore = true }, Modifier.fillMaxWidth(), enabled = !busy && password.length >= 12)
         SecondaryButton(com.hellfire.ass.ui.tr("Verify an archive without restoring…"), { verifyOnly = true; pending.set(password); password = ""; importer.launch(arrayOf("*/*")) }, Modifier.fillMaxWidth(), enabled = !busy && password.length >= 12)
         if (busy) { LinearProgressIndicator(Modifier.fillMaxWidth(), color = Hf.colors.primary); Note("Working with encrypted storage. Keep this screen open until finished.") }
     }
     SectionCard(com.hellfire.ass.ui.tr("What is included")) {
-        Note("Portable backups include source events, finance, tasks, messages and drafts, memory, transcripts and registered media originals. Payloads and originals are re-encrypted for your passphrase and protected with authenticated chunks. Restore re-encrypts them with this phone's key.")
+        Note("Portable backups include source events, finance, tasks, messages and drafts, memory, transcripts, library records and managed originals. The archive is encrypted with your passphrase. The passphrase and derived key are not stored in the archive or beside it. Restore re-encrypts originals with this phone's key. An incremental archive restores only together with the older archives it omitted.")
         Note("Account passwords and tokens, Android permissions, the gateway private key, model weights, folder grants and microphone test samples are left out. Restore needs an empty database. It clears stale send approvals and marks interrupted sends unconfirmed.")
         Note("Choose any Android document destination you trust. Manual export is separate from the daily Google Drive option above. Stop recording before export; turn off notification and SMS capture and disconnect mail and gateway accounts before restore.")
     }
