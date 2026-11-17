@@ -446,7 +446,7 @@ interface SyncDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun saveBackupItems(items: List<BackupItemRecord>)
     @Query("UPDATE backup_item SET verifiedAt = :now WHERE manifestId = :manifestId") suspend fun verifyBackupItems(manifestId: String, now: Long)
     /** Managed originals with no verified backup of their current content hash. */
-    @Query("SELECT m.* FROM media_item m WHERE m.storage = 'MANAGED' AND NOT EXISTS (SELECT 1 FROM backup_item b WHERE b.itemId = m.id AND b.contentHash = m.contentHash AND b.verifiedAt IS NOT NULL) ORDER BY m.importedAt LIMIT :limit")
+    @Query("SELECT m.* FROM media_item m WHERE m.storage = 'MANAGED' AND m.size > 0 AND m.contentHash IS NOT NULL AND NOT EXISTS (SELECT 1 FROM backup_item b WHERE b.itemId = m.id AND b.contentHash = m.contentHash AND b.verifiedAt IS NOT NULL) ORDER BY m.importedAt LIMIT :limit")
     suspend fun notBackedUp(limit: Int): List<MediaItem>
     @Query("SELECT MAX(b.verifiedAt) FROM backup_item b JOIN media_item m ON m.id = b.itemId AND m.contentHash = b.contentHash WHERE b.itemId = :itemId")
     suspend fun lastVerifiedBackup(itemId: String): Long?

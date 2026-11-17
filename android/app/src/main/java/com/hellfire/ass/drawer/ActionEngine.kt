@@ -6,7 +6,8 @@ import java.net.URLEncoder
 
 /**
  * Modular action providers. Each declares kinds, context, permissions, external services,
- * offline use, confirmation and failure text. Dropped code is never an executable action.
+ * offline use, confirmation and failure text. Dropped code is never an executable action. Image description is not
+ * offered: the installed model is text-only. Categories are assigned on the inbox item page; questions use the follow-up box.
  */
 data class RecommendedAction(
     val type: String,
@@ -112,17 +113,13 @@ private object PictureActions : ActionProvider {
     override fun actions(content: Normalized, modelInstalled: Boolean): List<RecommendedAction> {
         if (content.kind != ContentKind.IMAGE && "error" !in content.signals && "receipt" !in content.signals) return emptyList()
         val kinds = setOf(ContentKind.IMAGE)
-        val model = action("describe", "Describe", kinds, listOf("item"), emptyList(), emptyList(), true, false,
-            "Description needs an installed local model.", 40, available = modelInstalled, reason = if (modelInstalled) null else "Local model is not installed.")
         return listOf(
             action("extract_receipt", "Extract receipt", kinds, listOf("text"), emptyList(), emptyList(), true, false, "No receipt amounts were found in the saved text.", if ("receipt" in content.signals) 80 else 30),
             action("explain_screenshot", "Explain screenshot", kinds, listOf("item"), emptyList(), emptyList(), true, false, "Explanation needs an installed local model or extracted text.", 35, available = modelInstalled || content.text.isNotBlank(), reason = if (modelInstalled || content.text.isNotBlank()) null else "Local model is not installed."),
             action("troubleshoot", "Troubleshoot", kinds, listOf("text"), emptyList(), emptyList(), true, false, "No error text was extracted. Dropped code is not executed.", 25),
-            model,
-            action("extract_text", "Extract text", kinds, listOf("item"), emptyList(), emptyList(), true, false, "On-device OCR did not return text. QR content was not decoded.", 30),
+            action("extract_text", "Extract text", kinds, listOf("item"), emptyList(), emptyList(), true, false, "On-device OCR did not return text. QR codes are not decoded: no on-device barcode decoder is included.", 30),
             action("translate", "Translate text", kinds, listOf("text"), emptyList(), emptyList(), true, false, "Translation needs an installed local model.", 20, available = modelInstalled && content.text.isNotBlank(), reason = if (modelInstalled) null else "Local model is not installed."),
             action("search_similar", "Search similar", kinds, listOf("item"), emptyList(), emptyList(), true, false, "Nothing similar is indexed yet.", 15),
-            action("categorize", "Categorize", kinds, listOf("item"), emptyList(), emptyList(), true, false, "Category was not saved.", 10),
             action("share_sanitized", "Share sanitized copy", kinds, listOf("item"), emptyList(), listOf("share"), true, true, "Share review was not opened.", 5),
         ).filter { content.kind == ContentKind.IMAGE || it.type in setOf("troubleshoot", "explain_screenshot", "extract_receipt") }
     }
@@ -181,7 +178,6 @@ private object DocumentActions : ActionProvider {
         val modelReason = if (modelInstalled) null else "Local model is not installed."
         return listOf(
             action("summarize", "Summarize", kinds, listOf("text"), emptyList(), emptyList(), true, false, "Summary needs extracted text and an installed local model.", 40, available = modelInstalled && content.text.isNotBlank(), reason = modelReason),
-            action("ask", "Ask about this document", kinds, listOf("text"), emptyList(), emptyList(), true, false, "A follow-up needs the saved document.", 35),
             action("extract_dates", "Extract dates", kinds, listOf("text"), emptyList(), emptyList(), true, false, "No dates were found in the extracted text. OCR is not installed.", 60),
             action("find_deadlines", "Find deadlines", kinds, listOf("text"), emptyList(), emptyList(), true, false, "No deadlines were found in the extracted text.", 55),
             action("share_sanitized", "Share sanitized copy", kinds, listOf("item"), emptyList(), listOf("share"), true, true, "Share review was not opened.", 10),

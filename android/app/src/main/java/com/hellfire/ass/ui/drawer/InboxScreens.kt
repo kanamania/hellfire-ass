@@ -10,6 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hellfire.ass.data.SearchText
+import com.hellfire.ass.drawer.DrawerAi
+import com.hellfire.ass.drawer.DrawerContent
 import com.hellfire.ass.drawer.DrawerController
 import com.hellfire.ass.drawer.DrawerInbox
 import com.hellfire.ass.drawer.DrawerTalk
@@ -34,9 +36,13 @@ fun UniversalInboxPage() {
     var category by rememberSaveable { mutableStateOf("") }
     var collection by rememberSaveable { mutableStateOf("") }
     var items by remember { mutableStateOf<List<InboxItem>>(emptyList()) }
+    var refresh by remember { mutableStateOf(0) }
+    var confirmEmpty by rememberSaveable { mutableStateOf(false) }
+    var message by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
     val categories by app.database.library().categories().collectAsStateWithLifecycle(emptyList())
     val collections by app.database.library().collections(listOf("COLLECTION", "ALBUM")).collectAsStateWithLifecycle(emptyList())
-    LaunchedEffect(filter, query, category, collection) {
+    LaunchedEffect(filter, query, category, collection, refresh) {
         items = withContext(Dispatchers.IO) {
             val lifecycle = when (filter) {
                 "Archived" -> InboxLifecycle.ARCHIVED.name
@@ -89,9 +95,24 @@ fun UniversalInboxPage() {
                 collections.take(12).forEach { col -> SecondaryButton(col.name, { collection = col.id }) }
             }
         }
+        message?.let { Banner(it) }
+        if (filter == "Trash" && shown.isNotEmpty()) {
+            if (!confirmEmpty) SecondaryButton(tr("Empty trash"), { confirmEmpty = true })
+            else {
+                Note("Permanently delete every item in the trash? Their conversations, action history and saved places are removed. Originals still used by another inbox item, a collection or the library are kept. This cannot be undone.")
+                PrimaryButton(tr("Empty trash"), {
+                    scope.launch {
+                        val result = withContext(Dispatchers.IO) { runCatching { DrawerInbox.emptyTrash(app) } }
+                        message = result.exceptionOrNull()?.let { "Some items could not be deleted: ${it.message.orEmpty()}" } ?: "Deleted ${result.getOrNull()} items."
+                        confirmEmpty = false; refresh++
+                    }
+                })
+                QuietButton(tr("Cancel"), { confirmEmpty = false })
+            }
+        }
         if (shown.isEmpty()) Note(tr("Saved drops, files and shares"))
         shown.forEach { row ->
-            ListRow(row.title.ifBlank { row.contentKind }, subtitle = listOf(row.captureState, row.processingState, row.syncState, row.backupState).joinToString(" · "), chevron = true) {
+            ListRow((if (row.favorite) "★ " else "") + row.title.ifBlank { row.contentKind }, subtitle = listOf(row.captureState, row.processingState, row.syncState, row.backupState).joinToString(" · "), chevron = true) {
                 nav.push(LibraryRoutes.inboxItem(row.id))
             }
         }
@@ -111,6 +132,11 @@ fun InboxItemPage(id: String) {
     var notes by remember(item?.notes) { mutableStateOf(item?.notes.orEmpty()) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var question by rememberSaveable { mutableStateOf("") }
+    var asking by remember { mutableStateOf(false) }
+    var kept by remember { mutableStateOf<Int?>(null) }
+    val categories by app.database.library().categories().collectAsStateWithLifecycle(emptyList())
+    val collections by app.database.library().collections(listOf("COLLECTION", "ALBUM")).collectAsStateWithLifecycle(emptyList())
     PushedPage(item?.title?.ifBlank { tr("Universal inbox") } ?: tr("Universal inbox"), breadcrumb = tr("Inbox")) {
         message?.let { Banner(it) }
         val row = item
@@ -120,6 +146,9 @@ fun InboxItemPage(id: String) {
         }
         if (row.captureState != "COMPLETE") Banner(tr("Incomplete capture") + ": " + (row.captureError ?: "The original was not fully saved."), Tone.Warning)
         Note(row.summary.ifBlank { "No summary yet." })
+        SecondaryButton(if (row.favorite) "★ " + tr("Remove from favorites") else "☆ " + tr("Add to favorites"), {
+            scope.launch { withContext(Dispatchers.IO) { DrawerInbox.setFavorite(app, id, !row.favorite) } }
+        })
         Text(tr("Processing") + ": " + row.processingState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
         Text(tr("Sync") + ": " + row.syncState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
         Text(tr("Backup") + ": " + row.backupState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
@@ -135,11 +164,47 @@ fun InboxItemPage(id: String) {
                 message = "Notes saved."
             }
         })
+        val target = contents.firstOrNull()
+        if (target != null && categories.isNotEmpty()) {
+            Text(tr("Categories"), style = Hf.type.label, color = Hf.colors.muted)
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                categories.take(30).forEach { cat -> SecondaryButton(cat.name, {
+                    scope.launch {
+                        withContext(Dispatchers.IO) { contents.forEach { media -> app.database.library().setCategory(com.hellfire.ass.library.ItemCategory(media.id, cat.id, "USER", updatedAt = System.currentTimeMillis())) } }
+                        message = "Assigned to ${cat.name}."
+                    }
+                }) }
+            }
+        }
+        if (target != null && collections.isNotEmpty()) {
+            Text(tr("Collections"), style = Hf.type.label, color = Hf.colors.muted)
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                collections.take(30).forEach { col -> SecondaryButton(col.name, {
+                    scope.launch {
+                        withContext(Dispatchers.IO) { contents.forEach { media -> app.database.library().addToCollection(col.id, media.id, System.currentTimeMillis()) } }
+                        message = "Added to ${col.name}."
+                    }
+                }) }
+            }
+        }
+        if (row.contentKind == "IMAGE") Note("QR codes are not decoded: no on-device barcode decoder is included.")
         Text(tr("Follow-up"), style = Hf.type.label, color = Hf.colors.muted)
         messages.forEach { Text("${it.role}: ${it.text.take(500)}", style = Hf.type.body, color = Hf.colors.onSurface) }
+        HfTextField(question, { question = it.take(2000) }, tr("Follow-up"), singleLine = false, minLines = 2, enabled = !asking)
+        PrimaryButton(tr("Follow-up"), {
+            val asked = question.trim()
+            asking = true
+            scope.launch {
+                withContext(Dispatchers.IO) {
+                    DrawerTalk(app.database.inbox()).ask(id, DrawerTalk.session(id), asked, DrawerContent.text(app, id)) { prompt -> DrawerAi.answer(app, prompt) }
+                }
+                question = ""; asking = false
+            }
+        }, Modifier.fillMaxWidth(), enabled = !asking && question.isNotBlank())
+        if (!DrawerAi.available(app)) Note(DrawerAi.NOT_INSTALLED)
         QuietButton(tr("Clear context"), {
             scope.launch {
-                withContext(Dispatchers.IO) { DrawerTalk(app.database.inbox()).clear(DrawerController.sessionId); DrawerTalk(app.database.inbox()).clear("inbox:$id") }
+                withContext(Dispatchers.IO) { DrawerTalk(app.database.inbox()).clear(DrawerTalk.session(id)) }
                 message = "Context cleared. The saved item is still here."
             }
         })
@@ -152,9 +217,13 @@ fun InboxItemPage(id: String) {
                 SecondaryButton(tr("Move to trash"), { scope.launch { withContext(Dispatchers.IO) { DrawerInbox.trash(app, id) } } })
             }
         }
-        if (!confirmDelete) SecondaryButton(tr("Delete permanently"), { confirmDelete = true })
+        if (!confirmDelete) SecondaryButton(tr("Delete permanently"), {
+            confirmDelete = true
+            scope.launch { kept = withContext(Dispatchers.IO) { contents.size - DrawerInbox.deletableOriginals(app, id).size } }
+        })
         else {
-            Note("Delete the saved original? This cannot be undone.")
+            Note("Permanently delete this item, its conversation, action history and places saved from it? This cannot be undone." +
+                (kept?.takeIf { it > 0 }?.let { " $it original(s) are also used by another inbox item, a collection or the library and will be kept there." } ?: ""))
             PrimaryButton(tr("Delete permanently"), {
                 scope.launch {
                     val result = withContext(Dispatchers.IO) { runCatching { DrawerInbox.deletePermanently(app, id) } }

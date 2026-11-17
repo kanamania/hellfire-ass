@@ -270,3 +270,27 @@ No new runtime dependencies. Existing action approvals and capture-all policy st
   clip-relative mute ranges and rebuild facts. Timestamp edits are parsed into export
   values. Each export has its own cache directory and expires after 24 hours; JSON
   sidecars use a MIME type that supports mixed content. Originals stay encrypted.
+
+## Media review: drawer and recovery — 2026-11-17
+
+- Drawer answers use bounded saved text/OCR/transcripts and the on-device model.
+  They never fall back to cloud chat. Conversations are scoped by inbox ID even
+  when a legacy caller supplies a shared session name; model text stays unverified.
+- Permanent inbox deletion purges its rows/search entries and keeps shared,
+  imported or user-organized originals. Proposed actions update the tapped row;
+  completed actions remain in history and leave the suggested-action buttons.
+- Portable exports re-read the destination. Drive staging never marks a backup
+  complete; only the confirmed upload's size/checksum permits the commit. Partial
+  archives keep usable records/originals and list blocked originals separately.
+- Full restore retains external references as UNVERIFIED without requiring their
+  bytes. The UI accepts a base plus incremental archives in any order. Selective
+  restore copies category ancestry, clears unselected optional references and
+  rejects a conflicting local original. Search rebuilding is transactional.
+- Production staging uses SQLCipher. A factory seam allows synthetic host tests to
+  execute the same restore logic with SQLite; it does not verify device SQLCipher.
+- Incremental omission uses only the selected base chain. Retention preserves
+  required ancestors; user-owned SAF files are not deleted. App-created Drive
+  archives are listed across pages before pruning, following Google's
+  [files.list pagination contract](https://developers.google.com/workspace/drive/api/reference/rest/v3/files/list).
+- Cache cleanup removes orphan thumbnails only. Referenced thumbnails, active
+  plaintext copies, share outputs, model caches and downloads are retained.
