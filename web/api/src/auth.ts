@@ -59,6 +59,17 @@ export class SyncGuard implements CanActivate {
   }
 }
 
+/** Phone sync token or an owner session. Used by the encrypted library, not the plaintext mirror. */
+@Injectable()
+export class ClientGuard implements CanActivate {
+  constructor(@Inject(CONFIG) private readonly config: Config) {}
+  canActivate(context: ExecutionContext): boolean {
+    const token = bearer(context.switchToHttp().getRequest<Request>());
+    if (token && (sameSecret(token, this.config.syncToken) || validSession(this.config.sessionSecret, token))) return true;
+    throw new UnauthorizedException();
+  }
+}
+
 /** The owner, signed in through the web app. */
 @Injectable()
 export class SessionGuard implements CanActivate {
