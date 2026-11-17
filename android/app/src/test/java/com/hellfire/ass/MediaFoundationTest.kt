@@ -60,7 +60,7 @@ class MediaFoundationTest {
         }
         val migrated = Room.databaseBuilder(context, EventDatabase::class.java, name).addMigrations(*EventDatabase.ALL_MIGRATIONS).build()
         try {
-            assertEquals(18, migrated.openHelper.writableDatabase.version)
+            assertEquals(19, migrated.openHelper.writableDatabase.version)
             val audio = migrated.media().item("a")!!
             assertEquals(listOf("AUDIO", "MANAGED", "IMPORT", "AVAILABLE"), listOf(audio.contentKind, audio.storage, audio.origin, audio.availability))
             assertEquals(900L, audio.durationMs); assertEquals("h1", audio.contentHash); assertFalse(audio.syncEnabled); assertFalse(audio.favorite)

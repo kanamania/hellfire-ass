@@ -44,7 +44,7 @@ class ContactLinksTest {
         }
         val migrated = Room.databaseBuilder(context, EventDatabase::class.java, name).addMigrations(*EventDatabase.ALL_MIGRATIONS).build()
         try {
-            assertEquals(18, migrated.openHelper.writableDatabase.version)
+            assertEquals(19, migrated.openHelper.writableDatabase.version)
             assertEquals(-5000L, migrated.finances().balance("a"))
             assertNull(migrated.finances().entry("e")!!.personKey)
             assertNull(migrated.tasks().task("t")!!.personKey)
