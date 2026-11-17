@@ -37,8 +37,10 @@ performance. Source worktrees were preserved during integration.
 | Combined web API | PASS (host) | 24 tests against disposable `hellfire_test`, including news actions, encrypted chunks, version conflicts, quota checks and mirror-reset preservation |
 | Combined frontend typecheck / production build | PASS (host) | Pinned Node 24, `npm run typecheck` and `npm run build -- --webpack`; all 14 routes. Next emitted an existing security upgrade reminder; unchanged retry passed, no dependencies changed. No browser rendering claim |
 | Final integrated Android tests | PASS (host) | `:app:testDebugUnitTest --max-workers=1 -Dorg.gradle.jvmargs=-Xmx1536m --offline`: 428 total, 424 passed, 4 opt-in live-provider tests skipped, zero failures/errors |
-| Android lint | PASS (host) | `:app:lintDebug` with the same worker/heap limits; Android 10 compatibility guards and AndroidX Media3 opt-in contracts corrected without disabling checks |
-| APK packaging | PENDING | Updated after packaging from merged main |
+| Android lint | PASS (host) | `:app:lintDebug` with the same worker/heap limits; 0 errors, 345 warnings, 8 hints. Android 10 compatibility guards and AndroidX Media3 opt-in contracts corrected without disabling checks |
+| Debug APK | PASS | Built from merged `main`, 0.9.0/code 9, 163,583,413 bytes; v2 signature and `zipalign -c -P 16 4` pass. SHA-256 `1a44746303a6b66dd96b8533b2d67b6fe5ce1fe17dcd12efe4bcd0ed84940898` |
+| Signed release APK | PENDING | Final packaging/verification running from merged main |
+| Local web services | PASS | Main API and default Turbopack frontend builds passed. Local systemd API/frontend restarted and active; HTTPS login 200, signed-out News 307, unauthenticated library API 401. No signed-in browser/rendering test |
 | Physical device | NOT TESTED | `adb devices -l` lists no connected devices; codecs, Keystore/native SQLCipher, actual inference, battery, thermals, permission flows and OEM behavior are not established by host tests |
 
 ## Adaptive performance — 2026-11-17

@@ -50,9 +50,9 @@ cd android
 APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.9.0**.
 It is built for **arm64-v8a only** (since 2026-11-16), Android API 29+, target/compile
 API 36. Confirm the phone ABI before installation (`adb shell getprop ro.product.cpu.abilist`);
-32-bit-only phones and x86_64 PC emulators cannot run it. Size: about 151 MB
-(144 MiB): native libraries ≈94 MB (ONNX Runtime 34 MB, LiteRT-LM 15 MB, ML Kit OCR
-22 MB, MediaPipe 8 MB, whisper 5 MB), unshrunk debug code ≈50 MB. Native libraries
+32-bit-only phones and x86_64 PC emulators cannot run it. Size: about 164 MB
+(156 MiB): native libraries ≈94 MB (ONNX Runtime 34 MB, LiteRT-LM 15 MB, ML Kit OCR
+22 MB, MediaPipe 8 MB, whisper 5 MB), unshrunk debug code ≈63 MB. Native libraries
 stay uncompressed in the APK and are not extracted, so installed size is close to the
 APK size plus Android's compiled code and app data. This is a debug artifact, without private release signing.
 
