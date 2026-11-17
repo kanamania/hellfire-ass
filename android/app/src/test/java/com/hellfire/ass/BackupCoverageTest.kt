@@ -184,6 +184,25 @@ class BackupCoverageTest {
         root.deleteRecursively()
     }
 
+    @Test fun `interrupted restore journal removes only originals without committed rows`() = runBlocking {
+        val app = HellFireApp()
+        ReflectionHelpers.callInstanceMethod<Unit>(app, "attach", ClassParameter.from(Context::class.java, context))
+        ReflectionHelpers.setField(app, "database\$delegate", lazyOf(source))
+        ReflectionHelpers.setField(app, "cipher\$delegate", lazyOf(PayloadCipher(KeyGenerator.getInstance("AES").apply { init(256) }.generateKey())))
+        val committed = UUID.randomUUID().toString()
+        val interrupted = UUID.randomUUID().toString()
+        source.media().insert(item(committed, hex(1), 1))
+        app.media.file(committed).writeBytes(byteArrayOf(1))
+        app.media.file(interrupted).writeBytes(byteArrayOf(2))
+        app.secrets.save("restore-journal", org.json.JSONObject().put("ids", org.json.JSONArray(listOf(committed, interrupted))))
+        try {
+            app.media.recover()
+            assertTrue(app.media.file(committed).exists())
+            assertFalse(app.media.file(interrupted).exists())
+            assertNull(app.secrets.read("restore-journal"))
+        } finally { app.media.file(committed).delete(); app.media.file(interrupted).delete() }
+    }
+
     @Test fun `metadata only export writes an authenticated archive containing financial rows`() = runBlocking {
         val app = HellFireApp()
         ReflectionHelpers.callInstanceMethod<Unit>(app, "attach", ClassParameter.from(Context::class.java, context))
