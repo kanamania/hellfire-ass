@@ -14,7 +14,7 @@ Read `docs/MASTER_SPEC.md` (the provided `HellFire_Ass_Codex_Master_Spec.md`) fu
 - Mic: create a visibly active, user-authorized recording prototype. Do not use stealth capture or OS-bypass tricks.
 - WhatsApp: the owner selected whatsapp-web.js linked-device capture (capture-only, one self-hosted relay per WhatsApp account); official Business Platform Coexistence remains the alternative for sending. Do not rely on notification-only integration.
 - Gmail later: IMAP/SMTP with user-provided Gmail app password where allowed. Do not use Gmail API.
-- Calls later: import the OPPO's existing call recordings; never assume third-party call audio capture is possible.
+- Calls later: import the owner's existing phone call recordings; never assume third-party call audio capture is possible.
 - In-person conversation audio later: retain encrypted original audio **and** transcript/summary until user chooses retention/deletion.
 - Finances later: deterministic integer-based ledger, template parsers and provenance; LLM only for candidate extraction.
 - External sends/side effects must be user-approved by default.

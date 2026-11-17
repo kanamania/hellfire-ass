@@ -61,7 +61,7 @@ class CatalogDownloadWorker(context: Context, params: WorkerParameters) : Corout
             when (model.role) {
                 "LANGUAGE" -> { require(app.localModel.loads(part)) { "Model did not load; previous model retained" }; app.localModel.install(part)
                     if (model.id == "gemma4-e2b") ModelUpdates.markInstalled(app, model.release) else ModelUpdates.markImported(app) }
-                "SPEECH" -> { HeavyModelGate.mutex.lock(); try { val handle = com.hellfire.ass.media.WhisperNative.load(part.path); require(handle != 0L); com.hellfire.ass.media.WhisperNative.release(handle) } finally { HeavyModelGate.mutex.unlock() }; app.speech.import(Uri.fromFile(part)) }
+                "SPEECH" -> { HeavyModelGate.mutex.lock(); try { val handle = com.hellfire.ass.media.WhisperNative.open(part.path); require(handle != 0L); com.hellfire.ass.media.WhisperNative.release(handle) } finally { HeavyModelGate.mutex.unlock() }; app.speech.import(Uri.fromFile(part)) }
                 "EMBEDDING" -> app.semantic.import(Uri.fromFile(part))
             }
             part.delete()

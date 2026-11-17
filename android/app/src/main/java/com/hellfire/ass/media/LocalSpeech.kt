@@ -60,7 +60,7 @@ class LocalSpeech(private val app: HellFireApp) {
                 val reuse = profile.reuseModels
                 if (!reuse || handle == 0L || handleKey != key) {
                     closeCached()
-                    handle = WhisperNative.load(model.path)
+                    handle = WhisperNative.open(model.path)
                     handleKey = key
                     if (reuse) ModelSlots.mark("SPEECH")
                 }

@@ -3,7 +3,7 @@
 **Version:** 1.0  
 **Date:** 2026-11-13  
 **Owner:** Personal-use project  
-**Primary platform:** Android / OPPO ColorOS  
+**Primary platform:** Android / owner-selected OnePlus 16 (firmware to verify)
 **Project/app name:** **HellFire Ass** (exact spelling and capitalization)  
 **Assistant invocation name:** **HellFire**  
 **Proposed Android application ID:** `com.hellfire.ass`  
@@ -35,13 +35,13 @@ Live pairing/account and physical Android tests remain NOT TESTED.
 app login on physical devices through Android's biometric prompt, with device
 screen-lock fallback. Support opt-in daily, passphrase-encrypted Google Drive
 backups and an explicit restore flow for a replacement/empty installation. Daily
-execution is best effort under Android/ColorOS scheduling. Keep fingerprint/OEM
+execution is best effort under Android/OEM firmware scheduling. Keep fingerprint/OEM
 behavior, Google authorization and real backup/restore round trips NOT TESTED
 until verified. This adds Google Drive backup as an owner-approved cloud destination;
 it does not authorize cloud AI or upload account credentials.
 
 **Owner target-device update — 2026-11-17:** The intended handset is now a
-OnePlus 16, described by the owner as Snapdragon 8 Elite Gen 6. This supersedes
+OnePlus 16, described by the owner as Snapdragon 8 Elite Extreme Gen 6 / SM8975 (owner-supplied identifiers, not verified). This supersedes
 the original OPPO model references below. Verify model/build, CPU feature flags,
 codecs, assistant integration, permissions and accelerators on the actual device;
 no precise chipset variant, ISA extension, RAM size or OEM behavior is established
@@ -52,7 +52,7 @@ by the product name. Physical tests remain deferred and NOT TESTED.
 These are explicit decisions, not suggestions to reconsider:
 
 1. This is a **personal AI life assistant**, **not** a Karibu product. All naming and UI branding must say **HellFire Ass**.
-2. HellFire Ass should be selectable as the **Android default digital assistant**, replacing Gemini for the system entry points Android/ColorOS makes available.
+2. HellFire Ass should be selectable as the **Android default digital assistant**, replacing Gemini for the system entry points Android/OEM firmware makes available.
 3. Ingest and process **all notifications made accessible by Android**. Do not limit the listener to chat or bank apps. Notifications can contain finance, messages, tasks, system alerts, delivery status, travel updates, etc.
 4. Use the owner-selected **whatsapp-web.js linked-device capture** through the self-hosted relay. Keep it labeled unofficial and capture-only. Preserve official **WhatsApp Business Platform Coexistence** as an alternative for an eligible Business number; notification capture is separately labeled partial coverage.
 5. Use **Gmail IMAP for incoming email and SMTP for outgoing email**, authenticated via a user-provided **Gmail app password** when the account permits it. **Do not use Gmail API.** Support standard IMAP/SMTP accounts as an extensible protocol adapter.
@@ -62,7 +62,7 @@ These are explicit decisions, not suggestions to reconsider:
 9. Detect action items, promises, meetings, deadlines, bills and money owed from all channels. Escalate important alarms until owner explicitly chooses Done, Snooze or Reschedule **inside the application**. Android can still revoke access, force-stop or uninstall the app; do not claim literal OS-level unkillability.
 10. Classify and index accessible images, videos, audio, documents and receipts **on-device wherever possible**; avoid routine cloud uploads.
 11. Draft contextual replies in English/Kiswahili with a one-tap **user-approved** Send/Edit option where a supported channel permits it.
-12. The owner-supplied target hardware is described as **OPPO Find X10 Pro Max, 12 GB RAM, 512 GB storage, Dimensity 9600 Pro, 8,000 mAh**. **Do not assume** OS version, API level, vendor driver features, file paths, or AI acceleration; inspect the connected device using ADB.
+12. The owner-supplied target hardware is described as **OnePlus 16 / Snapdragon 8 Elite Extreme Gen 6 / SM8975 (owner-supplied, unverified)**. **Do not assume** OS version, API level, vendor driver features, file paths, or AI acceleration; inspect the connected device using ADB.
 13. Default to **local-only AI and encrypted storage**. An optional cloud AI endpoint may handle explicitly allowed difficult tasks; never require it for capture, reminders, basic finance parsing, or local search.
 
 ### Non-goals and hard boundaries
@@ -197,7 +197,7 @@ Use interfaces for local model runtime, email provider, message provider, transc
 
 ### Acceptance tests
 
-1. User can find and select **HellFire Ass** as digital assistant in OPPO settings.
+1. User can find and select **HellFire Ass** as digital assistant in the owner's phone settings.
 2. Invoking the system assistant opens HellFire Ass's session UI.
 3. Assistant can answer a local static query offline without backend or model download.
 4. Assistant requests and reports the state of its role and any missing required permission.
@@ -390,7 +390,7 @@ User activates/authorizes microphone monitoring
    -> encrypt, index, and show conversation timeline
 ```
 
-**Design target:** automatic start/stop *of conversation clips within an actively authorized microphone session*. Explore whether assistant-role exemptions support background service start on this OPPO firmware, but never presume invisible continuous microphone access or uninterrupted 24/7 recording. Preserve status when recording fails, microphone is taken by another app, permissions change or the OEM terminates service.
+**Design target:** automatic start/stop *of conversation clips within an actively authorized microphone session*. Explore whether assistant-role exemptions support background service start on the owner's phone firmware, but never presume invisible continuous microphone access or uninterrupted 24/7 recording. Preserve status when recording fails, microphone is taken by another app, permissions change or the OEM terminates service.
 
 ### Implementation details
 
@@ -406,7 +406,7 @@ User activates/authorizes microphone monitoring
 
 ### Call-recording import
 
-- Do **not** implement phone call recording. Existing OPPO/Phone dialer records calls automatically.
+- Do **not** implement phone call recording. The existing phone dialer records calls automatically.
 - Probe actual file locations and access restrictions using MediaStore and/or the Android Storage Access Framework.
 - Use user-granted folder access if files are not visible in MediaStore.
 - Import new accessible recordings by stable content hash; transcribe, summarize, tag call date/direction/contact if metadata is available.
@@ -697,7 +697,7 @@ For initial proof of concept, it is acceptable to start with fewer Gradle module
 ### Device tests (cannot honestly pass in CI without the phone)
 
 - Assistant role appears and app launches from gesture/button.
-- Sideloaded notification access permissions can be granted on ColorOS.
+- Sideloaded notification access permissions can be granted on the owner's firmware.
 - Notification ingestion after long screen-off periods.
 - Mic monitoring while screen is off, incoming call interruption and restart behavior.
 - CPU/GPU throughput, latency, peak RAM, battery usage and heat for each local model.
@@ -720,10 +720,10 @@ For initial proof of concept, it is acceptable to start with fewer Gradle module
 
 Create/maintain `docs/DEVICE_FEASIBILITY.md` with columns `Question | Test | Result | Evidence | Next action`.
 
-1. **OPPO firmware details:** model, Android/ColorOS build, API level, CPU ABI and background restrictions. Use `adb shell getprop` with device connected.
+1. **OnePlus 16 firmware details:** model, Android/OEM build, API level, CPU ABI and background restrictions. Use `adb shell getprop` with device connected.
 2. **Default assistant:** whether app qualifies for role, gesture support, lock-screen behavior, optional hotword facilities.
 3. **Microphone:** whether the voice-service exception applies as expected on this firmware, how long monitoring survives, how competing apps interrupt capture.
-4. **Notification permission:** whether ColorOS requires additional manual “allow restricted settings” flow for sideloaded app.
+4. **Notification permission:** whether the owner's firmware requires additional manual “allow restricted settings” flow for sideloaded app.
 5. **Call recordings:** readable via MediaStore, SAF or manual import only.
 6. **Local inference:** which LiteRT-LM backend runs and performs well on this actual device; do not assume NPU.
 7. **WhatsApp:** Web QR pairing, own/incoming/group messages, session restart, disconnect and replay; no complete-history claim. For optional Meta mode, Business eligibility and exact Coexistence features remain separate gates.
@@ -757,7 +757,7 @@ Codex must follow these rules during all phases:
 
 ### FIRST PROMPT TO GIVE CODEX
 
-> You are the lead Android engineer implementing **HellFire Ass**, a personal AI life assistant. Read `docs/MASTER_SPEC.md` and `AGENTS.md` in full. Implement **Phase 0 only**. Start by inspecting the repository and available SDK/JDK/tooling; if empty, create a Kotlin + Jetpack Compose project with package `com.hellfire.ass`, modern build tooling and clean architecture. Build a real selectable Android assistant using `VoiceInteractionService`/`VoiceInteractionSessionService` where supported, a working `NotificationListenerService` that stores normalized events in Room, a permission/status screen, a local assistant test UI, and a user-activated foreground microphone recording proof of concept. Add unit tests and device-feasibility documentation. Do not fake device tests, download large AI models, request real credentials, or start WhatsApp/Gmail/finance implementation in this phase. Run all locally available tests/builds, fix problems, then report what passed, what needs physical OPPO testing, and exact next steps.
+> You are the lead Android engineer implementing **HellFire Ass**, a personal AI life assistant. Read `docs/MASTER_SPEC.md` and `AGENTS.md` in full. Implement **Phase 0 only**. Start by inspecting the repository and available SDK/JDK/tooling; if empty, create a Kotlin + Jetpack Compose project with package `com.hellfire.ass`, modern build tooling and clean architecture. Build a real selectable Android assistant using `VoiceInteractionService`/`VoiceInteractionSessionService` where supported, a working `NotificationListenerService` that stores normalized events in Room, a permission/status screen, a local assistant test UI, and a user-activated foreground microphone recording proof of concept. Add unit tests and device-feasibility documentation. Do not fake device tests, download large AI models, request real credentials, or start WhatsApp/Gmail/finance implementation in this phase. Run all locally available tests/builds, fix problems, then report what passed, what needs physical OnePlus 16 testing, and exact next steps.
 
 ---
 

@@ -1,18 +1,28 @@
 # HellFire Ass redesign: summary
 
+Current review checkpoint (2026-11-17): media search, queue/settings, library
+controls, playback/share paths, inbox/actions, backup/selective restore and sync
+views were corrected and connected. Web notes, collection editing, inbox originals
+and bookmark seeking are now wired. The dated redesign results below remain
+historical; current tests/artifacts are recorded in
+[DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md). Version 0.9.0, schema 19.
+OnePlus 16 is the current owner target; device rendering, permissions and codecs
+remain NOT TESTED. Static checks do not establish physical usability.
+
+
 Built on branch `feat/ui-redesign` (worktree `.worktrees/feat/ui-redesign`). Every decision is logged in [DECISIONS.md](DECISIONS.md); device evidence is in `docs/DEVICE_FEASIBILITY.md` → "UI redesign checkpoint".
 
 **Status on 2026-11-16:**
 - The redesign and the Money entry follow-up are merged into `main` (merges `49f2722` and `566a291`) and pushed. The worktree and branch have been removed.
 - On merged `main`: 205 unit tests, 201 passed, 4 opt-in live-AI tests skipped, 0 failures. Lint passes with 0 errors (244 warnings), which closes the incomplete lint run noted below. Database and backup schema were both 12 at the redesign merge; the later review-fixes and multi-account merge moved both to 13.
-- Still not run on the OPPO. The hand-test checklist below is unchanged and still open.
+- Still not run on the OnePlus 16. The hand-test checklist below is unchanged and still open.
 - The 2026-11-16 project review found defects outside the redesign (capture, recording recovery, relay). They are fixed; see `docs/DEVICE_FEASIBILITY.md` → "Review fixes and multiple accounts". Settings › Email and Settings › WhatsApp are now account lists, so the hand-test rows for those screens should add and remove a second account.
 
 **State at handover (2026-11-14, before the merge):**
 - Debug build passes.
 - 192 unit tests: 188 passed, 4 opt-in live-AI tests skipped, 0 failures.
 - Lint: the earlier redesign passed with 0 errors; the Money follow-up lint run is incomplete under host memory pressure.
-- Checked on the Android emulator (Pixel 6 profile, API 34). **Not run on your OPPO**: no device was connected.
+- Checked on the Android emulator (Pixel 6 profile, API 34). **Not run on your OnePlus 16**: no device was connected.
 
 ## What was built
 
@@ -65,7 +75,7 @@ Also from your mid-run requests (inside `f3d5ebf`): real widget previews in the 
 
 ## Not finished, and why
 
-- **No physical device testing.** No phone was connected, so nothing is verified on ColorOS. See the checklist below.
+- **No physical device testing.** No phone was connected, so nothing is verified on OEM firmware. See the checklist below.
 - **Large widget layouts not checked on screen.** They are written to fill the space at any size, but I couldn't resize widgets by script on the emulator launcher, so I only checked default sizes.
 - **Widget previews need Android 12+.** Android 10–11 launchers still show the app icon.
 - **The Record widget can't show a ticking clock** (a Glance limitation). It shows "Recording since HH:mm" instead.
@@ -78,7 +88,7 @@ Also from your mid-run requests (inside `f3d5ebf`): real widget previews in the 
 - **English only.** Text is hard-coded in English, as before.
 - **Merged since handover.** See the status block at the top; `docs/DEVICE_FEASIBILITY.md` on `main` now carries the redesign checkpoint.
 
-## Test by hand on the OPPO
+## Test by hand on the OnePlus 16
 
 Install the debug APK **over your current install**, so the real database migrates, then work through these.
 
@@ -94,7 +104,7 @@ Install the debug APK **over your current install**, so the real database migrat
 - [ ] On-time reminders: exact alarms allowed; a test task rings at the set minute.
 
 **Assistant gesture**
-- [ ] With HellFire as the digital assistant, the ColorOS gesture / power-button hold opens the Ask tab.
+- [ ] With HellFire as the digital assistant, the OEM firmware gesture / power-button hold opens the Ask tab.
 - [ ] "Test the assistant session" in Settings › This device works; the mic button in Ask starts voice input (note whether it works offline).
 
 **Recording**
@@ -106,7 +116,7 @@ Install the debug APK **over your current install**, so the real database migrat
 - [ ] After a reboot, recording does **not** restart by itself.
 
 **Widgets**
-- [ ] Add each widget from the ColorOS widget picker (or Settings › Home screen widgets › Add); previews look like the widget.
+- [ ] Add each widget from the OEM firmware widget picker (or Settings › Home screen widgets › Add); previews look like the widget.
 - [ ] Amounts show ••••• until you allow them in Settings › Home screen widgets; "Hide all amounts" hides everything again.
 - [ ] Wallets: "Tap to reveal" shows balances and hides them again after about a minute.
 - [ ] Resize Daily briefing, Money today, Promises and Budget to full screen: they fill with more rows and sections, without clipping.
@@ -116,7 +126,7 @@ Install the debug APK **over your current install**, so the real database migrat
 - [ ] Widgets after a reboot, before the first unlock: they show "Open HellFire to load this" instead of crashing.
 
 **Battery and background**
-- [ ] Turn off battery optimisation for HellFire and allow auto-launch / background activity in ColorOS settings.
+- [ ] Turn off battery optimisation for HellFire and allow auto-launch / background activity in OEM firmware settings.
 - [ ] Leave the phone overnight: next morning, check notifications and SMS were still captured (Reports › Capture shows events per day) and that reminders fired.
 - [ ] Note any widget that stops updating overnight.
 

@@ -39,7 +39,7 @@ Java_com_hellfire_ass_media_WhisperNative_transcribe(JNIEnv *env, jobject, jlong
     if (count <= 0 || count > 16000 * 300) { fail(env, "Audio chunk exceeds the five-minute inference bound"); return nullptr; }
     const char *lang = env->GetStringUTFChars(language, nullptr);
     auto params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
-    params.n_threads = std::min(4, std::max(1, static_cast<int>(std::thread::hardware_concurrency())));
+    params.n_threads = std::min(6, std::max(1, static_cast<int>(std::thread::hardware_concurrency())));
     params.language = lang;
     params.abort_callback = [](void *data) { return static_cast<NativeSession *>(data)->aborted.load(); };
     params.abort_callback_user_data = session;

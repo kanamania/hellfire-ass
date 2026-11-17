@@ -28,7 +28,7 @@ used to establish host results. No message has been sent and no gateway deployed
   typecheck/production build, and verified debug/signed-release APKs pass. Exact commands and artifact evidence are in
   [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md). Relay/WhatsApp worker code
   was unchanged; its earlier results remain recorded there.
-- **Not done:** nothing has run on the physical OPPO, with a real model file, a live
+- **Not done:** nothing has run on the physical OnePlus 16, with a real model file, a live
   mail/WhatsApp/Google account or a real SMS corpus. Every phase stays **PARTIAL**.
 - **Earlier project review findings:** covered by host tests; each still needs
   its device or real-data check. DEVICE_FEASIBILITY.md → "Project review implementation" lists what changed
@@ -36,7 +36,7 @@ used to establish host results. No message has been sent and no gateway deployed
 - **Release and CI:** release shrinking and optional local signing are configured; GitHub Actions runs the repository checks. Hosted CI and physical release behavior remain unverified.
 
 The media review on 2026-11-17 found functional defects missed by the integration
-checks. Four interrupted fix branches are being completed sequentially; see the
+checks. Four interrupted fix branches were completed sequentially; see the
 latest checkpoint in [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md). Passing
 builds are not evidence of successful playback, sharing, backup or sync on a phone.
 The current owner-selected target is a OnePlus 16; device checks remain NOT TESTED.
@@ -352,7 +352,7 @@ assistant is the Ask tab. [DECISIONS.md](DECISIONS.md) records where each contro
   Deleted/unresolved contacts retain their saved name and show **not in contacts**;
   denied access is shown separately. Contact tables, aliases and person keys stay
   out of `WebSync`. Selected links are included in the existing encrypted backup;
-  backup schema 15 still restores schemas 8 and 10–14. All ColorOS contact and
+  backup schema 15 still restores schemas 8 and 10–14. All OEM firmware contact and
   permission interactions remain **NOT TESTED** on a phone.
 - **Waiting on:** Home or the Inbox header. "You owe a reply" lists people whose
   message has been the latest for 4 hours; "Waiting to hear back" lists people the
@@ -689,7 +689,7 @@ account, and approve `drive.file` access. Enter a strong passphrase (12–1024
 characters), keep a separate copy, and choose **Enable daily encrypted backups**.
 The first upload is queued immediately; subsequent uploads use a persisted
 24-hour WorkManager schedule. Both daily and **Back up now** jobs require an
-unmetered network, sufficient battery and free storage. Android/ColorOS, force-stop,
+unmetered network, sufficient battery and free storage. Android/OEM firmware, force-stop,
 recording or network loss can delay them. Backups use the existing encrypted
 portable format, including registered originals, and remain visible as timestamped
 `.hfb` files in My Drive. Upload success is recorded only after Drive confirms
@@ -845,7 +845,7 @@ context is present: TZS amounts marked before or after the number (`TZS 5,000`,
 money provider or currency, amounts after finance words (`umelipa 5000`, `kiasi`,
 `salio`) plus till, Lipa Namba and reference numbers. This is not a universal secret detector. Android-protected/missing fields
 remain unavailable. External sends require fresh owner approval. Cloud AI is restricted
-to explicitly submitted AI chat input under the owner’s privacy/budget settings. There is no automatic capture/media upload, analytics,
+to explicitly submitted AI chat input under the owner’s privacy/budget settings. Capture/library upload requires configured web sync; ordinary phone-library items stay local unless selected. There is no analytics,
 stealth microphone, OS bypass, custom hotword engine,
 automatic contact merging or unsupported SMS/call sending.
 
@@ -867,7 +867,7 @@ News clustering currently uses English/Kiswahili lexical matching; optional news
 embedding vectors are deferred.
 X sources require your own supported API credentials; licensed wire sources show
 that requirement rather than scraping unavailable content. Scheduled delivery is
-best effort under Android/ColorOS. Actual feed availability and phone TTS still
+best effort under Android/OEM firmware. Actual feed availability and phone TTS still
 need live verification.
 
 Open **Library** for accessible device media or grant a folder through Android's
@@ -881,14 +881,20 @@ the actual device; absent permission or model is not a successful analysis.
 The **Library** web page is separate from the ordinary read-only mirror: optional
 library sync encrypts originals and editable metadata with a shared passphrase
 before transfer. Enter the same passphrase on the phone and in the browser. The
-server still sees record identifiers, hashes, sizes and timing. Plaintext server
-search requires an explicit opt-in. Sync is not a backup. Ordinary mirror resets
+server sees opaque keyed identifiers, sizes and timing. Local IDs, tags and
+original hashes stay encrypted. Library search runs after decryption; its unused
+plaintext-search toggle/API was removed. Sync from the phone once to establish
+the key check before browser unlock. Existing records upgrade in place; use the
+existing library passphrase because key changes are blocked. Notes, collection
+names/descriptions, categories and bookmarks are editable. Browser uploads and
+downloads are limited to 256 MiB; use the phone for larger originals. Thumbnails
+are not synced. Sync is not a backup. Ordinary mirror resets
 preserve the encrypted library and its encryption salt.
 
 **Settings → This device → Performance** shows operating policy and lets you
 measure language backends. CPU remains the fallback until a compatible imported
 model succeeds in a device probe. Queue limits, thermal policy and cooperative
-yielding are host-tested; speed, memory, power and heat require the OPPO.
+yielding are host-tested; speed, memory, power and heat require the OnePlus 16.
 
 ## Verification and change log
 
@@ -971,7 +977,7 @@ SQLCipher/Keystore, actual model execution, live accounts or Android/OEM behavio
 - 2026-11-17, adaptive performance: the same gate and workers now yield to interactive
   work, reuse one heavy runtime when memory allows, skip silent audio and duplicate
   video frames, and cap how many media jobs are scheduled. CPU stays selected until a
-  phone benchmark succeeds. Host policy tests pass; OPPO speed, power and codecs are
+  phone benchmark succeeds. Host policy tests pass; OnePlus 16 speed, power and codecs are
   not measured. See `docs/DEVICE_FEASIBILITY.md`.
 
 References: [Android assistant](https://developer.android.com/reference/android/service/voice/VoiceInteractionService),

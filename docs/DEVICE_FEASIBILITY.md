@@ -16,13 +16,43 @@ The owner asked to finish the four interrupted fix branches one at a time.
 | Players/sharing | PASS (host); device NOT TESTED | Completed live position/application-thread A–B, outgoing resume state, trusted controllers, PiP/track/queue/clip controls and shared legacy playback. MP4 metadata removal preserves offsets; readable samples/frame required. Rotated OCR and frame-sized covers corrected; edited timestamps and range-only facts used. Synthetic sanitized H.264 fixture decodes with host ffmpeg. Pixel tests use native graphics. 455 tests: 451 passed, 4 skipped, zero failures/errors. Android export/codec/PiP still NOT TESTED; combined APK/lint checks follow integration. |
 | Drawer/backup/status | PASS (host); device NOT TESTED | Shared/imported/user-organized originals retained during inbox purge. Drawer AI is local-only and grounded in saved content with per-item conversations. Destination read-back and upload-then-commit added; UI supports base+incremental selection and selective restore. Synthetic host tests exercise full/partial/incremental/selective recovery with a SQLite staging factory; production SQLCipher/device/Drive remain NOT TESTED. Status/backup/settings routes connected; safe orphan-thumbnail cleanup and retention controls added. 474 tests: 470 passed, 4 skipped, zero failures/errors. |
 | Sync/web | PASS (host); device NOT TESTED | Android/server/browser protocol 2 implemented with opaque IDs, key check, legacy in-place upgrades, parked dependencies, isolated failures, merged conflict choices and original repair. API: 30/30 passed against disposable `hellfire_test`; browser typecheck/webpack build passed. Android full suite: 490 total, 486 passed, 4 skipped, zero failures/errors. Final merged lint/APK checks follow integration. |
+| CPU target | PASS (host guard); device NOT TESTED | Five CPU-feature tests pass, including mixed cores, missing scalar FP16 and unreadable cpuinfo. Native build and integrated checks follow. No speed, SVE2 or NPU claim. |
 | Device | NOT TESTED | Owner now targets a OnePlus 16, described as Snapdragon 8 Elite Gen 6. Firmware, instruction-set features, accelerators, permissions, playback, exports and actual backup/sync remain unverified. No hardware capability is inferred from the name. |
 
 Scene thumbnails are derived, disposable files in app-private no-backup cache; originals
 remain encrypted. Search uses stored OCR/labels/transcripts, not an assertion that the
 language model sees images. Analysis jobs run sequentially in bounded batches.
-System-wide overlay and QR decoding remain unimplemented. Video blur is not yet verified.
-Library, players and drawer branches are merged. Sync/web verification and the separate CPU-tuning branch are being completed before the final integrated checks.
+System-wide overlay and QR decoding remain unimplemented. Video export supports static covers; blur and moving-target tracking remain unimplemented.
+All four review-fix branches have passed their host checks and are merged. CPU guard tests pass; final merged checks follow.
+
+### OnePlus 16 verification checklist (still NOT TESTED)
+
+The owner describes the handset as Snapdragon 8 Elite Extreme Gen 6 / SM8975;
+these names are requirements context, not observed hardware facts. No physical
+phone has been connected during this pass.
+
+1. Inspect model, Android/API/build fingerprint, ABI, actual RAM and SoC using
+   `adb shell getprop` and `adb shell cat /proc/cpuinfo` before choosing backends.
+2. Check `asimddp`, `fphp`, `asimdhp` and `i8mm` on every reported CPU feature
+   line. Whisper is compiled with `armv8.2-a+dotprod+fp16+i8mm`, at most six
+   threads, and refuses loading when required features cannot be established.
+   This changes the supported CPU target; it does not establish device speed.
+3. Inspect SVE/SVE2 flags if reported; this build does not enable or assume SVE2.
+   Test native library loading and English/Kiswahili transcription before relying
+   on it. Compare timing, PSS, heat and battery on a fixed recording.
+4. Measure language CPU and GPU first. Keep CPU as fallback until a successful
+   probe; NPU enablement comes later, after driver/model compatibility and output
+   checks. A product name or advertised TOPS does not establish a working delegate.
+5. Verify assistant role/gesture, notification visibility/redaction, foreground
+   microphone indicators, OEM background policy, actual call-recording folder,
+   playback/PiP/seek/AB/track selection, sanitized exports and permission revocation.
+6. Exercise encrypted sync with a second client: more than 40 items, Unicode tags,
+   browser note/collection/bookmark edits, uploads, wrong-passphrase rejection,
+   pauses, conflicts, reinstall/full pull, missing-original repair and tombstones.
+7. Verify backup destination read-back, failed upload staying uncommitted, complete
+   plus incremental restore, blocked-original report, and selective restore using
+   a disposable empty installation before touching an owner database.
+
 
 ## News, media and performance integration — 2026-11-17
 
@@ -76,17 +106,17 @@ approval are unchanged. Room schema stays 18; managed-original counts stay separ
 | Check | Evidence | Result | What was shown | Still required |
 | --- | --- | --- | --- | --- |
 | Operating profile, backend fallback, yield, model-slot eviction, incremental SHA-256, scene filter, silence skip, job cap, gzip decision, query/perf logs | `./gradlew :app:testDebugUnitTest --tests com.hellfire.ass.PerformanceTest` | PASS (host) | 11 tests, 0 failures. Duplicate frames collapse to 1 of 20; frames that differ by 8+ bits keep the old 20; silence skips; a tone does not; CPU wins until a successful measurement; deferred work yields only while interactive work is waiting | None for the policy itself |
-| LiteRT CPU/GPU/NPU speed on the OPPO | — | NOT TESTED | Build can construct `Backend.CPU`, `Backend.GPU` and `Backend.NPU`. Selection stays CPU until Settings → This device → Performance runs the probe. A failed accelerator falls back to CPU | Run the probe on the OPPO with the imported Gemma file. Record ms, PSS and whether GPU/NPU initialize |
+| LiteRT CPU/GPU/NPU speed on the OnePlus 16 | — | NOT TESTED | Build can construct `Backend.CPU`, `Backend.GPU` and `Backend.NPU`. Selection stays CPU until Settings → This device → Performance runs the probe. A failed accelerator falls back to CPU | Run the probe on the OnePlus 16 with the imported Gemma file. Record ms, PSS and whether GPU/NPU initialize |
 | whisper.cpp, ONNX, MediaPipe accelerators | Code review | NOT SWITCHED | Sessions may be reused and dropped under low memory. Execution provider is still CPU. Switching ONNX/whisper/MediaPipe delegates could change speaker and embedding results | Do not enable NNAPI/GPU delegates until a device A/B test shows the same outputs |
-| Scene-aware video OCR and silence skip | `PerformanceTest` plus `VisualReader` / `MediaWork` | PASS (policy) / NOT TESTED (codecs) | Near-duplicate frames are not OCR'd. Uniform timestamps are unchanged when frames differ or fingerprints are missing. Near-silence chunks do not load whisper | Play a real recording and a static video on the OPPO. Confirm speech is not dropped and sampled OCR still says it is a sample |
+| Scene-aware video OCR and silence skip | `PerformanceTest` plus `VisualReader` / `MediaWork` | PASS (policy) / NOT TESTED (codecs) | Near-duplicate frames are not OCR'd. Uniform timestamps are unchanged when frames differ or fingerprints are missing. Near-silence chunks do not load whisper | Play a real recording and a static video on the OnePlus 16. Confirm speech is not dropped and sampled OCR still says it is a sample |
 | Encrypted search | Existing FTS `LIMIT` and semantic pages of 500 | UNCHANGED + timed | Search SQL and encryption are unchanged. `QueryTrace` stores the label, duration and row count only | Time a large owner database on the phone. Add an index only if a named query is slow |
-| Compose | Settings counts; media list pages of 30 | PASS (code) / NOT TESTED (frames) | Settings no longer loads every memory and recording to show a count. The recordings list composes 30 rows at a time inside the existing scroll page | Macrobenchmark frame times on the OPPO |
-| Baseline / startup profile | `StartupProfile.critical` | NOT INSTALLED | A guessed profile was not put in the release APK | Generate a baseline profile on the OPPO and compare startup before installing it |
+| Compose | Settings counts; media list pages of 30 | PASS (code) / NOT TESTED (frames) | Settings no longer loads every memory and recording to show a count. The recordings list composes 30 rows at a time inside the existing scroll page | Macrobenchmark frame times on the OnePlus 16 |
+| Baseline / startup profile | `StartupProfile.critical` | NOT INSTALLED | A guessed profile was not put in the release APK | Generate a baseline profile on the OnePlus 16 and compare startup before installing it |
 | Web sync compression | `PayloadCompression` | NOT ENABLED | Change-based batches and retry already exist. Gzip is smaller in the host test but the server does not advertise it | Add server gzip support before sending `Content-Encoding: gzip` |
-| Android 16 / ColorOS quotas | `JobBudget` cap of 20 media jobs; existing WorkManager constraints | NOT TESTED (device) | Backlog stays in Room and is pumped by the existing 15-minute maintenance worker. Stop reason is recorded as a number if a job is cancelled | On the OPPO, queue more than 20 analyses, unplug, heat the phone, and confirm jobs resume without a second queue |
+| Android 16 / OEM firmware quotas | `JobBudget` cap of 20 media jobs; existing WorkManager constraints | NOT TESTED (device) | Backlog stays in Room and is pumped by the existing 15-minute maintenance worker. Stop reason is recorded as a number if a job is cancelled | On the OnePlus 16, queue more than 20 analyses, unplug, heat the phone, and confirm jobs resume without a second queue |
 | Battery, thermal, power | — | NOT TESTED | Dashboard can show thermal, battery percent and `BATTERY_PROPERTY_CURRENT_NOW` when the kernel exposes it | Overnight before/after on the same workload. Do not treat host tests as power results |
 
-### OPPO verification matrix
+### OnePlus 16 verification matrix
 
 Do this on the physical phone after installing a debug build. Do not treat a host
 PASS as a device PASS.
@@ -97,7 +127,7 @@ PASS as a device PASS.
 4. Start indexing, then ask a local question. Indexing should stop at the next batch so the question can run, then continue.
 5. Queue more than 20 media analyses. Confirm only a bounded set is scheduled and the rest stay queued until maintenance or a finished job.
 6. Force thermal severe or low battery. Confirm analysis waits instead of failing, and capture still ingests.
-7. Read `BATTERY_PROPERTY_CURRENT_NOW` if present. Compare an overnight idle with and without HellFire. ColorOS may defer WorkManager; that is not a host result.
+7. Read `BATTERY_PROPERTY_CURRENT_NOW` if present. Compare an overnight idle with and without HellFire. OEM firmware may defer WorkManager; that is not a host result.
 8. Generate a baseline profile with Macrobenchmark on this device before adding one to a release APK. The current release APK has no baseline profile from this change.
 
 ## Everyday reliability and AI skills — 2026-11-17
@@ -172,7 +202,7 @@ permissions and overnight behavior only on the connected owner-authorized phone.
 
 Owner requested implementation of the review and continuation to completion.
 Version **0.8.0** (code 8), Room/backup schema **16**. This checkpoint covers
-software changes only; physical OPPO tests remain the final stage.
+software changes only; physical OnePlus 16 tests remain the final stage.
 
 Implemented:
 
@@ -286,8 +316,8 @@ capture displays the actual Contacts grant; returning from App settings refreshe
 | Link changes affect money? | `ContactLinksTest` | PASS (host) | Edit, replace and clear task/payment links; ledger row and balance unchanged; action_audit counts actual changes; duplicate payment review retains its person without another debit | Compare real balances before/after a link edit |
 | Naming an existing conversation? | `ContactLinksTest` | PASS (host) | All known handles, explicit tasks/payments and debt names follow the new name; no orphan old person link | Rename a picked person on the phone |
 | New contact data reaches web copy? | `WebSyncTest` | PASS (host) | Selected display name, lookup key, phone/email aliases and personKey absent from fake server payload; WebSync allowlist unchanged | Keep excluded unless the owner authorizes web contacts |
-| Contacts permission prompt, denial and later grant? | Owner opens picker → explanation → Allow; deny, type name, then App settings → Permissions → Contacts | **NOT TESTED (phone)** | No Android/ColorOS permission dialog was displayed; no permission claimed granted | Verify prompt timing, denial fallback and Settings state after resume |
-| Real Google-synced contacts on ColorOS? | Search name/number/email in each requested screen | **NOT TESTED (phone)** | Only SQLite-backed synthetic ContactsContract provider exercised | Check sync visibility, search latency and each field's saved result |
+| Contacts permission prompt, denial and later grant? | Owner opens picker → explanation → Allow; deny, type name, then App settings → Permissions → Contacts | **NOT TESTED (phone)** | No Android/OEM firmware permission dialog was displayed; no permission claimed granted | Verify prompt timing, denial fallback and Settings state after resume |
+| Real Google-synced contacts on OEM firmware? | Search name/number/email in each requested screen | **NOT TESTED (phone)** | Only SQLite-backed synthetic ContactsContract provider exercised | Check sync visibility, search latency and each field's saved result |
 | Real contact with several numbers? | Pick one contact with multiple phones/emails, then open its SMS/WhatsApp/email person page | **NOT TESTED (phone)** | Synthetic cross-channel test passes; no real contact was read | Confirm all identities and linked tasks, payments and debts appear |
 | Deleted or unresolved contact? | Save a pick, delete it in Contacts, return to HellFire | **NOT TESTED (phone)** | Synthetic deletion returns MISSING; stored name kept; unavailable/revoked provider distinguished; screens compile | Confirm “not in contacts” on person, debt/vendor, task and transaction fields |
 
@@ -314,16 +344,16 @@ real document scan or notification delivery was used.
 | Templates add a mix in one step? | `DailyOutputsTest` | PASS (host) | One run scheduled 1 task (active, bill, due 5 days later 08:30), posted 1 expense and 1 income to the ledger with the run as evidence, and left the line without an account in To confirm; a payment line without an amount is refused; lines round-trip through JSON | Create and use a template on the phone; check the reminder fires |
 | Template and brief screens | Compile, lint | NOT TESTED (device) | Compose screens for Templates, Brief, Waiting on, People, Debts and Bills compile; none was drawn or tapped | Hand-test every new screen and the Home, Money, Tasks and Inbox entry points |
 | Morning brief content | `DailyOutputsTest` | PASS (host, synthetic) | Sections and headline for morning and evening; overdue first; bill shortfall flagged; empty day says so | Compare with a real day's data |
-| Morning brief notification | `DailyOutputsTest` (timing only) | PARTIAL | Next time is today at the chosen hour if still morning and not shown, else tomorrow. It shares the reminder alarm; delivery was not exercised | Check 07:00 delivery on ColorOS with Doze and battery limits |
+| Morning brief notification | `DailyOutputsTest` (timing only) | PARTIAL | Next time is today at the chosen hour if still morning and not shown, else tomorrow. It shares the reminder alarm; delivery was not exercised | Check 07:00 delivery on OEM firmware with Doze and battery limits |
 | Waiting-on correct? | `DailyOutputsTest` | PASS (synthetic) / NOT TESTED (real traffic) | Latest message per person across channels; a reply on another channel settles it; groups, short codes, sender names and automated mailboxes ignored; cleared rows return on a newer message | Measure false positives on the owner's real messages; tune the 4 h / 24 h limits |
 | Numbers and addresses joined? | `DailyOutputsTest` | PASS (host) | `+255712345678`, `0712 345 678` and `255712345678@c.us` are one handle (last nine digits); a shared name joins a number and an email | Check real sender formats, especially WhatsApp `@lid` ids, which stay separate until named |
-| People page linked to calls? | Code review | PARTIAL | Recordings match by file name (name or number) only; there is no caller-ID link | Check what the OPPO names its call recordings |
+| People page linked to calls? | Code review | PARTIAL | Recordings match by file name (name or number) only; there is no caller-ID link | Check what the OnePlus 16 names its call recordings |
 | Debts net correctly? | `DailyOutputsTest` | PASS (host) | Balance per person, case-insensitive; settled people hidden; overdue from the agreed date; repayment suggestions need the whole name in an approved payment's source text | Try with real M-Pesa names, which are often upper-case full names |
 | Debt reminder sending | Compile | NOT TESTED | Share sheet intent, or an email draft that needs Inbox approval; nothing is sent by the app | Share to WhatsApp and SMS on the phone |
 | Recurring bills found? | `DailyOutputsTest` | PASS (synthetic) | Three consecutive months, at most 1.5 payments a month, still current; stopped, gapped, daily, generic and reversed payments are ignored; 30-day shortfall computed | Run on the owner's ledger; descriptions must repeat exactly for a match |
 | Expiry dates read? | `DailyOutputsTest` | PASS (typed text) / NOT TESTED (real OCR) | Passport `12 MAR /MARS 31`, `30/06/2027`, ISO, `02/2027`, `December 1, 2027`; past and non-expiry dates ignored; one proposal per date; the document number is not copied | Scan a real passport, licence and insurance cover note; record misses |
 | Capture gaps detected? | `DailyOutputsTest` | PASS (host rules) | Revoked access, 12 h without a notification, an SMS on the phone unsaved after 30 min, 6 h without a sync; a new install and a just-arrived SMS are not gaps | — |
-| Capture alert and listener rebind | Compile | NOT TESTED | 15-minute maintenance worker posts one notification per problem set per day and calls `requestRebind`; skipped until first-run setup is done | Force-stop or battery-restrict the app on ColorOS; confirm the alert appears and whether rebind restores capture |
+| Capture alert and listener rebind | Compile | NOT TESTED | 15-minute maintenance worker posts one notification per problem set per day and calls `requestRebind`; skipped until first-run setup is done | Force-stop or battery-restrict the app on OEM firmware; confirm the alert appears and whether rebind restores capture |
 | Spoken money commands | `DailyOutputsTest`, `AssistantCommandsTest` | PASS (typed text) / NOT TESTED (speech) | `elfu kumi na tano` = 15,000, `laki mbili na elfu hamsini` = 250,000, income amount-first or last, leading "HellFire,", `use template <name>`; `income this month` is still a question | Speak them through Whisper on the phone; record recognition errors |
 | Web copy | Code review | NOT INCLUDED | Templates, debts and person names are not synced to the web copy; tasks and payments made from them are, as before | Decide whether the web copy should show them |
 
@@ -342,7 +372,7 @@ No phone, model download or network request was made in testing.
 | Is the published model the expected one? | Hugging Face API, 2026-11-16 | PASS (metadata) | `litert-community/gemma-4-E2B-it-litert-lm`: Apache-2.0, not gated; `gemma-4-E2B-it.litertlm` 2,588,147,712 bytes, LFS SHA-256 `181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c`, uploaded 2026-05-04, listed at commit `2d74ac41`. LiteRT-LM release notes list Gemma 4 support from 0.10.1; the app uses 0.12.0 | — |
 | Download resumes and rejects bad files? | `ModelUpdatesTest` | PASS (host, synthetic bytes) | Metadata parsing; full download; resume with `Range` and a matching `Content-Range`; a server ignoring `Range` restarts the file; wrong checksum deletes it; HTTP redirects and 404 rejected | — |
 | Updates offered correctly? | `ModelUpdatesTest` | PASS (host) | Offered only when the published SHA-256 differs from the installed downloaded model; never for the owner's own model; removal stops automatic download | — |
-| Does the file load on the OPPO? | — | NOT TESTED | After download the worker opens the file on CPU before installing it; a failure leaves any previous model in place and reports it | Install 0.6.0 on Wi-Fi, wait for the download, then run a local question on CPU and GPU; record time, memory and heat |
+| Does the file load on the OnePlus 16? | — | NOT TESTED | After download the worker opens the file on CPU before installing it; a failure leaves any previous model in place and reports it | Install 0.6.0 on Wi-Fi, wait for the download, then run a local question on CPU and GPU; record time, memory and heat |
 | Real 2.6 GB download behaviour | — | NOT TESTED | Foreground WorkManager job (dataSync) on unmetered network with storage/battery constraints and a progress notification | Test Wi-Fi drop, reboot and force-stop mid-download; confirm it resumes and the notification is visible |
 
 ## Dependency update check — 2026-11-16
@@ -390,14 +420,14 @@ deployed, and no phone or real server was used.
 
 | Question | Test | Result | Evidence | Next action |
 |---|---|---|---|---|
-| Phone sends only changes and deletions? | `WebSyncTest` | PASS (host) | Second pass with no changes sends nothing; a closed task and a forgotten memory send one upsert and one delete | Watch the first full sync and a later pass on the OPPO with real volumes |
+| Phone sends only changes and deletions? | `WebSyncTest` | PASS (host) | Second pass with no changes sends nothing; a closed task and a forgotten memory send one upsert and one delete | Watch the first full sync and a later pass on the OnePlus 16 with real volumes |
 | Security codes stay on the phone? | `WebSyncTest` | PASS (host) | Sensitive events and the messages and tasks captured from them are not sent; the code text appears nowhere in the fake server | Inspect the server copy after a real OTP arrives |
 | Wiped or new server repaired? | `WebSyncTest`, API tests | PASS (host) | A changed dataset id makes the phone reset the server and send a full copy; batches for an old dataset get 409 | — |
 | Large kinds bounded? | `WebSyncTest`, API tests | PASS (host) | 650 2 KB rows go in batches of ≤300 rows / ~1 MB; the API accepts 500 rows of ~1.5 MB and rejects 501 | Time a full sync over mobile data |
 | Access control | API tests | PASS (host) | Sync routes need `SYNC_TOKEN`, read routes an owner session; expired or forged sessions rejected; repeated wrong passwords get 429 | Verify through the real reverse proxy and HTTPS |
 | Local deployment | `curl --cacert /etc/nginx/ssl/hellfire.local.crt` against https://hellfire.local | PASS (this PC) | nginx 1.30.6 → website 127.0.0.1:3910 → API 127.0.0.1:3911 → local PostgreSQL `hellfire`. HTTP redirects to HTTPS; signed-out pages redirect to `/login`; `/api/overview` 404; `/api/sync/state` 401 without the token, 200 with it | Sign in once in a browser |
 | Phone reaches hellfire.local? | Manifest review | BLOCKED | The name is only in this PC's `/etc/hosts` (no mDNS), and the app has no network security config, so it trusts system CAs only and rejects the self-signed certificate | Pick an option: a LAN DNS record plus a debug-build user-CA override, or a real domain with a public certificate |
-| Sync over a real network | Compile only | NOT TESTED | HTTPS-only client, 15-minute WorkManager job (network connected, battery not low), status in Settings | Install the units, add the HTTPS proxy, connect the OPPO, check ColorOS background limits |
+| Sync over a real network | Compile only | NOT TESTED | HTTPS-only client, 15-minute WorkManager job (network connected, battery not low), status in Settings | Install the units, add the HTTPS proxy, connect the OnePlus 16, check OEM firmware background limits |
 | Sign-in form | Build; API login tested separately | PARTIAL | The server action sets the cookie from the API token; not exercised in a browser | Sign in once in a browser |
 
 ## Phone-only build — 2026-11-16
@@ -431,7 +461,7 @@ Host verification on the branch:
 
 | Question | Test | Result | Evidence | Next action |
 |---|---|---|---|---|
-| AAC recording recovered after process death? | `ReviewFixesTest` | PASS (host) | Recovery accepts the AAC and PCM containers and registers the right type; empty orphans are removed; recovery is skipped while the microphone is busy. Start time is the file creation time where the filesystem reports it | Kill the process mid-recording on the OPPO; check the recovered file plays |
+| AAC recording recovered after process death? | `ReviewFixesTest` | PASS (host) | Recovery accepts the AAC and PCM containers and registers the right type; empty orphans are removed; recovery is skipped while the microphone is busy. Start time is the file creation time where the filesystem reports it | Kill the process mid-recording on the OnePlus 16; check the recovered file plays |
 | SMS import bounded per trigger? | `ReviewFixesTest` | PASS (host) | The last imported provider row is saved; fresh triggers re-read from 200 rows before it (outbox → sent keeps its row ID). Settings › Sync SMS history runs a full check. First run after upgrade reads everything once; existing rows are matched, not duplicated | Measure the time and battery of a trigger on the real SMS store |
 | Identity independent of redaction rules? | `ReviewFixesTest` | PASS (host) | SMS, IMAP and relay events are identified by source, provider key, time and kind. Rows from earlier versions are found by their old content identity and reused. Notifications keep content identity on purpose | Upgrade over the owner's database; confirm a full SMS check adds no duplicates |
 | Money facts kept by redaction? | `ReviewFixesTest`, `NotificationNormalizerTest` | PASS (synthetic) / NOT TESTED (real formats) | Trailing-currency amounts, `/=`, day/month/year dates, and in finance messages amounts after finance words plus till/Lipa Namba/reference numbers are kept; bare codes are still removed | Run an owner-approved real corpus through the normalizer; record losses per provider |
@@ -442,10 +472,10 @@ Host verification on the branch:
 | First mail sync starts with recent mail? | Code review, compile | PARTIAL | First sync (or a UIDVALIDITY reset) takes the 500 newest messages per folder, oldest of those first; later syncs continue by UID | Test against a real large mailbox |
 | Cloud AI answers accepted? | `AiProviderTest`, `AiRouterTest` | PASS (mocked) / NOT TESTED (live) | Output limit 2,048 tokens; answers stopped by the limit are kept and marked "Cut off" (Claude `max_tokens`, Responses `incomplete`/`max_output_tokens`, DeepSeek `length`); Claude thinking blocks are skipped; Claude refusals are their own error and fall back. The per-request budget reservation is about 4× larger | Run the opt-in live tests once per provider |
 | Long-term search? | `ReviewFixesTest`; migration tests | PASS (host) / NOT TESTED (SQLCipher) | FTS4 (unicode61) table inside the encrypted database; filled at capture and by a one-time resumable backfill; rebuilt after restore; not in backups; cleared with captured events. Sensitive and unavailable sources are never indexed | Confirm FTS4 works in SQLCipher on the phone; time the first backfill |
-| Call-folder scan finds new files? | Compile; code review | PARTIAL | Every folder entry is read; up to 25 new audio files are imported per scan, newest first | Test with the OPPO call-recording folder |
+| Call-folder scan finds new files? | Compile; code review | PARTIAL | Every folder entry is read; up to 25 new audio files are imported per scan, newest first | Test with the OnePlus 16 call-recording folder |
 | Drive storage bounded? | Compile; code review | PARTIAL | After a confirmed upload the app deletes its own older archives beyond the newest 3/7/14 (default 7), or keeps all | Verify on a live Drive account |
-| Device problems diagnosable? | `ReviewFixesTest` | PASS (host) | Debuggable builds log exception class and stack frames (tag `HellFire`), never messages, from the previously silent handlers | Collect with `adb logcat -s HellFire` during the OPPO pass |
-| Other apps steering the UI? | Compile; manifest review | PARTIAL | `MainActivity` is no longer exported; the launcher, assist gesture and assistant settings use the exported `.Launcher` alias, whose data is ignored. Widgets and reminders address `MainActivity` directly. Launchers may need the icon re-added after the update | Check launcher icon, assist gesture and widget links on ColorOS |
+| Device problems diagnosable? | `ReviewFixesTest` | PASS (host) | Debuggable builds log exception class and stack frames (tag `HellFire`), never messages, from the previously silent handlers | Collect with `adb logcat -s HellFire` during the OnePlus 16 pass |
+| Other apps steering the UI? | Compile; manifest review | PARTIAL | `MainActivity` is no longer exported; the launcher, assist gesture and assistant settings use the exported `.Launcher` alias, whose data is ignored. Widgets and reminders address `MainActivity` directly. Launchers may need the icon re-added after the update | Check launcher icon, assist gesture and widget links on OEM firmware |
 
 Multiple accounts:
 
@@ -479,7 +509,7 @@ review time; every row was fixed the same day (see "Review fixes and multiple ac
 | Question | Test | Result | Evidence | Next action |
 |---|---|---|---|---|
 | Is a compressed conversation recording recovered after the process dies mid-recording? | Code review | **DEFECT** | `MicrophoneService` writes monitoring audio with the container's PCM flag off (AAC). `ChunkedMedia.recoverRecording` returns null unless that flag is on, so `MediaVault.recover` skips the file: up to 30 minutes of audio is not registered and the encrypted file stays on disk. `MediaTest` covers recovery for the PCM container only | Accept the AAC container in recovery, add a test, and remove or register orphan `.hfm` files |
-| Does each new SMS trigger a bounded import? | Code review | **DEFECT (cost)** | Every trigger (incoming SMS, provider change, app resume, the 15-minute maintenance job) starts `SmsSyncWorker` at row 0 and pages through the whole SMS store, normalizing and hashing each row before the duplicate check. No high-water mark is saved | Save the last imported row ID and rescan only a short look-back window (for outbox to sent changes); measure on the OPPO's real SMS count |
+| Does each new SMS trigger a bounded import? | Code review | **DEFECT (cost)** | Every trigger (incoming SMS, provider change, app resume, the 15-minute maintenance job) starts `SmsSyncWorker` at row 0 and pages through the whole SMS store, normalizing and hashing each row before the duplicate check. No high-water mark is saved | Save the last imported row ID and rescan only a short look-back window (for outbox to sent changes); measure on the OnePlus 16's real SMS count |
 | Is a captured event's identity stable if the redaction rules change? | Code review | **RISK** | The event ID and external ID are hashes of the *redacted* fields. Any later change to `NotificationNormalizer` gives already-imported SMS and mail new IDs, so the next sync re-imports them as new events and creates new review items unless a provider reference matches | Calibrate redaction on a real corpus **before** the first real history import, or derive SMS/mail identity from the provider row ID / IMAP UID instead of content |
 | Does redaction keep the money facts in real provider messages? | Code review | **RISK, NOT TESTED on real formats** | Any standalone 4–8 digit number is replaced unless it follows `TZS`/`TSh`, sits in an ISO date, or follows a reference keyword in a message that also has a marked amount. Amounts written without a leading currency mark (`5000`, `120000 TZS`), the year in `13/11/2026`, and till numbers in messages without a marked amount are removed before storage, permanently | Run an owner-approved real corpus through the normalizer and record what is lost per provider |
 | Does one payment seen as both an SMS and the SMS app's notification create one review item? | Code review | **RISK** | `FinanceRepository.collect` only detects a duplicate when both sources yield the same parsed reference. The reference pattern needs a `ref`/`kumbukumbu`/`muamala` keyword; a message that leads with a bare transaction ID yields no reference, so both sources go to review and both can be posted | Verify reference parsing per provider on a real corpus; add a fallback match (same provider, amount and time window) that links instead of posting twice |
@@ -491,7 +521,7 @@ review time; every row was fixed the same day (see "Review fixes and multiple ac
 | Is long-term literal search available? | Code review | **GAP vs spec** | Search decrypts and scans only the 2,000 most recent events (a few days once all notifications are captured). The spec asks for SQLite FTS | Add an FTS table inside the already-encrypted database |
 | Are newly recorded calls found by the folder scan? | Code review | **RISK** | Each scan reads only the first 300 folder entries in the order the storage provider returns them. A call-recording folder that grows past 300 files may never show its newest files | Sort by last-modified or page through the folder |
 | Do daily Drive backups stay within the account's storage? | Code review | **RISK** | Every daily upload is a complete archive including all originals (up to 7 GiB). Nothing prunes old archives | Keep the newest N archives the app created, or back up originals less often |
-| Can device problems be diagnosed? | Code review | **GAP** | The app writes no log lines at all; about 95 `catch` blocks turn the exception into a generic status string | Add debug-build-only logging of exception class and stack trace, without message content, before the OPPO test pass |
+| Can device problems be diagnosed? | Code review | **GAP** | The app writes no log lines at all; about 95 `catch` blocks turn the exception into a generic status string | Add debug-build-only logging of exception class and stack trace, without message content, before the OnePlus 16 test pass |
 | Can another app steer the UI? | Code review | **LOW** | `MainActivity` is exported for the launcher and assist intents and accepts any `hellfire://` data URI from any caller. Links only navigate, and the app lock still applies | Accept deep links only from this app's own pending intents |
 
 Repository and build state on 2026-11-16:
@@ -509,7 +539,7 @@ Repository and build state on 2026-11-16:
 ## Earlier checkpoints
 
 Evidence date: 2026-11-14, Africa/Dar_es_Salaam. The owner authorized remaining
-phases and explicitly kept physical OPPO testing until last. Resource-use validation
+phases and explicitly kept physical OnePlus 16 testing until last. Resource-use validation
 used host tests only; the separate UI checkpoint below records earlier emulator
 evidence. No live account, personal message corpus, recording or model weights were
 used for the resource-use changes.
@@ -521,7 +551,7 @@ No device-dependent phase is fully accepted solely because its host checks pass.
 
 | Question | Test | Result | Evidence | Next action |
 |---|---|---|---|---|
-| Fingerprint login | Enroll fingerprint and device PIN; enable app lock; cancel/wrong/correct fingerprint; use PIN fallback; background/recreate/restart; disable lock after authentication | NOT TESTED (physical) | Platform `BiometricPrompt`; API 30+ strong biometric or device credential, API 29 platform credential fallback; no fingerprint data stored. Only `emulator-5554` was listed by read-only `adb devices -l`; it was not used for authentication testing | Run on the physical OPPO; verify ColorOS sensor/lockout/PIN behavior and revoking enrollment |
+| Fingerprint login | Enroll fingerprint and device PIN; enable app lock; cancel/wrong/correct fingerprint; use PIN fallback; background/recreate/restart; disable lock after authentication | NOT TESTED (physical) | Platform `BiometricPrompt`; API 30+ strong biometric or device credential, API 29 platform credential fallback; no fingerprint data stored. Only `emulator-5554` was listed by read-only `adb devices -l`; it was not used for authentication testing | Run on the physical OnePlus 16; verify OEM firmware sensor/lockout/PIN behavior and revoking enrollment |
 | Private UI and assistant access | Open task deep link, assistant role entry, recents, account/document picker; return locked; unlock and consume pending result | NOT TESTED (device) | Main activity gates private Compose content and uses secure-window flag. Assistant session redirects to app when lock is enabled. Saveable UI holder preserves result-registration keys; manual archive passphrase survives only in an in-memory ViewModel | Verify no private content/dialog/voice response is exposed while locked; verify picker return, rotation, screen-off and process death |
 | Daily encrypted Google Drive backup | Register Cloud Android OAuth client/certificate, enable Drive API, connect Google account, enable schedule, inspect Drive file and reported success | NOT TESTED (live Google/device) | `drive.file` authorization, existing passphrase archive, unique 24-hour WorkManager job, unmetered/battery/storage constraints, streamed upload, server size/checksum confirmation | Configure actual Cloud project and signing certificates; test first/manual/overnight upload, offline/reboot/Doze/quota/consent revocation; no live Google account used |
 | Restore on replacement installation | Connect original account, list/select backup, enter original passphrase, confirm restore into empty database | NOT TESTED (native/live Google/device) | Bounded ciphertext download, existing authenticated archive/schema/table/media validation and empty-database guard; device-key re-encryption, stale send approvals cleared | Perform full SQLCipher/Keystore/media round trip, wrong-password/corrupt-download/insufficient-space tests, regrant access afterward |
@@ -649,7 +679,7 @@ speech/assistant model lock. No source/audio retention or permission is changed.
 |---|---|---|---|---|
 | Work queue bounded under bursts and running/failed drains? | Real WorkManager persistence with worker execution disabled; concurrent requests and explicit work states | PASS (host) | 100 concurrent triggers leave one queued drain; 50 triggers during RUNNING leave one BLOCKED successor; FAILED work allows a new drain | Verify actual process/OS scheduling on device |
 | Automatic indexing power policy and idle behavior? | Persisted worker constraints; invalid synthetic model with empty Room backlog | PASS (host) | 20 registrations retain one periodic job with charging/battery constraints; empty backlog and zero budget return without loading the invalid model; negative budget rejected. All 5 `ResourceUseTest` checks pass | Verify actual embedding throughput, batch limits, cancellation and model serialization on device |
-| Lower battery, CPU and peak RAM on the OPPO? | Compare identical controlled workloads before/after | NOT TESTED | No physical profiling performed | Record baseline and optimized overnight battery, CPU time, PSS/peak memory and index latency; verify unplug/replug, severe thermal status and capture during indexing |
+| Lower battery, CPU and peak RAM on the OnePlus 16? | Compare identical controlled workloads before/after | NOT TESTED | No physical profiling performed | Record baseline and optimized overnight battery, CPU time, PSS/peak memory and index latency; verify unplug/replug, severe thermal status and capture during indexing |
 
 Scheduling references: [unique work and chaining](https://developer.android.com/develop/background-work/background-tasks/persistent/how-to/manage-work),
 [work constraints](https://developer.android.com/develop/background-work/background-tasks/persistent/getting-started/define-work).
@@ -667,7 +697,7 @@ used one worker and a command-line heap limit after concurrent workstation build
 caused memory pressure; no project/global build settings or checks were changed.
 The earlier 165-test pre-redesign suite also passed. No device profiling or model
 inference was performed. Source capture remains independent of automatic meaning
-indexing; battery and peak-memory improvements are still NOT TESTED on the OPPO.
+indexing; battery and peak-memory improvements are still NOT TESTED on the OnePlus 16.
 
 ## Capture quality checkpoint — 2026-11-13
 
@@ -769,19 +799,19 @@ listing separately from generation permissions. Do not use personal histories.
 
 Merged branch `feat/ui-redesign`. Redesign per the UI handoff: new theme, five-tab navigation, redesigned tabs, settings,
 reports, Room v10/v11 and Glance home screen widgets. Evidence below is host tests and the Android emulator only
-(Pixel 6 profile, API 34). **No physical OPPO/ColorOS device was connected; nothing here is a device result.**
+(Pixel 6 profile, API 34). **No physical OnePlus 16/OEM device was connected; nothing here is a device result.**
 
 | Question | Test | Result | Evidence | Next action |
 |---|---|---|---|---|
 | Does the app build and pass the host suite? | `./gradlew assembleDebug :app:testDebugUnitTest :app:lintDebug` | PASS (host) | 188 tests, 184 passed, 4 opt-in live AI tests skipped, 0 failures; lint 0 errors (warnings only) | — |
-| Do Room migrations 9→10→11 keep data with no destructive fallback? | `SchemaV10Test`, `WidgetDataTest`, `DatabaseMigrationTest`; emulator upgrade over existing encrypted v9 data | PASS (host + emulator) | Rows kept; completion times backfilled from owner done-audits; promise direction backfilled for message-extracted tasks; SQLCipher DB opened and migrated in place on the emulator | Install over the owner's real database on the OPPO before relying on it |
+| Do Room migrations 9→10→11 keep data with no destructive fallback? | `SchemaV10Test`, `WidgetDataTest`, `DatabaseMigrationTest`; emulator upgrade over existing encrypted v9 data | PASS (host + emulator) | Rows kept; completion times backfilled from owner done-audits; promise direction backfilled for message-extracted tasks; SQLCipher DB opened and migrated in place on the emulator | Install over the owner's real database on the OnePlus 16 before relying on it |
 | Do older encrypted backups still restore? | `SchemaV10Test`, `WidgetDataTest` | PASS (host) | Schema 8 and 10 rows restore into v11 with defaults; unknown or missing core columns still refused | Run a real export → restore on a spare install |
 | Do confirm-before-act rules still hold? | Emulator walkthrough | PASS (emulator) | SMS candidates post only after the review sheet's Confirm; drafts send only after "Approve and send" confirmation; task proposals need Add task; balances need Confirm balance; widgets only open the app (promise checkbox marks done, as specified) | — |
 | Do reports compute from confirmed entries only, and export? | `ReportDataTest`, `BalanceAndCalendarTest`, emulator | PASS (host + emulator) | Totals, groups, account reconciliation, running balance, calendar totals; PDF exported through the file picker and read back | Compare report totals with real statements |
-| Do home screen widgets render, refresh and protect privacy? | Emulator (Pixel launcher) | PARTIAL (emulator) | 13 widgets listed with previews; pinned and rendered; amounts masked by default; a new SMS refreshed Wallets and Nightly review without a timer; widget record → consent → visible notification → stop → "Saved, transcript queued" | ColorOS launcher, resize to large, lock-screen/after-reboot behaviour |
-| Widget recording on OPPO/ColorOS | — | NOT TESTED | No device | See REDESIGN_SUMMARY.md checklist |
-| Assistant gesture opens Ask | — | NOT TESTED | Intent routing implemented (`ACTION_ASSIST` → Ask) | Test the ColorOS gesture and power-button assistant |
-| Background capture overnight with the new UI | — | NOT TESTED | Unchanged services; Setup row shows battery exemption and ColorOS caveat | Overnight test with battery optimisation off and auto-launch on |
+| Do home screen widgets render, refresh and protect privacy? | Emulator (Pixel launcher) | PARTIAL (emulator) | 13 widgets listed with previews; pinned and rendered; amounts masked by default; a new SMS refreshed Wallets and Nightly review without a timer; widget record → consent → visible notification → stop → "Saved, transcript queued" | OEM firmware launcher, resize to large, lock-screen/after-reboot behaviour |
+| Widget recording on OnePlus 16/OEM | — | NOT TESTED | No device | See REDESIGN_SUMMARY.md checklist |
+| Assistant gesture opens Ask | — | NOT TESTED | Intent routing implemented (`ACTION_ASSIST` → Ask) | Test the OEM firmware gesture and power-button assistant |
+| Background capture overnight with the new UI | — | NOT TESTED | Unchanged services; Setup row shows battery exemption and OEM firmware caveat | Overnight test with battery optimisation off and auto-launch on |
 
 ## Money entry update — 2026-11-14
 
@@ -796,7 +826,7 @@ backups retain these selections and schemas 8, 10 and 11 remain readable.
 | Question | Test | Result | Evidence | Next action |
 |---|---|---|---|---|
 | Do selections, migration and ledger approval work? | Host unit tests/build | PASS (host) | 192 tests: 188 passed, 4 live-AI tests skipped; no failures/errors. Debug APK built. Migration v11→v12, selected account/category/EAT timestamp, approval and old/new backup rows covered | Verify real phone interactions |
-| Do picker controls behave on ColorOS? | Select and cancel date/time; change category/account; rotate, reopen review, confirm multi-item cash entry; add an account without a provider | NOT TESTED | No phone test performed for this change | Verify timezone, retained selections and balances on the OPPO |
+| Do picker controls behave on OEM firmware? | Select and cancel date/time; change category/account; rotate, reopen review, confirm multi-item cash entry; add an account without a provider | NOT TESTED | No phone test performed for this change | Verify timezone, retained selections and balances on the OnePlus 16 |
 
 Command: `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug --max-workers=1 --console=plain`
 from `android/`. Test and assemble tasks passed. Lint was **NOT COMPLETED** at this
@@ -822,7 +852,9 @@ adb shell getprop ro.build.version.sdk
 adb shell getprop ro.build.display.id
 adb shell getprop ro.product.cpu.abilist
 adb shell getprop ro.build.version.security_patch
-adb shell getprop ro.build.version.opporom
+adb shell getprop ro.build.fingerprint
+adb shell getprop ro.soc.model
+adb shell cat /proc/cpuinfo
 adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 adb shell am start -n com.hellfire.ass/.MainActivity
 ```
@@ -952,7 +984,7 @@ Keep messages, credentials, recordings, serials and exported backups out of Git.
    Compare VAD spans in quiet rooms, fans/traffic and music. Import a speaker model,
    enroll from a test sample, and label a consented multi-person recording: record
    group purity, owner-match rate/false matches, name placeholders versus who was
-   addressed, time and memory per minute. Confirm manual labels are never replaced. Import/replay accessible OPPO recordings
+   addressed, time and memory per minute. Confirm manual labels are never replaced. Import/replay accessible phone recordings
    and selected-folder changes. If files are private/inaccessible, record BLOCKED
    and use dialer sharing. Test rename, unknown/known original dates, video without
    audio, charging/thermal constraints, analysis cancellation/recovery, decrypted
