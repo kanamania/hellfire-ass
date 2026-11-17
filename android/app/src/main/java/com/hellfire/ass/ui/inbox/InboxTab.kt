@@ -114,6 +114,9 @@ fun InboxTab() {
             IconCircleButton(HfIcons.Search, "Search", { search = if (search == null) "" else null })
             IconCircleButton(HfIcons.Plus, "New message", { editing = ReplyDraft() })
         }
+        ListRow(com.hellfire.ass.ui.tr("Universal inbox"), subtitle = com.hellfire.ass.ui.tr("Saved drops, files and shares"), chevron = true) {
+            nav.push(com.hellfire.ass.library.LibraryRoutes.universalInbox())
+        }
         if (search != null) HfTextField(search!!, { search = it }, "Search all saved messages")
         FilterChips(filter) { filter = it }
         SegmentedControl(listOf("Conversations", "All items"), if (conversations) "Conversations" else "All items", { conversations = it == "Conversations" })

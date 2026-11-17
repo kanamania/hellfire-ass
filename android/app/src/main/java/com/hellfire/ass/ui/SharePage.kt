@@ -8,6 +8,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.hellfire.ass.drawer.DrawerController
+import com.hellfire.ass.drawer.DrawerPipeline
+import com.hellfire.ass.drawer.DropPart
 import com.hellfire.ass.events.NotificationNormalizer
 import com.hellfire.ass.events.NotificationSnapshot
 import com.hellfire.ass.memory.MemoryItem
@@ -58,6 +61,22 @@ fun SharePage() {
         if (action == "Save note" && text.length > 4000) Note("The memory note keeps the first 4,000 characters; the shared source retains up to 60,000.")
         if (action == "Save note") HfTextField(subject, { subject = it.take(200) }, "Person or subject", enabled = !busy)
         message?.let { Banner(it) }
+        SecondaryButton(com.hellfire.ass.ui.tr("Save to drawer"), {
+            busy = true
+            app.captureScope.launch {
+                try {
+                    val parts = buildList {
+                        if (text.isNotBlank()) add(DropPart.Text(text, name = subject.ifBlank { "Shared text" }))
+                        files.forEach { add(DropPart.UriPart(it)) }
+                    }
+                    val outcome = withContext(Dispatchers.IO) { DrawerPipeline(app).ingest(parts, com.hellfire.ass.library.CaptureOrigin.SHARE, incoming.getPackage().orEmpty()) }
+                    DrawerController.show(outcome.inboxId)
+                    message = if (outcome.captureState == "COMPLETE") "Saved to the drawer." else "Incomplete capture. ${outcome.captureError.orEmpty()}"
+                } catch (e: CancellationException) { throw e }
+                catch (e: Exception) { message = e.message ?: "Could not save to the drawer." }
+                finally { busy = false }
+            }
+        }, Modifier.fillMaxWidth(), enabled = !busy && parsed.isSuccess && (text.isNotBlank() || files.isNotEmpty()))
         PrimaryButton(if (busy) "Saving…" else "Save shared content", {
             busy = true
             app.captureScope.launch {

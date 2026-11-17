@@ -83,10 +83,18 @@ fun RouteContent(route: Route) {
         Screen.TemplateEdit -> com.hellfire.ass.ui.templates.TemplateEditPage(route.arg)
         // Media-intelligence routes (LibraryRoutes contract). Until each owner lands its page, these open the nearest
         // existing real page; each owner replaces its own line.
-        Screen.Library -> PushedPage(com.hellfire.ass.ui.tr("Recordings"), breadcrumb = "Settings") { MediaScreen(env.app, env.permissions, a.onMicrophone) } // OWNER: library-agent
-        Screen.MediaDetail -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, com.hellfire.ass.library.LibraryRoutes.id(route)) } // OWNER: library-agent
-        Screen.Player -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, com.hellfire.ass.library.LibraryRoutes.id(route)) } // OWNER: player-agent
-        Screen.UniversalInbox -> InboxTab() // OWNER: drawer-inbox-agent
-        Screen.InboxItem -> InboxTab() // OWNER: drawer-inbox-agent
-        Screen.Search -> MemoryPage("") // OWNER: search-agent
+        Screen.Library -> com.hellfire.ass.ui.library.LibraryPage(route) // OWNER: library-agent
+        Screen.MediaDetail -> com.hellfire.ass.ui.library.MediaDetailPage(route) // OWNER: library-agent
+        Screen.Player -> com.hellfire.ass.ui.player.PlayerScreen(com.hellfire.ass.library.LibraryRoutes.id(route), com.hellfire.ass.library.LibraryRoutes.startMs(route)) // OWNER: player-agent
+        Screen.UniversalInbox -> com.hellfire.ass.ui.drawer.UniversalInboxPage()
+        Screen.InboxItem -> com.hellfire.ass.ui.drawer.InboxItemPage(com.hellfire.ass.library.LibraryRoutes.id(route))
+        Screen.Search -> com.hellfire.ass.ui.intelligence.SearchScreen(route)
         Screen.ShareWithAi -> com.hellfire.ass.ui.sharing.ShareWithAiPage(route) // OWNER: sharing-agent
+        Screen.ProcessingQueue -> com.hellfire.ass.ui.intelligence.ProcessingQueueScreen()
+        Screen.SyncDashboard -> com.hellfire.ass.ui.sync.SyncDashboardPage() // OWNER: sync-agent
+        Screen.BackupDashboard -> PushedPage(com.hellfire.ass.ui.tr("Backup dashboard"), breadcrumb = "Settings") { BackupDashboardScreen(env.app) }
+        Screen.StatusDashboard -> PushedPage(com.hellfire.ass.ui.tr("Status dashboard"), breadcrumb = "Settings") { StatusDashboardScreen(env.app) }
+        Screen.MediaSettings -> com.hellfire.ass.ui.intelligence.MediaSettingsScreen()
+        else -> PushedPage(route.screen.name) { Note("This screen is not available yet.") }
+    }
+}

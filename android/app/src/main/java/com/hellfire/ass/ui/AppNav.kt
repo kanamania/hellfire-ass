@@ -179,6 +179,7 @@ fun HellFireRoot(app: HellFireApp, permissions: PermissionStatus, actions: Permi
                     draftError?.let { Banner(it, Tone.Danger, HfIcons.Info, Modifier.align(Alignment.TopCenter).padding(16.dp)) }
                     if (message != null) Banner(message, Tone.Info, HfIcons.Info,
                         Modifier.align(Alignment.TopCenter).padding(horizontal = ScreenPadding, vertical = 8.dp).clickableRow(onMessageShown))
+                    com.hellfire.ass.ui.drawer.DrawerHost()
                 }
             }
         }
