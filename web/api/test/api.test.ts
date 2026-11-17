@@ -161,8 +161,8 @@ describe('sync', () => {
 });
 
 describe('encrypted library', () => {
-  const chunk = (n: number) => {
-    const bytes = Buffer.alloc(40, n);
+  const chunk = (n: number, size = 37) => {
+    const bytes = Buffer.alloc(size, n);
     return { sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.toString('base64') };
   };
   const record = (id: string, baseVersion: number, deleted = false) => ({
@@ -188,7 +188,7 @@ describe('encrypted library', () => {
     const bad = chunk(2); bad.sha256 = 'b'.repeat(64);
     assert.equal((await phone(`/api/library/blobs/${opened.body.blobId}/chunks/0`, bad)).status, 400);
     await phone(`/api/library/blobs/${opened.body.blobId}/chunks/0`, chunk(2));
-    const done = await phone(`/api/library/blobs/${opened.body.blobId}/chunks/2`, chunk(3));
+    const done = await phone(`/api/library/blobs/${opened.body.blobId}/chunks/2`, chunk(3, 33));
     assert.equal(done.body.complete, true);
     const downloaded = await owner(`/api/library/blobs/${opened.body.blobId}/chunks/1`);
     assert.equal(downloaded.body.sha256, chunk(1).sha256);
@@ -197,6 +197,22 @@ describe('encrypted library', () => {
   it('refuses a blob that would pass the quota', async () => {
     assert.equal((await phone('/api/library/blobs', { contentHash: 'c'.repeat(64), size: 600, chunkSize: 256, chunkCount: 3 })).status, 200);
     assert.equal((await phone('/api/library/blobs', { contentHash: 'd'.repeat(64), size: 500, chunkSize: 256, chunkCount: 2 })).status, 413);
+  });
+
+  it('rejects inconsistent geometry, changed resume dimensions and oversized chunks', async () => {
+    assert.equal((await phone('/api/library/blobs', { contentHash: 'e'.repeat(64), size: 1, chunkSize: 1, chunkCount: 200_000 })).status, 400);
+    assert.equal((await phone('/api/library/blobs', { contentHash: 'e'.repeat(64), size: 1, chunkSize: 0.5, chunkCount: 2 })).status, 400);
+    assert.equal((await phone('/api/library/blobs', { contentHash: 'a'.repeat(64), size: 21, chunkSize: 8, chunkCount: 3 })).status, 400);
+    const resumed = await phone('/api/library/blobs', { contentHash: 'a'.repeat(64), size: 20, chunkSize: 8, chunkCount: 3 });
+    assert.equal((await phone(`/api/library/blobs/${resumed.body.blobId}/chunks/0`, chunk(1, 40))).status, 400);
+  });
+
+  it('serializes concurrent first writes and rejects nonexistent base versions', async () => {
+    assert.equal((await phone('/api/library/records', { records: [record('missing-base', 9)] })).status, 400);
+    const responses = await Promise.all(Array.from({ length: 5 }, () => phone('/api/library/records', { records: [record('concurrent', 0)] })));
+    assert.ok(responses.every((result) => result.status === 200));
+    assert.equal(responses.reduce((n, result) => n + result.body.accepted.length, 0), 1);
+    assert.equal(responses.reduce((n, result) => n + result.body.conflicts.length, 0), 4);
   });
 
   it('publishes a change feed, tombstones and version conflicts without storing plaintext search', async () => {
@@ -217,6 +233,8 @@ describe('encrypted library', () => {
     await phone('/api/library/records', { records: [{ ...record('b2', 0), searchText: 'harbour note' }] });
     const found = await owner('/api/library/search?q=harbour');
     assert.deepEqual(found.body.rows.map((row: { entityId: string }) => row.entityId), ['b2']);
+    await phone('/api/library/records', { records: [record('b2', 1, true)] });
+    assert.deepEqual((await owner('/api/library/search?q=harbour')).body.rows, []);
     await ownerPost('/api/library/search-opt-in', { enabled: false });
     assert.equal((await owner('/api/library/search?q=harbour')).status, 403);
   });

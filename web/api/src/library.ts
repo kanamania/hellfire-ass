@@ -11,7 +11,8 @@ export const LIBRARY_TYPES = ['media_item', 'media_analysis', 'media_segment', '
 const TYPE_SET = new Set<string>(LIBRARY_TYPES);
 const ID = /^[A-Za-z0-9_.:-]{1,80}$/;
 const HASH = /^[0-9a-f]{64}$/;
-const MAX_CHUNK = 512 * 1024;
+const ENVELOPE_OVERHEAD = 29;
+const MAX_CHUNK = 256 * 1024 + ENVELOPE_OVERHEAD;
 const MAX_RECORDS = 50;
 
 function fail(why: string): never { throw new BadRequestException(why); }
@@ -57,7 +58,7 @@ export class LibraryService {
   async state() {
     const meta = await this.db.pool.query<{ key: string; value: string }>("SELECT key, value FROM library_meta WHERE key IN ('epoch', 'kdf_salt', 'search_plaintext')");
     const map = Object.fromEntries(meta.rows.map((row) => [row.key, row.value]));
-    const used = await this.db.pool.query<{ used: string }>("SELECT COALESCE(SUM(size), 0)::text AS used FROM library_blob");
+    const used = await this.db.pool.query<{ used: string }>("SELECT COALESCE(SUM(size + chunk_count::bigint * 29), 0)::text AS used FROM library_blob");
     const counts = await this.db.pool.query<{ items: string; tombstones: string }>(
       "SELECT count(*) FILTER (WHERE NOT deleted)::text AS items, count(*) FILTER (WHERE deleted)::text AS tombstones FROM library_record");
     const cursor = await this.db.pool.query<{ cursor: string }>("SELECT COALESCE(MAX(change_seq), 0)::text AS cursor FROM library_record");
@@ -89,19 +90,21 @@ export class LibraryService {
     const chunkCount = item.chunkCount;
     if (typeof contentHash !== 'string' || !HASH.test(contentHash)) fail('contentHash must be sha256 hex');
     if (typeof size !== 'number' || !Number.isSafeInteger(size) || size < 1 || size > this.config.quotaBytes) fail('invalid size');
-    if (typeof chunkSize !== 'number' || chunkSize < 1 || chunkSize > 256 * 1024) fail('invalid chunkSize');
+    if (typeof chunkSize !== 'number' || !Number.isSafeInteger(chunkSize) || chunkSize < 1 || chunkSize > 256 * 1024) fail('invalid chunkSize');
     if (typeof chunkCount !== 'number' || !Number.isSafeInteger(chunkCount) || chunkCount < 1 || chunkCount > 200_000) fail('invalid chunkCount');
+    if (chunkCount !== Math.ceil(size / chunkSize)) fail('chunkCount does not match size');
     return this.db.transaction(async (client) => {
       await client.query("SELECT pg_advisory_xact_lock(hashtext('library-quota'))");
-      const existing = await client.query<{ id: string; size: string; chunk_count: number }>(
-        'SELECT id, size::text, chunk_count FROM library_blob WHERE content_hash = $1', [contentHash]);
+      const existing = await client.query<{ id: string; size: string; chunk_count: number; chunk_size: number }>(
+        'SELECT id, size::text, chunk_count, chunk_size FROM library_blob WHERE content_hash = $1', [contentHash]);
       if (existing.rows[0]) {
+        if (Number(existing.rows[0].size) !== size || existing.rows[0].chunk_size !== chunkSize || existing.rows[0].chunk_count !== chunkCount) fail('blob dimensions do not match');
         const received = await client.query<{ idx: number }>('SELECT idx FROM library_chunk WHERE blob_id = $1 ORDER BY idx', [existing.rows[0].id]);
         const count = Number(existing.rows[0].chunk_count);
         return { blobId: existing.rows[0].id, contentHash, received: received.rows.map((row) => row.idx), complete: received.rows.length === count };
       }
-      const used = await client.query<{ used: string }>('SELECT COALESCE(SUM(size), 0)::text AS used FROM library_blob');
-      if (Number(used.rows[0].used) + size > this.config.quotaBytes) throw new PayloadTooLargeException('quota');
+      const used = await client.query<{ used: string }>('SELECT COALESCE(SUM(size + chunk_count::bigint * 29), 0)::text AS used FROM library_blob');
+      if (Number(used.rows[0].used) + size + chunkCount * ENVELOPE_OVERHEAD > this.config.quotaBytes) throw new PayloadTooLargeException('quota');
       const id = randomUUID();
       await client.query(
         'INSERT INTO library_blob (id, content_hash, size, chunk_size, chunk_count) VALUES ($1, $2, $3, $4, $5)',
@@ -121,9 +124,11 @@ export class LibraryService {
     if (bytes.length < 29 || bytes.length > MAX_CHUNK) fail('chunk size');
     if (sha256(bytes) !== item.sha256) fail('chunk hash mismatch');
     return this.db.transaction(async (client) => {
-      const blob = await client.query<{ chunk_count: number }>('SELECT chunk_count FROM library_blob WHERE id = $1 FOR UPDATE', [id]);
+      const blob = await client.query<{ chunk_count: number; chunk_size: number; size: string }>('SELECT chunk_count, chunk_size, size::text FROM library_blob WHERE id = $1 FOR UPDATE', [id]);
       if (!blob.rows[0]) fail('unknown blob');
       if (index >= blob.rows[0].chunk_count) fail('chunk out of range');
+      const plainSize = Math.min(blob.rows[0].chunk_size, Number(blob.rows[0].size) - index * blob.rows[0].chunk_size);
+      if (bytes.length !== plainSize + ENVELOPE_OVERHEAD) fail('chunk size does not match blob');
       const prior = await client.query<{ sha256: string }>('SELECT sha256 FROM library_chunk WHERE blob_id = $1 AND idx = $2', [id, index]);
       if (prior.rows[0] && prior.rows[0].sha256 !== item.sha256) fail('chunk already stored with a different hash');
       if (!prior.rows[0]) {
@@ -156,6 +161,8 @@ export class LibraryService {
   async saveRecords(body: unknown) {
     const records = parseRecords(body);
     return this.db.transaction(async (client) => {
+      // Serialize writers so change cursors follow commit order, including first inserts.
+      await client.query("SELECT pg_advisory_xact_lock(hashtext('library-records'))");
       const opt = await client.query<{ value: string }>("SELECT value FROM library_meta WHERE key = 'search_plaintext'");
       const searchOn = opt.rows[0]?.value === '1';
       const accepted: { entityType: string; entityId: string; version: number }[] = [];
@@ -166,6 +173,7 @@ export class LibraryService {
           'SELECT version::text, deleted, updated_at::text, device_id, envelope FROM library_record WHERE entity_type = $1 AND entity_id = $2 FOR UPDATE',
           [row.entityType, row.entityId]);
         const existing = current.rows[0];
+        if (!existing && row.baseVersion !== 0) fail('missing base record');
         if (existing && Number(existing.version) !== row.baseVersion) {
           conflicts.push({ entityType: row.entityType, entityId: row.entityId, version: Number(existing.version), deleted: existing.deleted, updatedAt: Number(existing.updated_at), deviceId: existing.device_id, envelope: existing.envelope });
           continue;
@@ -182,7 +190,7 @@ export class LibraryService {
              WHERE entity_type = $1 AND entity_id = $2`,
             [row.entityType, row.entityId, version, row.deleted, row.updatedAt, row.deviceId, JSON.stringify(row.envelope)]);
         }
-        if (searchOn && row.searchText !== undefined) {
+        if (searchOn && (row.deleted || row.searchText !== undefined)) {
           if (row.deleted || row.searchText === '') {
             await client.query('DELETE FROM library_search WHERE entity_type = $1 AND entity_id = $2', [row.entityType, row.entityId]);
           } else {
@@ -214,6 +222,7 @@ export class LibraryService {
     const enabled = (body as { enabled?: unknown } | null)?.enabled;
     if (typeof enabled !== 'boolean') fail('enabled must be boolean');
     await this.db.transaction(async (client) => {
+      await client.query("SELECT pg_advisory_xact_lock(hashtext('library-records'))");
       await client.query(
         `INSERT INTO library_meta (key, value) VALUES ('search_plaintext', $1)
          ON CONFLICT (key) DO UPDATE SET value = excluded.value`, [enabled ? '1' : '0']);
