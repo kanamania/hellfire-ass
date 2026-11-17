@@ -1,0 +1,223 @@
+package com.hellfire.ass.sharing
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.media.MediaExtractor
+import android.media.MediaMetadataRetriever
+import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import androidx.media3.common.MimeTypes
+import androidx.media3.common.audio.AudioProcessor
+import androidx.media3.common.audio.BaseAudioProcessor
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.effect.BitmapOverlay
+import androidx.media3.effect.OverlayEffect
+import androidx.media3.effect.StaticOverlaySettings
+import androidx.media3.transformer.EditedMediaItem
+import androidx.media3.transformer.Effects
+import androidx.media3.transformer.ExportException
+import androidx.media3.transformer.ExportResult
+import androidx.media3.transformer.Transformer
+import kotlinx.coroutines.suspendCancellableCoroutine
+import java.io.File
+import java.nio.ByteBuffer
+import kotlin.coroutines.resume
+
+data class ContainerResult(val ok: Boolean, val message: String, val findings: List<MarkerHit>)
+
+@OptIn(UnstableApi::class)
+object ContainerExport {
+    suspend fun export(
+        context: Context,
+        input: File,
+        output: File,
+        audioOnly: Boolean,
+        startMs: Long?,
+        endMs: Long?,
+        muteRangesMs: List<Pair<Long, Long>>,
+        covers: List<RedactRect>,
+    ): ContainerResult {
+        check(input.absolutePath != output.absolutePath)
+        output.parentFile?.mkdirs()
+        output.delete()
+        val coverNote = if (covers.isNotEmpty()) "Video redaction is a static cover for the whole clip. Blur of the underlying frames and temporal tracking are not implemented." else ""
+        var error = transcode(context, input, output, audioOnly, startMs, endMs, muteRangesMs, covers, forceAudio = true)
+        if (error != null && muteRangesMs.isEmpty()) {
+            output.delete()
+            error = transcode(context, input, output, audioOnly, startMs, endMs, emptyList(), covers, forceAudio = false)
+        }
+        if (error != null || !output.isFile || output.length() == 0L) {
+            output.delete()
+            return ContainerResult(false, error ?: "Transcode produced no file. Nothing was shared.", emptyList())
+        }
+        val scan = Mp4Privacy.stripFile(output)
+        val findings = scan.identifying.map { MarkerHit("MP4", it, "still present after rewrite") } +
+            scan.creationTimes.filter { it.second != 0L }.map { MarkerHit("MP4", it.first, "creation_time ${it.second}") }
+        if (!Mp4Privacy.clean(scan)) {
+            output.delete()
+            return ContainerResult(false, "Container metadata could not be verified as removed. Nothing was shared.", findings)
+        }
+        val playback = playbackFindings(output)
+        if (playback.isNotEmpty()) {
+            output.delete()
+            return ContainerResult(false, "The copy still has identifying tags or does not open. Nothing was shared.", findings + playback)
+        }
+        val message = listOf(
+            "Container metadata was removed from this copy. Audible or visible content can still identify people, places and devices.",
+            coverNote,
+        ).filter { it.isNotBlank() }.joinToString(" ")
+        return ContainerResult(true, message, findings)
+    }
+
+    private suspend fun transcode(
+        context: Context,
+        input: File,
+        output: File,
+        audioOnly: Boolean,
+        startMs: Long?,
+        endMs: Long?,
+        muteRangesMs: List<Pair<Long, Long>>,
+        covers: List<RedactRect>,
+        forceAudio: Boolean,
+    ): String? = suspendCancellableCoroutine { continuation ->
+        val handler = Handler(Looper.getMainLooper())
+        handler.post {
+            if (!continuation.isActive) return@post
+            try {
+                val item = androidx.media3.common.MediaItem.Builder().setUri(Uri.fromFile(input)).apply {
+                    if (startMs != null && endMs != null && endMs > startMs) {
+                        setClippingConfiguration(
+                            androidx.media3.common.MediaItem.ClippingConfiguration.Builder()
+                                .setStartPositionMs(startMs)
+                                .setEndPositionMs(endMs)
+                                .build(),
+                        )
+                    }
+                }.build()
+                val processors = if (forceAudio || muteRangesMs.isNotEmpty()) listOf(RangeMuteProcessor(muteRangesMs)) else emptyList()
+                val effects = if (audioOnly) Effects(processors, emptyList()) else Effects(processors, listOf(coverEffect(covers)))
+                val edited = EditedMediaItem.Builder(item).setRemoveVideo(audioOnly).setEffects(effects).build()
+                val transformer = Transformer.Builder(context).setAudioMimeType(MimeTypes.AUDIO_AAC).apply {
+                    if (!audioOnly) setVideoMimeType(MimeTypes.VIDEO_H264)
+                    setUsePlatformDiagnostics(false)
+                }.build()
+                transformer.addListener(object : Transformer.Listener {
+                    override fun onCompleted(composition: androidx.media3.transformer.Composition, exportResult: ExportResult) {
+                        if (continuation.isActive) continuation.resume(null)
+                    }
+                    override fun onError(composition: androidx.media3.transformer.Composition, exportResult: ExportResult, exportException: ExportException) {
+                        output.delete()
+                        if (continuation.isActive) continuation.resume(exportException.message ?: "Transcode failed")
+                    }
+                })
+                continuation.invokeOnCancellation { handler.post { runCatching { transformer.cancel() } } }
+                transformer.start(edited, output.absolutePath)
+            } catch (error: Exception) {
+                output.delete()
+                if (continuation.isActive) continuation.resume(error.message ?: "Transcode failed")
+            }
+        }
+    }
+
+    private fun coverEffect(covers: List<RedactRect>): OverlayEffect {
+        val bitmap = Bitmap.createBitmap(1000, 1000, Bitmap.Config.ARGB_8888)
+        if (covers.isNotEmpty()) {
+            val canvas = Canvas(bitmap)
+            val paint = Paint().apply { color = Color.BLACK }
+            covers.filter { it.valid() }.forEach { canvas.drawRect(it.left * 1000f, it.top * 1000f, it.right * 1000f, it.bottom * 1000f, paint) }
+        }
+        val settings = StaticOverlaySettings.Builder().setScale(1f, 1f).build()
+        return OverlayEffect(listOf(BitmapOverlay.createStaticBitmapOverlay(bitmap, settings)))
+    }
+
+    private fun playbackFindings(file: File): List<MarkerHit> {
+        val hits = mutableListOf<MarkerHit>()
+        val extractor = MediaExtractor()
+        try {
+            extractor.setDataSource(file.absolutePath)
+            if (extractor.trackCount < 1) hits += MarkerHit("CONTAINER", "tracks", "No playable tracks")
+        } catch (error: Exception) {
+            hits += MarkerHit("CONTAINER", "extractor", error.javaClass.simpleName)
+        } finally {
+            extractor.release()
+        }
+        val retriever = MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(file.absolutePath)
+            val keys = listOf(
+                "location" to MediaMetadataRetriever.METADATA_KEY_LOCATION,
+                "author" to MediaMetadataRetriever.METADATA_KEY_AUTHOR,
+                "artist" to MediaMetadataRetriever.METADATA_KEY_ARTIST,
+                "title" to MediaMetadataRetriever.METADATA_KEY_TITLE,
+                "writer" to MediaMetadataRetriever.METADATA_KEY_WRITER,
+                "composer" to MediaMetadataRetriever.METADATA_KEY_COMPOSER,
+                "album" to MediaMetadataRetriever.METADATA_KEY_ALBUM,
+                "genre" to MediaMetadataRetriever.METADATA_KEY_GENRE,
+                "albumArtist" to MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST,
+            )
+            keys.forEach { (name, key) ->
+                val value = retriever.extractMetadata(key)
+                if (!value.isNullOrBlank()) hits += MarkerHit("RETRIEVER", name, "still present")
+            }
+            val date = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE)
+            if (!neutralDate(date)) hits += MarkerHit("RETRIEVER", "date", "still present")
+        } catch (error: Exception) {
+            hits += MarkerHit("CONTAINER", "retriever", error.javaClass.simpleName)
+        } finally {
+            retriever.release()
+        }
+        return hits
+    }
+
+    private fun neutralDate(value: String?): Boolean {
+        if (value.isNullOrBlank()) return true
+        val digits = value.filter { it.isDigit() }
+        return digits.isEmpty() || digits.all { it == '0' } || digits.startsWith("19040101")
+    }
+}
+
+@OptIn(UnstableApi::class)
+private class RangeMuteProcessor(private val rangesMs: List<Pair<Long, Long>>) : BaseAudioProcessor() {
+    private var sampleIndex = 0L
+
+    override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
+        val encoding = inputAudioFormat.encoding
+        if (encoding != android.media.AudioFormat.ENCODING_PCM_16BIT && encoding != android.media.AudioFormat.ENCODING_PCM_FLOAT) {
+            throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
+        }
+        return inputAudioFormat
+    }
+
+    override fun queueInput(inputBuffer: ByteBuffer) {
+        val output = replaceOutputBuffer(inputBuffer.remaining())
+        if (inputAudioFormat.encoding == android.media.AudioFormat.ENCODING_PCM_FLOAT) zeroFloat(inputBuffer, output)
+        else sampleIndex = PcmMute.zero16(inputBuffer, output, inputAudioFormat.sampleRate, inputAudioFormat.channelCount, rangesMs, sampleIndex)
+        output.flip()
+    }
+
+    private fun zeroFloat(input: ByteBuffer, output: ByteBuffer) {
+        val channels = inputAudioFormat.channelCount
+        val frame = channels * 4
+        while (input.remaining() >= frame) {
+            val timeMs = sampleIndex * 1000L / inputAudioFormat.sampleRate
+            val mute = rangesMs.any { timeMs >= it.first && timeMs < it.second }
+            if (mute) {
+                input.position(input.position() + frame)
+                repeat(frame) { output.put(0) }
+            } else repeat(frame) { output.put(input.get()) }
+            sampleIndex++
+        }
+    }
+
+    override fun onFlush() {
+        sampleIndex = 0
+    }
+
+    override fun onReset() {
+        sampleIndex = 0
+    }
+}
