@@ -16,8 +16,9 @@ class NewsRepository(
     private val app: HellFireApp,
     private val http: NewsHttp = HttpsNewsHttp(),
     private val poster: NewsPoster = AndroidNewsPoster(app),
+    private val database: com.hellfire.ass.data.EventDatabase = app.database,
 ) : NewsService {
-    private val dao get() = app.database.news()
+    private val dao get() = database.news()
     private val connectors by lazy { listOf(FeedConnector(http), SiteConnector(http), XConnector(http) { xToken() }) }
 
     override fun settings(): NewsSettings {
@@ -79,6 +80,7 @@ class NewsRepository(
         var articlesNew = 0
         val errors = ArrayList<String>()
         val touched = linkedSetOf<String>()
+        val originalVersions = dao.activeEvents(now - 7L * 86_400_000L).associate { it.id to it.version }
         for (source in due) {
             val started = System.currentTimeMillis()
             val connector = connectors.firstOrNull { it.supports(source.kind) }
@@ -117,8 +119,7 @@ class NewsRepository(
         var eventsNew = 0
         var eventsUpdated = 0
         for (eventId in touched) {
-            val before = dao.event(eventId)?.version ?: 0
-            recompute(eventId, now)
+            val before = originalVersions[eventId] ?: 0
             val after = dao.event(eventId)
             if (before == 0 && after != null) eventsNew++ else if (after != null && after.version > before) eventsUpdated++
         }
@@ -218,9 +219,9 @@ class NewsRepository(
         val key = "${event.version}|$length|$language"
         event.summaryJson?.takeIf { event.summaryKey == key }?.let { return StorySummary.fromJson(it) }
         val articles = dao.articlesFor(event.id)
-        val pairs = articles.map { inputOf(it) to NewsText.features(inputOf(it)) }
+        val pairs = articles.map { article -> inputOf(article).let { it to NewsText.features(it) } }
         val snapshot = runCatching { EventSnapshot.fromJson(dao.versions(event.id).lastOrNull()?.factsJson ?: "") }.getOrElse { NewsFacts.snapshot(pairs) }
-        val built = if (settings().aiSummaries) aiSummary(event.headline, pairs, snapshot, length, language) else null
+        val built = if (settings().aiSummaries && articles.none { it.shared }) aiSummary(event.headline, pairs, snapshot, length, language) else null
         val summary = built ?: NewsSummaries.extractive(event.headline, pairs, snapshot, dao.versions(event.id), length, language)
         dao.saveEvent(event.copy(summaryJson = summary.toJson(), summaryKey = key))
         return summary
@@ -318,6 +319,9 @@ class NewsRepository(
     override fun hasXToken(): Boolean = xToken() != null
 
     override suspend fun dropIn(text: String, url: String?): DropResult {
+        val safe = com.hellfire.ass.events.NotificationNormalizer.normalize(
+            com.hellfire.ass.events.NotificationSnapshot("news-share", "owner.news", 0, 0, fields = mapOf("text" to listOf(text))), app.packageName)
+        require(safe != null && !safe.securitySensitive && !safe.contentRedacted) { "Remove authentication codes before checking against news." }
         ensureDefaults()
         val now = System.currentTimeMillis()
         val canonical = url?.let { NewsText.canonicalUrl(it) }
@@ -327,7 +331,6 @@ class NewsRepository(
         val source = dao.source(NewsCatalog.SHARE_ID) ?: NewsCatalog.share(now).also { dao.insertSource(it) }
         val created = linkedSetOf<String>()
         val fresh = storeItem(source, item, now, created, shared = true)
-        created.forEach { recompute(it, now) }
         val eventId = created.firstOrNull() ?: canonical?.let { dao.articleByUrl(it)?.eventId }
         return DropResult(eventId, fresh && eventId != null, !fresh && eventId != null, if (fresh) "Added to news" else "Already saved")
     }
@@ -378,13 +381,15 @@ class NewsRepository(
             features.toJson(), eventId = eventId, shared = shared)
         if (dao.insertArticle(article) == -1L) return false
         touched += eventId
+        // Publish the centroid before the next article in this same refresh is clustered.
+        recompute(eventId, now)
         return true
     }
 
     private suspend fun recompute(eventId: String, now: Long) {
         val articles = dao.articlesFor(eventId)
         if (articles.isEmpty()) return
-        val pairs = articles.map { inputOf(it) to NewsText.features(inputOf(it)) }
+        val pairs = articles.map { article -> inputOf(article).let { it to NewsText.features(it) } }
         val features = pairs.map { it.second }
         val snapshot = NewsFacts.snapshot(pairs)
         val existing = dao.event(eventId)
@@ -463,8 +468,12 @@ class NewsRepository(
         return runCatching { NewsSummaries.parseModel(output, pairs, snapshot, language, "AI") }.getOrNull()
     }
 
-    private fun inputOf(article: NewsArticle): ArticleInput = ArticleInput(article.id, article.sourceId, article.sourceId, article.title, article.text, article.url,
-        article.publishedAt, language = article.language, sourceAgency = article.agency, social = article.contentType == "SOCIAL_POST")
+    private suspend fun inputOf(article: NewsArticle): ArticleInput {
+        val source = dao.source(article.sourceId)
+        return ArticleInput(article.id, article.sourceId, source?.name ?: article.sourceId, article.title, article.text, article.url,
+            article.publishedAt, sourceReliability = source?.reliability ?: 50, sourceOfficial = source?.official ?: false,
+            language = article.language, sourceAgency = article.agency, social = article.contentType == "SOCIAL_POST")
+    }
 
     private fun centroidOf(event: NewsEvent): EventCentroid? = runCatching { EventCentroid.fromJson(event.id, event.featuresJson) }.getOrNull()
         ?.takeIf { it.articleIds.isNotEmpty() }
