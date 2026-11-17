@@ -462,4 +462,15 @@
     <string name="ui_eb5bb0e600" formatted="false">Privacy settings could not be read. Nothing has changed.</string>
     <string name="ui_9f2467da31" formatted="false">Loading privacy settings…</string>
     <string name="ui_942087cc2d" formatted="false">Retry</string>
+    <string name="ui_intel_search" formatted="false">Search</string>
+    <string name="ui_intel_queue" formatted="false">Processing queue</string>
+    <string name="ui_intel_settings" formatted="false">Media intelligence</string>
+    <string name="ui_intel_pause" formatted="false">Pause</string>
+    <string name="ui_intel_resume" formatted="false">Resume</string>
+    <string name="ui_intel_charging" formatted="false">Charging only</string>
+    <string name="ui_intel_analyze" formatted="false">Analyze library</string>
+    <string name="ui_intel_fast" formatted="false">Fast</string>
+    <string name="ui_intel_balanced" formatted="false">Balanced</string>
+    <string name="ui_intel_deep" formatted="false">Deep</string>
+    <string name="ui_intel_absent" formatted="false">classifier not installed</string>
 </resources>

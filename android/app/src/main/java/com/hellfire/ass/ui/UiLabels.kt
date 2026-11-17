@@ -468,6 +468,17 @@ object UiLabels {
         "Privacy settings could not be read. Nothing has changed." -> R.string.ui_eb5bb0e600
         "Loading privacy settings…" -> R.string.ui_9f2467da31
         "Retry" -> R.string.ui_942087cc2d
+        "Search" -> R.string.ui_intel_search
+        "Processing queue" -> R.string.ui_intel_queue
+        "Media intelligence" -> R.string.ui_intel_settings
+        "Pause" -> R.string.ui_intel_pause
+        "Resume" -> R.string.ui_intel_resume
+        "Charging only" -> R.string.ui_intel_charging
+        "Analyze library" -> R.string.ui_intel_analyze
+        "Fast" -> R.string.ui_intel_fast
+        "Balanced" -> R.string.ui_intel_balanced
+        "Deep" -> R.string.ui_intel_deep
+        "classifier not installed" -> R.string.ui_intel_absent
         else -> null
     }
 }

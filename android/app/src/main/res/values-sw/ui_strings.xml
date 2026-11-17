@@ -462,4 +462,15 @@
     <string name="ui_eb5bb0e600" formatted="false">Mipangilio ya faragha haikusomeka. Hakuna kilichobadilishwa.</string>
     <string name="ui_9f2467da31" formatted="false">Inapakia mipangilio ya faragha…</string>
     <string name="ui_942087cc2d" formatted="false">Jaribu tena</string>
+    <string name="ui_intel_search" formatted="false">Tafuta</string>
+    <string name="ui_intel_queue" formatted="false">Foleni ya uchakataji</string>
+    <string name="ui_intel_settings" formatted="false">Ufahamu wa media</string>
+    <string name="ui_intel_pause" formatted="false">Simamisha</string>
+    <string name="ui_intel_resume" formatted="false">Endelea</string>
+    <string name="ui_intel_charging" formatted="false">Inapochaji tu</string>
+    <string name="ui_intel_analyze" formatted="false">Changanua maktaba</string>
+    <string name="ui_intel_fast" formatted="false">Haraka</string>
+    <string name="ui_intel_balanced" formatted="false">Wastani</string>
+    <string name="ui_intel_deep" formatted="false">Kina</string>
+    <string name="ui_intel_absent" formatted="false">Kiainishi hakijasakinishwa</string>
 </resources>

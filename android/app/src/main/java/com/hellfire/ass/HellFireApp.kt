@@ -73,6 +73,7 @@ class HellFireApp : Application() {
                     CaptureWork.recover(this@HellFireApp)
                     com.hellfire.ass.tasks.TaskScheduler.restore(this@HellFireApp)
                     com.hellfire.ass.media.MediaWork.recover(this@HellFireApp)
+                    com.hellfire.ass.intelligence.IntelligenceWork.recover(this@HellFireApp)
                     seedAiUsage()
                     com.hellfire.ass.data.SearchBackfill.schedule(this@HellFireApp)
                     com.hellfire.ass.ai.ModelUpdates.onStartup(this@HellFireApp)

@@ -170,6 +170,14 @@ class SemanticIndex(private val app: HellFireApp) {
         }
     }
 
+    suspend fun embedText(text: String): FloatArray? = withContext(Dispatchers.IO) {
+        if (!configured || text.isBlank()) return@withContext null
+        if (app.getSystemService(PowerManager::class.java).currentThermalStatus >= PowerManager.THERMAL_STATUS_SEVERE) return@withContext null
+        mutex.withLock { withEmbedder { embed(it, text) }.takeIf { it.isNotEmpty() } }
+    }
+
+    fun embeddingModel(): String? = if (!configured) null else runCatching { modelId() }.getOrNull()
+
     /** Best [limit] sources by cosine similarity at or above [minScore]. Scores are uncalibrated. */
     suspend fun search(query: String, limit: Int = 10, minScore: Float = 0.35f): List<Pair<String, Float>> = withContext(Dispatchers.IO) {
         if (!configured) return@withContext emptyList()
