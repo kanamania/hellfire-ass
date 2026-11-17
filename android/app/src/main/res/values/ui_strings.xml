@@ -462,4 +462,38 @@
     <string name="ui_eb5bb0e600" formatted="false">Privacy settings could not be read. Nothing has changed.</string>
     <string name="ui_9f2467da31" formatted="false">Loading privacy settings…</string>
     <string name="ui_942087cc2d" formatted="false">Retry</string>
+    <string name="drawer_inbox" formatted="false">Universal inbox</string>
+    <string name="drawer_saved" formatted="false">Saved drops, files and shares</string>
+    <string name="drawer_save" formatted="false">Save to drawer</string>
+    <string name="drawer_paste" formatted="false">Paste</string>
+    <string name="drawer_files" formatted="false">Choose files</string>
+    <string name="drawer_name" formatted="false">Drawer</string>
+    <string name="drawer_close" formatted="false">Close drawer</string>
+    <string name="drawer_minimize" formatted="false">Minimize</string>
+    <string name="drawer_left" formatted="false">Left</string>
+    <string name="drawer_right" formatted="false">Right</string>
+    <string name="drawer_archive" formatted="false">Archive</string>
+    <string name="drawer_trash" formatted="false">Move to trash</string>
+    <string name="drawer_restore" formatted="false">Restore</string>
+    <string name="drawer_delete" formatted="false">Delete permanently</string>
+    <string name="drawer_favorites" formatted="false">Favorites</string>
+    <string name="drawer_recent" formatted="false">Recent</string>
+    <string name="drawer_collections" formatted="false">Collections</string>
+    <string name="drawer_categories" formatted="false">Categories</string>
+    <string name="drawer_search" formatted="false">Search drawer</string>
+    <string name="drawer_follow" formatted="false">Follow-up</string>
+    <string name="drawer_clear" formatted="false">Clear context</string>
+    <string name="drawer_saved_state" formatted="false">Saved</string>
+    <string name="drawer_processing" formatted="false">Processing</string>
+    <string name="drawer_sync" formatted="false">Sync</string>
+    <string name="drawer_backup" formatted="false">Backup</string>
+    <string name="drawer_incomplete" formatted="false">Incomplete capture</string>
+    <string name="drawer_live" formatted="false">Needs a live source</string>
+    <string name="drawer_map" formatted="false">Open map</string>
+    <string name="drawer_directions" formatted="false">Get directions</string>
+    <string name="drawer_nav" formatted="false">Start navigation</string>
+    <string name="drawer_save_loc" formatted="false">Save location</string>
+    <string name="drawer_copy" formatted="false">Copy address</string>
+    <string name="drawer_float" formatted="false">Open floating player</string>
+    <string name="drawer_close_word" formatted="false">Close</string>
 </resources>

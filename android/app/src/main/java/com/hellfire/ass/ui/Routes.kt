@@ -85,8 +85,8 @@ fun RouteContent(route: Route) {
         Screen.Library -> PushedPage(com.hellfire.ass.ui.tr("Recordings"), breadcrumb = "Settings") { MediaScreen(env.app, env.permissions, a.onMicrophone) } // OWNER: library-agent
         Screen.MediaDetail -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, com.hellfire.ass.library.LibraryRoutes.id(route)) } // OWNER: library-agent
         Screen.Player -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, com.hellfire.ass.library.LibraryRoutes.id(route)) } // OWNER: player-agent
-        Screen.UniversalInbox -> InboxTab() // OWNER: drawer-inbox-agent
-        Screen.InboxItem -> InboxTab() // OWNER: drawer-inbox-agent
+        Screen.UniversalInbox -> com.hellfire.ass.ui.drawer.UniversalInboxPage()
+        Screen.InboxItem -> com.hellfire.ass.ui.drawer.InboxItemPage(com.hellfire.ass.library.LibraryRoutes.id(route))
         Screen.Search -> MemoryPage("") // OWNER: search-agent
         Screen.ShareWithAi -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, com.hellfire.ass.library.LibraryRoutes.id(route)) } // OWNER: sharing-agent
         Screen.ProcessingQueue -> PushedPage(com.hellfire.ass.ui.tr("Recordings"), breadcrumb = "Settings") { MediaScreen(env.app, env.permissions, a.onMicrophone) } // OWNER: processing-agent

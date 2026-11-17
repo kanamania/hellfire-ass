@@ -468,6 +468,38 @@ object UiLabels {
         "Privacy settings could not be read. Nothing has changed." -> R.string.ui_eb5bb0e600
         "Loading privacy settings…" -> R.string.ui_9f2467da31
         "Retry" -> R.string.ui_942087cc2d
+        "Universal inbox" -> R.string.drawer_inbox
+        "Saved drops, files and shares" -> R.string.drawer_saved
+        "Save to drawer" -> R.string.drawer_save
+        "Paste" -> R.string.drawer_paste
+        "Choose files" -> R.string.drawer_files
+        "Drawer" -> R.string.drawer_name
+        "Close drawer" -> R.string.drawer_close
+        "Minimize" -> R.string.drawer_minimize
+        "Left" -> R.string.drawer_left
+        "Right" -> R.string.drawer_right
+        "Archive" -> R.string.drawer_archive
+        "Move to trash" -> R.string.drawer_trash
+        "Restore" -> R.string.drawer_restore
+        "Delete permanently" -> R.string.drawer_delete
+        "Favorites" -> R.string.drawer_favorites
+        "Collections" -> R.string.drawer_collections
+        "Categories" -> R.string.drawer_categories
+        "Search drawer" -> R.string.drawer_search
+        "Follow-up" -> R.string.drawer_follow
+        "Clear context" -> R.string.drawer_clear
+        "Processing" -> R.string.drawer_processing
+        "Sync" -> R.string.drawer_sync
+        "Backup" -> R.string.drawer_backup
+        "Incomplete capture" -> R.string.drawer_incomplete
+        "Needs a live source" -> R.string.drawer_live
+        "Open map" -> R.string.drawer_map
+        "Get directions" -> R.string.drawer_directions
+        "Start navigation" -> R.string.drawer_nav
+        "Save location" -> R.string.drawer_save_loc
+        "Copy address" -> R.string.drawer_copy
+        "Open floating player" -> R.string.drawer_float
+        "Close" -> R.string.drawer_close_word
         else -> null
     }
 }

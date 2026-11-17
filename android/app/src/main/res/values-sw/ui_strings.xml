@@ -462,4 +462,38 @@
     <string name="ui_eb5bb0e600" formatted="false">Mipangilio ya faragha haikusomeka. Hakuna kilichobadilishwa.</string>
     <string name="ui_9f2467da31" formatted="false">Inapakia mipangilio ya faragha…</string>
     <string name="ui_942087cc2d" formatted="false">Jaribu tena</string>
+    <string name="drawer_inbox" formatted="false">Kikasha cha jumla</string>
+    <string name="drawer_saved" formatted="false">Vilivyodondoshwa, faili na vilivyoshirikiwa</string>
+    <string name="drawer_save" formatted="false">Hifadhi kwenye droo</string>
+    <string name="drawer_paste" formatted="false">Bandika</string>
+    <string name="drawer_files" formatted="false">Chagua faili</string>
+    <string name="drawer_name" formatted="false">Droo</string>
+    <string name="drawer_close" formatted="false">Funga droo</string>
+    <string name="drawer_minimize" formatted="false">Punguza</string>
+    <string name="drawer_left" formatted="false">Kushoto</string>
+    <string name="drawer_right" formatted="false">Kulia</string>
+    <string name="drawer_archive" formatted="false">Hifadhi</string>
+    <string name="drawer_trash" formatted="false">Hamisha kwenye taka</string>
+    <string name="drawer_restore" formatted="false">Rejesha</string>
+    <string name="drawer_delete" formatted="false">Futa kabisa</string>
+    <string name="drawer_favorites" formatted="false">Vipendwa</string>
+    <string name="drawer_recent" formatted="false">Vya hivi karibuni</string>
+    <string name="drawer_collections" formatted="false">Mikusanyiko</string>
+    <string name="drawer_categories" formatted="false">Makundi</string>
+    <string name="drawer_search" formatted="false">Tafuta droo</string>
+    <string name="drawer_follow" formatted="false">Swali la ufuatiliaji</string>
+    <string name="drawer_clear" formatted="false">Futa muktadha</string>
+    <string name="drawer_saved_state" formatted="false">Imehifadhiwa</string>
+    <string name="drawer_processing" formatted="false">Inachakata</string>
+    <string name="drawer_sync" formatted="false">Usawazishaji</string>
+    <string name="drawer_backup" formatted="false">Nakala</string>
+    <string name="drawer_incomplete" formatted="false">Uhifadhi haujakamilika</string>
+    <string name="drawer_live" formatted="false">Inahitaji chanzo cha moja kwa moja</string>
+    <string name="drawer_map" formatted="false">Fungua ramani</string>
+    <string name="drawer_directions" formatted="false">Maelekezo</string>
+    <string name="drawer_nav" formatted="false">Elekeza</string>
+    <string name="drawer_save_loc" formatted="false">Hifadhi eneo</string>
+    <string name="drawer_copy" formatted="false">Nakili anwani</string>
+    <string name="drawer_float" formatted="false">Fungua kichezaji kinachoelea</string>
+    <string name="drawer_close_word" formatted="false">Funga</string>
 </resources>
