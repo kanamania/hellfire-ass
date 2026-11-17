@@ -157,7 +157,10 @@ interface EventDao {
 data class LabelledEvent(@Embedded val event: SourceEvent, val label: String?, val state: String)
 
 @Database(entities = [SourceEvent::class, EventProcessing::class, CaptureAudit::class, NotificationPolicy::class, FinanceAccount::class, FinanceCandidate::class, LedgerEntry::class, LedgerEvidence::class, MerchantAlias::class, CommunicationMessage::class, MailCursor::class, OutboundDraft::class, ActionAudit::class, IntegrationState::class, AssistantTask::class, DailyReview::class, MediaItem::class, TranscriptSegment::class, SpeechSpan::class, MemoryItem::class, com.hellfire.ass.memory.SemanticVector::class, AiUsage::class, CategoryBudget::class, ProviderBalance::class, SourceSearch::class,
-    com.hellfire.ass.templates.ActionTemplate::class, com.hellfire.ass.insights.DebtEntry::class, com.hellfire.ass.insights.PersonAlias::class, com.hellfire.ass.contacts.PersonContact::class, com.hellfire.ass.memory.AiSkill::class, com.hellfire.ass.memory.SkillUse::class, com.hellfire.ass.memory.MemoryRevision::class], version = 17, exportSchema = true)
+    com.hellfire.ass.templates.ActionTemplate::class, com.hellfire.ass.insights.DebtEntry::class, com.hellfire.ass.insights.PersonAlias::class, com.hellfire.ass.contacts.PersonContact::class, com.hellfire.ass.memory.AiSkill::class, com.hellfire.ass.memory.SkillUse::class, com.hellfire.ass.memory.MemoryRevision::class,
+    com.hellfire.ass.news.NewsSource::class, com.hellfire.ass.news.NewsArticle::class, com.hellfire.ass.news.NewsEvent::class, com.hellfire.ass.news.NewsEventVersion::class,
+    com.hellfire.ass.news.NewsBriefing::class, com.hellfire.ass.news.NewsEventState::class, com.hellfire.ass.news.NewsProgress::class, com.hellfire.ass.news.NewsPreference::class,
+    com.hellfire.ass.news.NewsFeedback::class, com.hellfire.ass.news.NewsRun::class], version = 18, exportSchema = true)
 abstract class EventDatabase : RoomDatabase() {
     abstract fun events(): EventDao
     abstract fun finances(): FinanceDao
@@ -173,6 +176,7 @@ abstract class EventDatabase : RoomDatabase() {
     abstract fun debts(): com.hellfire.ass.insights.DebtDao
     abstract fun people(): com.hellfire.ass.insights.PeopleDao
     abstract fun contacts(): com.hellfire.ass.contacts.ContactDao
+    abstract fun news(): com.hellfire.ass.news.NewsDao
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -272,8 +276,12 @@ abstract class EventDatabase : RoomDatabase() {
         val MIGRATION_16_17 = object : Migration(16, 17) {
             override fun migrate(db: SupportSQLiteDatabase) { com.hellfire.ass.memory.SkillSchema.migrate(db) }
         }
+        /** v18: news intelligence (sources, articles, events, versions, briefings, owner state, preferences, feedback, run log). */
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) { com.hellfire.ass.news.NewsSchema.migrate(db) }
+        }
         const val SOURCE_SEARCH_SQL = "CREATE VIRTUAL TABLE IF NOT EXISTS `source_search` USING FTS4(`eventId` TEXT NOT NULL, `text` TEXT NOT NULL, tokenize=unicode61, notindexed=`eventId`)"
-        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
+        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
         fun open(context: Context): EventDatabase = Room.databaseBuilder(
             context.applicationContext, EventDatabase::class.java, "hellfire.db"
         ).openHelperFactory(EncryptedDatabase.factory(context)).addMigrations(*ALL_MIGRATIONS).build()

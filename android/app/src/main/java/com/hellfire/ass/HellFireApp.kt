@@ -31,6 +31,7 @@ class HellFireApp : Application() {
     val speech by lazy { com.hellfire.ass.media.LocalSpeech(this) }
     val speakers by lazy { com.hellfire.ass.media.SpeakerModel(this) }
     val skills by lazy { com.hellfire.ass.memory.AiSkills(database) }
+    val news: com.hellfire.ass.news.NewsService by lazy { com.hellfire.ass.news.NewsRepository(this) }
     val assistant by lazy { com.hellfire.ass.assistant.AssistantEngine(this) }
     val finances by lazy { com.hellfire.ass.finance.FinanceRepository(database) { id, text -> skills.ignoredFor(this, "IGNORE_FINANCE", id, text) } }
     val templates by lazy { com.hellfire.ass.templates.TemplateRunner(database, finances, packageName) { events.capture(it, packageName) } }
