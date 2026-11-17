@@ -857,6 +857,8 @@ Telegram and desktop dashboard have not been added.
 Open **Home → News** for briefings, saved stories and the reader. News settings
 control source selection, interests, morning/evening times, quiet hours and audio.
 Saved news remains readable offline; fetching new stories needs a connection.
+News clustering currently uses English/Kiswahili lexical matching; optional news
+embedding vectors are deferred.
 X sources require your own supported API credentials; licensed wire sources show
 that requirement rather than scraping unavailable content. Scheduled delivery is
 best effort under Android/ColorOS. Actual feed availability and phone TTS still
@@ -865,7 +867,9 @@ need live verification.
 Open **Library** for accessible device media or grant a folder through Android's
 picker. External entries remain references until explicitly imported as managed
 originals. Player, analysis queue, search, capture drawer, sharing, sync and backup
-pages use the existing local data. File access and codec/model support depend on
+pages use the existing local data. The universal drawer is available throughout
+HellFire screens and through Android’s Share target; a system-wide overlay is not
+implemented. File access and codec/model support depend on
 the actual device; absent permission or model is not a successful analysis.
 
 The **Library** web page is separate from the ordinary read-only mirror: optional

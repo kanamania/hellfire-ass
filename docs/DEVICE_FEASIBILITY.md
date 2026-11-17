@@ -13,10 +13,16 @@ performance. Source worktrees were preserved during integration.
 - News: feeds/source settings, clustering/ranking, versioned stories, scheduled
   briefings, quiet-hour alerts, reader/TTS controls, saved/followed stories, Ask
   routing and web state synchronization. Publisher availability, licensed sources,
-  X access and actual phone speech/delivery remain unverified.
+  X access and actual phone speech/delivery remain unverified. News embedding
+  vectors are deferred; current clustering uses English/Kiswahili lexical matching.
 - Media: external library references and managed originals, library scanning,
   playback/PiP/bookmarks, content analysis/search, drawer/inbox, sanitized sharing,
   encrypted optional library sync and backup/selective recovery pages.
+- The universal drawer is the in-app edge drawer plus the Android Share target,
+  with durable inbox captures, context/follow-ups and reviewed action suggestions.
+  A system-wide overlay remains unimplemented. Drag/drop and share permission
+  behavior require device verification. Duplicate action types retain their
+  highest-priority provider suggestion.
 - Corrected severe thermal threshold (Android status 3), concurrent interactive
   waiter accounting, capped concurrent media queue requests, nullable video hashes,
   and cached-model eviction before benchmarks.
