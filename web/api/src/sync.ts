@@ -5,7 +5,8 @@ import { Db } from './db.js';
 
 /** Kinds the phone may push. Each is a projection the phone builds; the server never derives them. */
 export const KINDS = ['account', 'ledger', 'candidate', 'balance', 'task', 'message', 'draft',
-  'media', 'transcript', 'memory', 'event', 'summary'] as const;
+  'media', 'transcript', 'memory', 'event', 'summary',
+  'news_event', 'news_version', 'news_article', 'news_briefing', 'news_state', 'news_progress', 'news_source'] as const;
 const KIND_SET = new Set<string>(KINDS);
 const MAX_ROWS = 500;
 
@@ -52,12 +53,7 @@ export class SyncService {
       await client.query("UPDATE meta SET value = $1 WHERE key = 'dataset'", [dataset]);
       await client.query("DELETE FROM meta WHERE key = 'last_sync_at'");
       await client.query('DELETE FROM record');
-      await client.query('DELETE FROM library_chunk');
-      await client.query('DELETE FROM library_blob');
-      await client.query('DELETE FROM library_record');
-      await client.query('DELETE FROM library_search');
-      await client.query('DELETE FROM library_meta');
-      await client.query("INSERT INTO library_meta (key, value) VALUES ('epoch', gen_random_uuid()::text)");
+      await client.query('DELETE FROM news_action');
     });
     return { dataset };
   }

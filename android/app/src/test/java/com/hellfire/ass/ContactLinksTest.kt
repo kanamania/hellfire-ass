@@ -129,7 +129,7 @@ class ContactLinksTest {
         links.task("t", key); links.ledger("e", key)
         val restored = restore(15)
         try {
-            assertEquals(18, BackupTables.SCHEMA)
+            assertEquals(19, BackupTables.SCHEMA)
             assertEquals(db.contacts().all(), restored.contacts().all())
             assertEquals(db.people().all(), restored.people().all())
             assertEquals(key, restored.tasks().task("t")!!.personKey)

@@ -93,6 +93,13 @@ fun RouteContent(route: Route) {
         Screen.BackupDashboard -> PushedPage(com.hellfire.ass.ui.tr("Backup dashboard"), breadcrumb = "Settings") { BackupDashboardScreen(env.app) }
         Screen.StatusDashboard -> PushedPage(com.hellfire.ass.ui.tr("Status dashboard"), breadcrumb = "Settings") { StatusDashboardScreen(env.app) }
         Screen.MediaSettings -> com.hellfire.ass.ui.intelligence.MediaSettingsScreen()
+        Screen.News -> com.hellfire.ass.ui.news.NewsScreen()
+        Screen.NewsReader -> com.hellfire.ass.ui.news.NewsReaderPage(route.arg)
+        Screen.NewsStory -> com.hellfire.ass.ui.news.NewsStoryPage(route.arg)
+        Screen.NewsSettings -> com.hellfire.ass.ui.news.NewsSettingsPage()
+        Screen.NewsSources -> com.hellfire.ass.ui.news.NewsSourcesPage()
+        Screen.NewsInterests -> com.hellfire.ass.ui.news.NewsInterestsPage()
+        Screen.NewsHealth -> com.hellfire.ass.ui.news.NewsHealthPage()
         else -> PushedPage(route.screen.name) { Note("This screen is not available yet.") }
     }
 }
