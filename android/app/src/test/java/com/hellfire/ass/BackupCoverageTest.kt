@@ -270,6 +270,7 @@ class BackupCoverageTest {
             PortableBackup(app).export(file, "synthetic-passphrase".toCharArray())
             assertEquals(item.contentHash, PortableBackup(app).catalog(file, "synthetic-passphrase".toCharArray()).single().contentHash)
             file.delete()
+            Unit
         } finally { db.close(); app.media.directory.deleteRecursively() }
     }
 }
