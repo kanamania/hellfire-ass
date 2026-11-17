@@ -80,6 +80,13 @@ fun RouteContent(route: Route) {
         Screen.Bills -> com.hellfire.ass.ui.insights.BillsPage()
         Screen.Templates -> com.hellfire.ass.ui.templates.TemplatesPage()
         Screen.TemplateEdit -> com.hellfire.ass.ui.templates.TemplateEditPage(route.arg)
+        Screen.News -> com.hellfire.ass.ui.news.NewsScreen()
+        Screen.NewsReader -> com.hellfire.ass.ui.news.NewsReaderPage(route.arg)
+        Screen.NewsStory -> com.hellfire.ass.ui.news.NewsStoryPage(route.arg)
+        Screen.NewsSettings -> com.hellfire.ass.ui.news.NewsSettingsPage()
+        Screen.NewsSources -> com.hellfire.ass.ui.news.NewsSourcesPage()
+        Screen.NewsInterests -> com.hellfire.ass.ui.news.NewsInterestsPage()
+        Screen.NewsHealth -> com.hellfire.ass.ui.news.NewsHealthPage()
         // Media-intelligence routes (LibraryRoutes contract). Until each owner lands its page, these open the nearest
         // existing real page; each owner replaces its own line.
         Screen.Library -> PushedPage(com.hellfire.ass.ui.tr("Recordings"), breadcrumb = "Settings") { MediaScreen(env.app, env.permissions, a.onMicrophone) } // OWNER: library-agent

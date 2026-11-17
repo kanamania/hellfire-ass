@@ -73,6 +73,31 @@ fun SharePage() {
                 finally { busy = false }
             }
         }, Modifier.fillMaxWidth(), enabled = !busy && parsed.isSuccess && (text.isNotBlank() || files.isNotEmpty()))
+        NewsCheck(text, busy)
     }
     task?.let { TaskEditSheet(it) { msg -> task = null; message = msg } }
+}
+
+@Composable
+private fun NewsCheck(text: String, busy: Boolean) {
+    val app = LocalEnv.current.app
+    val nav = LocalNav.current
+    val scope = rememberCoroutineScope()
+    var checking by remember { mutableStateOf(false) }
+    var result by remember { mutableStateOf<com.hellfire.ass.news.DropResult?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    SecondaryButton(tr(if (checking) "Checking…" else "Check against news"), {
+        checking = true; error = null
+        scope.launch {
+            val r = com.hellfire.ass.ui.news.newsCall { app.news.dropIn(text.take(4000), com.hellfire.ass.ui.news.NewsUi.firstUrl(text)) }
+            checking = false
+            result = r.getOrNull()
+            error = r.exceptionOrNull()?.let { com.hellfire.ass.ui.news.failText(it, "Could not check against news") }
+        }
+    }, Modifier.fillMaxWidth(), enabled = !busy && !checking && text.isNotBlank())
+    error?.let { Banner(it, Tone.Danger, null) }
+    result?.let { r ->
+        Banner(r.message, Tone.Info, com.hellfire.ass.ui.theme.HfIcons.Info)
+        r.eventId?.let { id -> QuietButton(tr("Open story"), { nav.push(Screen.NewsStory, id) }) }
+    }
 }

@@ -6,6 +6,7 @@ import com.hellfire.ass.communications.CommunicationMessage
 import com.hellfire.ass.data.*
 import com.hellfire.ass.finance.*
 import com.hellfire.ass.memory.MemoryItem
+import com.hellfire.ass.news.*
 import com.hellfire.ass.security.PayloadCipher
 import com.hellfire.ass.sync.WebSync
 import com.hellfire.ass.tasks.AssistantTask
@@ -27,8 +28,13 @@ private class FakeServer : WebSync.Call {
     var batches = 0
     var resets = 0
     var finished = 0
-    fun reset() { dataset = UUID.randomUUID().toString(); rows.clear(); resets++ }
-    override fun send(method: String, path: String, body: JSONObject?): JSONObject = when (path) {
+    /** Pending web news actions; false makes the news routes answer 404 like a server from before news. */
+    val actions = mutableListOf<JSONObject>()
+    var newsSupported = true
+    val acks = mutableListOf<Long>()
+    val calls = mutableListOf<String>()
+    fun reset() { dataset = UUID.randomUUID().toString(); rows.clear(); actions.clear(); resets++ }
+    override fun send(method: String, path: String, body: JSONObject?): JSONObject = news(path, body) ?: when (path) {
         "/api/sync/state" -> JSONObject().put("dataset", dataset)
         "/api/sync/reset" -> { reset(); JSONObject().put("dataset", dataset) }
         "/api/sync/batch" -> {
@@ -43,6 +49,19 @@ private class FakeServer : WebSync.Call {
         }
         "/api/sync/finish" -> { finished++; JSONObject() }
         else -> error("unexpected $method $path")
+    }
+    private fun news(path: String, body: JSONObject?): JSONObject? {
+        calls += path.substringBefore('?')
+        if (!path.startsWith("/api/sync/news-actions")) return null
+        if (!newsSupported) throw WebSync.Rejected(404)
+        if (path == "/api/sync/news-actions/ack") {
+            val upTo = body!!.getLong("upTo")
+            acks += upTo
+            actions.removeAll { it.getLong("seq") <= upTo }
+            return JSONObject().put("deleted", 0)
+        }
+        val after = path.substringAfter("after=").toLong()
+        return JSONObject().put("actions", org.json.JSONArray(actions.filter { it.getLong("seq") > after }.take(500)))
     }
     fun ids(kind: String) = rows[kind].orEmpty().keys.sorted()
     fun data(kind: String, id: String) = rows.getValue(kind).getValue(id).getJSONObject("data")
@@ -154,6 +173,90 @@ class WebSyncTest {
         assertEquals(651 + 1, sync(server).upserted) // memory + event + summary
         assertEquals(650, server.ids("memory").size)
         assertTrue(server.batches >= 4)
+    }
+
+    private suspend fun news() {
+        val news = db.news()
+        news.saveSource(NewsSource("daily", "Daily News", "RSS", "https://news.example/feed", "TANZANIA", "en", 70, etag = "etag-private",
+            cursor = "cursor-private", createdAt = now, updatedAt = now))
+        news.saveEvent(NewsEvent("e1", "Floods in Dar", "DISASTER", "tanzania, east_africa", signature = "DISASTER|dar", firstSeenAt = now - 9_000,
+            updatedAt = now - 2_000, lastArticleAt = now - 1_000, version = 2, level = "HIGH", score = 72, protectedPublic = true,
+            summaryJson = """{"headline":"Floods in Dar","quick":["Roads closed"]}""", scoreJson = """{"total":72,"reasons":["Public safety"]}"""))
+        news.saveEvent(NewsEvent("saved-old", "Old saved", "POLITICS", "tanzania", signature = "x", firstSeenAt = 1, updatedAt = 1, lastArticleAt = 1))
+        news.saveEvent(NewsEvent("stale", "Old unsaved", "POLITICS", "tanzania", signature = "y", firstSeenAt = 1, updatedAt = 1, lastArticleAt = 1))
+        news.saveState(NewsEventState("saved-old", bookmarked = true, updatedAt = 1))
+        news.saveState(NewsEventState("e1", deliveredVersion = 1, seenVersion = 1, updatedAt = now - 10_000))
+        news.saveArticle(NewsArticle("a1", "daily", "https://news.example/a1", "news.example/a1", "Floods", "Full excerpt text", language = "en",
+            publishedAt = now - 1_000, fetchedAt = now, fingerprint = "0", eventId = "e1",
+            mediaJson = """[{"type":"IMAGE","url":"https://img.example/1.jpg","credit":"Daily News","bytes":"not for the web"}]"""))
+        news.insertVersion(NewsEventVersion("e1", 2, now - 2_000, "MAJOR", "{}", "Rain", "More rain", "Roads closed", """["a1"]"""))
+        news.saveBriefing(NewsBriefing("MORNING:2026-11-16", "MORNING", "Morning", now, now, now - 86_400_000, now, """[{"eventId":"e1","version":2,"section":"TOP"}]"""))
+    }
+
+    private fun webAction(seq: Long, at: Long, field: String, value: Any, target: String = "e1") =
+        JSONObject().put("seq", seq).put("at", at).put("target", target).put("field", field).put("value", value)
+
+    @Test fun `web news choices are applied before the push and then acknowledged`() = runBlocking {
+        news()
+        val server = FakeServer()
+        server.actions += webAction(7, now - 5_000, "bookmarked", true)
+        server.actions += webAction(8, now - 4_000, "seen", 2)
+        server.actions += webAction(9, now - 3_000, "position", JSONObject().put("position", 1).put("audioMs", 0), target = "MORNING:2026-11-16")
+        sync(server)
+        val local = db.news().state("e1")!!
+        assertTrue(local.bookmarked)
+        assertEquals(2, local.seenVersion)
+        assertEquals(1, db.news().progress("MORNING:2026-11-16")!!.position)
+        // The pushed state already carries the web's choices, so the web shows them once the actions are gone.
+        val pushed = server.data("news_state", "e1")
+        assertTrue(pushed.getBoolean("bookmarked"))
+        assertEquals(2, pushed.getInt("seenVersion"))
+        assertEquals(now - 5_000, pushed.getJSONObject("fieldTimes").getLong("bookmarked"))
+        assertEquals(1, server.data("news_progress", "MORNING:2026-11-16").getInt("position"))
+        assertEquals(listOf(9L), server.acks)
+        assertTrue(server.actions.isEmpty())
+        assertTrue(server.calls.indexOf("/api/sync/news-actions") < server.calls.indexOf("/api/sync/batch"))
+        assertTrue(server.calls.indexOf("/api/sync/news-actions/ack") > server.calls.lastIndexOf("/api/sync/batch"))
+        assertEquals(9L, state!!.getLong("newsActionSeq"))
+
+        assertEquals(listOf("e1", "saved-old"), server.ids("news_event"))
+        val event = server.data("news_event", "e1")
+        assertEquals("Roads closed", event.getJSONObject("summary").getJSONArray("quick").getString(0))
+        assertEquals("Public safety", event.getJSONObject("scoreDetail").getJSONArray("reasons").getString(0))
+        assertEquals(72, event.getInt("score"))
+        assertTrue(event.getBoolean("protectedPublic"))
+        assertEquals("east_africa", event.getJSONArray("topics").getString(1))
+        assertTrue(server.data("news_event", "saved-old").isNull("summary"))
+        val article = server.data("news_article", "a1")
+        assertEquals("Daily News", article.getString("publisher"))
+        assertEquals("https://img.example/1.jpg", article.getJSONArray("media").getJSONObject(0).getString("url"))
+        assertEquals("a1", server.data("news_version", "e1:2").getJSONArray("evidence").getString(0))
+        assertEquals("TOP", server.data("news_briefing", "MORNING:2026-11-16").getJSONArray("items").getJSONObject(0).getString("section"))
+        assertEquals("Daily News", server.data("news_source", "daily").getString("name"))
+        for (private in listOf("etag-private", "cursor-private", "not for the web", "Full excerpt text", "summaryJson", "featuresJson", "signature"))
+            assertFalse(private, server.rows.toString().contains(private))
+
+        // Nothing new: no ack and nothing resent.
+        val batches = server.batches
+        assertEquals(WebSync.Counts(0, 0), sync(server))
+        assertEquals(batches, server.batches)
+        assertEquals(listOf(9L), server.acks)
+        // A later web read moves the phone on and is acknowledged.
+        server.actions += webAction(10, now + 1_000, "readLater", true)
+        sync(server)
+        assertTrue(db.news().state("e1")!!.readLater)
+        assertEquals(listOf(9L, 10L), server.acks)
+    }
+
+    @Test fun `a server without the news actions route still syncs`() = runBlocking {
+        seed()
+        news()
+        val server = FakeServer().apply { newsSupported = false }
+        sync(server)
+        assertEquals(listOf("chat", "sms"), server.ids("event"))
+        assertEquals(listOf("e1", "saved-old"), server.ids("news_event"))
+        assertEquals(1, server.finished)
+        assertEquals(emptyList<Long>(), server.acks)
     }
 
     @Test fun `only https servers and long tokens are accepted`() {

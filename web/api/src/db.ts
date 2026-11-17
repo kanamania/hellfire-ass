@@ -16,6 +16,15 @@ CREATE TABLE IF NOT EXISTS record (
 CREATE INDEX IF NOT EXISTS record_kind_at ON record (kind, at DESC, id DESC);
 CREATE TABLE IF NOT EXISTS meta (key text PRIMARY KEY, value text NOT NULL);
 INSERT INTO meta (key, value) VALUES ('dataset', gen_random_uuid()::text) ON CONFLICT (key) DO NOTHING;
+CREATE INDEX IF NOT EXISTS record_news_event ON record ((data->>'eventId')) WHERE kind IN ('news_article', 'news_version');
+CREATE TABLE IF NOT EXISTS news_action (
+  seq bigserial PRIMARY KEY,
+  at bigint NOT NULL,
+  target text NOT NULL,
+  field text NOT NULL,
+  value jsonb NOT NULL
+);
+CREATE INDEX IF NOT EXISTS news_action_target ON news_action (target);
 `;
 
 @Injectable()

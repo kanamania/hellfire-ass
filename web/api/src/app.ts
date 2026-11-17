@@ -5,6 +5,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { CONFIG, type Config } from './config.js';
 import { Db } from './db.js';
+import { NewsController, NewsService, NewsSyncController } from './news.js';
 import { SyncController, SyncService } from './sync.js';
 import { ViewController, ViewService } from './view.js';
 
@@ -14,8 +15,8 @@ class AppModule {
     return {
       module: AppModule,
       imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: 600 }])],
-      controllers: [SyncController, ViewController],
-      providers: [{ provide: CONFIG, useValue: config }, { provide: APP_GUARD, useClass: ThrottlerGuard }, Db, SyncService, ViewService],
+      controllers: [SyncController, ViewController, NewsController, NewsSyncController],
+      providers: [{ provide: CONFIG, useValue: config }, { provide: APP_GUARD, useClass: ThrottlerGuard }, Db, SyncService, ViewService, NewsService],
     };
   }
 }

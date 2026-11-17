@@ -85,6 +85,7 @@ fun HomeScreen() {
             HfChip(com.hellfire.ass.ui.tr("People"), { nav.push(Screen.People) })
             HfChip(com.hellfire.ass.ui.tr("Debts"), { nav.push(Screen.Debts) })
             HfChip(com.hellfire.ass.ui.tr("Bills"), { nav.push(Screen.Bills) })
+            HfChip(com.hellfire.ass.ui.tr("News"), { nav.push(Screen.News) })
         }
 
         val pendingDrafts = drafts.filter { it.state == "DRAFT" }
