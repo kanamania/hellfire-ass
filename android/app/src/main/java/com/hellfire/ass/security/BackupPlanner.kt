@@ -6,7 +6,11 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.security.MessageDigest
 
-enum class BackupAction { INCLUDE, DEDUPE, OMITTED, BLOCKED }
+/**
+ * METADATA_ONLY: the row has no original on this phone (for example a synced record whose bytes were never downloaded).
+ * Its row is backed up and restored; there is no original to include, so it is not a blocked original.
+ */
+enum class BackupAction { INCLUDE, DEDUPE, OMITTED, BLOCKED, METADATA_ONLY }
 
 data class PlannedItem(
     val id: String,
@@ -36,6 +40,7 @@ data class PlannedItem(
 data class BackupPlan(val kind: String, val items: List<PlannedItem>) {
     val includedHashes: List<String> get() = items.filter { it.action == BackupAction.INCLUDE }.map { it.contentHash }.distinct()
     val blocked: List<PlannedItem> get() = items.filter { it.action == BackupAction.BLOCKED }
+    val metadataOnly: List<PlannedItem> get() = items.filter { it.action == BackupAction.METADATA_ONLY }
     fun bytesIncluded(): Long = items.filter { it.action == BackupAction.INCLUDE }.distinctBy { it.contentHash }
         .fold(0L) { total, item -> Math.addExact(total, item.size) }
 }
@@ -47,6 +52,27 @@ data class BackupOutcome(
     val omitted: Int,
     val blocked: List<PlannedItem>,
     val verified: Boolean,
+    /** Set by [PortableBackup.exportForUpload]: nothing is recorded as backed up until the caller confirms the upload. */
+    val pending: PendingBackup? = null,
+)
+
+/** An archive written to local staging whose destination has not confirmed it yet. */
+class PendingBackup internal constructor(
+    internal val id: String,
+    internal val plan: BackupPlan,
+    internal val verified: Set<String>,
+    internal val previous: Set<String>,
+    internal val baseId: String?,
+    internal val archiveHash: String,
+)
+
+/** Result of a restore. [missing] lists rows whose original was not in the archive (blocked or metadata-only). */
+data class RestoreReport(
+    val restoredOriginals: Int,
+    val missing: List<String>,
+    val kinds: Map<String, Int> = emptyMap(),
+    val collections: List<Pair<String, String>> = emptyList(),
+    val items: List<Pair<String, String>> = emptyList(),
 )
 
 class BackupBlocked(val blocked: List<PlannedItem>) : Exception(
@@ -63,7 +89,8 @@ object BackupPlanner {
         return freeBytes * 10 / 22
     }
 
-    fun plan(items: List<MediaItem>, verifiedHashes: Set<String>, freeBytes: Long, incremental: Boolean): BackupPlan {
+    fun plan(items: List<MediaItem>, verifiedHashes: Set<String>, freeBytes: Long, incremental: Boolean,
+        hasOriginal: (MediaItem) -> Boolean = { true }): BackupPlan {
         val planned = mutableListOf<PlannedItem>()
         val included = linkedSetOf<String>()
         var remaining = budget(freeBytes)
@@ -72,6 +99,10 @@ object BackupPlanner {
             require(item.state != "DELETING") { "Stop deletion before backup" }
             val hash = item.contentHash
             when {
+                hash.isNullOrBlank() && item.size <= 0 ->
+                    planned += PlannedItem(item.id, hash.orEmpty(), item.size, BackupAction.METADATA_ONLY, "no original stored on this phone")
+                !hasOriginal(item) ->
+                    planned += PlannedItem(item.id, hash.orEmpty(), item.size, BackupAction.BLOCKED, "original is unavailable on this phone")
                 hash.isNullOrBlank() || !hash.matches(Regex("[0-9a-f]{64}")) || item.size <= 0 ->
                     planned += PlannedItem(item.id, hash.orEmpty(), item.size, BackupAction.BLOCKED, "missing content hash or empty original")
                 incremental && hash in verifiedHashes ->
@@ -111,7 +142,7 @@ object BackupPlanner {
         val ok = when (item.action) {
             BackupAction.INCLUDE, BackupAction.DEDUPE -> item.contentHash in verifiedThisRun
             BackupAction.OMITTED -> item.contentHash in previouslyVerified
-            BackupAction.BLOCKED -> false
+            BackupAction.BLOCKED, BackupAction.METADATA_ONLY -> false
         }
         item.id.takeIf { ok }
     }.toSet()

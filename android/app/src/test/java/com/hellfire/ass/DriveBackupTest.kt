@@ -67,6 +67,18 @@ class DriveBackupTest {
         assertEquals(listOf(DriveSnapshot("fixture-id", "Fixture.hfb", "2026-11-14T00:00:00Z", 9)), drive.list("fixture"))
         assertThrows(IllegalArgumentException::class.java) { GoogleDriveBackup.validId("../other?token=x") }
     }
+    @Test fun `retention listing includes archives beyond the first page`() {
+        var calls = 0
+        val drive = GoogleDriveBackup { url ->
+            val next = calls++ == 0
+            if (!next) assertTrue(url.query.contains("pageToken=next-fixture"))
+            val suffix = if (next) ",\"nextPageToken\":\"next-fixture\"" else ""
+            val id = if (next) "first" else "older"
+            Connection(url, body = """{"files":[{"id":"$id","name":"Fixture","createdTime":"2026-11-14","size":"9"}]$suffix}""".toByteArray())
+        }
+        assertEquals(listOf("first", "older"), drive.list("fixture").map { it.id })
+        assertEquals(2, calls)
+    }
     @Test fun `short oversized and cancelled downloads remove partial local archive`() {
         for ((bytes, size) in listOf("short" to 6L, "oversized" to 3L)) {
             val file = archive()

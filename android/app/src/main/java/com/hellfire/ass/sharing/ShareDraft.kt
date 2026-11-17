@@ -146,11 +146,12 @@ object ShareTemplates {
     const val EMPTY_NOTICE = "No stored analysis, categories, tags, scenes or transcript for this range. Nothing was invented."
     const val MODEL_NOTICE = "Local model suggestion. Review it before export. It is not verified."
 
-    fun fromFacts(facts: ShareFacts, style: CaptionStyle): ShareDraft {
+    fun fromFacts(storedFacts: ShareFacts, style: CaptionStyle): ShareDraft {
+        val facts = if (storedFacts.range == null) storedFacts else storedFacts.copy(analyses = emptyList(), categories = emptyList(), tags = emptyList(), storedSummary = "")
         val segments = facts.segments.filter { ClipRanges.overlaps(facts.range, it.startMs, it.endMs) }
         val transcript = facts.transcript.filter { ClipRanges.overlaps(facts.range, it.startMs, it.endMs) }
         val bookmarks = facts.bookmarks.filter { ClipRanges.overlaps(facts.range, it.startMs, it.endMs ?: it.startMs + 1) }
-        val fields = mergedFields(facts.analyses)
+        val fields = mergedFields(if (facts.range == null) facts.analyses else emptyList())
         val title = first(fields["title"]) ?: segments.map { it.title }.firstOrNull { it.isNotBlank() } ?: bookmarks.map { it.title }.firstOrNull { it.isNotBlank() } ?: ""
         val shortSummary = first(fields["shortSummary"]) ?: first(fields["summary"]) ?: facts.storedSummary.takeIf { facts.range == null }.orEmpty()
             .ifBlank { segments.map { it.description }.firstOrNull { it.isNotBlank() }.orEmpty() }
@@ -212,6 +213,19 @@ object ShareTemplates {
         if (facts.omittedPrivateCategories > 0) lines += "Private categories omitted: ${facts.omittedPrivateCategories}"
         return lines.joinToString("\n")
     }
+
+    fun parseTimestampNotes(text: String): List<TimestampNote>? = runCatching {
+        text.lineSequence().filter { it.isNotBlank() }.map { line ->
+            val match = Regex("^(\\d+(?::\\d{2}){1,2})[–-](\\d+(?::\\d{2}){1,2})(?:\\s+(.*))?$").matchEntire(line.trim()) ?: error("Invalid timestamp")
+            fun time(raw: String): Long {
+                val parts = raw.split(':').map { it.toLong() }
+                require(parts.drop(1).all { it in 0..59 })
+                return Math.multiplyExact(parts.fold(0L) { total, part -> Math.addExact(Math.multiplyExact(total, 60), part) }, 1000)
+            }
+            val start = time(match.groupValues[1]); val end = time(match.groupValues[2]); require(end >= start)
+            TimestampNote(start, end, match.groupValues[3])
+        }.toList()
+    }.getOrNull()
 
     fun format(ms: Long): String {
         val total = ms.coerceAtLeast(0) / 1000

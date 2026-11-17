@@ -47,8 +47,22 @@ interface LibraryDao {
     @Query("UPDATE media_item SET contentHash = :hash WHERE id = :id") suspend fun setHash(id: String, hash: String)
     @Query("UPDATE media_item SET syncEnabled = :enabled WHERE id = :id AND storage = 'MANAGED'") suspend fun setSyncEnabled(id: String, enabled: Boolean): Int
     @Query("UPDATE media_item SET originalMetadata = :json, width = :width, height = :height WHERE id = :id") suspend fun setMetadata(id: String, json: String?, width: Int?, height: Int?)
+    /** Fill a missing capture time (from embedded metadata); a known one is never overwritten. */
+    @Query("UPDATE media_item SET recordedAt = :at WHERE id = :id AND recordedAt IS NULL") suspend fun fillRecordedAt(id: String, at: Long): Int
     /** External entries still lacking a content hash (hash them in bounded background batches). */
     @Query("SELECT * FROM media_item WHERE storage = 'EXTERNAL' AND contentHash IS NULL AND availability = 'AVAILABLE' LIMIT :limit") suspend fun unhashedExternal(limit: Int): List<MediaItem>
+    /** Same as [unhashedExternal] but in id order after [afterId], so an unreadable entry cannot block the ones after it. */
+    @Query("SELECT * FROM media_item WHERE storage = 'EXTERNAL' AND contentHash IS NULL AND availability = 'AVAILABLE' AND id > :afterId ORDER BY id LIMIT :limit")
+    suspend fun unhashedExternalAfter(afterId: String, limit: Int): List<MediaItem>
+    /** Marks indexed entries under a removed folder (exact URI prefix) as no longer permitted; their user data is kept. */
+    @Query("UPDATE media_item SET availability = 'PERMISSION_REVOKED' WHERE storage = 'EXTERNAL' AND substr(externalUri, 1, length(:prefix)) = :prefix")
+    suspend fun revokeUnder(prefix: String): Int
+    /** Items without a job of [type], newest import first (keyset), skipping entries whose original is not reachable. */
+    @Query("SELECT m.* FROM media_item m WHERE m.state NOT IN ('DELETING', 'SYNC_REMOVED') AND m.availability = 'AVAILABLE' AND NOT EXISTS (SELECT 1 FROM processing_job j WHERE j.type = :type AND j.itemId = m.id) AND (m.importedAt < :beforeAt OR (m.importedAt = :beforeAt AND m.id < :beforeId)) ORDER BY m.importedAt DESC, m.id DESC LIMIT :limit")
+    suspend fun unqueued(type: String, beforeAt: Long, beforeId: String, limit: Int): List<MediaItem>
+    /** Filter-only retrieval by kind and capture date (taken, else modified, else imported), newest first. */
+    @Query("SELECT * FROM media_item WHERE state NOT IN ('DELETING', 'SYNC_REMOVED') AND contentKind IN (:kinds) AND COALESCE(recordedAt, modifiedAt, importedAt) >= :fromMs AND COALESCE(recordedAt, modifiedAt, importedAt) < :toMs ORDER BY COALESCE(recordedAt, modifiedAt, importedAt) DESC, id DESC LIMIT :limit")
+    suspend fun inDateRange(kinds: List<String>, fromMs: Long, toMs: Long, limit: Int): List<MediaItem>
     @Query("SELECT * FROM media_item WHERE storage = 'EXTERNAL' AND externalUri LIKE :prefix || '%' ORDER BY id") suspend fun externalUnder(prefix: String): List<MediaItem>
     @Query("SELECT * FROM media_item WHERE storage = 'EXTERNAL' OR externalUri IS NOT NULL") suspend fun indexedExternal(): List<MediaItem>
     @Query("DELETE FROM media_item WHERE id = :id AND storage = 'EXTERNAL'") suspend fun deleteExternal(id: String)
@@ -59,7 +73,13 @@ interface LibraryDao {
     @Query("SELECT * FROM media_analysis WHERE mediaId = :mediaId ORDER BY createdAt DESC") fun analyses(mediaId: String): Flow<List<MediaAnalysis>>
     @Query("SELECT * FROM media_analysis WHERE mediaId = :mediaId AND analyzer = :analyzer ORDER BY createdAt DESC LIMIT 1") suspend fun latestAnalysis(mediaId: String, analyzer: String): MediaAnalysis?
     @Query("SELECT * FROM media_analysis WHERE mediaId = :mediaId ORDER BY createdAt DESC LIMIT 1") suspend fun latestAny(mediaId: String): MediaAnalysis?
+    @Query("SELECT * FROM media_analysis WHERE mediaId = :mediaId ORDER BY createdAt DESC") suspend fun analysesNow(mediaId: String): List<MediaAnalysis>
+    /** Newest analysis row carrying a user edit (descriptions saved by older builds lived on arbitrary rows). */
+    @Query("SELECT * FROM media_analysis WHERE mediaId = :mediaId AND editedJson IS NOT NULL ORDER BY editedAt DESC LIMIT 1") suspend fun latestEdited(mediaId: String): MediaAnalysis?
     @Query("UPDATE media_analysis SET editedJson = :editedJson, editedAt = :at WHERE id = :id") suspend fun editAnalysis(id: String, editedJson: String?, at: Long)
+    /** Items whose latest run of one of [analyzers] happened while its model was absent (re-queue after installing it). */
+    @Query("SELECT DISTINCT a.mediaId FROM media_analysis a WHERE a.analyzer IN (:analyzers) AND a.modelVersion = 'absent' AND NOT EXISTS (SELECT 1 FROM media_analysis b WHERE b.mediaId = a.mediaId AND b.analyzer = a.analyzer AND b.createdAt > a.createdAt) LIMIT :limit")
+    suspend fun analysedWithoutModel(analyzers: List<String>, limit: Int): List<String>
     @Transaction suspend fun saveAnalysis(analysis: MediaAnalysis) {
         insertAnalysis(analysis); deleteSearch(analysis.id)
         if (analysis.text.isNotBlank()) insertSearch(LibrarySearch(analysis.id, analysis.mediaId, "ANALYSIS", analysis.text))
@@ -73,6 +93,16 @@ interface LibraryDao {
         insertSegment(segment); deleteSearch(segment.id)
         insertSearch(LibrarySearch(segment.id, segment.mediaId, "SEGMENT", listOf(segment.title, segment.description, segment.labels).joinToString(" ")))
     }
+    @Query("SELECT * FROM media_segment WHERE id = :id") suspend fun segment(id: String): MediaSegment?
+    @Query("SELECT * FROM media_segment WHERE id IN (:ids)") suspend fun segmentsById(ids: List<String>): List<MediaSegment>
+    @Query("SELECT * FROM media_segment WHERE mediaId = :mediaId ORDER BY startMs") suspend fun segmentsNow(mediaId: String): List<MediaSegment>
+    @Query("DELETE FROM library_search WHERE ref IN (SELECT id FROM media_segment WHERE mediaId = :mediaId AND kind IN (:kinds))") suspend fun unindexSegments(mediaId: String, kinds: List<String>)
+    @Query("DELETE FROM media_segment WHERE mediaId = :mediaId AND kind IN (:kinds)") suspend fun removeSegments(mediaId: String, kinds: List<String>)
+    /** Drop an item's derived segments of [kinds] and their search rows (before a fresh analysis run). */
+    @Transaction suspend fun clearSegments(mediaId: String, kinds: List<String>) { unindexSegments(mediaId, kinds); removeSegments(mediaId, kinds) }
+    @Query("SELECT thumbnailPath FROM media_segment WHERE thumbnailPath IS NOT NULL") suspend fun segmentThumbs(): List<String>
+    /** Older builds wrote unencrypted JPEG scene thumbnails; their references are dropped (the files are deleted by the sweep). */
+    @Query("UPDATE media_segment SET thumbnailPath = NULL WHERE thumbnailPath LIKE '%.jpg'") suspend fun dropPlainThumbs(): Int
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertEmbedding(embedding: MediaEmbedding)
     @Query("SELECT * FROM media_embedding WHERE model = :model AND mediaId > :afterMediaId ORDER BY mediaId LIMIT :limit") suspend fun embeddings(model: String, afterMediaId: String, limit: Int): List<MediaEmbedding>
 
@@ -96,7 +126,17 @@ interface LibraryDao {
     suspend fun itemCategoriesNow(itemId: String): List<CategoryLink>
     @Query("SELECT m.* FROM media_item m JOIN media_item_category l ON l.itemId = m.id WHERE l.categoryId = :categoryId AND l.state = 'ASSIGNED' AND m.state NOT IN ('DELETING', 'SYNC_REMOVED') ORDER BY m.importedAt DESC LIMIT :limit OFFSET :offset")
     suspend fun inCategory(categoryId: String, limit: Int, offset: Int): List<MediaItem>
-    @Query("INSERT OR IGNORE INTO media_item_category (itemId, categoryId, origin, state, confidence, updatedAt) SELECT itemId, :into, origin, state, confidence, :now FROM media_item_category WHERE categoryId = :from")
+    @Query("SELECT DISTINCT itemId FROM media_item_category WHERE categoryId IN (:categoryIds) AND state = 'ASSIGNED' LIMIT :limit")
+    suspend fun itemsInCategories(categoryIds: List<String>, limit: Int): List<String>
+    @Query("SELECT DISTINCT itemId FROM media_item_tag WHERE instr(tag, :word) > 0 AND state = 'ASSIGNED' LIMIT :limit")
+    suspend fun itemsTagged(word: String, limit: Int): List<String>
+    /** Removes a link entirely (un-assign), so the item is neither assigned nor excluded and AI may suggest it again. */
+    @Query("DELETE FROM media_item_category WHERE itemId = :itemId AND categoryId = :categoryId") suspend fun removeCategoryLink(itemId: String, categoryId: String)
+    /** Merge step 1: USER links (assigned or excluded) replace AI links on the target; an existing USER link on the target is kept. */
+    @Query("INSERT OR REPLACE INTO media_item_category (itemId, categoryId, origin, state, confidence, updatedAt) SELECT s.itemId, :into, s.origin, s.state, s.confidence, :now FROM media_item_category s WHERE s.categoryId = :from AND s.origin = 'USER' AND NOT EXISTS (SELECT 1 FROM media_item_category t WHERE t.itemId = s.itemId AND t.categoryId = :into AND t.origin = 'USER')")
+    suspend fun copyUserLinks(from: String, into: String, now: Long)
+    /** Merge step 2: AI links fill only empty slots. */
+    @Query("INSERT OR IGNORE INTO media_item_category (itemId, categoryId, origin, state, confidence, updatedAt) SELECT itemId, :into, origin, state, confidence, :now FROM media_item_category WHERE categoryId = :from AND origin != 'USER'")
     suspend fun copyLinks(from: String, into: String, now: Long)
     @Query("DELETE FROM media_item_category WHERE categoryId = :id") suspend fun deleteLinks(id: String)
     @Query("UPDATE media_category SET parentId = :into, updatedAt = :now WHERE parentId = :from") suspend fun reparent(from: String, into: String, now: Long)
@@ -105,7 +145,37 @@ interface LibraryDao {
     /** Merge [from] into [into]: links, children and bookmarks move; [from] is kept as a mergedInto redirect. */
     @Transaction suspend fun mergeCategory(from: String, into: String, now: Long) {
         require(from != into)
-        copyLinks(from, into, now); deleteLinks(from); reparent(from, into, now); moveBookmarks(from, into); markMerged(from, into, now)
+        copyUserLinks(from, into, now); copyLinks(from, into, now); deleteLinks(from); reparent(from, into, now); moveBookmarks(from, into); markMerged(from, into, now)
+    }
+
+    // ---- retiring a missing external duplicate into a surviving row (user data moves, derived data is dropped) ----
+    @Query("UPDATE media_item SET favorite = 1 WHERE id = :keep AND EXISTS (SELECT 1 FROM media_item WHERE id = :drop AND favorite = 1)") suspend fun inheritFavorite(drop: String, keep: String)
+    @Query("INSERT OR REPLACE INTO media_item_category (itemId, categoryId, origin, state, confidence, updatedAt) SELECT :keep, d.categoryId, d.origin, d.state, d.confidence, :now FROM media_item_category d WHERE d.itemId = :drop AND d.origin = 'USER' AND NOT EXISTS (SELECT 1 FROM media_item_category k WHERE k.itemId = :keep AND k.categoryId = d.categoryId AND k.origin = 'USER')")
+    suspend fun inheritUserCategories(drop: String, keep: String, now: Long)
+    @Query("INSERT OR REPLACE INTO media_item_tag (itemId, tag, origin, state, updatedAt) SELECT :keep, d.tag, d.origin, d.state, :now FROM media_item_tag d WHERE d.itemId = :drop AND d.origin = 'USER' AND NOT EXISTS (SELECT 1 FROM media_item_tag k WHERE k.itemId = :keep AND k.tag = d.tag AND k.origin = 'USER')")
+    suspend fun inheritUserTags(drop: String, keep: String, now: Long)
+    @Query("INSERT OR IGNORE INTO collection_member (collectionId, itemId, position, addedAt) SELECT collectionId, :keep, position, addedAt FROM collection_member WHERE itemId = :drop")
+    suspend fun inheritMemberships(drop: String, keep: String)
+    @Query("UPDATE media_bookmark SET mediaId = :keep WHERE mediaId = :drop") suspend fun moveItemBookmarks(drop: String, keep: String)
+    @Query("UPDATE library_search SET itemId = :keep WHERE itemId = :drop AND kind = 'BOOKMARK'") suspend fun moveBookmarkSearch(drop: String, keep: String)
+    @Query("INSERT OR IGNORE INTO playback_state (mediaId, positionMs, speed, audioTrack, subtitleTrack, loopStartMs, loopEndMs, completed, lastPlayedAt) SELECT :keep, positionMs, speed, audioTrack, subtitleTrack, loopStartMs, loopEndMs, completed, lastPlayedAt FROM playback_state WHERE mediaId = :drop")
+    suspend fun inheritPlayback(drop: String, keep: String)
+    @Query("UPDATE play_history SET mediaId = :keep WHERE mediaId = :drop") suspend fun moveHistory(drop: String, keep: String)
+    @Query("UPDATE media_analysis SET mediaId = :keep, id = :keep || ':user_description' WHERE id = :drop || ':user_description' AND NOT EXISTS (SELECT 1 FROM media_analysis WHERE id = :keep || ':user_description')")
+    suspend fun inheritDescription(drop: String, keep: String)
+    @Query("DELETE FROM library_search WHERE itemId = :itemId") suspend fun unindexItem(itemId: String)
+    /**
+     * [drop] (an external entry whose file is gone) is retired into [keep] (a live entry with the same content): favorite, USER
+     * categories/tags, collections, bookmarks, playback and the user description move to [keep]; [keep]'s own USER choices win.
+     * [keep] is never deleted or repointed.
+     */
+    @Transaction suspend fun retireInto(drop: String, keep: String, now: Long) {
+        require(drop != keep)
+        inheritFavorite(drop, keep); inheritUserCategories(drop, keep, now); inheritUserTags(drop, keep, now); inheritMemberships(drop, keep)
+        moveItemBookmarks(drop, keep); moveBookmarkSearch(drop, keep); inheritPlayback(drop, keep); moveHistory(drop, keep); inheritDescription(drop, keep)
+        unindexItem(drop); deleteExternal(drop)
+        val description = latestAnalysis(keep, "user_description")
+        if (description != null) { deleteSearch(description.id); if (description.text.isNotBlank()) insertSearch(LibrarySearch(description.id, keep, "ANALYSIS", description.text)) }
     }
 
     // ---- tags ----
@@ -135,6 +205,10 @@ interface LibraryDao {
     }
     @Query("UPDATE collection_member SET position = :position WHERE collectionId = :collectionId AND itemId = :itemId") suspend fun moveMember(collectionId: String, itemId: String, position: Long)
     @Query("DELETE FROM collection_member WHERE collectionId = :collectionId AND itemId = :itemId") suspend fun removeMember(collectionId: String, itemId: String)
+    /** Rewrite every position as 0..n-1 in the given order. */
+    @Transaction suspend fun reorder(collectionId: String, orderedItemIds: List<String>) {
+        orderedItemIds.forEachIndexed { index, itemId -> moveMember(collectionId, itemId, index.toLong()) }
+    }
 
     // ---- full-text and timestamp search ----
     @Insert suspend fun insertSearch(row: LibrarySearch)
@@ -193,32 +267,73 @@ interface JobDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insert(job: ProcessingJob): Long
     @Query("SELECT * FROM processing_job WHERE id = :id") suspend fun job(id: String): ProcessingJob?
     @Query("SELECT * FROM processing_job WHERE type = :type AND itemId IS :itemId") suspend fun find(type: String, itemId: String?): ProcessingJob?
-    /** Queue a job; an existing (type, itemId) job is kept, and requeued if it had finished or failed. */
+    /**
+     * Queue a job; an existing (type, itemId) job is kept. A finished job starts over with an empty checkpoint, a failed one
+     * resumes from its checkpoint, and a queued one only gains priority. Legacy analysis types are stored as [JobTypes.ANALYSIS].
+     */
     @Transaction suspend fun enqueue(job: ProcessingJob): ProcessingJob {
-        if (insert(job) != -1L) return job
-        val existing = find(job.type, job.itemId)!!
-        if (existing.state == JobState.COMPLETED.name || existing.state == JobState.FAILED.name) requeue(existing.id, job.priority, job.updatedAt)
-        return find(job.type, job.itemId)!!
+        val normal = job.copy(type = JobTypes.normalize(job.type))
+        if (insert(normal) != -1L) return normal
+        val existing = find(normal.type, normal.itemId)!!
+        when (existing.state) {
+            JobState.COMPLETED.name -> restart(existing.id, normal.priority, normal.updatedAt)
+            JobState.FAILED.name -> requeue(existing.id, normal.priority, normal.updatedAt)
+            else -> prioritize(existing.id, minOf(existing.priority, normal.priority), normal.updatedAt)
+        }
+        return find(normal.type, normal.itemId)!!
+    }
+    @Query("SELECT COUNT(*) FROM processing_job WHERE type = :type AND state IN ('PENDING', 'RETRY_PENDING')")
+    suspend fun runnable(type: String): Int
+    @Query("UPDATE processing_job SET type = :type WHERE id = :id") suspend fun setType(id: String, type: String)
+    @Transaction suspend fun normalizeLegacy() {
+        for (old in ofTypes(listOf("ANALYZE", "transcribe"))) {
+            val current = find(JobTypes.ANALYSIS, old.itemId)
+            if (current == null) setType(old.id, JobTypes.ANALYSIS)
+            else {
+                if (old.state != JobState.COMPLETED.name && current.state == JobState.COMPLETED.name)
+                    restart(current.id, old.priority, old.updatedAt)
+                delete(old.id)
+            }
+        }
     }
     @Query("UPDATE processing_job SET state = 'PENDING', priority = MIN(priority, :priority), attempts = 0, error = NULL, notBefore = 0, claimToken = NULL, updatedAt = :now WHERE id = :id")
     suspend fun requeue(id: String, priority: Int, now: Long)
+    /** Run a finished job again from the beginning. */
+    @Query("UPDATE processing_job SET state = 'PENDING', priority = MIN(priority, :priority), checkpoint = '{}', progress = 0, attempts = 0, error = NULL, notBefore = 0, claimToken = NULL, updatedAt = :now WHERE id = :id")
+    suspend fun restart(id: String, priority: Int, now: Long)
+    /** After a successful step: back to the queue (or stay PAUSED if the user paused it meanwhile); the attempt count resets. */
+    @Query("UPDATE processing_job SET state = CASE WHEN state = 'PAUSED' THEN 'PAUSED' ELSE 'PENDING' END, attempts = 0, claimToken = NULL, updatedAt = :now WHERE id = :id AND claimToken = :token")
+    suspend fun release(id: String, token: String, now: Long): Int
+    /** A cancelled step (WorkManager stop): back to the queue without counting an attempt. */
+    @Query("UPDATE processing_job SET state = CASE WHEN state = 'PAUSED' THEN 'PAUSED' ELSE 'PENDING' END, claimToken = NULL, updatedAt = :now WHERE id = :id AND claimToken = :token")
+    suspend fun unclaim(id: String, token: String, now: Long): Int
+    @Query("SELECT * FROM processing_job WHERE type IN (:types)") suspend fun ofTypes(types: List<String>): List<ProcessingJob>
     @Query("UPDATE processing_job SET state = 'PREPARING', claimToken = :token, updatedAt = :now WHERE id = (SELECT id FROM processing_job WHERE state IN ('PENDING', 'RETRY_PENDING') AND notBefore <= :now AND (:type IS NULL OR type = :type) ORDER BY priority, createdAt LIMIT 1)")
     suspend fun markClaimed(token: String, type: String?, now: Long): Int
     @Query("SELECT * FROM processing_job WHERE claimToken = :token") suspend fun claimed(token: String): ProcessingJob?
     /** Atomically take the most urgent runnable job (state → PREPARING), or null. [token] must be unique per claim (UUID). */
     @Transaction suspend fun claim(token: String, now: Long, type: String? = null): ProcessingJob? =
         if (markClaimed(token, type, now) == 1) claimed(token) else null
-    @Query("UPDATE processing_job SET state = :state, progress = :progress, checkpoint = :checkpoint, updatedAt = :now WHERE id = :id AND claimToken = :token")
+    @Query("UPDATE processing_job SET state = CASE WHEN state = 'PAUSED' THEN 'PAUSED' ELSE :state END, progress = :progress, checkpoint = :checkpoint, updatedAt = :now WHERE id = :id AND claimToken = :token")
     suspend fun checkpoint(id: String, token: String, state: String, progress: Double, checkpoint: String, now: Long): Int
     @Query("UPDATE processing_job SET state = 'COMPLETED', progress = 1.0, error = NULL, claimToken = NULL, updatedAt = :now WHERE id = :id AND claimToken = :token")
     suspend fun complete(id: String, token: String, now: Long): Int
     /** Record a failure: RETRY_PENDING until [maxAttempts] is reached, then FAILED. The checkpoint is kept for resumption. */
-    @Query("UPDATE processing_job SET attempts = attempts + 1, error = :error, claimToken = NULL, notBefore = :retryAt, updatedAt = :now, state = CASE WHEN attempts + 1 >= :maxAttempts THEN 'FAILED' ELSE 'RETRY_PENDING' END WHERE id = :id")
+    @Query("UPDATE processing_job SET attempts = attempts + 1, error = :error, claimToken = NULL, notBefore = :retryAt, updatedAt = :now, state = CASE WHEN state = 'PAUSED' THEN 'PAUSED' WHEN attempts + 1 >= :maxAttempts THEN 'FAILED' ELSE 'RETRY_PENDING' END WHERE id = :id")
     suspend fun fail(id: String, error: String, retryAt: Long, maxAttempts: Int, now: Long)
     /** After process death: running jobs go back to PENDING and resume from their checkpoint. */
     @Query("UPDATE processing_job SET state = 'PENDING', claimToken = NULL WHERE state IN ('PREPARING', 'PROCESSING', 'INDEXING')") suspend fun recoverInterrupted(): Int
-    @Query("UPDATE processing_job SET state = 'PENDING', claimToken = NULL WHERE type = :type AND state IN ('PREPARING', 'PROCESSING', 'INDEXING')") suspend fun recoverType(type: String): Int
-    @Query("UPDATE processing_job SET state = 'PAUSED', updatedAt = :now WHERE state IN ('PENDING', 'RETRY_PENDING') AND (:id IS NULL OR id = :id)") suspend fun pause(id: String?, now: Long): Int
+    /**
+     * Jobs of [type] left running by a process that died (claimed before [claimedBefore]) go back to the queue. The interrupted
+     * step counts as an attempt, so a job that crashes the process (OOM, native crash) ends FAILED after [maxAttempts].
+     */
+    @Query("""UPDATE processing_job SET attempts = attempts + 1, claimToken = NULL, updatedAt = :now,
+        error = CASE WHEN attempts + 1 >= :maxAttempts THEN 'Stopped repeatedly while running (the app may have crashed). Retry to run it again.' ELSE error END,
+        state = CASE WHEN attempts + 1 >= :maxAttempts THEN 'FAILED' ELSE 'PENDING' END
+        WHERE type = :type AND state IN ('PREPARING', 'PROCESSING', 'INDEXING') AND updatedAt < :claimedBefore""")
+    suspend fun recoverType(type: String, claimedBefore: Long, maxAttempts: Int, now: Long): Int
+    /** Queued and running jobs can be paused; a running step finishes and then stays PAUSED. */
+    @Query("UPDATE processing_job SET state = 'PAUSED', updatedAt = :now WHERE state IN ('PENDING', 'RETRY_PENDING', 'PREPARING', 'PROCESSING', 'INDEXING') AND (:id IS NULL OR id = :id)") suspend fun pause(id: String?, now: Long): Int
     @Query("UPDATE processing_job SET state = 'PENDING', updatedAt = :now WHERE state = 'PAUSED' AND (:id IS NULL OR id = :id)") suspend fun resume(id: String?, now: Long): Int
     @Query("UPDATE processing_job SET state = 'PENDING', attempts = 0, error = NULL, notBefore = 0, updatedAt = :now WHERE state IN ('FAILED', 'RETRY_PENDING') AND (:id IS NULL OR id = :id)") suspend fun retryFailed(id: String?, now: Long): Int
     @Query("UPDATE processing_job SET priority = :priority, updatedAt = :now WHERE id = :id") suspend fun prioritize(id: String, priority: Int, now: Long)
@@ -331,7 +446,7 @@ interface SyncDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun saveBackupItems(items: List<BackupItemRecord>)
     @Query("UPDATE backup_item SET verifiedAt = :now WHERE manifestId = :manifestId") suspend fun verifyBackupItems(manifestId: String, now: Long)
     /** Managed originals with no verified backup of their current content hash. */
-    @Query("SELECT m.* FROM media_item m WHERE m.storage = 'MANAGED' AND NOT EXISTS (SELECT 1 FROM backup_item b WHERE b.itemId = m.id AND b.contentHash = m.contentHash AND b.verifiedAt IS NOT NULL) ORDER BY m.importedAt LIMIT :limit")
+    @Query("SELECT m.* FROM media_item m WHERE m.storage = 'MANAGED' AND m.size > 0 AND m.contentHash IS NOT NULL AND NOT EXISTS (SELECT 1 FROM backup_item b WHERE b.itemId = m.id AND b.contentHash = m.contentHash AND b.verifiedAt IS NOT NULL) ORDER BY m.importedAt LIMIT :limit")
     suspend fun notBackedUp(limit: Int): List<MediaItem>
     @Query("SELECT MAX(b.verifiedAt) FROM backup_item b JOIN media_item m ON m.id = b.itemId AND m.contentHash = b.contentHash WHERE b.itemId = :itemId")
     suspend fun lastVerifiedBackup(itemId: String): Long?

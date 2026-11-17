@@ -1,7 +1,6 @@
 package com.hellfire.ass.ui
 
 import android.content.Intent
-import android.media.MediaPlayer
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -214,15 +213,10 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
         dismissButton = { TextButton(onClick = { deletion = null }) { Text(com.hellfire.ass.ui.tr("Cancel")) } }) }
 }
 
-private suspend fun playOriginal(app: HellFireApp, item: MediaItem, start: Long) = withContext(Dispatchers.IO) {
-    val source = EncryptedMediaSource(app.media.reader(item)); val player = MediaPlayer(); val completed = CompletableDeferred<Unit>()
-    try {
-        player.setDataSource(source); player.setOnCompletionListener { completed.complete(Unit) }
-        player.setOnErrorListener { _, _, _ -> completed.completeExceptionally(IllegalStateException("Playback failed")); true }
-        player.prepare(); currentCoroutineContext().ensureActive()
-        if (start > 0) player.seekTo(start, MediaPlayer.SEEK_CLOSEST)
-        player.start(); completed.await()
-    } finally { runCatching { player.stop() }; player.release(); source.close() }
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+private suspend fun playOriginal(app: HellFireApp, item: MediaItem, start: Long) = withContext(Dispatchers.Main) {
+    val controller = com.hellfire.ass.player.PlaybackHub.controller(app)
+    com.hellfire.ass.player.PlaybackHub.open(app, controller, item.id, start)
 }
 
 fun mediaStatus(state: String, error: String?): String = when (error) {

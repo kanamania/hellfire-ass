@@ -1,8 +1,28 @@
 # HellFire Ass — implementation and feasibility
 
-Latest update: 2026-11-17 (news/media/performance integration, directly below). Earlier
+Latest update: 2026-11-17 (sequential media review fixes, directly below). Earlier
 checkpoints keep the test counts and APK checksums that were true when they were
 written; the newest checkpoint has the current ones.
+
+## Sequential media review fixes — 2026-11-17
+
+A subsequent code review found functional defects despite the earlier 428-test pass.
+The integration checkpoint below records build evidence, not end-to-end feature acceptance.
+The owner asked to finish the four interrupted fix branches one at a time.
+
+| Area | Result | Current evidence / next action |
+|---|---|---|
+| Library/intelligence | PASS (host); device NOT TESTED | Fixed legacy job normalization/discovery, crash recovery/pause/checkpoints, filter-only and intersected search, capture dates, duplicate metadata preservation, user category priority and persistent descriptions. Added accessible search/settings/queue, folder removal, name/tag/date controls, similar-picture review, sampled chapters/summary and cache thumbnails. 441 tests: 437 passed, 4 opt-in live-provider tests skipped, zero failures/errors. `:app:testDebugUnitTest :app:lintDebug :app:assembleDebug --offline --max-workers=1` with 1.5 GiB heap passed. Lint: 0 errors, 350 warnings, 8 hints. Native source hash checked against the pinned archive. Real inference/codec/OEM behavior remains NOT TESTED. |
+| Players/sharing | PASS (host); device NOT TESTED | Completed live position/application-thread A–B, outgoing resume state, trusted controllers, PiP/track/queue/clip controls and shared legacy playback. MP4 metadata removal preserves offsets; readable samples/frame required. Rotated OCR and frame-sized covers corrected; edited timestamps and range-only facts used. Synthetic sanitized H.264 fixture decodes with host ffmpeg. Pixel tests use native graphics. 455 tests: 451 passed, 4 skipped, zero failures/errors. Android export/codec/PiP still NOT TESTED; combined APK/lint checks follow integration. |
+| Drawer/backup/status | PASS (host); device NOT TESTED | Shared/imported/user-organized originals retained during inbox purge. Drawer AI is local-only and grounded in saved content with per-item conversations. Destination read-back and upload-then-commit added; UI supports base+incremental selection and selective restore. Synthetic host tests exercise full/partial/incremental/selective recovery with a SQLite staging factory; production SQLCipher/device/Drive remain NOT TESTED. Status/backup/settings routes connected; safe orphan-thumbnail cleanup and retention controls added. 474 tests: 470 passed, 4 skipped, zero failures/errors. |
+| Sync/web | PARTIAL — pending | Interrupted Android rewrite requires corresponding server/browser protocol changes, conflict handling and regression checks. |
+| Device | NOT TESTED | Owner now targets a OnePlus 16, described as Snapdragon 8 Elite Gen 6. Firmware, instruction-set features, accelerators, permissions, playback, exports and actual backup/sync remain unverified. No hardware capability is inferred from the name. |
+
+Scene thumbnails are derived, disposable files in app-private no-backup cache; originals
+remain encrypted. Search uses stored OCR/labels/transcripts, not an assertion that the
+language model sees images. Analysis jobs run sequentially in bounded batches.
+System-wide overlay and QR decoding remain unimplemented. Video blur is not yet verified.
+The other branches remain uncommitted and must not be called complete.
 
 ## News, media and performance integration — 2026-11-17
 
@@ -10,7 +30,7 @@ Room/backup schema **19** preserves the media-library schema 18 and adds news.
 Pending news and seven media implementations were consolidated with adaptive
 performance. Original source snapshots are preserved in Git history. After the source audit
 and merges, all extra worktrees and merged branches were removed; only `main`
-and the primary checkout remain.
+and the primary checkout remained at that historical checkpoint. New review-fix worktrees are now active.
 
 - News: feeds/source settings, clustering/ranking, versioned stories, scheduled
   briefings, quiet-hour alerts, reader/TTS controls, saved/followed stories, Ask
@@ -19,7 +39,7 @@ and the primary checkout remain.
   vectors are deferred; current clustering uses English/Kiswahili lexical matching.
 - Media: external library references and managed originals, library scanning,
   playback/PiP/bookmarks, content analysis/search, drawer/inbox, sanitized sharing,
-  encrypted optional library sync and backup/selective recovery pages.
+  encrypted optional library sync and backup primitives. Later review found unusable paths and missing selective-restore UI; see the current checkpoint above.
 - The universal drawer is the in-app edge drawer plus the Android Share target,
   with durable inbox captures, context/follow-ups and reviewed action suggestions.
   A system-wide overlay remains unimplemented. Drag/drop and share permission

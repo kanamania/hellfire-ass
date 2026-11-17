@@ -13,43 +13,57 @@ object Mp4Privacy {
 
     fun scan(bytes: ByteArray): Mp4Scan = scanRefs(parse(bytes, 0, bytes.size), bytes)
 
+    /** Replace identifying boxes with zero-filled free space: no box or sample offset moves. */
     fun strip(bytes: ByteArray): Mp4Strip {
-        val rewritten = rewrite(parse(bytes, 0, bytes.size), bytes)
-        return Mp4Strip(rewritten, scan(rewritten))
-    }
-
-    fun stripFile(file: File): Mp4Scan {
-        val bytes = if (file.length() <= 32L * 1024 * 1024) file.readBytes() else return stripLarge(file)
-        val stripped = strip(bytes)
-        if (!clean(stripped.scan)) return stripped.scan
-        file.writeBytes(stripped.bytes)
-        return stripped.scan
+        val refs = parse(bytes, 0, bytes.size)
+        if (!scanRefs(refs, bytes).wellFormed) return Mp4Strip(bytes, scanRefs(refs, bytes))
+        val out = bytes.copyOf()
+        fun scrub(nodes: List<Ref>) {
+            nodes.forEach { ref ->
+                val start = (ref.offset + ref.header).toInt()
+                val end = (ref.offset + ref.size).toInt()
+                when {
+                    forbidden(ref.type) -> {
+                        "free".toByteArray().copyInto(out, ref.offset.toInt() + 4)
+                        out.fill(0, start, end)
+                    }
+                    ref.type in timed -> zeroTimes(slice(bytes, ref)).copyInto(out, start)
+                    else -> ref.children?.let(::scrub)
+                }
+            }
+        }
+        scrub(refs)
+        return Mp4Strip(out, scan(out))
     }
 
     fun clean(scan: Mp4Scan) = scan.wellFormed && scan.identifying.isEmpty() && scan.creationTimes.all { it.second == 0L }
 
-    private fun stripLarge(file: File): Mp4Scan {
-        val input = RandomAccessFile(file, "r")
-        val refs = input.use { parseFile(it, 0, it.length()) }
-        val out = File(file.parentFile, file.name + ".strip")
-        try {
-            RandomAccessFile(file, "r").use { source ->
-                out.outputStream().buffered().use { dest -> writeRefs(refs, source, dest) }
+    /** Streaming, size-preserving rewrite of the newly exported copy (never the original). */
+    fun stripFile(file: File): Mp4Scan {
+        if (!scanFile(file).wellFormed) return scanFile(file)
+        RandomAccessFile(file, "rw").use { source ->
+            fun scrub(nodes: List<Ref>) {
+                nodes.forEach { ref ->
+                    when {
+                        forbidden(ref.type) -> {
+                            source.seek(ref.offset + 4); source.writeBytes("free")
+                            source.seek(ref.offset + ref.header)
+                            val zeros = ByteArray(65536)
+                            var left = ref.size - ref.header
+                            while (left > 0) { val n = minOf(left, zeros.size.toLong()).toInt(); source.write(zeros, 0, n); left -= n }
+                        }
+                        ref.type in timed -> {
+                            val raw = ByteArray(minOf(24L, ref.size - ref.header).toInt())
+                            source.seek(ref.offset + ref.header); source.readFully(raw)
+                            source.seek(ref.offset + ref.header); source.write(zeroTimes(raw))
+                        }
+                        ref.type in containers -> scrub(ref.children ?: parseFile(source, ref.offset + ref.header, ref.offset + ref.size))
+                    }
+                }
             }
-            val scan = scanFile(out)
-            if (!clean(scan)) {
-                out.delete()
-                return scan
-            }
-            if (!out.renameTo(file)) {
-                out.copyTo(file, overwrite = true)
-                out.delete()
-            }
-            return scan
-        } catch (error: Exception) {
-            out.delete()
-            return Mp4Scan(listOf("rewrite:${error.javaClass.simpleName}"), emptyList(), false)
+            scrub(parseFile(source, 0, source.length()))
         }
+        return scanFile(file)
     }
 
     private data class Ref(val type: String, val offset: Long, val size: Long, val header: Int, val children: List<Ref>?)
@@ -82,7 +96,7 @@ object Mp4Privacy {
         while (cursor + 8 <= end) {
             file.seek(cursor)
             val header = ByteArray(16)
-            val read = file.read(header, 0, minOf(16, (end - cursor).toInt()))
+            val read = file.read(header, 0, minOf(16L, end - cursor).toInt())
             if (read < 8) break
             val size32 = uint(header, 0)
             val type = typeAt(header, 4)
@@ -124,46 +138,11 @@ object Mp4Privacy {
         return Mp4Scan(identifying, times, formed && refs.isNotEmpty())
     }
 
-    private fun rewrite(refs: List<Ref>, source: ByteArray): ByteArray {
-        val out = java.io.ByteArrayOutputStream()
-        refs.forEach { ref ->
-            if (forbidden(ref.type) || ref.type == "truncated") return@forEach
-            val payload = when {
-                ref.children != null -> rewrite(ref.children, source)
-                ref.type in timed -> zeroTimes(slice(source, ref))
-                else -> slice(source, ref)
-            }
-            writeBox(out, ref.type, payload)
-        }
-        return out.toByteArray()
-    }
-
     private fun slice(source: ByteArray, ref: Ref): ByteArray {
         val start = (ref.offset + ref.header).toInt()
         val end = (ref.offset + ref.size).toInt()
         if (start < 0 || end > source.size || end < start) return ByteArray(0)
         return source.copyOfRange(start, end)
-    }
-
-    private fun writeRefs(refs: List<Ref>, source: RandomAccessFile, dest: java.io.OutputStream) {
-        refs.forEach { ref ->
-            if (forbidden(ref.type) || ref.type == "truncated") return@forEach
-            if (ref.children != null || ref.type in timed) {
-                val payload = if (ref.children != null) {
-                    val nested = java.io.ByteArrayOutputStream()
-                    writeRefs(ref.children, source, nested)
-                    nested.toByteArray()
-                } else {
-                    val raw = ByteArray((ref.size - ref.header).toInt())
-                    source.seek(ref.offset + ref.header)
-                    source.readFully(raw)
-                    zeroTimes(raw)
-                }
-                writeBox(dest, ref.type, payload)
-            } else {
-                streamBox(source, dest, ref)
-            }
-        }
     }
 
     private fun scanFile(file: File): Mp4Scan = RandomAccessFile(file, "r").use { scanBytes(it) }
@@ -177,7 +156,7 @@ object Mp4Privacy {
             while (cursor + 8 <= end) {
                 file.seek(cursor)
                 val header = ByteArray(16)
-                val read = file.read(header, 0, minOf(16, (end - cursor).toInt()))
+                val read = file.read(header, 0, minOf(16L, end - cursor).toInt())
                 if (read < 8) break
                 val size32 = uint(header, 0)
                 val type = typeAt(header, 4)
@@ -202,27 +181,6 @@ object Mp4Privacy {
         }
         walk(0, file.length(), "")
         return Mp4Scan(identifying, times, formed && file.length() > 8)
-    }
-
-    private fun streamBox(source: RandomAccessFile, dest: java.io.OutputStream, ref: Ref) {
-        source.seek(ref.offset)
-        val buffer = ByteArray(65536)
-        var left = ref.size
-        while (left > 0) {
-            val n = source.read(buffer, 0, minOf(buffer.size.toLong(), left).toInt())
-            if (n < 0) break
-            dest.write(buffer, 0, n)
-            left -= n
-        }
-    }
-
-    private fun writeBox(dest: java.io.OutputStream, type: String, payload: ByteArray) {
-        val size = 8 + payload.size
-        val header = ByteArray(8)
-        putInt(header, 0, size)
-        type.padEnd(4, ' ').take(4).toByteArray(Charsets.ISO_8859_1).copyInto(header, 4)
-        dest.write(header)
-        dest.write(payload)
     }
 
     fun zeroTimes(payload: ByteArray): ByteArray {

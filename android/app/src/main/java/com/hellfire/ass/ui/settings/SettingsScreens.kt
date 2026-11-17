@@ -200,6 +200,19 @@ fun SettingsHub() {
                 icon = HfIcons.Cloud, tone = Tone.Neutral, chevron = true, onClick = { nav.push(Screen.WebAccess) })
             ListRow(com.hellfire.ass.ui.tr("This device"), subtitle = "Android, assistant role, timezone", icon = HfIcons.Phone, tone = Tone.Neutral, chevron = true, onClick = { nav.push(Screen.Device) })
         }
+        Group("Library and status") {
+            ListRow(tr("Backup dashboard"), subtitle = "Storage, per-item backup state, retention, selective restore", icon = HfIcons.Download, tone = Tone.Neutral,
+                chevron = true, onClick = { nav.push(com.hellfire.ass.library.LibraryRoutes.backupDashboard()) })
+            ListDivider()
+            ListRow(tr("Status dashboard"), subtitle = "Analysis, sync, backup, models, errors", icon = HfIcons.Reports, tone = Tone.Neutral,
+                chevron = true, onClick = { nav.push(com.hellfire.ass.library.LibraryRoutes.statusDashboard()) })
+            ListDivider()
+            ListRow(tr("Processing queue"), subtitle = "On-device analysis jobs", icon = HfIcons.Chip, tone = Tone.Neutral,
+                chevron = true, onClick = { nav.push(com.hellfire.ass.library.LibraryRoutes.processingQueue()) })
+            ListDivider()
+            ListRow(tr("Media settings"), subtitle = "Analysis, transcription and categories", icon = HfIcons.Settings, tone = Tone.Neutral,
+                chevron = true, onClick = { nav.push(com.hellfire.ass.library.LibraryRoutes.mediaSettings()) })
+        }
     }
 }
 

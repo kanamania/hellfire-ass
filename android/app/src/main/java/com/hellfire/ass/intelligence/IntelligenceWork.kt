@@ -28,8 +28,9 @@ object QueueStep {
         work()
         "completed"
     } catch (cancelled: CancellationException) {
+        withContext(kotlinx.coroutines.NonCancellable) { jobs.unclaim(job.id, token, now) }
         throw cancelled
-    } catch (error: Exception) {
+    } catch (error: Throwable) {
         jobs.fail(job.id, (error.message ?: "failed").take(200), now + 60_000, 3, now)
         "failed"
     }
@@ -54,21 +55,19 @@ object IntelligenceWork {
     }
 
     suspend fun recover(app: HellFireApp) {
-        app.database.jobs().recoverType(ContentEngine.JOB)
+        app.database.jobs().normalizeLegacy()
+        app.database.jobs().recoverType(ContentEngine.JOB, System.currentTimeMillis(), 3, System.currentTimeMillis())
+        val refs = app.database.library().segmentThumbs().map { java.io.File(it).name }.toSet()
+        java.io.File(app.filesDir, "intelligence-thumbs").deleteRecursively()
+        java.io.File(app.cacheDir, "intelligence-thumbs").listFiles()?.filter { it.name !in refs }?.forEach { it.delete() }
         enqueueMissing(app, 10)
         schedule(app)
     }
 
     suspend fun enqueueMissing(app: HellFireApp, limit: Int) {
         val now = System.currentTimeMillis()
-        val items = app.database.library().page(ContentKind.entries.map { it.name }, StorageMode.entries.map { it.name }, false, Long.MAX_VALUE, "", 40)
-        var added = 0
-        for (item in items) {
-            if (app.database.jobs().find(ContentEngine.JOB, item.id) != null) continue
-            app.database.jobs().enqueue(ContentEngine.newJob(item.id, now))
-            added++
-            if (added >= limit) break
-        }
+        val items = app.database.library().unqueued(ContentEngine.JOB, Long.MAX_VALUE, "", limit)
+        for (item in items) app.database.jobs().enqueue(ContentEngine.newJob(item.id, now))
     }
 
     private fun request(prefs: IntelligencePrefs) = OneTimeWorkRequestBuilder<IntelligenceWorker>()
@@ -95,7 +94,8 @@ class IntelligenceWorker(context: Context, params: WorkerParameters) : Coroutine
         val prefs = IntelligencePrefs(app)
         val blocked = DeviceGate.blockReason(prefs.policy(), IntelligenceWork.snapshot(app))
         if (blocked != null) return@withContext Result.retry()
-        app.database.jobs().recoverType(ContentEngine.JOB)
+        app.database.jobs().normalizeLegacy()
+        app.database.jobs().recoverType(ContentEngine.JOB, System.currentTimeMillis() - 30 * 60_000, 3, System.currentTimeMillis())
         IntelligenceWork.enqueueMissing(app, 5)
         val engine = ContentEngine(app)
         var ran = 0
@@ -112,19 +112,25 @@ class IntelligenceWorker(context: Context, params: WorkerParameters) : Coroutine
                 val checkpoint = AnalysisCheckpoint.decode(job.checkpoint)
                 val (finished, next) = engine.step(item, checkpoint)
                 val now = System.currentTimeMillis()
-                if (finished) app.database.jobs().complete(job.id, token, now)
+                if (finished) {
+                    app.database.jobs().complete(job.id, token, now)
+                    if (item.storage == StorageMode.MANAGED.name) app.database.media().state(item.id, "INDEXED", null)
+                }
                 else {
                     app.database.jobs().checkpoint(job.id, token, com.hellfire.ass.library.JobState.PROCESSING.name, (next.doneMs.coerceAtLeast(1)).toDouble() / 1000.0, next.encode(), now)
-                    app.database.jobs().requeue(job.id, job.priority, now)
+                    app.database.jobs().release(job.id, token, now)
                     pending = true
                 }
             }
             if (outcome == "failed") pending = true
             ran++
         }
+        // Drain both the existing queue and older, as-yet undiscovered items on subsequent bounded runs.
+        pending = pending || app.database.jobs().runnable(ContentEngine.JOB) > 0 ||
+            app.database.library().unqueued(ContentEngine.JOB, Long.MAX_VALUE, "", 1).isNotEmpty()
         if (pending) {
             WorkManager.getInstance(app).enqueueUniqueWork(IntelligenceWork.NAME, ExistingWorkPolicy.APPEND_OR_REPLACE,
-                OneTimeWorkRequestBuilder<IntelligenceWorker>().setConstraints(IntelligenceWork.constraints(prefs))
+                OneTimeWorkRequestBuilder<IntelligenceWorker>().setInitialDelay(30, TimeUnit.SECONDS).setConstraints(IntelligenceWork.constraints(prefs))
                     .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS).build())
         }
         Result.success()

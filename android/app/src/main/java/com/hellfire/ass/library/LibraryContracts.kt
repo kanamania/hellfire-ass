@@ -67,6 +67,13 @@ object JobPriority {
     const val BACKGROUND = 4
 }
 
+/** processing_job types. The intelligence worker claims only [ANALYSIS] (= ContentEngine.JOB); older builds used other names. */
+object JobTypes {
+    const val ANALYSIS = "intelligence"
+    val LEGACY_ANALYSIS = listOf("ANALYZE", "transcribe")
+    fun normalize(type: String) = if (type in LEGACY_ANALYSIS) ANALYSIS else type
+}
+
 /** Who produced a category link, tag, bookmark or analysis edit. USER rows always win over AI suggestions. */
 enum class Origin { AI, USER }
 

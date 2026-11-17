@@ -99,7 +99,8 @@ object ShareSession {
         val ids = (listOf(primaryId) + extraIds).distinct()
         val items = ids.mapNotNull { app.database.library().item(it) }
         if (items.size != ids.size) return@withContext PrepareResult(false, "A selected item is no longer available. Nothing was shared.", assembled.text, emptyList(), "", emptyList())
-        val dir = File(context.cacheDir, "share").apply { mkdirs() }
+        cleanup(app)
+        val dir = File(context.cacheDir, "share/${UUID.randomUUID()}").apply { mkdirs() }
         val files = mutableListOf<File>()
         val exportIds = mutableListOf<String>()
         var mime = ""
@@ -149,8 +150,18 @@ object ShareSession {
             val sidecar = File(dir, "metadata.json")
             sidecar.writeText(assembled.sidecarJson)
             files += sidecar
+            mime = "*/*"
         }
         PrepareResult(true, "Sanitized copy is ready to review. $CONTENT_NOTE HellFire Ass has not published anything.", assembled.text, files, mime.ifBlank { "*/*" }, exportIds)
+    }
+
+    /** Only expired export sessions are removed; recent recipients may still be reading their copy. */
+    suspend fun cleanup(app: HellFireApp, now: Long = System.currentTimeMillis()) = withContext(Dispatchers.IO) {
+        val root = File(app.cacheDir, "share")
+        root.listFiles()?.filter { now - it.lastModified() > 24 * 60 * 60_000L }?.forEach { it.deleteRecursively() }
+        app.database.shares().staleOutputs(now - 24 * 60 * 60_000L).forEach { row ->
+            app.database.shares().saveExport(row.copy(outputPath = null, updatedAt = now))
+        }
     }
 
     suspend fun markHandedOff(app: HellFireApp, exportIds: List<String>) = withContext(Dispatchers.IO) {

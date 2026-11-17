@@ -30,10 +30,16 @@ used to establish host results. No message has been sent and no gateway deployed
   was unchanged; its earlier results remain recorded there.
 - **Not done:** nothing has run on the physical OPPO, with a real model file, a live
   mail/WhatsApp/Google account or a real SMS corpus. Every phase stays **PARTIAL**.
-- **Review findings:** all fixed in code and covered by host tests; each still needs
+- **Earlier project review findings:** covered by host tests; each still needs
   its device or real-data check. DEVICE_FEASIBILITY.md → "Project review implementation" lists what changed
   and what remains to verify.
 - **Release and CI:** release shrinking and optional local signing are configured; GitHub Actions runs the repository checks. Hosted CI and physical release behavior remain unverified.
+
+The media review on 2026-11-17 found functional defects missed by the integration
+checks. Four interrupted fix branches are being completed sequentially; see the
+latest checkpoint in [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md). Passing
+builds are not evidence of successful playback, sharing, backup or sync on a phone.
+The current owner-selected target is a OnePlus 16; device checks remain NOT TESTED.
 
 ## Build and verify
 

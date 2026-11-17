@@ -89,7 +89,7 @@ fun DriveBackupScreen(app: HellFireApp) {
     Text("Daily Google Drive backup", style = MaterialTheme.typography.titleLarge)
     Text(if (enabled) "Daily backups enabled for $dailyAccount" else "Daily backups disabled")
     Text(status, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-    Text("After you enable backups, HellFire uploads an encrypted archive about every 24 hours over unmetered Wi-Fi, with sufficient battery and storage. Android/ColorOS may delay jobs. Backup now uses the same conditions. Registered originals are included and every archive is complete, so each one counts against your Drive storage.")
+    Text("After you enable backups, HellFire uploads an encrypted archive about every 24 hours over unmetered Wi-Fi, with sufficient battery and storage. Android/ColorOS may delay jobs. Backup now uses the same conditions. Registered originals are included and every archive is complete, so each one counts against your Drive storage. An item is marked backed up only after Google Drive confirms the uploaded archive's size and checksum.")
     Text("Keep the newest backups on Drive")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         for (option in listOf(3, 7, 14, 0)) FilterChip(selected = keep == option, enabled = !busy, onClick = {
@@ -176,7 +176,7 @@ fun DriveBackupScreen(app: HellFireApp) {
                     val file = File(app.noBackupFilesDir, "drive-restore-${UUID.randomUUID()}.hfb")
                     val extra = mutableListOf<File>()
                     try {
-                        withContext(Dispatchers.IO) {
+                        val report = withContext(Dispatchers.IO) {
                             DriveBackupWork.mutex.withLock {
                                 PortableBackup(app).checkRestoreAllowed()
                                 val coroutine = currentCoroutineContext()
@@ -194,11 +194,14 @@ fun DriveBackupScreen(app: HellFireApp) {
                                     val covered = PortableBackup(app).catalog(parent, password.copyOf())
                                     missing.removeAll(covered.filter { it.action == BackupAction.INCLUDE || it.action == BackupAction.DEDUPE }.map { it.contentHash }.toSet())
                                 }
-                                PortableBackup(app).restore(file, password, files.drop(1))
+                                val report = PortableBackup(app).restore(file, password, files.drop(1))
                                 files.drop(1).forEach { it.delete() }
+                                report
                             }
                         }
-                        message = "Backup authenticated and restored. Regrant permissions and reconnect accounts as needed."
+                        message = "Backup authenticated and restored (${report.restoredOriginals} originals)." +
+                            (if (report.missing.isEmpty()) "" else " ${report.missing.size} item(s) had no original in the archive and were restored as records marked missing.") +
+                            " Regrant permissions and reconnect accounts as needed."
                     } catch (e: CancellationException) { throw e }
                     catch (_: DriveReconnectRequired) { token = null; message = "Reconnect Google Drive and try restore again." }
                     catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); message = "Restore failed: check passphrase, empty local database, disconnected capture/accounts and free space. Existing local data retained." }

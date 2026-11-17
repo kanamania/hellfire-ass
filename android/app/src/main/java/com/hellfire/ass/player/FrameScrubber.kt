@@ -13,8 +13,13 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 
-/** Bounded in-memory frames for the seek bar. Extraction uses a streaming data source, not a plaintext file. */
+/**
+ * Bounded in-memory frames for the seek bar. Extraction uses a streaming data source, not a plaintext file.
+ * Bookmark thumbnails are small unencrypted JPEG frames in no-backup storage, one folder per item, removed
+ * with the bookmark or the item.
+ */
 object FrameScrubber {
+    private const val THUMBS = "player-thumbs"
     private val cache = BoundedCache<String, Bitmap>(8)
     private val gate = Mutex()
 
@@ -31,18 +36,46 @@ object FrameScrubber {
         }
     }
 
-    fun writeThumb(app: HellFireApp, bitmap: Bitmap, bookmarkId: String): String? = runCatching {
-        val dir = File(app.filesDir, "player-thumbs").apply { mkdirs() }
-        val relative = "player-thumbs/$bookmarkId.jpg"
-        File(dir, "$bookmarkId.jpg").outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 70, it) }
+    fun writeThumb(app: HellFireApp, bitmap: Bitmap, itemId: String, bookmarkId: String): String? = runCatching {
+        require(safe(itemId) && safe(bookmarkId))
+        val relative = "$THUMBS/$itemId/$bookmarkId.jpg"
+        val file = File(app.noBackupFilesDir, relative)
+        file.parentFile?.mkdirs()
+        file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 70, it) }
         relative
     }.getOrNull()
 
     fun thumbFile(app: HellFireApp, relative: String?): File? {
         if (relative.isNullOrBlank() || relative.contains("..")) return null
-        val file = File(app.filesDir, relative)
-        return file.takeIf { it.isFile && it.canonicalPath.startsWith(File(app.filesDir, "player-thumbs").canonicalPath) }
+        val file = File(app.noBackupFilesDir, relative)
+        return file.takeIf { it.isFile && it.canonicalPath.startsWith(base(app).canonicalPath + File.separator) }
     }
+
+    fun deleteThumb(app: HellFireApp, relative: String?) {
+        thumbFile(app, relative)?.delete()
+    }
+
+    fun deleteForItem(app: HellFireApp, itemId: String) {
+        if (!safe(itemId)) return
+        File(base(app), itemId).deleteRecursively()
+    }
+
+    /** Removes thumbnails written by earlier builds into backed-up app files. */
+    fun deleteLegacy(app: HellFireApp) {
+        File(app.filesDir, THUMBS).takeIf { it.exists() }?.deleteRecursively()
+    }
+
+    /** Drops thumbnail folders of items that were deleted by a path that does not call [deleteForItem]. */
+    suspend fun purgeOrphans(app: HellFireApp) = withContext(Dispatchers.IO) {
+        deleteLegacy(app)
+        base(app).listFiles()?.filter { it.isDirectory }?.forEach { dir ->
+            if (app.database.library().item(dir.name) == null) dir.deleteRecursively()
+        }
+    }
+
+    private fun base(app: HellFireApp) = File(app.noBackupFilesDir, THUMBS)
+
+    private fun safe(id: String) = id.isNotBlank() && id.none { it == '/' || it == '\\' } && id != "." && id != ".."
 
     private fun extract(app: HellFireApp, item: MediaItem, positionMs: Long): Bitmap? = runCatching {
         val retriever = MediaMetadataRetriever()

@@ -78,6 +78,7 @@ fun HomeScreen() {
                 onClick = { nav.push(Screen.Brief) })
         }
         FlowRow(Modifier.offset(y = (-6).dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            HfChip(com.hellfire.ass.ui.tr("Search"), { nav.push(com.hellfire.ass.library.LibraryRoutes.search()) })
             HfChip(com.hellfire.ass.ui.tr("Library"), { nav.push(com.hellfire.ass.library.LibraryRoutes.library()) })
             HfChip(com.hellfire.ass.ui.tr("Pictures"), { nav.push(com.hellfire.ass.library.LibraryRoutes.library(com.hellfire.ass.library.ContentKind.IMAGE)) })
             HfChip(com.hellfire.ass.ui.tr("Videos"), { nav.push(com.hellfire.ass.library.LibraryRoutes.library(com.hellfire.ass.library.ContentKind.VIDEO)) })
