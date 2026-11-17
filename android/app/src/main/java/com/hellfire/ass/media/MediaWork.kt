@@ -19,9 +19,11 @@ import kotlinx.coroutines.*
 import java.util.concurrent.TimeUnit
 
 object MediaWork {
-    private const val TAG = "analyze-media"
+    const val ANALYSIS = "analyze-media"
+    private const val TAG = ANALYSIS
     const val OCR_CHECKPOINT = 1
     suspend fun schedule(app: HellFireApp, id: String, followUp: Boolean = false, delaySeconds: Long = 0) = withContext(Dispatchers.IO) {
+        if (app.getSharedPreferences("media", 0).getBoolean("analysis_paused", false)) return@withContext
         WorkManager.getInstance(app).enqueueUniqueWork("analyze-media:$id", if (followUp) ExistingWorkPolicy.APPEND_OR_REPLACE else ExistingWorkPolicy.KEEP,
             OneTimeWorkRequestBuilder<MediaWorker>().setInputData(workDataOf("id" to id)).addTag(TAG)
                 .setInitialDelay(delaySeconds, TimeUnit.SECONDS)

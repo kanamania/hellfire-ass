@@ -78,11 +78,13 @@ object StatusReport {
         app.getSharedPreferences("media", 0).edit().putBoolean("analysis_paused", false).apply()
         app.database.jobs().resume(null, System.currentTimeMillis())
         MediaWork.recover(app)
+        com.hellfire.ass.intelligence.IntelligenceWork.schedule(app)
     }
 
     suspend fun retryFailures(app: HellFireApp) {
         app.database.jobs().retryFailed(null, System.currentTimeMillis())
-        app.database.media().unfinished().forEach { MediaWork.schedule(app, it.id, followUp = true) }
+        MediaWork.pump(app)
+        com.hellfire.ass.intelligence.IntelligenceWork.schedule(app)
     }
 
     suspend fun reindex(app: HellFireApp, ids: List<String>) {
