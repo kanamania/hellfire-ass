@@ -35,8 +35,10 @@ performance. Source worktrees were preserved during integration.
 |---|---|---|
 | Performance/media regression subset | PASS (host) | 49 tests, zero failures/errors/skips, including concurrent queue cap and media foundation/vault/speech/semantic tests |
 | Combined web API | PASS (host) | 24 tests against disposable `hellfire_test`, including news actions, encrypted chunks, version conflicts, quota checks and mirror-reset preservation |
-| Combined frontend typecheck | PASS (host) | `npm run typecheck`; no browser rendering claim |
-| Final integrated Android tests, lint and APK | PENDING | Updated after final combined verification |
+| Combined frontend typecheck / production build | PASS (host) | Pinned Node 24, `npm run typecheck` and `npm run build -- --webpack`; all 14 routes. Next emitted an existing security upgrade reminder; unchanged retry passed, no dependencies changed. No browser rendering claim |
+| Final integrated Android tests | PASS (host) | `:app:testDebugUnitTest --max-workers=1 -Dorg.gradle.jvmargs=-Xmx1536m --offline`: 428 total, 424 passed, 4 opt-in live-provider tests skipped, zero failures/errors |
+| Android lint | PASS (host) | `:app:lintDebug` with the same worker/heap limits; Android 10 compatibility guards and AndroidX Media3 opt-in contracts corrected without disabling checks |
+| APK packaging | PENDING | Updated after packaging from merged main |
 | Physical device | NOT TESTED | `adb devices -l` lists no connected devices; codecs, Keystore/native SQLCipher, actual inference, battery, thermals, permission flows and OEM behavior are not established by host tests |
 
 ## Adaptive performance — 2026-11-17

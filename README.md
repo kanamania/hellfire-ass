@@ -23,11 +23,11 @@ used to establish host results. No message has been sent and no gateway deployed
 - **Web access:** an optional read-only web copy (NestJS API, Postgres, Next.js site
   in `web/`) synced from the phone; see [Web access](#web-access-read-only-mirror).
   Local website: `https://hellfire.local`; not yet connected to a real phone.
-- **Earlier host checkpoint:** 309 Android unit tests (305 passed, 4 opt-in live AI
-  tests skipped, 0 failures), 23 relay tests, 6 WhatsApp Web worker tests and 11 web
-  API tests pass.
-  Lint and APK verification results are in
-  [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md).
+- **Current host checks:** 428 Android tests (424 passed, 4 opt-in live-provider
+  tests skipped), Android lint with zero errors, 24 web API tests, and frontend
+  typecheck/production build pass. Exact commands and artifact evidence are in
+  [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md). Relay/WhatsApp worker code
+  was unchanged; its earlier results remain recorded there.
 - **Not done:** nothing has run on the physical OPPO, with a real model file, a live
   mail/WhatsApp/Google account or a real SMS corpus. Every phase stays **PARTIAL**.
 - **Review findings:** all fixed in code and covered by host tests; each still needs
@@ -885,6 +885,12 @@ model succeeds in a device probe. Queue limits, thermal policy and cooperative
 yielding are host-tested; speed, memory, power and heat require the OPPO.
 
 ## Verification and change log
+
+- 2026-11-17, news/media/performance/universal drawer: consolidated the pending
+  feature branches on schema 19; added news Ask and scheduled notices; corrected
+  same-refresh clustering, drawer action priorities, player search/navigation,
+  thermal/queue policy, encrypted sync and backup/restore recovery. Full host
+  regression and lint pass; physical/device, provider and model checks remain open.
 
 Exact host results, artifact checksum and the final physical checklist are in
 [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md). Host tests use synthetic data,
