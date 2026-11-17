@@ -41,7 +41,7 @@ object ActionEngine {
             content.kind == ContentKind.LOCATION || "maps" in content.signals -> setOf("open_map", "directions", "navigate")
             else -> emptySet()
         }
-        return actions.distinctBy { it.type }.sortedByDescending { if (it.type in boost) it.priority + 100 else it.priority }
+        return actions.groupBy { it.type }.values.map { group -> group.maxBy { it.priority } }.sortedByDescending { if (it.type in boost) it.priority + 100 else it.priority }
     }
 
     fun mapUri(place: Place, query: String? = null): String? {
