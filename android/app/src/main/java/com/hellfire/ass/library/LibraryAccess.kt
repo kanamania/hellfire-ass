@@ -32,16 +32,18 @@ object LibraryAccess {
         )
     }
 
-    fun missing(context: Context): Array<String> {
-        val state = read(context)
+    fun missing(context: Context): Array<String> = missingFor(Build.VERSION.SDK_INT, read(context))
+
+    /** Permissions still worth requesting. Partial-selection access is offered only while full picture/video access is missing. */
+    fun missingFor(sdk: Int, state: LibraryAccessState): Array<String> {
         val out = mutableListOf<String>()
-        if (Build.VERSION.SDK_INT <= 32) {
+        if (sdk <= 32) {
             if (!state.images) out += Manifest.permission.READ_EXTERNAL_STORAGE
         } else {
             if (!state.imagesFull) out += Manifest.permission.READ_MEDIA_IMAGES
             if (!state.videosFull) out += Manifest.permission.READ_MEDIA_VIDEO
             if (!state.audio) out += Manifest.permission.READ_MEDIA_AUDIO
-            if (Build.VERSION.SDK_INT >= 34) out += Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+            if (sdk >= 34 && (!state.imagesFull || !state.videosFull)) out += Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
         }
         if (!state.location) out += Manifest.permission.ACCESS_MEDIA_LOCATION
         return out.distinct().toTypedArray()

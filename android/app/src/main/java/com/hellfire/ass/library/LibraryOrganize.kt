@@ -4,6 +4,9 @@ import org.json.JSONObject
 import java.util.UUID
 
 object LibraryOrganize {
+    /** The one adult root: seeded private and LOCAL_ONLY; classifier labels are filed under it. */
+    const val ADULT_ROOT = "Adult content"
+    const val USER_DESCRIPTION = "user_description"
     val DEFAULTS = listOf(
         "Personal photos", "Family and social events", "Travel", "Nature", "Animals", "Food", "Vehicles",
         "Work", "Technology", "Documents", "Screenshots", "Artwork", "Memes", "Entertainment", "Adult content", "Other",
@@ -11,12 +14,40 @@ object LibraryOrganize {
 
     suspend fun seedDefaults(dao: LibraryDao, now: Long) {
         DEFAULTS.forEach { name ->
-            if (dao.findCategory(null, name) == null) {
-                val private = name == "Adult content"
-                dao.insertCategory(MediaCategory(UUID.randomUUID().toString(), null, name, Origin.USER.name, private,
-                    if (private) CategoryPolicy.LOCAL_ONLY.name else CategoryPolicy.DEFAULT.name, null, now, now))
+            if (name == ADULT_ROOT) adultRoot(dao, now)
+            else if (dao.findCategory(null, name) == null) {
+                dao.insertCategory(MediaCategory(UUID.randomUUID().toString(), null, name, Origin.USER.name, false, CategoryPolicy.DEFAULT.name, null, now, now))
             }
         }
+    }
+
+    /**
+     * The canonical adult root, created private/LOCAL_ONLY when absent. A root named "Adult" made by older analysis builds is
+     * merged into it (links and children move, USER links win) and its children become private.
+     */
+    suspend fun adultRoot(dao: LibraryDao, now: Long): MediaCategory {
+        val root = dao.findCategory(null, ADULT_ROOT) ?: MediaCategory(UUID.randomUUID().toString(), null, ADULT_ROOT, Origin.USER.name, true,
+            CategoryPolicy.LOCAL_ONLY.name, null, now, now).also { dao.insertCategory(it) }
+        if (!root.isPrivate || root.policy != CategoryPolicy.LOCAL_ONLY.name)
+            dao.updateCategory(root.copy(isPrivate = true, policy = CategoryPolicy.LOCAL_ONLY.name, updatedAt = now))
+        dao.findCategory(null, "Adult")?.takeIf { it.id != root.id && it.origin == Origin.AI.name }?.let { legacy -> dao.mergeCategory(legacy.id, root.id, now) }
+        val all = dao.categoriesNow()
+        val descendants = subtree(all, listOf(root.id))
+        all.filter { it.id in descendants && (!it.isPrivate || it.policy != CategoryPolicy.LOCAL_ONLY.name) }
+            .forEach { dao.updateCategory(it.copy(isPrivate = true, policy = CategoryPolicy.LOCAL_ONLY.name, updatedAt = now)) }
+        return dao.category(root.id) ?: root
+    }
+
+    /** Ids of [rootId] and every live descendant. */
+    fun subtree(all: List<MediaCategory>, rootIds: Collection<String>): Set<String> {
+        val out = rootIds.toMutableSet()
+        var grew = true
+        while (grew) {
+            val next = all.filter { it.parentId in out && it.id !in out }.map { it.id }
+            grew = next.isNotEmpty()
+            out += next
+        }
+        return out
     }
 
     suspend fun createCategory(dao: LibraryDao, parentId: String?, name: String, isPrivate: Boolean, now: Long): MediaCategory? {
@@ -96,18 +127,34 @@ object LibraryOrganize {
 
     fun descriptionJson(text: String): String = JSONObject().put("description", text).toString()
 
+    fun descriptionId(itemId: String) = "$itemId:$USER_DESCRIPTION"
+
+    /**
+     * The user's description lives in its own analysis row (fixed id per item, analyzer [USER_DESCRIPTION]): new analysis runs
+     * never hide it, raw analysis rows and their search text stay untouched, and rebuildSearch re-indexes it from its text.
+     */
     suspend fun saveDescription(dao: LibraryDao, itemId: String, text: String, now: Long) {
-        val edited = descriptionJson(text)
-        val existing = dao.latestAny(itemId)
-        if (existing == null) {
-            val id = UUID.randomUUID().toString()
-            dao.saveAnalysis(MediaAnalysis(id, itemId, "user_description", "user", "0", 0, "COMPLETED", "{}", edited, text, null, now, now))
-            return
-        }
-        dao.editAnalysis(existing.id, edited, now)
-        dao.deleteSearch(existing.id)
-        if (text.isNotBlank()) dao.insertSearch(LibrarySearch(existing.id, itemId, "ANALYSIS", text))
+        dao.saveAnalysis(MediaAnalysis(descriptionId(itemId), itemId, USER_DESCRIPTION, "user", "0", 0, "COMPLETED", "{}",
+            descriptionJson(text), text, null, now, now))
     }
+
+    /** The current user description, including one saved by older builds as an edit on another analysis row. */
+    suspend fun description(dao: LibraryDao, itemId: String): String? =
+        dao.latestAnalysis(itemId, USER_DESCRIPTION)?.let { editedDescription(it.editedJson) ?: it.text }
+            ?: editedDescription(dao.latestEdited(itemId)?.editedJson)
+
+    /** Move [itemId] one place up, renumbering the whole collection so positions stay 0..n-1. */
+    suspend fun moveUp(dao: LibraryDao, collectionId: String, itemId: String): Boolean {
+        val ids = dao.membersNow(collectionId).map { it.id }.toMutableList()
+        val index = ids.indexOf(itemId)
+        if (index <= 0) return false
+        ids[index] = ids[index - 1]; ids[index - 1] = itemId
+        dao.reorder(collectionId, ids)
+        return true
+    }
+
+    /** Keep a picture out of the normal library list (tag [HIDDEN_TAG]); removing the tag shows it again. Nothing is deleted. */
+    suspend fun hide(dao: LibraryDao, itemId: String, now: Long) { dao.setTag(ItemTag(itemId, HIDDEN_TAG, Origin.USER.name, LinkState.ASSIGNED.name, now)) }
 
     private suspend fun descendant(dao: LibraryDao, id: String, ancestor: String): Boolean {
         var current = dao.category(id)?.parentId
