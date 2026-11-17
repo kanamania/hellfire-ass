@@ -77,9 +77,11 @@ class LocalModel(private val context: Context) {
     suspend fun generate(prompt: String, gpu: Boolean = false, backend: String? = null): ModelAnswer = withContext(Dispatchers.IO) {
         require(prompt.length <= 12_000) { "Input exceeds the local request limit" }
         ExecutionScheduler.noteWaiting(WorkPriority.INTERACTIVE)
+        var waiting = true
         try {
             mutex.withLock {
                 ExecutionScheduler.clearWaiting(WorkPriority.INTERACTIVE)
+                waiting = false
                 check(context.getSystemService(android.os.PowerManager::class.java).currentThermalStatus < android.os.PowerManager.THERMAL_STATUS_SEVERE) { "Device must cool before local inference" }
                 check(configured) { "No local model imported. Core capture and finance still work." }
                 val profile = OperatingProfile.of(DeviceProbe.signals(context).copy(foreground = true))
@@ -99,7 +101,7 @@ class LocalModel(private val context: Context) {
                 PerfLog.detail("inference_backend", used)
                 ModelAnswer(text, elapsed, Debug.getPss(), used)
             }
-        } finally { ExecutionScheduler.clearWaiting(WorkPriority.INTERACTIVE) }
+        } finally { if (waiting) ExecutionScheduler.clearWaiting(WorkPriority.INTERACTIVE) }
     }
 
     /** Loads each LiteRT backend once with a fixed probe prompt. Output text is discarded. */
@@ -107,6 +109,8 @@ class LocalModel(private val context: Context) {
         check(configured) { "No local model imported." }
         mutex.withLock {
             check(context.getSystemService(android.os.PowerManager::class.java).currentThermalStatus < android.os.PowerManager.THERMAL_STATUS_SEVERE) { "Device must cool before local inference" }
+            val profile = OperatingProfile.of(DeviceProbe.signals(context).copy(foreground = true))
+            releaseOthers("LANGUAGE", profile)
             val results = linkedMapOf<String, BackendMeasure>()
             for (name in DeviceProbe.litertBackends()) {
                 closeCached()

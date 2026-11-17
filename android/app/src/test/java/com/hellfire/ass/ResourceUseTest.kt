@@ -7,6 +7,9 @@ import androidx.work.Configuration
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.impl.WorkManagerImpl
+import com.hellfire.ass.media.MediaItem
+import com.hellfire.ass.media.MediaWork
+import com.hellfire.ass.data.SourceEvent
 import com.hellfire.ass.data.EventDatabase
 import com.hellfire.ass.memory.SemanticIndex
 import com.hellfire.ass.memory.SemanticIndexWork
@@ -76,6 +79,23 @@ class ResourceUseTest {
         assertTrue(work.constraints.requiresCharging())
         assertTrue(work.constraints.requiresBatteryNotLow())
         assertEquals(15 * 60_000L, work.periodicityInfo!!.repeatIntervalMillis)
+    }
+
+    @Test fun `concurrent media queue requests respect the shared job cap and retain the backlog`() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(context, EventDatabase::class.java).build()
+        val app = HellFireApp()
+        ReflectionHelpers.callInstanceMethod<Unit>(app, "attach", ClassParameter.from(Context::class.java, context))
+        ReflectionHelpers.setField(app, "database\$delegate", lazyOf(db))
+        try {
+            db.events().insertCaptured(SourceEvent("media-source", externalId = "media-source", packageName = "synthetic", occurredAt = 1, receivedAt = 1,
+                kind = "POSTED", payloadHash = "hash", encryptedPayload = byteArrayOf(1), contentAvailable = true, contentRedacted = false, securitySensitive = false))
+            repeat(25) { i -> db.media().insert(MediaItem("media-$i", "media-source", "clip", "audio/aac", "VOICE_NOTE", "hash-$i", 1, i.toLong(), null)) }
+            coroutineScope { repeat(25) { i -> launch(Dispatchers.Default) { MediaWork.queue(app, "media-$i") } } }
+            val scheduled = manager.getWorkInfosByTag("analyze-media").get()
+            assertEquals(20, scheduled.count { !it.state.isFinished })
+            assertEquals(25, db.media().unfinished().size)
+            assertTrue(scheduled.all { it.constraints.requiresBatteryNotLow() })
+        } finally { db.close() }
     }
 
     @Test fun `idle index does not initialize a native model`() = runBlocking {

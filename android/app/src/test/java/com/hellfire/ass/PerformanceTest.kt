@@ -15,7 +15,9 @@ class PerformanceTest {
     }
 
     @Test fun `profiles conserve under heat low battery or low memory and defer only when comfortable`() {
-        assertEquals(OperatingMode.CONSERVE, OperatingProfile.of(DeviceSignals(thermal = 4)).mode)
+        assertEquals(OperatingMode.CONSERVE, OperatingProfile.of(DeviceSignals(thermal = 3)).mode)
+        assertTrue(OperatingProfile.of(DeviceSignals(thermal = 3)).deferHeavy)
+        assertFalse(OperatingProfile.of(DeviceSignals(thermal = 3)).allowAccelerator)
         assertEquals(OperatingMode.CONSERVE, OperatingProfile.of(DeviceSignals(batteryPercent = 10)).mode)
         assertEquals(OperatingMode.CONSERVE, OperatingProfile.of(DeviceSignals(lowMemory = true)).mode)
         assertFalse(OperatingProfile.of(DeviceSignals(lowMemory = true)).reuseModels)
@@ -43,6 +45,17 @@ class PerformanceTest {
         assertFalse(ExecutionScheduler.shouldYield(WorkPriority.INTERACTIVE))
         ExecutionScheduler.clearWaiting(WorkPriority.INTERACTIVE)
         assertFalse(ExecutionScheduler.shouldYield(WorkPriority.DEFERRED))
+    }
+
+    @Test fun `one acquired or cancelled request does not hide another interactive waiter`() {
+        ExecutionScheduler.noteWaiting(WorkPriority.INTERACTIVE)
+        ExecutionScheduler.noteWaiting(WorkPriority.INTERACTIVE)
+        ExecutionScheduler.clearWaiting(WorkPriority.INTERACTIVE)
+        assertTrue(ExecutionScheduler.shouldYield(WorkPriority.DEFERRED))
+        assertEquals(setOf(WorkPriority.INTERACTIVE), ExecutionScheduler.waitingSnapshot())
+        ExecutionScheduler.clearWaiting(WorkPriority.INTERACTIVE)
+        assertFalse(ExecutionScheduler.shouldYield(WorkPriority.DEFERRED))
+        assertTrue(ExecutionScheduler.waitingSnapshot().isEmpty())
     }
 
     @Test fun `only one heavy runtime stays resident unless memory pressure clears the cache`() {
