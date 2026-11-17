@@ -54,7 +54,7 @@ object LibraryQuery {
         val statement = """
             SELECT m.* FROM media_item m
             LEFT JOIN playback_state p ON p.mediaId = m.id
-            WHERE m.state != 'DELETING' AND $kindSql
+            WHERE m.state NOT IN ('DELETING', 'SYNC_REMOVED') AND $kindSql
             AND (? = 0 OR m.favorite = 1)
             AND (? IS NULL OR EXISTS (SELECT 1 FROM media_item_category l WHERE l.itemId = m.id AND l.categoryId = ? AND l.state = 'ASSIGNED'))
             AND (? IS NULL OR EXISTS (SELECT 1 FROM media_item_tag t WHERE t.itemId = m.id AND t.tag = ? AND t.state = 'ASSIGNED'))
