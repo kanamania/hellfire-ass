@@ -251,6 +251,18 @@ describe('encrypted library', () => {
     const out = Buffer.concat([Buffer.from([1]), Buffer.from(iv), Buffer.from(ct)]);
     assert.equal(out.toString('hex'), '0101010101010101010101010125292b7958ae59fdb3115a6fabac8d5abbb6beb49657e7b10946f8f799');
   });
+
+  it('preserves encrypted library records and salt when the ordinary web mirror resets', async () => {
+    const before = (await phone('/api/library/state')).body;
+    await phone('/api/library/salt', { salt: Buffer.alloc(16, 7).toString('base64') });
+    const salt = (await phone('/api/library/state')).body.salt;
+    await phone('/api/sync/reset', {});
+    const after = (await phone('/api/library/state')).body;
+    assert.equal(after.epoch, before.epoch);
+    assert.equal(after.items, before.items);
+    assert.equal(after.salt, salt);
+    assert.equal(after.used, before.used);
+  });
 });
 
 function ownerPost(path: string, body: unknown) {
