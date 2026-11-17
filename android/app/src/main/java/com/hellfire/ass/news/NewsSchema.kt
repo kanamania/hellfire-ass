@@ -276,6 +276,8 @@ interface NewsDao {
     // --- Runtime queries (owned by the runtime branch; append below) -------------------------------------------
 
     // --- UI queries (owned by the UI branch; append below) ------------------------------------------------------
+    /** Owner grouping corrections (split or merge), for News health. */
+    @Query("SELECT COUNT(*) FROM news_feedback WHERE kind IN ('NOT_SAME_EVENT', 'SAME_EVENT')") suspend fun clusterCorrections(): Int
 
     // --- Sync queries (owned by the web/sync branch; append below) ----------------------------------------------
 }

@@ -13,6 +13,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <!-- News Intelligence: spoken briefings keep playing in the background only after an explicit Play. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <queries>
         <intent><action android:name="android.speech.RecognitionService" /></intent>
         <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
@@ -141,5 +143,8 @@
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_budget" />
         </receiver>
+        <!-- News Intelligence: text-to-speech briefing playback with a visible media notification (Pause/Resume, Next, Stop). -->
+        <service android:name=".news.NewsAudioService" android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
     </application>
 </manifest>

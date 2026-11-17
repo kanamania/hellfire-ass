@@ -47,6 +47,7 @@ enum class Screen {
     Accounts, Budgets, Transaction, Source, Task, Message, MediaItem,
     Reports, ReportMoney, ReportCategory, ReportAccounts, ReportStatement, ReportCapture, FixSms, ReportTasks, ReportMessages, ReportMedia, ReportAi,
     Brief, Waiting, People, Person, Debts, Bills, Templates, TemplateEdit, Review, Share, Reconcile, Language, Skills, Recovery, GuidedSetup, Privacy,
+    News, NewsReader, NewsStory, NewsSettings, NewsSources, NewsInterests, NewsHealth,
 }
 
 /** A pushed screen plus one string argument (an id, or an encoded filter). */
@@ -94,6 +95,12 @@ class Nav(private val stack: SnapshotStateList<Route>, private val tabState: Mut
                 "budgets" -> { tab(MainTab.Money); push(Screen.Budgets) }
                 else -> tab(MainTab.Money)
             }
+            "news" -> { tab(MainTab.Home); push(Screen.News)
+                when (parts.firstOrNull()) {
+                    "briefing" -> parts.getOrNull(1)?.let { push(Screen.NewsReader, it) }
+                    "story" -> parts.getOrNull(1)?.let { push(Screen.NewsStory, it) }
+                    "settings" -> push(Screen.NewsSettings)
+                } }
             "tasks" -> tab(MainTab.Tasks)
             "task" -> { tab(MainTab.Tasks); parts.firstOrNull()?.let { push(Screen.Task, it) } }
             "inbox" -> tab(MainTab.Inbox)

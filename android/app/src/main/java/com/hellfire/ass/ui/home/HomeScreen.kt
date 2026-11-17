@@ -77,6 +77,14 @@ fun HomeScreen() {
                 subtitle = brief?.headline ?: "Tasks, bills, replies and money in one place", icon = HfIcons.Bell, tone = Tone.Primary, chevron = true,
                 onClick = { nav.push(Screen.Brief) })
         }
+        val latestNews by remember {
+            com.hellfire.ass.ui.news.safeFlow(emptyList(), {}) { app.news.briefings(com.hellfire.ass.ui.news.NewsUi.allSlots, 1) }
+        }.collectAsStateWithLifecycle(emptyList())
+        ListCard {
+            val b = latestNews.firstOrNull()
+            ListRow(tr("News"), subtitle = b?.let { "${it.title} · ${com.hellfire.ass.ui.news.NewsUi.itemCount(it.itemsJson)} " + tr("stories") } ?: tr("Briefings from your news sources"),
+                icon = HfIcons.Bolt, tone = Tone.Info, chevron = true, onClick = { nav.push(Screen.News) })
+        }
         FlowRow(Modifier.offset(y = (-6).dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             HfChip(com.hellfire.ass.ui.tr("Record"), { nav.push(Screen.Recordings) })
             HfChip(com.hellfire.ass.ui.tr("Review"), { nav.push(Screen.Review) })

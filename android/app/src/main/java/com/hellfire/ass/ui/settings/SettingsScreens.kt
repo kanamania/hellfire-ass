@@ -148,6 +148,7 @@ fun SettingsHub() {
                 { env.actions.onAppLockChange(!env.permissions.appLockEnabled) }, Modifier.fillMaxWidth())
         }
         ListCard { ListRow(tr("Language"), subtitle = if (UiLanguage.code == "sw") "Kiswahili" else "English", chevron = true, onClick = { nav.push(Screen.Language) }) }
+        ListCard { ListRow(tr("News"), subtitle = tr("Briefings, sources, alerts and listening"), icon = HfIcons.Bolt, tone = Tone.Info, chevron = true, onClick = { nav.push(Screen.NewsSettings) }) }
         Group("Access") {
             ListRow(com.hellfire.ass.ui.tr("Permissions and capture"), subtitle = "${steps.count { it.on }} of ${steps.size} turned on", icon = HfIcons.Lock, chevron = true, onClick = { nav.push(Screen.Permissions) })
             ListDivider()
