@@ -468,65 +468,67 @@ object UiLabels {
         "Privacy settings could not be read. Nothing has changed." -> R.string.ui_eb5bb0e600
         "Loading privacy settings…" -> R.string.ui_9f2467da31
         "Retry" -> R.string.ui_942087cc2d
-        "Library" -> R.string.ui_dc20b3d5d2
-        "Pictures" -> R.string.ui_1e6245009d
-        "Videos" -> R.string.ui_c9a9639463
-        "Audio" -> R.string.ui_bc1b88907d
-        "Collections" -> R.string.ui_9f9feade76
-        "Favorites" -> R.string.ui_7a1f2a83ac
-        "Categories" -> R.string.ui_b8b1d894c6
-        "Duplicates" -> R.string.ui_93c28c3925
-        "Scan" -> R.string.ui_ea1c510d1d
-        "Add folder" -> R.string.ui_5bbfc5a69b
-        "Grid" -> R.string.ui_0d7d12ac62
-        "List" -> R.string.ui_6f202f54a7
-        "Newest" -> R.string.ui_d15efa178c
-        "Size" -> R.string.ui_1af8519073
-        "Recently played" -> R.string.ui_452ec9f553
-        "Managed sync" -> R.string.ui_66115948b1
-        "Not selected for sync" -> R.string.ui_d11d1aca95
-        "Not analysed yet" -> R.string.ui_0d41d27eca
+        "Player" -> R.string.ui_64aee8c6cb
+        "Unlock" -> R.string.ui_4ac709aa58
+        "Lock screen" -> R.string.ui_f59d9abe42
+        "Original is not available." -> R.string.ui_d47f85a04c
+        "Notifications are off, so lock-screen controls may be hidden by Android." -> R.string.ui_77d99701fc
+        "Thumbnail unavailable" -> R.string.ui_7f7739d908
+        "Pause" -> R.string.ui_858e4ba7a2
         "Play" -> R.string.ui_436e61016e
-        "Share with AI" -> R.string.ui_5b9aadad3f
-        "Reprocess" -> R.string.ui_55ecdf8652
-        "Original metadata" -> R.string.ui_d120fc6535
-        "AI metadata" -> R.string.ui_a7ed4b7a2e
-        "Your description" -> R.string.ui_bf3a2be349
-        "Similar" -> R.string.ui_3f63a3abbc
-        "Partial access" -> R.string.ui_50a206ca76
-        "Media access needed" -> R.string.ui_1b4c03a1d1
-        "Slideshow" -> R.string.ui_1d0c5be737
-        "Albums" -> R.string.ui_57bca6e1c6
-        "Playlists" -> R.string.ui_dcd0a4d2c6
-        "Private" -> R.string.ui_c63eb6720c
-        "Merge into" -> R.string.ui_6e69959866
-        "Exclude" -> R.string.ui_5b76f62e1b
-        "Assign" -> R.string.ui_8ece895c9b
-        "Tags" -> R.string.ui_1331275bc5
-        "Select" -> R.string.ui_2a78025de6
-        "Indexed only" -> R.string.ui_a74c5b7741
-        "Not backed up" -> R.string.ui_0f793aaea4
-        "Backed up" -> R.string.ui_2f2ccea17e
-        "Not queued" -> R.string.ui_7e52b62ffb
-        "Selected for sync" -> R.string.ui_44671d1d1a
-        "Compare pictures" -> R.string.ui_9bbe98c2ab
-        "New category" -> R.string.ui_1ab1e121c0
-        "Rename" -> R.string.ui_3064d79a29
-        "Remove tag" -> R.string.ui_488464ba45
-        "Queue processing" -> R.string.ui_52a8f32fd2
-        "Add to collection" -> R.string.ui_d0baec111c
-        "Mark favorite" -> R.string.ui_5bf24037c6
-        "Clear" -> R.string.ui_83b12c2216
-        "Load more" -> R.string.ui_ac8991ef01
-        "Missing" -> R.string.ui_6be36ca49e
-        "Permission revoked" -> R.string.ui_d101686dfb
-        "Changed" -> R.string.ui_2a6141e43b
-        "Available" -> R.string.ui_e674447337
-        "Sync on" -> R.string.ui_326bbeaa91
-        "Processing" -> R.string.ui_c8e3e92a62
-        "Backup" -> R.string.ui_838557924a
-        "Sort" -> R.string.ui_bec69036aa
-        "Filter" -> R.string.ui_638e249f4a
-        else -> null
-    }
-}
+        "Skip back" -> R.string.ui_2876c1f5c3
+        "Skip forward" -> R.string.ui_3284049794
+        "Previous" -> R.string.ui_a57b08a480
+        "Next" -> R.string.ui_1ff57a29d7
+        "Exit full screen" -> R.string.ui_897e0cf78b
+        "Full screen" -> R.string.ui_674fe2acd0
+        "Picture-in-picture" -> R.string.ui_3baa2d6ed4
+        "Speed" -> R.string.ui_c372fee9b4
+        "Shuffle" -> R.string.ui_317cb3a7ef
+        "Unfavorite" -> R.string.ui_5e87a7bd5a
+        "Favorite" -> R.string.ui_ea713ecd85
+        "Sleep timer" -> R.string.ui_336c84d8da
+        "End of item" -> R.string.ui_bfb99f7ddb
+        "Set A" -> R.string.ui_7781d909b9
+        "Set B" -> R.string.ui_bf8f310bda
+        "Clear loop" -> R.string.ui_9d10c311ca
+        "Save range" -> R.string.ui_67eaebc39f
+        "Previous chapter" -> R.string.ui_2bebdca31f
+        "Next chapter" -> R.string.ui_4344dde797
+        "Search in this item" -> R.string.ui_b318882ba8
+        "Indexed search" -> R.string.ui_bf1b7b8a4c
+        "Bookmark" -> R.string.ui_1bac400788
+        "Seek" -> R.string.ui_67ae3405bc
+        "Hide" -> R.string.ui_ac20a57bfd
+        "Delete" -> R.string.ui_e2d0a54968
+        "Convert to manual" -> R.string.ui_8bb41c4164
+        "Remove" -> R.string.ui_c3812fc4ac
+        "Transcript" -> R.string.ui_721164f0dc
+        "Copy" -> R.string.ui_e21f935f11
+        "Correct" -> R.string.ui_aca01a1a3a
+        "Playback history" -> R.string.ui_d34349bbcc
+        "No playback history yet." -> R.string.ui_5484a3a7f5
+        "Title" -> R.string.ui_7e8cd2056d
+        "Notes" -> R.string.ui_8a7525b149
+        "Save bookmark" -> R.string.ui_b63ed49a38
+        "Close" -> R.string.ui_7d9eb7acb1
+        "Volume" -> R.string.ui_b10fb966d7
+        "Brightness" -> R.string.ui_ec811d30a8
+        "No extra audio or subtitle tracks reported." -> R.string.ui_eeed1164fe
+        "Audio track" -> R.string.ui_e4a8479838
+        "Subtitles off" -> R.string.ui_6a5216300c
+        "No bookmarks or chapters yet." -> R.string.ui_b284a23c3c
+        "Open" -> R.string.ui_ed077f3d81
+        "System overlay is not available. Picture-in-picture is the supported floating player." -> R.string.ui_afd6047384
+        "Playback session could not start." -> R.string.ui_db9061fce2
+        "Storage permission was not granted. The external file was not opened." -> R.string.ui_fa1d54ecfb
+        "Picture-in-picture is not available on this device." -> R.string.ui_09da75e9c7
+        "Picture-in-picture was refused by this device. Playback continues in the app." -> R.string.ui_1198f84a2f
+        "Volume control was refused by this device." -> R.string.ui_e14509c412
+        "Waveform not available for this file. Playback can still continue." -> R.string.ui_554d3009ce
+        "No indexed match. Analysis was not started." -> R.string.ui_ca416eb41e
+        "This file cannot be played on this device. The codec or container is not supported. The original was not modified." -> R.string.ui_c730e1984e
+        "The original could not be read. Nothing was written out as a decrypted file." -> R.string.ui_b84bfebce5
+        "Playback failed. The original was not modified." -> R.string.ui_2cb0daa2e0
+        "This item is not audio or video." -> R.string.ui_1a00dd5a8a
+        "This external item has no content URI." -> R.string.ui_f0828a29ee
