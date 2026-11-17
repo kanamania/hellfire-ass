@@ -142,8 +142,8 @@ class MediaFoundationTest {
         assertEquals("later", jobs.claim("token-5", 1_000)!!.id)
         assertNull(jobs.claim("token-6", 2_000))
         assertEquals(1, jobs.retryFailed(null, 3_000))
-        assertEquals(1, jobs.pause(null, 3_001)); assertNull(jobs.claim("token-7", 3_002))
-        assertEquals(1, jobs.resume(null, 3_003)); assertEquals("j2", jobs.claim("token-8", 3_004)!!.id)
+        assertEquals(2, jobs.pause(null, 3_001)); assertNull(jobs.claim("token-7", 3_002))
+        assertEquals(1, jobs.resume("j2", 3_003)); assertEquals("j2", jobs.claim("token-8", 3_004)!!.id)
         jobs.enqueue(ProcessingJob("again", "SCENES", "m", priority = JobPriority.USER_REQUESTED, createdAt = 5, updatedAt = 3_005))
         assertEquals(JobState.PENDING.name to JobPriority.USER_REQUESTED, jobs.job("j1")!!.let { it.state to it.priority })
     }
