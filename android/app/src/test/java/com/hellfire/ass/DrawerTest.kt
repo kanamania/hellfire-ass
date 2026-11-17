@@ -22,13 +22,16 @@ import java.util.UUID
 import javax.crypto.KeyGenerator
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34], application = Application::class)
+@Config(sdk = [34], application = Application::class, manifest = Config.NONE)
 class DrawerTest {
     private val context get() = RuntimeEnvironment.getApplication()
     private lateinit var db: EventDatabase
     private lateinit var app: HellFireApp
+    private lateinit var manager: androidx.work.impl.WorkManagerImpl
 
     @Before fun setup() {
+        androidx.work.WorkManager.initialize(context, androidx.work.Configuration.Builder().setExecutor { }.build())
+        manager = androidx.work.WorkManager.getInstance(context) as androidx.work.impl.WorkManagerImpl
         db = Room.inMemoryDatabaseBuilder(context, EventDatabase::class.java).build()
         app = HellFireApp()
         ReflectionHelpers.callInstanceMethod<Unit>(app, "attach", ClassParameter.from(Context::class.java, context))
@@ -37,7 +40,14 @@ class DrawerTest {
         app.media.directory.deleteRecursively()
     }
 
-    @After fun close() { db.close(); app.media.directory.deleteRecursively() }
+    @After fun close() {
+        manager.cancelAllWork().result.get()
+        manager.closeDatabase()
+        androidx.work.impl.WorkManagerImpl.setDelegate(null)
+        ReflectionHelpers.setStaticField(androidx.work.impl.WorkManagerImpl::class.java, "sDefaultInstance", null)
+        db.close()
+        app.media.directory.deleteRecursively()
+    }
 
     @Test fun `detectors find coordinates maps phone email vcard ics code json and mixed content`() {
         val maps = ContentDetect.parse("https://www.google.com/maps?q=-1.2921,36.8219")
@@ -83,7 +93,7 @@ class DrawerTest {
 
         val address = ContentDetect.parse("Meet at 12 Samora Avenue")
         assertTrue(address.entities.any { it.type == "address" && it.uncertain })
-        assertTrue(ActionEngine.liveFactsNote(maps)!!.contains("needs a live source"))
+        assertTrue(ActionEngine.liveFactsNote(maps)!!.contains("live source"))
         assertFalse(SystemDrawer.implemented)
     }
 

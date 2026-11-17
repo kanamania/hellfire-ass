@@ -220,7 +220,7 @@ interface JobDao {
     @Query("UPDATE processing_job SET state = 'PENDING', claimToken = NULL WHERE type = :type AND state IN ('PREPARING', 'PROCESSING', 'INDEXING')") suspend fun recoverType(type: String): Int
     @Query("UPDATE processing_job SET state = 'PAUSED', updatedAt = :now WHERE state IN ('PENDING', 'RETRY_PENDING') AND (:id IS NULL OR id = :id)") suspend fun pause(id: String?, now: Long): Int
     @Query("UPDATE processing_job SET state = 'PENDING', updatedAt = :now WHERE state = 'PAUSED' AND (:id IS NULL OR id = :id)") suspend fun resume(id: String?, now: Long): Int
-    @Query("UPDATE processing_job SET state = 'PENDING', attempts = 0, error = NULL, notBefore = 0, updatedAt = :now WHERE state = 'FAILED' AND (:id IS NULL OR id = :id)") suspend fun retryFailed(id: String?, now: Long): Int
+    @Query("UPDATE processing_job SET state = 'PENDING', attempts = 0, error = NULL, notBefore = 0, updatedAt = :now WHERE state IN ('FAILED', 'RETRY_PENDING') AND (:id IS NULL OR id = :id)") suspend fun retryFailed(id: String?, now: Long): Int
     @Query("UPDATE processing_job SET priority = :priority, updatedAt = :now WHERE id = :id") suspend fun prioritize(id: String, priority: Int, now: Long)
     @Query("DELETE FROM processing_job WHERE id = :id") suspend fun delete(id: String)
     @Query("SELECT * FROM processing_job WHERE state != 'COMPLETED' ORDER BY CASE WHEN state IN ('PREPARING','PROCESSING','INDEXING') THEN 0 ELSE 1 END, priority, createdAt LIMIT :limit")

@@ -8,7 +8,7 @@ import com.hellfire.ass.data.SearchText
  */
 class LibraryTimestampSearch(private val dao: LibraryDao) {
     suspend fun searchWithin(itemId: String, query: String): List<TimestampHit> {
-        val fts = SearchText.query(query) ?: return emptyList()
+        val fts = SearchText.anyQuery(listOf(query)) ?: return emptyList()
         return runCatching { dao.timestampSearch(fts, itemId, 40) }.getOrDefault(emptyList())
             .sortedBy { it.startMs }
     }

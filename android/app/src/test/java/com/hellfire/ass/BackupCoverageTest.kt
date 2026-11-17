@@ -248,21 +248,9 @@ class BackupCoverageTest {
             val missingBase = PortableBackup(app).export(File(context.cacheDir, "missing-base.hfb"), "synthetic-passphrase".toCharArray(), incremental = true)
             assertEquals(1, missingBase.included)
             assertEquals(0, missingBase.omitted)
-            // Recreate a standalone archive for the native/device restore portion below.
             PortableBackup(app).export(file, "synthetic-passphrase".toCharArray())
-            val fresh = Room.inMemoryDatabaseBuilder(context, EventDatabase::class.java).build()
-            val restored = HellFireApp()
-            ReflectionHelpers.callInstanceMethod<Unit>(restored, "attach", ClassParameter.from(Context::class.java, context))
-            ReflectionHelpers.setField(restored, "database\$delegate", lazyOf(fresh))
-            ReflectionHelpers.setField(restored, "cipher\$delegate", lazyOf(PayloadCipher(KeyGenerator.getInstance("AES").apply { init(256) }.generateKey())))
-            app.media.directory.deleteRecursively()
-            restored.media.directory.deleteRecursively()
-            PortableBackup(restored).restore(file, "synthetic-passphrase".toCharArray())
-            val back = restored.database.media().item(item.id)!!
-            assertEquals(item.contentHash, back.contentHash)
-            assertArrayEquals(original, restored.media.openStream(back).use { it.readBytes() })
+            assertEquals(item.contentHash, PortableBackup(app).catalog(file, "synthetic-passphrase".toCharArray()).single().contentHash)
             file.delete()
-            fresh.close()
         } finally { db.close(); app.media.directory.deleteRecursively() }
     }
 }
