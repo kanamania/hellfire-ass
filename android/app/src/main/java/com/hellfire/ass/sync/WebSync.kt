@@ -58,8 +58,8 @@ object WebSync {
         Kind("message", "SELECT m.id, m.channel, m.threadKey, m.sender, m.recipient, m.subject, m.body, m.occurredAt, m.direction " +
             "FROM communication_message m JOIN source_event e ON e.id = m.sourceId WHERE e.securitySensitive = 0", "occurredAt"),
         Kind("draft", "SELECT id, channel, recipient, subject, body, createdAt, state, approvedAt, error FROM outbound_draft", "createdAt"),
-        Kind("media", "SELECT id, name, mime, kind, size, importedAt, recordedAt, state, summary, summaryState, durationMs FROM media_item", "importedAt"),
-        Kind("transcript", "SELECT id, mediaId, startMs, endMs, speaker, text FROM transcript_segment", "startMs"),
+        Kind("media", "SELECT id, name, mime, kind, size, importedAt, recordedAt, state, summary, summaryState, durationMs FROM media_item WHERE storage = 'MANAGED'", "importedAt"),
+        Kind("transcript", "SELECT id, mediaId, startMs, endMs, speaker, text FROM transcript_segment WHERE mediaId IN (SELECT id FROM media_item WHERE storage = 'MANAGED')", "startMs"),
         Kind("memory", "SELECT m.id, m.subject, m.text, m.kind, m.confidence, m.createdAt, m.confirmedAt " +
             "FROM memory_item m JOIN source_event e ON e.id = m.sourceId WHERE m.state = 'ACTIVE' AND e.securitySensitive = 0", "createdAt"),
         // SMS, plus notifications the classifier saw as messages or payments. payloadHash makes content changes visible to

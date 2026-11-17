@@ -174,7 +174,7 @@ class ReviewImprovementsTest {
             old.execSQL("INSERT INTO person_alias VALUES ('tel:712345678','Asha',1)")
         }
         val migrated = Room.databaseBuilder(context, EventDatabase::class.java, name).addMigrations(*EventDatabase.ALL_MIGRATIONS).build()
-        try { assertEquals(17, migrated.openHelper.writableDatabase.version); assertEquals("n:asha", migrated.people().all().single().personKey); assertEquals("lookup", migrated.contacts().all().single().lookupKey) }
+        try { assertEquals(18, migrated.openHelper.writableDatabase.version); assertEquals("n:asha", migrated.people().all().single().personKey); assertEquals("lookup", migrated.contacts().all().single().lookupKey) }
         finally { migrated.close(); context.deleteDatabase(name) }
     }
     @Test fun `Kiswahili resources follow the explicit language choice`() {

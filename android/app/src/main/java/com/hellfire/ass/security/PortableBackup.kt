@@ -126,6 +126,7 @@ class PortableBackup(private val app: HellFireApp) {
                 }
             }
             com.hellfire.ass.contacts.ContactSchema.backfill(db.openHelper.writableDatabase)
+            com.hellfire.ass.library.LibrarySchema.backfill(db.openHelper.writableDatabase)
             if (verifyOnly) {
                 app.getSharedPreferences("ui", 0).edit().putLong("last_backup_verified_at", System.currentTimeMillis()).apply()
                 return@withContext
@@ -150,7 +151,7 @@ class PortableBackup(private val app: HellFireApp) {
                 committed = true
                 app.secrets.remove("restore-journal")
             } }
-            runCatching { com.hellfire.ass.tasks.TaskScheduler.restore(app); MediaWork.recover(app); com.hellfire.ass.data.SearchBackfill.reset(app) }
+            runCatching { com.hellfire.ass.tasks.TaskScheduler.restore(app); MediaWork.recover(app); com.hellfire.ass.data.SearchBackfill.reset(app); app.database.library().rebuildSearch() }
         } finally {
             password.fill('\u0000')
             runCatching { staging?.close() }
@@ -169,7 +170,8 @@ class PortableBackup(private val app: HellFireApp) {
     private suspend fun requireEmpty() {
         val db = app.database.openHelper.writableDatabase
         for (table in listOf("source_event", "finance_account", "ledger_entry", "assistant_task", "outbound_draft", "memory_item", "media_item",
-            "action_template", "debt_entry", "person_alias", "person_contact", "ai_skill", "skill_use", "memory_revision")) {
+            "action_template", "debt_entry", "person_alias", "person_contact", "ai_skill", "skill_use", "memory_revision",
+            "media_category", "media_collection", "inbox_item")) {
             db.query("SELECT COUNT(*) FROM $table").use { require(it.moveToFirst() && it.getLong(0) == 0L) { "Restore requires an empty local database; existing data is never replaced" } }
         }
     }

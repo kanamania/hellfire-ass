@@ -46,7 +46,7 @@ class DailyOutputsTest {
             db.templates().save(ActionTemplate("t", "Month start", TemplateItems.encode(listOf(TemplateItem("EXPENSE", "Rent", 500_000))), 1, 1))
             db.debts().insert(DebtEntry("d", "Juma", 50_000, "LENT", "", 1, null, null, 1))
             db.people().save(PersonAlias("tel:712345678", "Juma", 1))
-            assertEquals(17, db.openHelper.writableDatabase.version)
+            assertEquals(18, db.openHelper.writableDatabase.version)
             assertEquals("Month start", db.templates().all().single().name)
             assertEquals(listOf("action_template", "debt_entry", "person_alias"), BackupTables.tablesFor(14) - BackupTables.tablesFor(13).toSet())
             assertEquals(BackupTables.tablesFor(16) - "person_contact", BackupTables.tablesFor(14))

@@ -51,7 +51,7 @@ object FolderImport {
         val batch = entries.sortedByDescending { it.modified }.take(MAX_IMPORTS_PER_SCAN)
         for (entry in batch) {
             currentCoroutineContext().ensureActive()
-            app.media.import(DocumentsContract.buildDocumentUriUsingTree(tree, entry.id), "CALL_RECORDING")
+            app.media.capture(DocumentsContract.buildDocumentUriUsingTree(tree, entry.id), com.hellfire.ass.library.CaptureOrigin.CALL_FOLDER, syncEnabled = false, kind = "CALL_RECORDING")
             seen.put(entry.id, entry.signature)
             config.put("seen", seen); app.secrets.save("media-folder", config)
         }

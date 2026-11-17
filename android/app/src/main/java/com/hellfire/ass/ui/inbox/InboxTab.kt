@@ -65,7 +65,7 @@ fun InboxTab() {
             fun via(accountId: String) = accountLabels[accountId]?.takeIf { accountLabels.size > 1 }?.let { " · $it" }.orEmpty()
             val review = candidates.map { it.sourceId }.toSet()
             val taskReview = tasks.filter { it.state == "REVIEW" }.map { it.sourceId }.toSet()
-            val sourceIds = messages.map { it.sourceId } + events.map { it.event.id } + media.map { it.sourceId }
+            val sourceIds = messages.map { it.sourceId } + events.map { it.event.id } + media.mapNotNull { it.sourceId }
             val evidenceGroups = sourceIds.chunked(500).flatMap { db.finances().evidenceGroups(it) }.associate { it.sourceId to it.groupId }
             val posted = sourceIds.chunked(500).flatMap { db.finances().evidenced(it) }.toSet()
             fun tag(sourceId: String): Pair<String?, Tone> = when (sourceId) {
@@ -100,7 +100,7 @@ fun InboxTab() {
                 InboxItem("media:${m.id}", if (m.kind == "CALL_RECORDING") Channel.CALL else Channel.OTHER, m.name,
                     when (m.kind) { "CALL_RECORDING" -> "Call recording"; "IN_PERSON_AUDIO" -> "Conversation"; "VOICE_NOTE" -> "Voice note"; else -> m.kind.lowercase() } +
                         " · " + when (m.state) { "RETAINED" -> "kept encrypted"; "QUEUED", "PROCESSING" -> "analysing"; "DONE", "INDEXED" -> "analysed"; else -> m.state.lowercase() },
-                    m.recordedAt ?: m.importedAt, m.sourceId,
+                    m.recordedAt ?: m.importedAt, m.sourceId.orEmpty(),
                     when (m.summaryState) { "INFERENCE_REVIEW" -> "Summary ready"; else -> null }, Tone.Warning, Route(Screen.MediaItem, m.id))
             }
             (fromMessages + fromEvents + fromMedia).sortedByDescending { it.at }
