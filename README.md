@@ -24,8 +24,8 @@ used to establish host results. No message has been sent and no gateway deployed
   in `web/`) synced from the phone; see [Web access](#web-access-read-only-mirror).
   Local website: `https://hellfire.local`; not yet connected to a real phone.
 - **Current host checks:** 428 Android tests (424 passed, 4 opt-in live-provider
-  tests skipped), Android lint with zero errors, 24 web API tests, and frontend
-  typecheck/production build pass. Exact commands and artifact evidence are in
+  tests skipped), Android lint with zero errors, 24 web API tests, frontend
+  typecheck/production build, and verified debug/signed-release APKs pass. Exact commands and artifact evidence are in
   [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md). Relay/WhatsApp worker code
   was unchanged; its earlier results remain recorded there.
 - **Not done:** nothing has run on the physical OPPO, with a real model file, a live
@@ -758,7 +758,7 @@ and two systemd units in `web/systemd/`. Both Node services listen on 127.0.0.1 
    user, owning databases `hellfire` and `hellfire_test`, connecting over the Unix socket
    with peer authentication, so there is no database password:
    `sudo -u postgres psql -c "CREATE ROLE dev LOGIN" -c "CREATE DATABASE hellfire OWNER dev" -c "CREATE DATABASE hellfire_test OWNER dev"`.
-   The API creates its two tables on start.
+   The API creates its tables and indexes on start.
 2. Build: `cd web/api && npm ci && npm run build`, and `cd web/frontend && npm ci && npm run build`.
 3. Password hash: `cd web/api && npm run hash-password`, type the site password (12+
    characters), press Ctrl-D. The output starts with `scrypt:`.

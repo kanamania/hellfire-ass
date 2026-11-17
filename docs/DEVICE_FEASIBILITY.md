@@ -8,7 +8,9 @@ written; the newest checkpoint has the current ones.
 
 Room/backup schema **19** preserves the media-library schema 18 and adds news.
 Pending news and seven media implementations were consolidated with adaptive
-performance. Source worktrees were preserved during integration.
+performance. Original source snapshots are preserved in Git history. After the source audit
+and merges, all extra worktrees and merged branches were removed; only `main`
+and the primary checkout remain.
 
 - News: feeds/source settings, clustering/ranking, versioned stories, scheduled
   briefings, quiet-hour alerts, reader/TTS controls, saved/followed stories, Ask
@@ -39,7 +41,7 @@ performance. Source worktrees were preserved during integration.
 | Final integrated Android tests | PASS (host) | `:app:testDebugUnitTest --max-workers=1 -Dorg.gradle.jvmargs=-Xmx1536m --offline`: 428 total, 424 passed, 4 opt-in live-provider tests skipped, zero failures/errors |
 | Android lint | PASS (host) | `:app:lintDebug` with the same worker/heap limits; 0 errors, 345 warnings, 8 hints. Android 10 compatibility guards and AndroidX Media3 opt-in contracts corrected without disabling checks |
 | Debug APK | PASS | Built from merged `main`, 0.9.0/code 9, 163,583,413 bytes; v2 signature and `zipalign -c -P 16 4` pass. SHA-256 `1a44746303a6b66dd96b8533b2d67b6fe5ce1fe17dcd12efe4bcd0ed84940898` |
-| Signed release APK | PENDING | Final packaging/verification running from merged main |
+| Signed release APK | PASS | `:app:assembleDebug :app:assembleRelease --max-workers=1` with 1.5 GiB Gradle heap, offline. Release 0.9.0/code 9, 108,529,220 bytes; v2 signature and `zipalign -c -P 16 4` pass. SHA-256 `245e511fbd6b5e67a308d7dce4d5dfcfbceab4117ca6ca22417c55239c1885cc` |
 | Local web services | PASS | Main API and default Turbopack frontend builds passed. Local systemd API/frontend restarted and active; HTTPS login 200, signed-out News 307, unauthenticated library API 401. No signed-in browser/rendering test |
 | Physical device | NOT TESTED | `adb devices -l` lists no connected devices; codecs, Keystore/native SQLCipher, actual inference, battery, thermals, permission flows and OEM behavior are not established by host tests |
 
