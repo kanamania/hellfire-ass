@@ -17,9 +17,10 @@ fun ReconcilePage() {
     val nav = LocalNav.current
     val accounts by remember { app.database.finances().accounts() }.collectAsStateWithLifecycle(emptyList())
     val candidates by remember { app.database.finances().candidates() }.collectAsStateWithLifecycle(emptyList())
-    var accountId by remember { mutableStateOf<String?>(null) }
-    var observed by remember { mutableStateOf("") }
-    var at by remember { mutableStateOf(TaskTime.display(System.currentTimeMillis())) }
+    var savedAccount by rememberPrivateDraft("reconcile-account")
+    val accountId = savedAccount.ifEmpty { null }
+    var observed by rememberPrivateDraft("reconcile-observed")
+    var at by rememberPrivateDraft("reconcile-time", TaskTime.display(System.currentTimeMillis()))
     var ledger by remember { mutableStateOf<Long?>(null) }
     var receipts by remember { mutableStateOf<List<com.hellfire.ass.finance.ProviderBalance>>(emptyList()) }
     var refresh by remember { mutableIntStateOf(0) }
@@ -35,7 +36,7 @@ fun ReconcilePage() {
     PushedPage(com.hellfire.ass.ui.tr("Check account balance"), breadcrumb = "Money") {
         message?.let { Banner(it) }
         if (accounts.isEmpty()) { Note("Add an account in Money › Accounts first."); SecondaryButton("Add account", { nav.push(Screen.Accounts, "add") }) }
-        ChoiceField("Account", account, accounts, { it.label }, { accountId = it.id })
+        ChoiceField("Account", account, accounts, { it.label }, { savedAccount = it.id })
         HfTextField(observed, { observed = it.filter { c -> c.isDigit() || c == '-' } }, "Balance shown by your provider · TZS", number = true)
         DateTimeField(at, { at = it }, "Balance as of · East Africa Time")
         ledger?.let { balance ->

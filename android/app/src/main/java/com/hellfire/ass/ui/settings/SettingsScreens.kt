@@ -71,7 +71,7 @@ private fun SetupRows(steps: List<SetupStep>) {
                 if (s.on) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Icon(HfIcons.Check, null, Modifier.size(16.dp), tint = Hf.colors.success)
                     Text(com.hellfire.ass.ui.tr("On"), style = Hf.type.label.copy(fontWeight = FontWeight.SemiBold), color = Hf.colors.success)
-                } else Box(Modifier.heightIn(min = 36.dp).clip(CircleShape).background(Hf.colors.primaryContainer).clickableRow(s.turnOn).padding(horizontal = 14.dp),
+                } else Box(Modifier.heightIn(min = 48.dp).clip(CircleShape).background(Hf.colors.primaryContainer).clickableRow(s.turnOn).padding(horizontal = 14.dp),
                     contentAlignment = Alignment.Center) {
                     Text(com.hellfire.ass.ui.tr("Turn on"), style = Hf.type.label.copy(fontWeight = FontWeight.SemiBold), color = Hf.colors.primaryPressed)
                 }
@@ -123,6 +123,12 @@ fun SettingsHub() {
     val lastBackup = maxOf(app.getSharedPreferences("ui", 0).getLong("last_backup_at", 0),
         app.getSharedPreferences(com.hellfire.ass.security.DriveBackupWork.CONFIG, 0).getLong("last-success", 0))
     PushedPage(com.hellfire.ass.ui.tr("Settings")) {
+        SectionCard(tr("Everyday help")) {
+            ListRow(tr("Guided setup"), subtitle = tr("Choose what you want HellFire to help with"), chevron = true, onClick = { nav.push(Screen.GuidedSetup) })
+            ListRow(tr("Needs attention"), subtitle = tr("Capture, connections, models and backups"), chevron = true, onClick = { nav.push(Screen.Recovery) })
+            ListRow(tr("AI skills"), subtitle = tr("Learned rules, reasons and usage history"), chevron = true, onClick = { nav.push(Screen.Skills) })
+            ListRow(tr("Privacy and storage"), subtitle = tr("Where your data lives"), chevron = true, onClick = { nav.push(Screen.Privacy) })
+        }
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Hf.colors.surfaceDark).padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Hf.colors.surfaceDarkInner), contentAlignment = Alignment.Center) {
@@ -131,7 +137,7 @@ fun SettingsHub() {
             Column(Modifier.weight(1f)) {
                 Text(com.hellfire.ass.ui.tr("Private by default"), style = Hf.type.rowTitle, color = Hf.colors.onSurfaceDark)
                 Text((if (ai?.cloudEnabled == true) "Everything is encrypted on this phone. Cloud AI is on for text you send from Ask."
-                    else "Everything is encrypted on this phone. Nothing goes to the cloud unless you turn it on.") +
+                    else "Personal records are encrypted on this phone. Review optional copies and destinations in Privacy and storage.") +
                     if (webAccess) " Web access copies selected records to your own server." else "", style = Hf.type.rowSubtitle, color = Hf.colors.mutedOnDark)
             }
         }

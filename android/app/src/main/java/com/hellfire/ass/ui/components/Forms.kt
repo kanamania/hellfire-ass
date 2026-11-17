@@ -126,7 +126,7 @@ fun <T> Dropdown(label: String, value: T, options: List<T>, display: (T) -> Stri
                 .clickable(role = Role.DropdownList) { open = true }.padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(label, style = Hf.type.label, color = Hf.colors.muted)
+            Text(com.hellfire.ass.ui.tr(label), style = Hf.type.label, color = Hf.colors.muted)
             Text(display(value), style = Hf.type.label.copy(fontWeight = FontWeight.SemiBold), color = Hf.colors.onSurface, maxLines = 1)
             Icon(HfIcons.ChevronDown, null, Modifier.size(14.dp), tint = Hf.colors.muted)
         }
@@ -149,9 +149,9 @@ fun <T> ChoiceField(label: String, value: T?, options: List<T>, display: (T) -> 
                 .background(Hf.colors.surface).clickable(role = Role.DropdownList) { open = true }
                 .padding(horizontal = 14.dp, vertical = 8.dp),
         ) {
-            Text(label, style = Hf.type.caption.copy(fontWeight = FontWeight.Normal), color = Hf.colors.muted)
+            Text(com.hellfire.ass.ui.tr(label), style = Hf.type.caption.copy(fontWeight = FontWeight.Normal), color = Hf.colors.muted)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(value?.let(display) ?: placeholder, Modifier.weight(1f), style = Hf.type.body,
+                Text(value?.let(display) ?: com.hellfire.ass.ui.tr(placeholder), Modifier.weight(1f), style = Hf.type.body,
                     color = if (value == null) Hf.colors.muted else Hf.colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Icon(HfIcons.ChevronDown, null, Modifier.size(16.dp), tint = Hf.colors.muted)
             }

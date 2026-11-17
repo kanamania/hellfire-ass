@@ -1,8 +1,76 @@
 # HellFire Ass — implementation and feasibility
 
-Latest update: 2026-11-16 (project review implementation, directly below). Earlier
+Latest update: 2026-11-17 (everyday reliability and AI skills, directly below). Earlier
 checkpoints keep the test counts and APK checksums that were true when they were
 written; the newest checkpoint has the current ones.
+
+## Everyday reliability and AI skills — 2026-11-17
+
+Version **0.9.0** (code 9), Room/backup schema **17**. Owner authorized the eight
+follow-up improvements, editable learned AI skills with reasons/usage history,
+and selectable local models from reliable published sources.
+
+- Skills are typed guidance/payment-default/false-task/false-payment rules, stored
+  with creation reason, source, status and revision. Normal use proposes rules;
+  explicit approval enables them. New advice creates a pending update, and approving
+  it disables the older active rule for the same trigger. They do not execute tools,
+  post money, grant permissions or authorize sends.
+- Usage records count actual applications, deduplicate repeated application to the
+  same item/revision, and link to captured evidence. Counts do not establish that
+  a model obeyed guidance. Old application records are excluded from AI retrieval.
+  Deleting a skill removes its use log; original source evidence remains.
+- Schema 16 → 17 adds skills, usage and memory correction history. Backups preserve
+  the new records, still accept schemas 8 and 10–16, and reset restored active skills
+  to pending. Skills are excluded from the existing web-copy allowlist.
+- Private encrypted drafts cover memory/reconciliation/source notes/shares/skill
+  editing. Shared text plus derived records commit atomically; per-file progress
+  survives a failed import, with media hash deduplication. Temporary Android file
+  access can expire and require re-sharing. Shared reminders stay in review.
+- Guided goal-based setup is resumable. Recovery consolidates actual permission,
+  capture/queue, connection, model/media, web and backup states and repair links.
+  Permissions enabled is never presented as proof of delivery. Privacy/storage
+  distinguishes phone data from optional web/Drive/cloud destinations.
+- Memory search/filter/paging reaches beyond 50 entries; earlier corrected text is
+  available through revision history, not presented as the current fact.
+- Finance comparisons retain filters and show deterministic changes/contributors;
+  monthly budget variance covers all accounts and clarifies unsupported scopes.
+  Contributors are not claimed to prove causes.
+- Added English/Kiswahili labels for new workflows/common errors, polite status
+  announcements, larger permission targets and adaptable bottom navigation.
+  Advanced descriptions/diagnostics can remain English; device accessibility remains
+  NOT TESTED.
+- The curated catalog has Gemma 4 E2B/E4B, Qwen3 0.6B, multilingual Whisper Base/Small,
+  and Google's MediaPipe USE text embedder. Published revisions, byte sizes, hashes
+  and licenses/source links are visible. No arbitrary local model ID/URL is accepted.
+  Download integrity and a real runtime load gate replacement; previous models remain
+  on failure. Advanced local-file imports remain, including compatible speaker ONNX.
+
+Publisher evidence checked 2026-11-17: Hugging Face repository metadata for
+[Qwen3](https://huggingface.co/litert-community/Qwen3-0.6B),
+[Gemma 4 E4B](https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm),
+[whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp), and
+[Google MediaPipe's text embedder](https://ai.google.dev/edge/mediapipe/solutions/text/text_embedder).
+The 6,120,274-byte version-1 Google file was streamed only to compute the pinned
+SHA-256; no inference was run. Other new model files were not downloaded. Synthetic
+bytes test transfer integrity; real model/runtime and physical performance checks
+remain NOT TESTED. Selecting a published format does not prove device compatibility.
+
+| Check | Result |
+|---|---|
+| Android unit tests (`:app:testDebugUnitTest`, 1 worker, 1.5 GB heap) | PASS: 309 total, 305 passed, 4 opt-in live AI tests skipped, 0 failures/errors |
+| Android lint (`:app:lintDebug`) | PASS: 0 errors, 288 warnings, 6 hints |
+| Debug APK (`apksigner verify`, `zipalign -c -P 16 4`) | PASS: 0.9.0/code 9, 151,308,801 bytes; v2 signature and alignment verify. SHA-256 `4b19a221f1a812ca635fb1b860a8da7513b615791c608e9a5326cf9755fb79e2` |
+| Signed release APK (same checks) | PASS: 0.9.0/code 9, 104,713,756 bytes; v2 signature and alignment verify. SHA-256 `56895b23853b673083bfcbd8e63a0ac11c7b3323a58b9926b02157f17bd61af1` |
+| Phone, TalkBack, large text, voice, actual model loads, live accounts, real corpus | NOT TESTED |
+| Hosted GitHub CI | NOT TESTED |
+
+Final phone checks: upgrade populated encrypted v16 data; rotate/unlock/relaunch
+private drafts; fail and resume a multi-file share; approve/edit/disable/delete a
+learned skill and inspect its use history; verify sender/account separation; download,
+pause/resume/switch/remove models under memory pressure; verify model-load rejection
+retains the previous file; test English/Kiswahili, TalkBack and large text; export,
+verify and restore a synthetic v17 backup on a separate empty install. Test actual
+permissions and overnight behavior only on the connected owner-authorized phone.
 
 ## Project review implementation — 2026-11-16
 

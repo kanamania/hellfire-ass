@@ -17,6 +17,7 @@ import kotlinx.coroutines.*
 @Composable
 fun ReviewPage() {
     val app = LocalEnv.current.app
+    val skillCount by remember { app.database.skills().pendingCount() }.collectAsStateWithLifecycle(0)
     val nav = LocalNav.current
     val scope = rememberCoroutineScope()
     val payments by remember { app.database.finances().candidates() }.collectAsStateWithLifecycle(emptyList())
@@ -27,7 +28,7 @@ fun ReviewPage() {
     val nightly by remember { app.database.tasks().reviews() }.collectAsStateWithLifecycle(emptyList())
     val proposed = tasks.filter { it.state == "REVIEW" }
     val pendingDrafts = drafts.filter { it.state == "DRAFT" }
-    val total = payments.size + proposed.size + pendingDrafts.size
+    val total = payments.size + proposed.size + pendingDrafts.size + skillCount
     var reviewed by rememberSaveable { mutableIntStateOf(0) }
     var paymentId by rememberSaveable { mutableStateOf<String?>(null) }
     val payment = payments.firstOrNull { it.id == paymentId }
@@ -55,13 +56,17 @@ fun ReviewPage() {
                 Text(next.title, color = Hf.colors.onSurface)
                 Note("Suggested: ${Fmt.full(next.dueAt)}")
                 PrimaryButton(com.hellfire.ass.ui.tr("Review task"), { task = TaskDraft.of(next) })
-                QuietButton(com.hellfire.ass.ui.tr("Not a task"), { scope.launch { withContext(Dispatchers.IO) { com.hellfire.ass.tasks.TaskScheduler.action(app, next.id, "REJECTED") }; reviewed++ } })
+                QuietButton(com.hellfire.ass.ui.tr("Not a task"), { scope.launch { withContext(Dispatchers.IO) { com.hellfire.ass.tasks.TaskScheduler.action(app, next.id, "REJECTED"); app.skills.feedbackFor(app, "IGNORE_TASK", next.sourceId, "You rejected this task in Daily review. Review this rule before using it.") }; reviewed++ } })
             }
             pendingDrafts.isNotEmpty() -> SectionCard(com.hellfire.ass.ui.tr("Next · reply")) {
                 val next = pendingDrafts.minBy { it.createdAt }
                 Text("To ${next.recipient}", color = Hf.colors.onSurface)
                 Note(next.body.take(400))
                 PrimaryButton(com.hellfire.ass.ui.tr("Review reply in Inbox"), { nav.tab(MainTab.Inbox, "draft:${next.id}") })
+            }
+            skillCount > 0 -> SectionCard(tr("Review AI skills")) {
+                Note(tr("Learned from your corrections") + " · $skillCount")
+                PrimaryButton(tr("Review AI skills"), { nav.push(Screen.Skills) })
             }
             else -> SectionCard(com.hellfire.ass.ui.tr("You're caught up")) { Note(com.hellfire.ass.ui.tr("There are no payments, task proposals or drafts waiting for review.")) }
         }

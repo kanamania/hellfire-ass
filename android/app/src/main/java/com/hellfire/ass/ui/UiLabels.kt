@@ -314,6 +314,160 @@ object UiLabels {
         "Save speaker label" -> R.string.ui_888a6a9cae
         "Export decrypted original…" -> R.string.ui_8ce17446ec
         "Delete original and transcript…" -> R.string.ui_6538629498
+        "AI skills" -> R.string.ui_4131792896
+        "Add skill" -> R.string.ui_bc4db5d337
+        "Edit skill" -> R.string.ui_20da5974bc
+        "Remove skill" -> R.string.ui_a8597db6f2
+        "Remove skill?" -> R.string.ui_c07faeaa90
+        "Why created" -> R.string.ui_d59b5e97bf
+        "When it applies" -> R.string.ui_d18ee16647
+        "Original evidence" -> R.string.ui_af537a5b7c
+        "Approve and enable" -> R.string.ui_1e5f0e76e7
+        "Disable" -> R.string.ui_b7e3e4aa42
+        "Usage history" -> R.string.ui_460d21da0f
+        "This skill has not been used." -> R.string.ui_65df5e8dd2
+        "Open where used" -> R.string.ui_4ec96d2f03
+        "Load older uses" -> R.string.ui_9b5fbc2474
+        "Load more skills" -> R.string.ui_45d1a34591
+        "Search skills" -> R.string.ui_76c02b7edd
+        "Skill name" -> R.string.ui_0fbb6f49b8
+        "Skill type" -> R.string.ui_bbdc102cf9
+        "Related words or topic" -> R.string.ui_73dca86695
+        "What AI should learn" -> R.string.ui_5519d0b203
+        "Reason" -> R.string.ui_f81ab834de
+        "Save and enable" -> R.string.ui_a6f9121ea2
+        "Exact text to recognize" -> R.string.ui_e633f7da3f
+        "Use sender or merchant from" -> R.string.ui_4803a67097
+        "Everyday help" -> R.string.ui_2fc06a820b
+        "Guided setup" -> R.string.ui_8ef7823ca8
+        "Needs attention" -> R.string.ui_c1ebc78178
+        "Privacy and storage" -> R.string.ui_ad8428d836
+        "Choose what you want HellFire to help with" -> R.string.ui_dfca12ea3c
+        "Capture, connections, models and backups" -> R.string.ui_927bffdac1
+        "Learned rules, reasons and usage history" -> R.string.ui_ffaec44b07
+        "Where your data lives" -> R.string.ui_594b837d22
+        "Track spending" -> R.string.ui_938c65250f
+        "Remember conversations" -> R.string.ui_534f1fbf20
+        "Manage commitments" -> R.string.ui_fabb14f177
+        "Choose a starting goal. You can add the other features later." -> R.string.ui_2e59be2356
+        "permissions enabled" -> R.string.ui_0f62f89379
+        "Enabled" -> R.string.ui_92c1cdfdf4
+        "Not enabled" -> R.string.ui_2b0e804836
+        "Needs your permission" -> R.string.ui_e92292cdda
+        "Open setup" -> R.string.ui_06f1795b3e
+        "Add an account" -> R.string.ui_e9cd49a1ea
+        "Choose speech and language models" -> R.string.ui_afff2826a8
+        "Check it works" -> R.string.ui_2249f06fd3
+        "Open capture checks" -> R.string.ui_453769ff02
+        "Connections and recovery" -> R.string.ui_fae2176e6d
+        "Continue to HellFire" -> R.string.ui_27cb7a4bbd
+        "Finish setup later" -> R.string.ui_cb75f40522
+        "Your goal is saved. Resume from Settings › Guided setup." -> R.string.ui_7930f26852
+        "Capture and permissions" -> R.string.ui_04ac3ae673
+        "No delivery observed yet" -> R.string.ui_3d0c373340
+        "No queued events" -> R.string.ui_61ad4c6b4a
+        "Open permissions and capture" -> R.string.ui_53b18f56c1
+        "Retry failed processing" -> R.string.ui_de2167ec77
+        "Connections" -> R.string.ui_dc27311748
+        "No connection results recorded. Optional accounts can be configured below." -> R.string.ui_982891b385
+        "Models and recordings" -> R.string.ui_188947216a
+        "No model download status recorded" -> R.string.ui_f1d7b951c4
+        "recordings need attention" -> R.string.ui_151dfa41b4
+        "Choose models" -> R.string.ui_4cded1a3ac
+        "Backup and storage" -> R.string.ui_63c55b3a22
+        "free on this device" -> R.string.ui_539c7230a9
+        "Open backup and verification" -> R.string.ui_353a35bf2f
+        "Original media" -> R.string.ui_c02afc1705
+        "Database" -> R.string.ui_fa7fe67124
+        "Free space" -> R.string.ui_64cd989efc
+        "Manage recordings" -> R.string.ui_e17e251762
+        "Manage memory" -> R.string.ui_0e62689615
+        "Manage AI skills" -> R.string.ui_231a352f9c
+        "Outside this phone" -> R.string.ui_cd5990faeb
+        "Web copy" -> R.string.ui_b88f1c1c7d
+        "Enabled. Selected records are readable on your server." -> R.string.ui_ef300be237
+        "Sync is off. An earlier server copy may still exist until you delete it." -> R.string.ui_92b543463e
+        "Review or delete web copy" -> R.string.ui_3fe71c22cd
+        "Drive backup" -> R.string.ui_e2f9f063d4
+        "Enabled. Passphrase-encrypted archives are uploaded to your Google Drive." -> R.string.ui_54d40cbf32
+        "Automatic Drive backup is off. Previously exported or uploaded archives may still exist." -> R.string.ui_57a5446077
+        "Manage backup archives" -> R.string.ui_663a4d4795
+        "Enabled for text you explicitly submit with a cloud model. Inspect your text before sending." -> R.string.ui_fa7053a6ea
+        "Off. Local answers do not use a cloud fallback." -> R.string.ui_d6d46ab953
+        "Manage cloud AI" -> R.string.ui_55b3c01f53
+        "Model catalog" -> R.string.ui_1b43e2d030
+        "Model" -> R.string.ui_5e2c614c23
+        "Choose a compatible format from a trusted publisher. No model name or download URL needs typing." -> R.string.ui_4d342fc3e4
+        "Publisher and model details" -> R.string.ui_21822f8003
+        "Download and use selected model" -> R.string.ui_8904d029a9
+        "Pause download" -> R.string.ui_13bbdede66
+        "Pause Gemma download" -> R.string.ui_4be2334779
+        "Install published Gemma update" -> R.string.ui_89d9aa25f5
+        "Check Gemma updates" -> R.string.ui_14ea131735
+        "Not installed" -> R.string.ui_d177cdc09a
+        "Imported model" -> R.string.ui_79532e47d2
+        "Search memory" -> R.string.ui_2ef51f84fc
+        "Load older memories" -> R.string.ui_e153865a35
+        "Save with provenance" -> R.string.ui_bf01a79e61
+        "Could not save. Check storage and try again." -> R.string.ui_5207b583f0
+        "Skill settings saved." -> R.string.ui_abfdc338b7
+        "Draft could not be saved. Keep this screen open and check free storage." -> R.string.ui_fc755767f6
+        "Draft could not be opened. Check storage and device unlock." -> R.string.ui_5cd2821676
+        "Remove authentication content." -> R.string.ui_a386fb65bc
+        "Remove authentication content from this skill." -> R.string.ui_20f3482084
+        "Remove authentication content before saving." -> R.string.ui_f140542e3c
+        "Correction saved; the original source stays available." -> R.string.ui_b6d7a77f54
+        "Shared content saved locally." -> R.string.ui_9e70db9e4f
+        "Skills guide suggestions and local answers. They cannot send messages, post money or grant permissions." -> R.string.ui_3c4bf29b19
+        "Everyday corrections create suggestions for review. Only active skills affect future decisions." -> R.string.ui_2bf9445a71
+        "No skills yet. Add one, or review suggestions after correcting a payment, task or memory." -> R.string.ui_e63bdb19a9
+        "This removes the skill and its usage history. Original evidence stays saved." -> R.string.ui_d8a8ef7420
+        "Saved records stay on the phone. Retry capture or analysis here; sending always requires its separate approval." -> R.string.ui_32db5b80cb
+        "Permission enabled is not proof of delivery. Receive a real notification or SMS, then check Capture status and its saved source. Test recording and reminder delivery on this phone." -> R.string.ui_185ae26f81
+        "Captured sources, memories, skills and usage history are stored in the encrypted database. Originals and private drafts are encrypted locally." -> R.string.ui_e24a009c9b
+        "Model weights and app code are separate from personal records. Original recordings remain until you explicitly delete them." -> R.string.ui_845737ba44
+        "Turning a connection off does not erase copies already exported. Deletion must be requested in the relevant destination." -> R.string.ui_289403e4a5
+        "Downloads wait for Wi-Fi and adequate battery/storage. Size and SHA-256 are checked, then the runtime loads the file before installation. Existing models remain until replacement succeeds." -> R.string.ui_69aecf26c6
+        "Connections, models, backups and recovery" -> R.string.ui_b843ba2b33
+        "Needs review" -> R.string.ui_07297fa94a
+        "Disabled" -> R.string.ui_75081b593d
+        "Personal guidance" -> R.string.ui_4e64d26458
+        "Payment choices" -> R.string.ui_baaf7cc51f
+        "Repeated false task" -> R.string.ui_c2c5eeaa19
+        "Repeated false payment" -> R.string.ui_949ef2618f
+        "Status" -> R.string.ui_920e413c7d
+        "Revision" -> R.string.ui_2e516d68f4
+        "Uses" -> R.string.ui_9e6151acb0
+        "Updated" -> R.string.ui_3a5ecca188
+        "Language model" -> R.string.ui_fd1c91bdd0
+        "Speech model" -> R.string.ui_b2f052de67
+        "Meaning search" -> R.string.ui_352d069b82
+        "Choose" -> R.string.ui_c7f937836f
+        "All meaningful topic words must match. Skills cannot override source facts." -> R.string.ui_e08cbb5672
+        "Exact repeated text from the original source app" -> R.string.ui_3e15db6f20
+        "This exact wording will not create the same task or payment suggestion again." -> R.string.ui_fdcda827b6
+        "Choose a real reviewed or pending payment to identify the sender/merchant. The skill suggests choices; you still confirm each payment." -> R.string.ui_03eadbed8c
+        "You chose Remember my account and category after reviewing a payment." -> R.string.ui_29970408cb
+        "You confirmed this account/category while reviewing a payment. Review before applying to later matches." -> R.string.ui_6ae97e82c4
+        "You marked this captured item as not a payment. An exact-match rule can avoid repeating this false suggestion." -> R.string.ui_e92877010a
+        "You marked this proposal as not a task. Review this exact-match rule before using it." -> R.string.ui_efcb92495a
+        "You rejected this task in Daily review. Review this rule before using it." -> R.string.ui_2d591076f6
+        "You corrected this memory. Review whether the correction should guide future related answers." -> R.string.ui_17152bd73e
+        "You saved this source excerpt for future reference. Review whether it should guide related answers." -> R.string.ui_ecdea8e09e
+        "Review AI skills" -> R.string.ui_71e88d68b5
+        "Learned from your corrections" -> R.string.ui_2e15a130e9
+        "Refresh status" -> R.string.ui_442c4b8939
+        "Account unavailable" -> R.string.ui_7283040535
+        "Earlier versions" -> R.string.ui_401dc1a55c
+        "Choose meaningful topic words." -> R.string.ui_b7c60e8681
+        "Choose an existing account." -> R.string.ui_4aae80751d
+        "Could not save the complete share. Already saved items are retained; retry resumes this share and skips completed files. Re-share files if Android access expired." -> R.string.ui_a4861b29ef
+        "Check file access and storage." -> R.string.ui_bbace8ab59
+        "Processing scheduled; check the updated queue. No messages were sent." -> R.string.ui_3c7092c624
+        "Could not schedule processing. Saved records are retained." -> R.string.ui_24b595f85f
+        "Privacy settings could not be read. Nothing has changed." -> R.string.ui_eb5bb0e600
+        "Loading privacy settings…" -> R.string.ui_9f2467da31
+        "Retry" -> R.string.ui_942087cc2d
         else -> null
     }
 }

@@ -37,6 +37,8 @@ data class EvidenceGroup(val sourceId: String, val groupId: String)
 
 @Dao
 interface FinanceDao {
+    @Query("SELECT * FROM finance_candidate ORDER BY occurredAt DESC LIMIT 100") fun recentCandidates(): kotlinx.coroutines.flow.Flow<List<FinanceCandidate>>
+
     @Query("SELECT DISTINCT e.sourceId, l.groupId FROM ledger_evidence e JOIN ledger_entry l ON l.id = e.ledgerId WHERE e.sourceId IN (:ids) AND l.reversesId IS NULL")
     suspend fun evidenceGroups(ids: List<String>): List<EvidenceGroup>
 

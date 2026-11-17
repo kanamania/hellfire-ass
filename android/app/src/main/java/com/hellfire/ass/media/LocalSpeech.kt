@@ -22,6 +22,7 @@ class LocalSpeech(private val app: HellFireApp) {
                 } }
                 require(part.length() > 1024) { "Select a compatible multilingual whisper.cpp GGML model" }
                 java.nio.file.Files.move(part.toPath(), model.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                app.getSharedPreferences("model-catalog", 0).edit().remove("installed-SPEECH").apply()
             } finally { part.delete() }
         }
     }

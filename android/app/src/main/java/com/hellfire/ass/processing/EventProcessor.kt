@@ -36,9 +36,9 @@ class EventProcessor(private val dao: EventDao,
                                     (0 until array.length()).map { array.optString(it) }
                                 }.orEmpty() }.joinToString("\n")
                             val label = RuleClassifier.classify(text, fields.optJSONArray("category")?.optString(0), event.source)
-                            if (label == "FINANCE_CANDIDATE") collectFinance(event.id, event.occurredAt,
+                            if (event.source !in setOf("owner_share", "owner_memory", "owner_skill_use") && label == "FINANCE_CANDIDATE") collectFinance(event.id, event.occurredAt,
                                 fields.optJSONArray("sender_hint")?.join(" ").orEmpty() + " " + event.packageName, text.replace("\"", ""))
-                            if (label != "PROMOTION_CANDIDATE" && label != "SYSTEM" &&
+                            if (event.source !in setOf("owner_share", "owner_memory", "owner_skill_use") && label != "PROMOTION_CANDIDATE" && label != "SYSTEM" &&
                                 payload.optJSONObject("provenance")?.optString("recorded_time_known") != "false" && event.source != "media_summary")
                                 collectTask(event.id, event.occurredAt, text, event.kind == "OUTGOING")
                             label

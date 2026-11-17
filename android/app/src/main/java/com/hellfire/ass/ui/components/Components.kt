@@ -28,6 +28,8 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -172,11 +174,11 @@ fun Banner(text: String, tone: Tone = Tone.Success, icon: ImageVector? = HfIcons
     val (bg, fg) = tone.colors()
     val textColor = if (tone == Tone.Success) Hf.colors.onSuccessContainer else fg
     Row(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(bg).padding(horizontal = 14.dp, vertical = 12.dp),
+        modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite }.clip(RoundedCornerShape(16.dp)).background(bg).padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (icon != null) Icon(icon, null, Modifier.size(18.dp), tint = textColor)
-        Text(text, style = Hf.type.body.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium), color = textColor)
+        Text(com.hellfire.ass.ui.tr(text), style = Hf.type.body.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium), color = textColor)
     }
 }
 

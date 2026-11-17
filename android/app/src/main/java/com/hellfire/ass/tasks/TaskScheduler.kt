@@ -75,6 +75,7 @@ object TaskScheduler {
     suspend fun collect(app: HellFireApp, sourceId: String, sourceTime: Long, text: String, outgoing: Boolean) {
         val now = System.currentTimeMillis()
         TaskExtractor.extract(text, sourceTime, outgoing)?.takeIf { TaskTime.reviewable(it.dueAt, now) }?.let { candidate ->
+            if (app.skills.ignoredFor(app, "IGNORE_TASK", sourceId, text)) return
             app.database.tasks().insert(AssistantTask(com.hellfire.ass.events.NotificationNormalizer.sha256("task:$sourceId"), sourceId,
                 candidate.title, candidate.dueAt, party = candidate.party, evidence = candidate.evidence, createdAt = now, updatedAt = now,
                 direction = directionFor(candidate.party)))

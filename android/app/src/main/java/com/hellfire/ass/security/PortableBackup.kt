@@ -169,7 +169,7 @@ class PortableBackup(private val app: HellFireApp) {
     private suspend fun requireEmpty() {
         val db = app.database.openHelper.writableDatabase
         for (table in listOf("source_event", "finance_account", "ledger_entry", "assistant_task", "outbound_draft", "memory_item", "media_item",
-            "action_template", "debt_entry", "person_alias", "person_contact")) {
+            "action_template", "debt_entry", "person_alias", "person_contact", "ai_skill", "skill_use", "memory_revision")) {
             db.query("SELECT COUNT(*) FROM $table").use { require(it.moveToFirst() && it.getLong(0) == 0L) { "Restore requires an empty local database; existing data is never replaced" } }
         }
     }

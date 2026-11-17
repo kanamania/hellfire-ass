@@ -1,8 +1,10 @@
 package com.hellfire.ass.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.room.withTransaction
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.hellfire.ass.memory.MemoryItem
@@ -16,10 +18,10 @@ import java.util.UUID
 fun SourceActions(sourceId: String, evidence: String) {
     val app = LocalEnv.current.app
     val scope = rememberCoroutineScope()
-    var note by remember { mutableStateOf(false) }
-    var task by remember { mutableStateOf(false) }
-    var subject by remember { mutableStateOf("") }
-    var quote by remember { mutableStateOf(evidence.take(4000)) }
+    var note by rememberSaveable { mutableStateOf(false) }
+    var task by rememberSaveable { mutableStateOf(false) }
+    var subject by rememberPrivateDraft("source-$sourceId-subject")
+    var quote by rememberPrivateDraft("source-$sourceId-quote", evidence.take(4000))
     var result by remember { mutableStateOf<String?>(null) }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         SecondaryButton(com.hellfire.ass.ui.tr("Remember this"), { note = true })
@@ -40,7 +42,11 @@ fun SourceActions(sourceId: String, evidence: String) {
                     val safeSubject = com.hellfire.ass.events.NotificationNormalizer.normalize(com.hellfire.ass.events.NotificationSnapshot("subject", "owner.memory", 0, 0, fields = mapOf("text" to listOf(subject))), app.packageName)!!
                     require(!safeSubject.securitySensitive && !safeSubject.contentRedacted) { "Remove authentication codes from the subject." }
                     val now = System.currentTimeMillis()
+                    app.database.withTransaction {
                     app.database.memory().insert(MemoryItem(UUID.randomUUID().toString(), sourceId, subject.trim().take(200), quote, "SOURCE_EXCERPT", 100, now, now))
+                    if (subject.trim().length >= 2) app.skills.suggest("Remember: $subject", "GUIDANCE", subject.trim().take(200), quote, "You saved this source excerpt for future reference. Review whether it should guide related answers.", sourceId)
+                    }
+                    PrivateDrafts.write(app, "source-$sourceId-subject", ""); PrivateDrafts.write(app, "source-$sourceId-quote", "")
                 }; note = false; "Memory saved with its source." }
                 catch (e: CancellationException) { throw e }
                 catch (_: Exception) { "Not saved. Select an exact excerpt and enter a subject." }

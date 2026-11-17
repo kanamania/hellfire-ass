@@ -10,7 +10,7 @@ The owner authorized the remaining phases on 2026-11-13 and kept physical device
 testing until last. No phone, live account, personal corpus or model weights were
 used to establish host results. No message has been sent and no gateway deployed.
 
-## Current status — 2026-11-16
+## Current status — 2026-11-17
 
 - **Code:** `main` holds every merged slice: Phases 0–6 software, the UI redesign
   (five tabs, reports, 13 home screen widgets), money entry pickers, fingerprint app
@@ -18,11 +18,11 @@ used to establish host results. No message has been sent and no gateway deployed
   the 2026-11-16 review findings, **multiple email inboxes and WhatsApp accounts**, and
   **Gemma 4 E2B downloaded on first launch with on-device update checks**, and the
   **daily brief, waiting-on, people, debts, bills, expiry reminders, capture alerts and
-  action templates**, plus **local contact picking and person links**. Debug/release version **0.8.0** (code 8), Room schema **16**, backup schema **16**.
+  action templates**, plus **local contact picking and person links**. Debug/release version **0.9.0** (code 9), Room schema **17**, backup schema **17**.
 - **Web access:** an optional read-only web copy (NestJS API, Postgres, Next.js site
   in `web/`) synced from the phone; see [Web access](#web-access-read-only-mirror).
   Local website: `https://hellfire.local`; not yet connected to a real phone.
-- **Host checks on this tree:** 286 Android unit tests (282 passed, 4 opt-in live AI
+- **Host checks on this tree:** 309 Android unit tests (305 passed, 4 opt-in live AI
   tests skipped, 0 failures), 23 relay tests, 6 WhatsApp Web worker tests and 11 web
   API tests pass.
   Lint and APK verification results are in
@@ -46,7 +46,7 @@ cd android
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'
 ```
 
-APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.8.0**.
+APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.9.0**.
 It is built for **arm64-v8a only** (since 2026-11-16), Android API 29+, target/compile
 API 36. Confirm the phone ABI before installation (`adb shell getprop ro.product.cpu.abilist`);
 32-bit-only phones and x86_64 PC emulators cannot run it. Size: about 151 MB
@@ -69,6 +69,80 @@ Model compatibility is established only by running the selected file on the phon
 The app remains one Gradle module with bounded Kotlin packages. Core capture,
 ledger calculations, task review and bundled OCR work without account credentials.
 Optional network adapters remain disconnected until configured by the owner.
+
+## Everyday improvements and AI skills (0.9.0)
+
+**Settings › AI skills** shows pending, active and disabled personal decision rules.
+Corrections during payment review, rejecting false task/payment suggestions, and
+saving/correcting source memories can propose skills. Proposals need approval;
+choosing **Remember my account and category** is explicit approval for that default.
+Existing encrypted review defaults migrate when next used.
+
+- Add a guidance skill with a topic and instruction, or choose a real recent payment
+  to set sender/merchant account/category suggestions. Edit, disable, re-enable or
+  remove any skill. Removal also removes its usage log; original source records stay.
+- Each skill shows why it was created, evidence, revision, status, use count and
+  paged history linking to where it was used. Counts reflect guidance supplied to
+  local Ask, defaults applied to review, or a repeated false candidate suppressed.
+  They do **not** prove a language model followed an instruction or authorize actions.
+- New advice about the same trigger is a separate pending update. Enabling it
+  disables the previous active rule for that trigger. Past usage keeps its revision.
+  Disabled rules are not automatically reactivated by repeated observations.
+- Guidance matches all meaningful topic words. False-candidate rules are exact
+  normalized-text rules scoped to their original app/sender/conversation/account.
+  They suppress derived suggestions, never capture of the underlying source.
+- Skill application records are accessible from history but excluded from full-text,
+  semantic and assistant fallback retrieval, so old advice is not learned back after
+  a skill is removed. Skills/usage are encrypted and included in portable backups;
+  restored active skills become pending for review. They are not added to web sync.
+
+**Settings › On-device models › Model catalog** offers compatible published formats,
+without typing model names or URLs:
+
+| Model | Purpose | Publisher/source | Download size |
+|---|---|---|---|
+| Gemma 4 E2B | Language, existing default | Hugging Face `litert-community` | 2,588 MB |
+| Qwen3 0.6B | Smaller language model | Hugging Face `litert-community` | 614 MB |
+| Gemma 4 E4B | Larger language model | Hugging Face `litert-community` | 3,660 MB |
+| Whisper Base multilingual | Transcription | Hugging Face `ggerganov/whisper.cpp` | 148 MB |
+| Whisper Small multilingual | Transcription | Hugging Face `ggerganov/whisper.cpp` | 488 MB |
+| Universal Sentence Encoder | English semantic search | Google MediaPipe | 6 MB |
+
+The picker shows source, license information, format notes, size, pinned revision
+and SHA-256. Downloads wait for Wi-Fi, adequate battery and storage, retain partial
+bytes for retry, verify integrity and load the runtime before replacement. Existing
+models remain on failure. Gemma's existing daily update checks and explicit update
+button remain. Advanced compatible-file imports remain available; there is no free-
+text local model identifier or download URL. Speaker models retain their advanced
+ONNX file picker because a generic model name cannot establish compatible inputs.
+Actual accuracy, speed, memory use and Kiswahili performance need device evaluation;
+the English text embedder is not advertised as verified Kiswahili semantic search.
+
+Further daily-use changes:
+
+- Guided setup starts from spending, conversations or commitments, preserves the
+  chosen goal, allows finishing later, and distinguishes permissions from real
+  delivery tests. Resume in Settings › Guided setup.
+- Home/Settings › **Needs attention** combines capture, connection results, queued
+  work, models, recordings, backup status and recovery links. Retry processes saved
+  sources; it never retries uncertain sends.
+- **Privacy and storage** distinguishes encrypted phone records, readable optional
+  server copies, encrypted Drive archives and explicitly submitted cloud-AI text.
+  Switching a destination off does not claim to erase previously exported copies.
+- Memory has search, filters, older pages and earlier correction versions. Private
+  drafts for memory, reconciliation, source notes, shares and skill editors are
+  encrypted locally and excluded from backups. Capture-grant expiry may require
+  sharing files again; a partial import resumes saved per-file checkpoints and
+  content hashes prevent duplicate originals. Shared text/derived records commit
+  atomically; a shared reminder remains a review proposal until approved.
+- Ask accepts `compare spending on Fuel this month vs last month`,
+  `why was transport spending higher this month`, and `budget for Fuel this month`.
+  Differences and category contributors use integer ledger arithmetic; they do not
+  invent causes. Budgets are monthly, category-based, across all accounts.
+- English/Kiswahili labels now cover the new daily flows and common errors. Status
+  banners announce changes; permission targets and bottom navigation better support
+  touch and larger text. Advanced model descriptions/diagnostics remain English.
+  Touch, TalkBack, voice and large-font rendering still require phone verification.
 
 ## Review improvements (0.8.0)
 

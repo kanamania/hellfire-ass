@@ -29,6 +29,10 @@ fun RouteContent(route: Route) {
     val nav = LocalNav.current
     val a = env.actions
     when (route.screen) {
+        Screen.Skills -> com.hellfire.ass.ui.settings.SkillsPage()
+        Screen.Recovery -> com.hellfire.ass.ui.settings.RecoveryPage()
+        Screen.GuidedSetup -> com.hellfire.ass.ui.settings.GuidedSetupPage()
+        Screen.Privacy -> com.hellfire.ass.ui.settings.PrivacyPage()
         Screen.Setup -> com.hellfire.ass.ui.settings.SetupScreen()
         Screen.Settings -> com.hellfire.ass.ui.settings.SettingsHub()
         Screen.Permissions -> com.hellfire.ass.ui.settings.PermissionsPage()

@@ -30,6 +30,7 @@ class LocalModel(private val context: Context) {
                 require(temp.length() in 1024..(12L * 1024 * 1024 * 1024)) { "Select a compatible .litertlm model" }
                 java.nio.file.Files.move(temp.toPath(), modelFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
                 ModelUpdates.markImported(context)
+                context.getSharedPreferences("model-catalog", 0).edit().remove("installed-LANGUAGE").apply()
             } finally { temp.delete() }
         }
     }
@@ -70,6 +71,8 @@ class LocalModel(private val context: Context) {
     /** The owner removed the model: it is not downloaded again until they ask. */
     suspend fun remove() = withContext(Dispatchers.IO) {
         ModelUpdates.cancel(context)
+        if (context.getSharedPreferences("model-catalog", 0).getString("target-role", "") == "LANGUAGE")
+            androidx.work.WorkManager.getInstance(context).cancelUniqueWork(ModelCatalog.WORK).result.get()
         mutex.withLock { modelFile.delete() }
         ModelUpdates.markRemoved(context)
     }

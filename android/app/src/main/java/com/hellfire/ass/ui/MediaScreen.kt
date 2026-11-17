@@ -78,6 +78,7 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
         SectionCard("Quick actions") {
             Choice("Import as", listOf("CALL_RECORDING", "IN_PERSON_AUDIO", "IMAGE", "DOCUMENT", "VIDEO", "VOICE_NOTE"), kind) { kind = it }
             PrimaryButton(tr("Import original"), { importer.launch(arrayOf("audio/*", "image/*", "video/*", "application/pdf")) }, enabled = !busy)
+            SecondaryButton(tr("Choose models"), { nav.push(Screen.LocalModels) })
             SecondaryButton("Models and import settings", { analysisSettings = !analysisSettings })
         }
         if (items.isNotEmpty()) ListCard(title = tr("Recent")) {

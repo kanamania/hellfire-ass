@@ -74,6 +74,6 @@ object EventText {
         "android_sms" -> "SMS"; "android_notification" -> "Notification"; "email_imap" -> "Email"
         "whatsapp_web", "whatsapp_business" -> "WhatsApp"; "owner_entry" -> "Your entry"; "owner_memory" -> "Your note"
         "call_recording_import" -> "Call recording"; "in_person_audio" -> "Conversation"; "media_import" -> "Media"
-        "synthetic_notification" -> "Test event"; else -> event.source
+        "owner_skill_use" -> "Skill application"; "synthetic_notification" -> "Test event"; else -> event.source
     }
 }
