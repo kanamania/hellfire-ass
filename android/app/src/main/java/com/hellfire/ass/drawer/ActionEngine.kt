@@ -115,7 +115,7 @@ private object PictureActions : ActionProvider {
         val model = action("describe", "Describe", kinds, listOf("item"), emptyList(), emptyList(), true, false,
             "Description needs an installed local model.", 40, available = modelInstalled, reason = if (modelInstalled) null else "Local model is not installed.")
         return listOf(
-            action("extract_receipt", "Extract receipt", kinds, listOf("text"), emptyList(), emptyList(), true, false, "No receipt amounts were found in the saved text.", 30),
+            action("extract_receipt", "Extract receipt", kinds, listOf("text"), emptyList(), emptyList(), true, false, "No receipt amounts were found in the saved text.", if ("receipt" in content.signals) 80 else 30),
             action("explain_screenshot", "Explain screenshot", kinds, listOf("item"), emptyList(), emptyList(), true, false, "Explanation needs an installed local model or extracted text.", 35, available = modelInstalled || content.text.isNotBlank(), reason = if (modelInstalled || content.text.isNotBlank()) null else "Local model is not installed."),
             action("troubleshoot", "Troubleshoot", kinds, listOf("text"), emptyList(), emptyList(), true, false, "No error text was extracted. Dropped code is not executed.", 25),
             model,
