@@ -205,6 +205,8 @@ class LibrarySyncTest {
             val bytes = byteArrayOf(9, 8, 7)
             val item = app.media.capture(bytes, "kept.jpg", "image/jpeg", CaptureOrigin.DRAWER)
             assertTrue(applyDoc(app, "media_item", item.id, LibrarySync.Doc(deleted = true, updatedAt = 10)))
+            db.media().state(item.id, "INDEXED", null)
+            db.media().state(item.id, "QUEUED", "PROCESSING_INTERRUPTED")
             val retained = db.media().item(item.id)!!
             assertEquals("SYNC_REMOVED", retained.state)
             assertFalse(retained.syncEnabled)

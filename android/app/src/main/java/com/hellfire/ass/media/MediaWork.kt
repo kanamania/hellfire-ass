@@ -81,7 +81,7 @@ class MediaWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
         val app = applicationContext as HellFireApp
         val id = inputData.getString("id") ?: return@withContext Result.failure()
         val item = app.database.media().item(id) ?: return@withContext Result.success()
-        if (item.state == "DELETING") return@withContext Result.success()
+        if (item.state in setOf("DELETING", "SYNC_REMOVED")) return@withContext Result.success()
         val signals = DeviceProbe.signals(app)
         val profile = OperatingProfile.of(signals)
         if (signals.thermal >= OperatingProfile.THERMAL_SEVERE || signals.lowMemory) {
