@@ -262,9 +262,9 @@ object ImageSanitizer {
             webp -> Bitmap.CompressFormat.WEBP_LOSSY
             else -> Bitmap.CompressFormat.JPEG
         }
-        val mime = when (format) {
-            Bitmap.CompressFormat.PNG -> "image/png"
-            Bitmap.CompressFormat.WEBP_LOSSY -> "image/webp"
+        val mime = when {
+            requested == "image/png" -> "image/png"
+            webp -> "image/webp"
             else -> "image/jpeg"
         }
         val note = if (requested == "image/webp" && !webp) "WebP encoding is not available on this Android version; JPEG was written instead." else ""

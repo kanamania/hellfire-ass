@@ -207,7 +207,7 @@ private suspend fun http(url: String): ByteArray {
     }
     try {
         if (connection.responseCode !in 200..299) error("Snapshot was not fetched (${connection.responseCode})")
-        return connection.inputStream.use { it.readNBytes(200_000) }
+        return connection.inputStream.use { it.readPrefix(200_000) }
     } finally { connection.disconnect() }
 }
 

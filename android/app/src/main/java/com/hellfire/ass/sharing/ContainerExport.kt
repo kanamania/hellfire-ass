@@ -29,7 +29,7 @@ import kotlin.coroutines.resume
 
 data class ContainerResult(val ok: Boolean, val message: String, val findings: List<MarkerHit>)
 
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(UnstableApi::class)
 object ContainerExport {
     suspend fun export(
         context: Context,
@@ -180,7 +180,7 @@ object ContainerExport {
     }
 }
 
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(UnstableApi::class)
 private class RangeMuteProcessor(private val rangesMs: List<Pair<Long, Long>>) : BaseAudioProcessor() {
     private var sampleIndex = 0L
 

@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 /** The only ExoPlayer. Full player, mini player and picture-in-picture attach to this session. */
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(UnstableApi::class)
 class HellFirePlaybackService : MediaSessionService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var player: ExoPlayer? = null

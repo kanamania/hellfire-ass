@@ -162,7 +162,7 @@ class DrawerPipeline(
             pages.joinToString("\n")
         }.getOrDefault("")
         if (rendered.isNotBlank()) return rendered.take(60_000)
-        return runCatching { PdfText.literals(app.media.openStream(item).use { it.readNBytes(2_000_000) }) }.getOrDefault("")
+        return runCatching { PdfText.literals(app.media.openStream(item).use { it.readPrefix(2_000_000) }) }.getOrDefault("")
     }
 
     private suspend fun categorize(saved: List<MediaItem>, content: Normalized, at: Long) {
@@ -227,4 +227,19 @@ class DrawerPipeline(
 object SystemDrawer {
     const val implemented = false
     const val reason = "A SYSTEM_ALERT_WINDOW bubble cannot receive most cross-app drag-and-drop or share payloads. The Android share target and the in-app drawer are the supported paths."
+}
+
+internal fun java.io.InputStream.readPrefix(limit: Int): ByteArray {
+    val bytes = ByteArray(limit)
+    var offset = 0
+    while (offset < limit) {
+        val count = read(bytes, offset, limit - offset)
+        if (count < 0) break
+        if (count == 0) {
+            val next = read()
+            if (next < 0) break
+            bytes[offset++] = next.toByte()
+        } else offset += count
+    }
+    return bytes.copyOf(offset)
 }

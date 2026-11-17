@@ -145,7 +145,7 @@ class MediaWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
             if (!complete) MediaWork.schedule(app, id, true, if (yielded) 30 else 0) else MediaWork.pump(app)
             Result.success()
         } catch (e: CancellationException) {
-            PerfLog.record("work_stop_reason", stopReason.toLong())
+            PerfLog.record("work_stop_reason", if (android.os.Build.VERSION.SDK_INT >= 31) stopReason.toLong() else -1L)
             withContext(NonCancellable) { if (app.database.media().item(id)?.state != "DELETING") app.database.media().state(id, "QUEUED", "PROCESSING_INTERRUPTED") }
             throw e
         } catch (error: Exception) {

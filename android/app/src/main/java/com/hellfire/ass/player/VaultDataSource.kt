@@ -19,7 +19,7 @@ import java.io.IOException
  * Media3 source for a managed original. Reads 64 KiB authenticated chunks through [EncryptedMediaSource].
  * PCM originals get the same virtual WAV header. The plaintext file is never written.
  */
-@OptIn(UnstableApi::class)
+@androidx.annotation.OptIn(UnstableApi::class)
 class VaultDataSource(private val app: HellFireApp) : BaseDataSource(false) {
     private var source: EncryptedMediaSource? = null
     private var uri: Uri? = null

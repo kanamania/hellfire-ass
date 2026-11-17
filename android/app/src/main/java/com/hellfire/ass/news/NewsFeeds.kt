@@ -148,7 +148,7 @@ object NewsFeeds {
     private fun head(body: ByteArray): String {
         val utf16 = body.size >= 2 && ((body[0] == 0xFE.toByte() && body[1] == 0xFF.toByte()) || (body[0] == 0xFF.toByte() && body[1] == 0xFE.toByte()))
         val text = String(body, 0, minOf(body.size, 8192), if (utf16) Charsets.UTF_16 else Charsets.ISO_8859_1)
-        return text.trimStart('﻿', 'ï', '»', '¿', ' ', '\n', '\r', '\t')
+        return text.trimStart('\uFEFF', 'ï', '»', '¿', ' ', '\n', '\r', '\t')
     }
 
     fun excerpt(text: String): String {
