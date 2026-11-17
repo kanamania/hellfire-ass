@@ -9,7 +9,7 @@ import java.util.zip.*
 /** Fixed table/column allowlists; archives cannot supply executable SQL. */
 object BackupTables {
     /** Backup schema written by this version. Schema 8 archives (before the v10 database) still restore. Full-text indexes and embeddings are rebuilt, not backed up. */
-    const val SCHEMA = 18
+    const val SCHEMA = 19
     private val schema8 = listOf("source_event", "event_processing", "capture_audit", "notification_policy", "finance_account",
         "finance_candidate", "ledger_entry", "ledger_evidence", "merchant_alias", "communication_message", "outbound_draft",
         "action_audit", "assistant_task", "daily_review", "media_item", "transcript_segment", "speech_span", "memory_item")
@@ -19,10 +19,11 @@ object BackupTables {
     private val schema16 = schema14 + "person_contact"
     private val schema17 = schema16 + listOf("ai_skill", "skill_use", "memory_revision")
     /** v18 library tables, parents before children (restore inserts with foreign keys on). */
-    val tables = schema17 + listOf("media_category", "media_collection", "media_analysis", "media_segment", "media_item_category",
+    private val schema18 = schema17 + listOf("media_category", "media_collection", "media_analysis", "media_segment", "media_item_category",
         "media_item_tag", "collection_member", "media_bookmark", "playback_state", "play_history", "processing_job", "inbox_item",
         "inbox_member", "drawer_message", "action_record", "saved_location", "share_export", "privacy_finding", "sync_record",
         "sync_conflict", "backup_manifest", "backup_item")
+    val tables = schema18 + com.hellfire.ass.news.NewsSchema.tables
     fun tablesFor(schema: Int): List<String> = when (schema) {
         8 -> schema8
         10 -> schema10
@@ -30,6 +31,7 @@ object BackupTables {
         14 -> schema14
         15, 16 -> schema16
         17 -> schema17
+        18 -> schema18
         SCHEMA -> tables
         else -> throw IllegalArgumentException("Backup schema requires a matching app version")
     }

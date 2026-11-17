@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { logout } from '../actions';
 
-const links = [['/', 'Overview'], ['/library', 'Library'], ['/money', 'Money'], ['/tasks', 'Tasks'], ['/inbox', 'Inbox'], ['/media', 'Recordings'], ['/memory', 'Memory'], ['/search', 'Search']];
+const links = [['/', 'Overview'], ['/library', 'Library'], ['/money', 'Money'], ['/tasks', 'Tasks'], ['/inbox', 'Inbox'], ['/media', 'Recordings'], ['/memory', 'Memory'], ['/news', 'News'], ['/search', 'Search']];
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (

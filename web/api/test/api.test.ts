@@ -34,12 +34,12 @@ async function call(path: string, init: { method?: string; token?: string; body?
   return { status: response.status, body: text ? JSON.parse(text) : null };
 }
 const phone = (path: string, body?: unknown) => call(path, { token: config.syncToken, body });
-const owner = (path: string) => call(path, { token: session });
+const owner = (path: string, body?: unknown) => call(path, { token: session, body });
 
 before(async () => {
   const admin = new pg.Client({ connectionString: databaseUrl });
   await admin.connect();
-  await admin.query('DROP TABLE IF EXISTS library_chunk, library_blob, library_record, library_search, library_meta, record, meta CASCADE');
+  await admin.query('DROP TABLE IF EXISTS library_chunk, library_blob, library_record, library_search, library_meta, record, meta, news_action CASCADE');
   await admin.query('DROP SEQUENCE IF EXISTS library_change_seq');
   await admin.end();
   const app = await createApp(config);
@@ -251,6 +251,18 @@ describe('encrypted library', () => {
     const out = Buffer.concat([Buffer.from([1]), Buffer.from(iv), Buffer.from(ct)]);
     assert.equal(out.toString('hex'), '0101010101010101010101010125292b7958ae59fdb3115a6fabac8d5abbb6beb49657e7b10946f8f799');
   });
+
+  it('preserves encrypted library records and salt when the ordinary web mirror resets', async () => {
+    const before = (await phone('/api/library/state')).body;
+    await phone('/api/library/salt', { salt: Buffer.alloc(16, 7).toString('base64') });
+    const salt = (await phone('/api/library/state')).body.salt;
+    await phone('/api/sync/reset', {});
+    const after = (await phone('/api/library/state')).body;
+    assert.equal(after.epoch, before.epoch);
+    assert.equal(after.items, before.items);
+    assert.equal(after.salt, salt);
+    assert.equal(after.used, before.used);
+  });
 });
 
 function ownerPost(path: string, body: unknown) {
@@ -266,5 +278,144 @@ describe('login', () => {
     const statuses = [];
     for (let i = 0; i < 5; i++) statuses.push((await call('/api/auth/login', { body: { password: 'nope' } })).status);
     assert.ok(statuses.includes(429));
+  });
+});
+
+describe('news', () => {
+  let dataset = '';
+  beforeEach(async () => { dataset = (await phone('/api/sync/reset', {})).body.dataset; });
+
+  const push = (kind: string, upserts: { id: string; at: number; data: Record<string, unknown> }[]) => phone('/api/sync/batch', { dataset, kind, upserts });
+  const event = (id: string, at: number, extra: Record<string, unknown> = {}) => ({ id, at, data: {
+    id, headline: `Headline ${id}`, eventType: 'DISASTER', topics: 'tanzania', status: 'DEVELOPING', version: 2, score: 70, level: 'HIGH',
+    protectedPublic: false, independentSources: 2, articleCount: 2, verification: 'CONFIRMED', firstSeenAt: at, updatedAt: at, lastArticleAt: at,
+    summary: { headline: `Headline ${id}`, quick: ['Rain flooded roads'] }, scoreDetail: { total: 70, level: 'HIGH' }, ...extra } });
+  const state = (eventId: string, extra: Record<string, unknown> = {}) => ({ id: eventId, at: 1000, data: {
+    eventId, deliveredVersion: 1, seenVersion: 0, readAt: null, bookmarked: false, readLater: false, hidden: false, followed: false, fieldTimes: {}, updatedAt: 1000, ...extra } });
+  const act = (target: string, field: string, value: unknown) => owner('/api/news/action', { target, field, value });
+
+  it('accepts the news kinds and filters them', async () => {
+    for (const [kind, data] of [['news_version', { eventId: 'e1', version: 1 }], ['news_article', { eventId: 'e1', title: 't' }],
+      ['news_briefing', { slot: 'MORNING', items: [] }], ['news_state', { eventId: 'e1' }], ['news_progress', { briefingId: 'b' }],
+      ['news_source', { name: 'Daily' }]] as const)
+      assert.equal((await push(kind, [{ id: 'x', at: 1, data }])).status, 200, kind);
+    await push('news_event', [event('e1', 1000), event('e2', 2000, { level: 'LOW' })]);
+    assert.deepEqual((await owner('/api/records?kinds=news_event&level=HIGH')).body.rows.map((r: { id: string }) => r.id), ['e1']);
+    // News stays out of the general listing unless asked for.
+    assert.deepEqual((await owner('/api/records')).body.rows, []);
+  });
+
+  it('validates owner actions and keeps the two channels apart', async () => {
+    assert.equal((await call('/api/news/action', { body: { target: 'e1', field: 'bookmarked', value: true } })).status, 401);
+    assert.equal((await call('/api/news/action', { token: config.syncToken, body: { target: 'e1', field: 'bookmarked', value: true } })).status, 401);
+    assert.equal((await call('/api/sync/news-actions', { token: session })).status, 401);
+    assert.equal((await call('/api/news/saved', { token: config.syncToken })).status, 401);
+    for (const [target, field, value] of [
+      ['e1', 'deleted', true], ['e1', 'bookmarked', 'yes'], ['e1', 'seen', -1], ['e1', 'seen', 1.5], ['e1', 'seen', true],
+      ['b', 'position', { position: 1 }], ['b', 'position', { position: 1, audioMs: -5 }], ['b', 'position', { position: 1, audioMs: 0, extra: 1 }],
+      ['x'.repeat(301), 'hidden', true], ['', 'hidden', true], [7, 'hidden', true],
+    ] as const) assert.equal((await act(target as string, field, value)).status, 400, `${field} ${JSON.stringify(value)}`);
+    assert.equal((await owner('/api/news/action', [])).status, 400);
+    const ok = await act('x'.repeat(300), 'followed', true);
+    assert.equal(ok.status, 200);
+    assert.ok(ok.body.seq > 0 && ok.body.at > 0);
+  });
+
+  it('lets the phone pull actions in order and acknowledge them; reset clears them', async () => {
+    await act('e1', 'bookmarked', true);
+    await act('e1', 'seen', 2);
+    await act('b1', 'position', { position: 3, audioMs: 1200 });
+    const all = (await phone('/api/sync/news-actions?after=0')).body.actions;
+    assert.deepEqual(all.map((a: { field: string }) => a.field), ['bookmarked', 'seen', 'position']);
+    assert.deepEqual(all[2].value, { position: 3, audioMs: 1200 });
+    assert.ok(all.every((a: { seq: unknown; at: unknown }) => typeof a.seq === 'number' && typeof a.at === 'number'));
+    assert.equal((await phone(`/api/sync/news-actions?after=${all[0].seq}`)).body.actions.length, 2);
+    assert.equal((await phone('/api/sync/news-actions?after=-1')).status, 400);
+    assert.deepEqual((await phone('/api/sync/news-actions/ack', { upTo: all[1].seq })).body, { deleted: 2 });
+    assert.equal((await phone('/api/sync/news-actions/ack', { upTo: 'all' })).status, 400);
+    assert.deepEqual((await phone('/api/sync/news-actions')).body.actions.map((a: { seq: number }) => a.seq), [all[2].seq]);
+    await phone('/api/sync/reset', {});
+    assert.deepEqual((await phone('/api/sync/news-actions')).body.actions, []);
+  });
+
+  it('overlays pending web choices on the phone state, last writer wins per field', async () => {
+    const future = Date.now() + 3_600_000;
+    await push('news_event', [event('e1', 1000), event('e2', 2000)]);
+    await push('news_state', [
+      state('e1', { seenVersion: 3, followed: true, fieldTimes: { followed: future } }),
+      state('e2', { bookmarked: true, updatedAt: future }),
+    ]);
+    await act('e1', 'bookmarked', true); // newer than the phone's state: shows
+    await act('e1', 'followed', false); // older than the phone's own change: ignored
+    await act('e1', 'seen', 2); // reading never goes back
+    await act('e2', 'bookmarked', false); // phone changed it later (updatedAt fallback): ignored
+    await act('e2', 'seen', 2);
+    const e1 = (await owner('/api/news/story/e1')).body.state;
+    assert.equal(e1.bookmarked, true);
+    assert.equal(e1.followed, true);
+    assert.equal(e1.seenVersion, 3);
+    assert.equal(e1.pending, true);
+    const e2 = (await owner('/api/news/story/e2')).body.state;
+    assert.equal(e2.bookmarked, true);
+    assert.equal(e2.seenVersion, 2);
+    assert.equal(e2.deliveredVersion, 2);
+    assert.ok(e2.readAt > 0);
+    assert.equal((await owner('/api/news/story/missing')).status, 404);
+    // Once the phone pushes its merged state and acknowledges, the phone copy alone is the truth.
+    const pulled = (await phone('/api/sync/news-actions')).body.actions;
+    await push('news_state', [state('e1', { seenVersion: 3, bookmarked: true, followed: true, fieldTimes: { followed: future, bookmarked: pulled[0].at } })]);
+    await phone('/api/sync/news-actions/ack', { upTo: pulled.at(-1).seq });
+    const settled = (await owner('/api/news/story/e1')).body.state;
+    assert.equal(settled.bookmarked, true);
+    assert.equal(settled.pending, false);
+  });
+
+  it('composes briefings, saved, breaking and archive views', async () => {
+    const now = Date.now();
+    await push('news_event', [event('e1', now - 1000, { level: 'CRITICAL' }), event('e2', now - 2000, { level: 'LOW', headline: 'Bandari mpya' }),
+      event('old', now - 3 * 86_400_000)]);
+    await push('news_article', [
+      { id: 'a1', at: now - 5000, data: { id: 'a1', eventId: 'e1', publisher: 'Daily News', title: 'Floods', url: 'https://example.com/a1', media: [] } },
+      { id: 'a2', at: now - 4000, data: { id: 'a2', eventId: 'e1', publisher: 'BBC', title: 'Floods 2', url: 'https://example.com/a2', media: [] } },
+      { id: 'a3', at: now - 4000, data: { id: 'a3', eventId: 'e2', publisher: 'Mwananchi', title: 'Bandari', url: 'https://example.com/a3', media: [] } },
+    ]);
+    await push('news_version', [
+      { id: 'e1:2', at: now - 1000, data: { id: 'e1:2', eventId: 'e1', version: 2, classification: 'MAJOR', whatsNew: 'More rain', evidence: ['a2'] } },
+      { id: 'e1:1', at: now - 9000, data: { id: 'e1:1', eventId: 'e1', version: 1, classification: 'NEW' } },
+    ]);
+    const items = [{ eventId: 'e1', version: 2, section: 'CHANGED', classification: 'MAJOR' }, { eventId: 'e2', version: 2, section: 'STORY' }, { eventId: 'gone', version: 1, section: 'STORY' }];
+    await push('news_briefing', [
+      { id: 'MORNING:2026-11-17', at: now, data: { id: 'MORNING:2026-11-17', slot: 'MORNING', title: 'Morning briefing', generatedAt: now, items } },
+      { id: 'EVENING:2026-11-16', at: now - 50_000, data: { id: 'EVENING:2026-11-16', slot: 'EVENING', title: 'Evening briefing', generatedAt: now - 50_000, items: [] } },
+    ]);
+    await push('news_state', [state('e2', { seenVersion: 2 })]);
+    await push('news_progress', [{ id: 'MORNING:2026-11-17', at: 1000, data: { briefingId: 'MORNING:2026-11-17', position: 1, audioMs: 0, updatedAt: 1000 } }]);
+    await act('MORNING:2026-11-17', 'position', { position: 2, audioMs: 0 });
+    await act('e2', 'readLater', true);
+
+    const list = (await owner('/api/news/briefings?slot=MORNING')).body;
+    assert.deepEqual(list.map((b: { id: string }) => b.id), ['MORNING:2026-11-17']);
+    assert.deepEqual(list[0].counts, { stories: 3, top: 0, changed: 1, unread: 2 });
+    assert.equal(list[0].items, undefined);
+    assert.equal((await owner('/api/news/briefings')).body.length, 2);
+
+    const view = (await owner(`/api/news/briefing/${encodeURIComponent('MORNING:2026-11-17')}`)).body;
+    assert.equal(view.briefing.title, 'Morning briefing');
+    assert.deepEqual(view.items.map((i: { eventId: string }) => i.eventId), ['e1', 'e2', 'gone']);
+    assert.deepEqual(view.items[0].articles.map((a: { id: string }) => a.id), ['a1', 'a2']);
+    assert.deepEqual(view.items[0].versions.map((v: { version: number }) => v.version), [1, 2]);
+    assert.equal(view.items[0].classification, 'MAJOR');
+    assert.equal(view.items[1].state.readLater, true);
+    assert.equal(view.items[2].event, null);
+    assert.equal(view.progress.position, 2);
+    assert.equal(view.progress.pending, true);
+    assert.equal((await owner('/api/news/briefing/none')).status, 404);
+
+    assert.deepEqual((await owner('/api/news/saved')).body.map((s: { event: { id: string } }) => s.event.id), ['e2']);
+    const breaking = (await owner(`/api/news/search?level=CRITICAL&level=HIGH&from=${now - 86_400_000}`)).body;
+    assert.deepEqual(breaking.map((s: { event: { id: string } }) => s.event.id), ['e1']);
+    assert.deepEqual((await owner('/api/news/search?q=bandari')).body.map((s: { event: { id: string } }) => s.event.id), ['e2']);
+    assert.deepEqual((await owner(`/api/news/search?to=${now - 86_400_000}`)).body.map((s: { event: { id: string } }) => s.event.id), ['old']);
+    assert.equal((await owner('/api/news/search?level=SECRET')).status, 400);
   });
 });

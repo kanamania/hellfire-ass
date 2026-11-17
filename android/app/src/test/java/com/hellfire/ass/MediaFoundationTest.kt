@@ -223,11 +223,11 @@ class MediaFoundationTest {
     }
 
     @Test fun `schema 18 backups register every portable library table and schema 17 media rows restore with defaults`() = runBlocking {
-        assertEquals(18, BackupTables.SCHEMA)
+        assertEquals(19, BackupTables.SCHEMA)
         val portable = setOf("media_category", "media_collection", "media_analysis", "media_segment", "media_item_category", "media_item_tag",
             "collection_member", "media_bookmark", "playback_state", "play_history", "processing_job", "inbox_item", "inbox_member", "drawer_message",
             "action_record", "saved_location", "share_export", "privacy_finding", "sync_record", "sync_conflict", "backup_manifest", "backup_item")
-        assertEquals(portable, (BackupTables.tables - BackupTables.tablesFor(17).toSet()).toSet())
+        assertEquals(portable, (BackupTables.tablesFor(18) - BackupTables.tablesFor(17).toSet()).toSet())
         assertFalse(BackupTables.tables.contains("library_search")); assertFalse(BackupTables.tables.contains("media_embedding"))
         assertEquals(BackupTables.tables, BackupTables.tablesFor(BackupTables.SCHEMA))
         assertTrue(BackupTables.tablesFor(17).containsAll(BackupTables.tablesFor(16)))

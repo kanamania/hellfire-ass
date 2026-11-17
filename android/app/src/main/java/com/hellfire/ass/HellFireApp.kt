@@ -36,6 +36,7 @@ class HellFireApp : Application() {
     val templates by lazy { com.hellfire.ass.templates.TemplateRunner(database, finances, packageName) { events.capture(it, packageName) } }
     val cipher by lazy { PayloadCipher.deviceCipher() }
     val events by lazy { EventRepository(database.events()) { cipher } }
+    val news by lazy { com.hellfire.ass.news.NewsRepository(this) }
     val storageStatus = kotlinx.coroutines.flow.MutableStateFlow("STARTING")
     private var recoveredDrafts = false
     private val storageLock = kotlinx.coroutines.sync.Mutex()
@@ -81,6 +82,7 @@ class HellFireApp : Application() {
                     com.hellfire.ass.data.SearchBackfill.schedule(this@HellFireApp)
                     com.hellfire.ass.library.LibraryScanWork.schedule(this@HellFireApp)
                     com.hellfire.ass.library.LibraryScanWork.watch(this@HellFireApp)
+                    runCatching { com.hellfire.ass.news.NewsWork.schedule(this@HellFireApp) }
                     com.hellfire.ass.ai.ModelUpdates.onStartup(this@HellFireApp)
                     watchForWidgets()
                 } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); runCatching { database.events().failure("processing", "WORK_RECOVERY_FAILED") } }

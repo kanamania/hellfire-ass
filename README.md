@@ -18,11 +18,12 @@ used to establish host results. No message has been sent and no gateway deployed
   the 2026-11-16 review findings, **multiple email inboxes and WhatsApp accounts**, and
   **Gemma 4 E2B downloaded on first launch with on-device update checks**, and the
   **daily brief, waiting-on, people, debts, bills, expiry reminders, capture alerts and
-  action templates**, plus **local contact picking and person links**. Debug/release version **0.9.0** (code 9), Room schema **17**, backup schema **17**.
+  action templates**, plus **local contact picking and person links**. Debug/release version **0.9.0** (code 9), Room schema **19**, backup schema **19**.
+- **News and media:** scheduled/readable/spoken news, source controls, saved stories and news Ask; device library, media playback, local analysis/search, capture drawer, sanitized sharing, encrypted library sync and backup coverage. See the setup notes below.
 - **Web access:** an optional read-only web copy (NestJS API, Postgres, Next.js site
   in `web/`) synced from the phone; see [Web access](#web-access-read-only-mirror).
   Local website: `https://hellfire.local`; not yet connected to a real phone.
-- **Host checks on this tree:** 309 Android unit tests (305 passed, 4 opt-in live AI
+- **Earlier host checkpoint:** 309 Android unit tests (305 passed, 4 opt-in live AI
   tests skipped, 0 failures), 23 relay tests, 6 WhatsApp Web worker tests and 11 web
   API tests pass.
   Lint and APK verification results are in
@@ -800,7 +801,7 @@ Phone side: `WebSyncTest` in the Android unit tests. Pinned: NestJS 12.3.2,
 
 ## Storage, recovery and boundaries
 
-Room schema **16** has non-destructive migrations from schema 1. Production uses
+Room schema **19** has non-destructive migrations from schema 1. Production uses
 SQLCipher plus Android Keystore-wrapped database credentials; captured payloads
 also use Keystore-backed AES-GCM. Legacy plaintext database conversion exports to
 an encrypted copy, checks it and atomically replaces the original; errors do not
@@ -850,6 +851,34 @@ embedding and image-label quality on a real device, and battery/thermal
 measurements. Literal retrieval, OCR and manual speaker correction are implemented;
 those are not evidence that the advanced model-dependent gates passed. Optional
 Telegram and desktop dashboard have not been added.
+
+## News, library and performance
+
+Open **Home → News** for briefings, saved stories and the reader. News settings
+control source selection, interests, morning/evening times, quiet hours and audio.
+Saved news remains readable offline; fetching new stories needs a connection.
+X sources require your own supported API credentials; licensed wire sources show
+that requirement rather than scraping unavailable content. Scheduled delivery is
+best effort under Android/ColorOS. Actual feed availability and phone TTS still
+need live verification.
+
+Open **Library** for accessible device media or grant a folder through Android's
+picker. External entries remain references until explicitly imported as managed
+originals. Player, analysis queue, search, capture drawer, sharing, sync and backup
+pages use the existing local data. File access and codec/model support depend on
+the actual device; absent permission or model is not a successful analysis.
+
+The **Library** web page is separate from the ordinary read-only mirror: optional
+library sync encrypts originals and editable metadata with a shared passphrase
+before transfer. Enter the same passphrase on the phone and in the browser. The
+server still sees record identifiers, hashes, sizes and timing. Plaintext server
+search requires an explicit opt-in. Sync is not a backup. Ordinary mirror resets
+preserve the encrypted library and its encryption salt.
+
+**Settings → This device → Performance** shows operating policy and lets you
+measure language backends. CPU remains the fallback until a compatible imported
+model succeeds in a device probe. Queue limits, thermal policy and cooperative
+yielding are host-tested; speed, memory, power and heat require the OPPO.
 
 ## Verification and change log
 

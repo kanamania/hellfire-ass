@@ -52,6 +52,15 @@ CREATE TABLE IF NOT EXISTS library_search (
   text text NOT NULL,
   PRIMARY KEY (entity_type, entity_id)
 );
+CREATE INDEX IF NOT EXISTS record_news_event ON record ((data->>'eventId')) WHERE kind IN ('news_article', 'news_version');
+CREATE TABLE IF NOT EXISTS news_action (
+  seq bigserial PRIMARY KEY,
+  at bigint NOT NULL,
+  target text NOT NULL,
+  field text NOT NULL,
+  value jsonb NOT NULL
+);
+CREATE INDEX IF NOT EXISTS news_action_target ON news_action (target);
 `;
 
 @Injectable()
