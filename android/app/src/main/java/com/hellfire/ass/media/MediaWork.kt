@@ -107,35 +107,9 @@ class MediaWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
                     }
                 }
                 item.mime.startsWith("audio/") || item.mime.startsWith("video/") -> {
-                    if (item.mime.startsWith("video/") && progress == 0L && !ProcessingCheckpoint.videoDone(app, id, requireNotNull(item.contentHash) { "MANAGED_CONTENT_HASH_REQUIRED" }, MediaWork.OCR_CHECKPOINT)) {
-                        VisualReader.video(app, item) { at, text ->
-                            MediaWork.text(app, item, at, at, text, "sampled_video_frame")
-                        }
-                        ProcessingCheckpoint.markVideo(app, id, requireNotNull(item.contentHash) { "MANAGED_CONTENT_HASH_REQUIRED" }, MediaWork.OCR_CHECKPOINT)
-                    }
-                    if (!app.speech.model.isFile) error("TRANSCRIPTION_MODEL_REQUIRED")
-                    if (ExecutionScheduler.shouldYield(WorkPriority.DEFERRED)) {
-                        complete = false
-                        yielded = true
-                        PerfLog.detail("media_wait", "YIELDED_FOR_INTERACTIVE")
-                    } else {
-                        val chunk = AudioDecoder.chunk(EncryptedMediaSource(app.media.reader(item)), progress, profile.audioChunkSeconds)
-                        if (chunk.samples.isNotEmpty() && !SpeechPlan.needsTranscription(chunk.samples)) {
-                            PerfLog.detail("audio_chunk", "SILENCE_SKIPPED")
-                            progress += chunk.samples.size * 1000L / 16000
-                            chunk.samples.fill(0f)
-                        } else if (chunk.samples.isNotEmpty()) {
-                            val result = try { app.speech.transcribe(chunk.samples, app.getSharedPreferences("media", 0).getString("language", "auto")!!) }
-                                finally { chunk.samples.fill(0f) }
-                            val segments = result.getJSONArray("segments")
-                            for (index in 0 until segments.length()) {
-                                val part = segments.getJSONObject(index)
-                                MediaWork.text(app, item, progress + part.getLong("start_ms"), progress + part.getLong("end_ms"), part.getString("text"), "speech")
-                            }
-                            progress += chunk.samples.size * 1000L / 16000
-                        }
-                        complete = chunk.end || chunk.samples.isEmpty()
-                    }
+                    // Audio/video transcription and video scenes have one owner, including legacy queued work.
+                    app.database.jobs().enqueue(com.hellfire.ass.intelligence.ContentEngine.newJob(item.id, System.currentTimeMillis()))
+                    com.hellfire.ass.intelligence.IntelligenceWork.schedule(app)
                 }
                 else -> error("UNSUPPORTED_MEDIA_FORMAT")
             }

@@ -17,6 +17,8 @@ object PlaybackFlags {
     val speed = MutableStateFlow(1f)
     val itemId = MutableStateFlow<String?>(null)
     val title = MutableStateFlow("")
+    /** Display width / height of the current video, or null before the first frame size is known. */
+    val videoAspect = MutableStateFlow<Float?>(null)
     var pendingAudio: String? = null
     var pendingSubtitle: String? = null
     var audioTrack: String? = null

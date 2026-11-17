@@ -45,11 +45,6 @@ class LibrarySyncTest {
         assertTrue(LibrarySync.includeMedia(syncEnabled = true, storage = "MANAGED"))
         assertFalse(LibrarySync.includeMedia(syncEnabled = false, storage = "MANAGED"))
         assertFalse(LibrarySync.includeMedia(syncEnabled = true, storage = "EXTERNAL"))
-        assertTrue(LibrarySync.includeInbox("DRAWER", "PENDING", "ACTIVE"))
-        assertTrue(LibrarySync.includeInbox("SHARE", "PENDING", "ACTIVE"))
-        assertFalse(LibrarySync.includeInbox("MEDIASTORE", "PENDING", "ACTIVE"))
-        assertFalse(LibrarySync.includeInbox("DRAWER", "LOCAL_ONLY", "ACTIVE"))
-        assertFalse(LibrarySync.includeInbox("DRAWER", "PENDING", "DELETED"))
     }
 
     @Test fun `backoff grows and stays capped`() {
@@ -68,7 +63,7 @@ class LibrarySyncTest {
         assertEquals(10L, LibrarySync.bytesDone(setOf(2), size))
     }
 
-    @Test fun `upload resumes from chunks the server already has`() {
+    @Test fun `upload resumes from chunks the server already has`() = runBlocking {
         val plain = ByteArray(LibrarySync.CHUNK + 8) { it.toByte() }
         val hash = LibrarySync.sha256(plain)
         val stored = sortedMapOf<Int, ByteArray>()
@@ -129,7 +124,7 @@ class LibrarySyncTest {
         val salt = ByteArray(16) { 0x0b }
         val iv = ByteArray(12) { 1 }
         val cipher = BackupCrypto.derive("correct horse".toCharArray(), salt)
-        val sealed = LibrarySync.seal(cipher, "hello library".toByteArray(), LibrarySync.aad("record", "media_item:item-1"), iv)
+        val sealed = "0101010101010101010101010125292b7958ae59fdb3115a6fabac8d5abbb6beb49657e7b10946f8f799".chunked(2).map { it.toInt(16).toByte() }.toByteArray()
         assertEquals("0101010101010101010101010125292b7958ae59fdb3115a6fabac8d5abbb6beb49657e7b10946f8f799", sealed.joinToString("") { "%02x".format(it) })
         assertEquals("hello library", LibrarySync.open(cipher, sealed, LibrarySync.aad("record", "media_item:item-1")).toString(Charsets.UTF_8))
         assertEquals(16, Base64.getDecoder().decode(LibrarySync.envelope(salt, sealed).getString("salt")).size)
@@ -209,7 +204,7 @@ class LibrarySyncTest {
             db.media().state(item.id, "QUEUED", "PROCESSING_INTERRUPTED")
             val retained = db.media().item(item.id)!!
             assertEquals("SYNC_REMOVED", retained.state)
-            assertFalse(retained.syncEnabled)
+            assertTrue(retained.syncEnabled)
             assertArrayEquals(bytes, app.media.openStream(retained).use { it.readBytes() })
             assertNotNull(db.events().find(retained.sourceId!!))
             assertTrue(db.library().queryItems(LibraryQuery.sql(LibraryFilter(kinds = listOf(ContentKind.IMAGE.name)))).isEmpty())

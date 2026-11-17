@@ -43,6 +43,13 @@ object DriveBackupWork {
         if (successId != null) edit.putLong("last-success", System.currentTimeMillis()).putString("file-id", successId)
         edit.apply()
     }
+    /** Last Drive failure shown in the backup and status dashboards; null clears it. */
+    fun failure(context: Context, value: String?) {
+        val edit = context.getSharedPreferences(CONFIG, Context.MODE_PRIVATE).edit()
+        if (value == null) edit.remove("failure") else edit.putString("failure", value).putLong("failure-at", System.currentTimeMillis())
+        edit.apply()
+    }
+    fun lastFailure(context: Context): String? = context.getSharedPreferences(CONFIG, Context.MODE_PRIVATE).getString("failure", null)
     fun readStatus(context: Context): String {
         val prefs = context.getSharedPreferences(CONFIG, Context.MODE_PRIVATE)
         val last = prefs.getLong("last-success", 0)
@@ -67,13 +74,8 @@ class DriveBackupWorker(context: Context, params: WorkerParameters) : CoroutineW
                 DriveBackupWork.status(app, "Preparing encrypted backup")
                 val token = DriveAuthorization.token(DriveAuthorization.authorize(app, config.getString("account")))
                 password = config.getString("passphrase").toCharArray()
-                var blocked: BackupBlocked? = null
-                try { PortableBackup(app).export(file, password, incremental = false) }
-                catch (e: BackupBlocked) { blocked = e }
-                if (!file.exists() || file.length() == 0L) {
-                    DriveBackupWork.status(app, if (blocked == null) "No new originals since the last verified backup" else "Backup blocked; nothing was uploaded. ${blocked.blocked.size} originals did not fit.")
-                    return@withLock if (blocked == null) Result.success() else Result.failure()
-                }
+                // Nothing is marked backed up until Drive confirmed the archive's size and checksum (commit below).
+                val outcome = PortableBackup(app).exportForUpload(file, password)
                 currentCoroutineContext().ensureActive()
                 // A disconnect or consent change must stop a queued upload.
                 if (app.secrets.read(DriveBackupWork.CONFIG)?.optString("generation") != config.getString("generation"))
@@ -81,11 +83,14 @@ class DriveBackupWorker(context: Context, params: WorkerParameters) : CoroutineW
                 DriveBackupWork.status(app, "Uploading encrypted backup")
                 val context = currentCoroutineContext()
                 val id = GoogleDriveBackup().upload(file, token) { context.ensureActive() }
-                if (blocked != null) {
-                    DriveBackupWork.status(app, "Backup uploaded; ${blocked.blocked.size} originals were blocked and are not marked backed up", id)
-                    return@withLock Result.failure()
+                PortableBackup(app).commit(outcome, "drive", "drive:$id")
+                if (outcome.blocked.isNotEmpty()) {
+                    DriveBackupWork.status(app, "Backup uploaded and confirmed; ${outcome.blocked.size} originals were blocked (${outcome.blocked.first().reason ?: "not included"}) and are not marked backed up", id)
+                    DriveBackupWork.failure(app, "${outcome.blocked.size} originals were blocked from the last Drive backup")
+                } else {
+                    DriveBackupWork.status(app, "Backup uploaded and size/checksum confirmed", id)
+                    DriveBackupWork.failure(app, null)
                 }
-                DriveBackupWork.status(app, "Backup uploaded and size/checksum confirmed", id)
                 // Only after a confirmed upload; only archives this app created, never the one just uploaded.
                 val keep = config.optInt("keep", DriveBackupWork.DEFAULT_KEEP)
                 if (keep > 0) try {
@@ -99,14 +104,18 @@ class DriveBackupWorker(context: Context, params: WorkerParameters) : CoroutineW
                 Result.success()
             } catch (e: CancellationException) {
                 DriveBackupWork.status(app, "Backup interrupted; waiting for another scheduled attempt")
+                DriveBackupWork.failure(app, "Drive backup interrupted")
                 throw e
             } catch (_: DriveReconnectRequired) {
                 DriveBackupWork.status(app, "Reconnect Google Drive in Backup; authorization is required")
+                DriveBackupWork.failure(app, "Google Drive authorization required")
                 Result.failure()
             } catch (e: DriveHttpError) {
+                DriveBackupWork.failure(app, "Drive upload failed (HTTP ${e.status})")
                 DriveBackupWork.status(app, if (e.status == 403) "Drive access or storage quota denied; check Google account and reconnect" else "Drive upload failed (HTTP ${e.status}); no new success recorded")
                 if (e.status == 429 || e.status >= 500) Result.retry() else Result.failure()
-            } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
+            } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught)
+                DriveBackupWork.failure(app, "Drive backup failed before a confirmed upload")
                 DriveBackupWork.status(app, "Backup failed; check connection, storage, Google setup and passphrase. Previous backups retained.")
                 Result.retry()
             } finally { password?.fill('\u0000'); file.delete() }

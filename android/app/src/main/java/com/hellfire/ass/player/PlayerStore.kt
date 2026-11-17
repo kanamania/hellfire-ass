@@ -29,8 +29,10 @@ object PlayerStore {
     }
 
     suspend fun deleteBookmark(app: HellFireApp, id: String, now: Long) {
+        val thumb = app.database.playback().bookmark(id)?.thumbnailPath
         app.database.playback().deleteBookmark(id)
         app.database.sync().markChanged("media_bookmark", id, true, now)
+        FrameScrubber.deleteThumb(app, thumb)
     }
 
     suspend fun convertToManual(app: HellFireApp, id: String, now: Long) {

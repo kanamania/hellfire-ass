@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { API_URL, SESSION_COOKIE } from '@/lib/api';
 
-const ALLOWED = new Set(['state', 'salt', 'blobs', 'records', 'changes', 'search', 'search-opt-in']);
+const ALLOWED = new Set(['state', 'key-check', 'salt', 'blobs', 'records', 'changes']);
 
 async function proxy(request: Request, path: string[], method: string) {
   if (!path.length || !ALLOWED.has(path[0])) return new Response('not found', { status: 404 });
@@ -22,7 +22,7 @@ async function proxy(request: Request, path: string[], method: string) {
   });
   return new Response(await response.arrayBuffer(), {
     status: response.status,
-    headers: { 'content-type': response.headers.get('content-type') ?? 'application/json', 'cache-control': 'no-store' },
+    headers: { 'content-type': response.headers.get('content-type') ?? 'application/json', 'cache-control': 'no-store', ...(response.headers.get('retry-after') ? { 'retry-after': response.headers.get('retry-after')! } : {}) },
   });
 }
 

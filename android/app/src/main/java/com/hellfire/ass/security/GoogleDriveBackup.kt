@@ -81,14 +81,24 @@ class GoogleDriveBackup(private val connect: (URL) -> HttpURLConnection = { it.o
     }
     fun list(token: String): List<DriveSnapshot> {
         val query = URLEncoder.encode("trashed = false and appProperties has { key='hellfireBackup' and value='2' }", "UTF-8")
-        return request("$API?q=$query&orderBy=createdTime%20desc&pageSize=100&fields=files(id,name,createdTime,size)", token) { c ->
-            requireSuccess(c)
-            val files = json(c).getJSONArray("files")
-            (0 until files.length()).map { i -> files.getJSONObject(i).let {
-                DriveSnapshot(validId(it.getString("id")), it.getString("name"), it.getString("createdTime"), it.getLong("size"))
+        val out = mutableListOf<DriveSnapshot>()
+        var page: String? = null
+        val seen = mutableSetOf<String>()
+        do {
+            val next = page?.let { "&pageToken=" + URLEncoder.encode(it, "UTF-8") }.orEmpty()
+            val body = request("$API?q=$query&orderBy=createdTime%20desc&pageSize=100&fields=nextPageToken,files(id,name,createdTime,size)$next", token) { c ->
+                requireSuccess(c); json(c)
+            }
+            val files = body.getJSONArray("files")
+            (0 until files.length()).forEach { i -> files.getJSONObject(i).let {
+                out += DriveSnapshot(validId(it.getString("id")), it.getString("name"), it.getString("createdTime"), it.getLong("size"))
             } }
-        }
+            page = body.optString("nextPageToken").takeIf { it.isNotBlank() && it != "null" }
+            require(page == null || seen.add(page!!)) { "Drive repeated a page token" }
+        } while (page != null)
+        return out
     }
+
     /** Deletes one app-created archive (drive.file scope only reaches files this app created or opened). */
     fun delete(id: String, token: String) {
         request("$API/${validId(id)}", token, "DELETE") { c ->

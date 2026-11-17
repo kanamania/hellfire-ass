@@ -15,7 +15,7 @@ data class SearchConstraints(
 )
 
 object QueryParser {
-    val zone: ZoneId = ZoneId.of("Africa/Nairobi")
+    val zone: ZoneId = ZoneId.of("Africa/Dar_es_Salaam")
     private val categoryWords = setOf(
         "travel", "beach", "nature", "food", "animals", "animal", "vehicles", "vehicle", "work", "technology",
         "documents", "document", "screenshots", "screenshot", "artwork", "memes", "meme", "entertainment",

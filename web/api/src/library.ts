@@ -1,7 +1,7 @@
 import { BadRequestException, Body, Controller, ForbiddenException, Get, HttpCode, Inject, Injectable, Param, PayloadTooLargeException, Post, Query, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { createHash, randomUUID } from 'node:crypto';
-import { ClientGuard } from './auth.js';
+import { ClientGuard, SyncGuard } from './auth.js';
 import { CONFIG, type Config } from './config.js';
 import { Db } from './db.js';
 
@@ -24,31 +24,30 @@ function sha256(bytes: Buffer): string { return createHash('sha256').update(byte
 
 interface Incoming {
   entityType: string; entityId: string; baseVersion: number; deleted: boolean; updatedAt: number;
-  deviceId: string; envelope: Record<string, unknown>; searchText?: string;
+  deviceId: string; envelope: Record<string, unknown>; blobId?: string; previousId?: string;
 }
 
-function parseRecords(body: unknown): Incoming[] {
-  const rows = (body as { records?: unknown } | null)?.records;
-  if (!Array.isArray(rows) || rows.length > MAX_RECORDS) fail('records must be an array of at most 50');
-  return rows.map((row) => {
+function parseRecord(row: unknown): Incoming {
     const item = (row ?? {}) as Record<string, unknown>;
     const entityType = id(item.entityType, 'entityType');
     if (!TYPE_SET.has(entityType)) fail('unknown entity');
     const envelope = item.envelope;
     if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope)) fail('envelope must be an object');
+    const sealed = envelope as Record<string, unknown>;
+    if (![1, 2].includes(Number(sealed.v)) || typeof sealed.v !== 'number' || typeof sealed.ct !== 'string' || typeof sealed.salt !== 'string') fail('invalid envelope');
     const packed = JSON.stringify(envelope);
     if (packed.length > 300_000) fail('envelope too large');
     if (typeof item.baseVersion !== 'number' || !Number.isSafeInteger(item.baseVersion) || item.baseVersion < 0) fail('baseVersion must be an integer');
     if (typeof item.updatedAt !== 'number' || !Number.isSafeInteger(item.updatedAt)) fail('updatedAt must be an integer');
     if (typeof item.deleted !== 'boolean') fail('deleted must be boolean');
-    const searchText = item.searchText === undefined ? undefined : item.searchText;
-    if (searchText !== undefined && (typeof searchText !== 'string' || searchText.length > 4_000)) fail('invalid searchText');
+    if (item.searchText !== undefined) fail('plaintext library indexing is not supported');
     return {
       entityType, entityId: id(item.entityId, 'entityId'), baseVersion: item.baseVersion as number,
       deleted: item.deleted as boolean, updatedAt: item.updatedAt as number, deviceId: id(item.deviceId, 'deviceId'),
-      envelope: envelope as Record<string, unknown>, searchText,
+      envelope: envelope as Record<string, unknown>,
+      blobId: item.blobId === undefined ? undefined : id(item.blobId, 'blobId'),
+      previousId: item.previousId === undefined ? undefined : id(item.previousId, 'previousId'),
     };
-  });
 }
 
 @Injectable()
@@ -56,7 +55,7 @@ export class LibraryService {
   constructor(private readonly db: Db, @Inject(CONFIG) private readonly config: Config) {}
 
   async state() {
-    const meta = await this.db.pool.query<{ key: string; value: string }>("SELECT key, value FROM library_meta WHERE key IN ('epoch', 'kdf_salt', 'search_plaintext')");
+    const meta = await this.db.pool.query<{ key: string; value: string }>("SELECT key, value FROM library_meta WHERE key IN ('epoch', 'kdf_salt', 'key_check')");
     const map = Object.fromEntries(meta.rows.map((row) => [row.key, row.value]));
     const used = await this.db.pool.query<{ used: string }>("SELECT COALESCE(SUM(size + chunk_count::bigint * 29), 0)::text AS used FROM library_blob");
     const counts = await this.db.pool.query<{ items: string; tombstones: string }>(
@@ -65,7 +64,7 @@ export class LibraryService {
     return {
       epoch: map.epoch ?? null,
       salt: map.kdf_salt ?? null,
-      searchPlaintext: map.search_plaintext === '1',
+      protocol: 2, keyCheck: map.key_check ?? null,
       used: Number(used.rows[0].used),
       quota: this.config.quotaBytes,
       items: Number(counts.rows[0].items),
@@ -82,13 +81,34 @@ export class LibraryService {
     return { salt: rows[0].value };
   }
 
+  async setKeyCheck(body: unknown) {
+    const keyCheck = (body as { keyCheck?: unknown } | null)?.keyCheck;
+    if (typeof keyCheck !== 'string' || keyCheck.length < 40 || keyCheck.length > 512 || Buffer.from(keyCheck, 'base64').length < 29) fail('invalid key check');
+    await this.db.pool.query("INSERT INTO library_meta (key, value) VALUES ('key_check', $1) ON CONFLICT (key) DO NOTHING", [keyCheck]);
+    const result = await this.db.pool.query<{ value: string }>("SELECT value FROM library_meta WHERE key = 'key_check'");
+    return { keyCheck: result.rows[0].value };
+  }
+
+  /** A 24-hour grace protects recent uploads before their referencing record arrives. */
+  async collectGarbage() {
+    return this.db.transaction(async (client) => {
+      await client.query("SELECT pg_advisory_xact_lock(hashtext('library-quota'))");
+      const removed = await client.query(`DELETE FROM library_blob b WHERE b.updated_at < now() - interval '24 hours'
+        AND NOT EXISTS (SELECT 1 FROM library_record r WHERE NOT r.deleted AND r.blob_id = b.id)
+        AND (NOT EXISTS (SELECT 1 FROM library_record r WHERE NOT r.deleted AND COALESCE(r.envelope->>'v', '1') != '2')
+             OR b.chunk_count != (SELECT COUNT(*) FROM library_chunk c WHERE c.blob_id = b.id)) RETURNING id`);
+      return removed.rowCount ?? 0;
+    });
+  }
+
   async openBlob(body: unknown) {
+    await this.collectGarbage();
     const item = (body ?? {}) as Record<string, unknown>;
     const contentHash = item.contentHash;
     const size = item.size;
     const chunkSize = item.chunkSize;
     const chunkCount = item.chunkCount;
-    if (typeof contentHash !== 'string' || !HASH.test(contentHash)) fail('contentHash must be sha256 hex');
+    if (typeof contentHash !== 'string' || !HASH.test(contentHash)) fail('contentHash must be a keyed hex digest');
     if (typeof size !== 'number' || !Number.isSafeInteger(size) || size < 1 || size > this.config.quotaBytes) fail('invalid size');
     if (typeof chunkSize !== 'number' || !Number.isSafeInteger(chunkSize) || chunkSize < 1 || chunkSize > 256 * 1024) fail('invalid chunkSize');
     if (typeof chunkCount !== 'number' || !Number.isSafeInteger(chunkCount) || chunkCount < 1 || chunkCount > 200_000) fail('invalid chunkCount');
@@ -98,6 +118,7 @@ export class LibraryService {
       const existing = await client.query<{ id: string; size: string; chunk_count: number; chunk_size: number }>(
         'SELECT id, size::text, chunk_count, chunk_size FROM library_blob WHERE content_hash = $1', [contentHash]);
       if (existing.rows[0]) {
+        await client.query('UPDATE library_blob SET updated_at = now() WHERE id = $1', [existing.rows[0].id]);
         if (Number(existing.rows[0].size) !== size || existing.rows[0].chunk_size !== chunkSize || existing.rows[0].chunk_count !== chunkCount) fail('blob dimensions do not match');
         const received = await client.query<{ idx: number }>('SELECT idx FROM library_chunk WHERE blob_id = $1 ORDER BY idx', [existing.rows[0].id]);
         const count = Number(existing.rows[0].chunk_count);
@@ -135,6 +156,7 @@ export class LibraryService {
         await client.query('INSERT INTO library_chunk (blob_id, idx, sha256, bytes) VALUES ($1, $2, $3, $4)', [id, index, item.sha256, bytes]);
       }
       const received = await client.query<{ n: string }>('SELECT count(*)::text AS n FROM library_chunk WHERE blob_id = $1', [id]);
+      await client.query('UPDATE library_blob SET updated_at = now() WHERE id = $1', [id]);
       const complete = Number(received.rows[0].n) === blob.rows[0].chunk_count;
       return { sha256: item.sha256, received: Number(received.rows[0].n), complete };
     });
@@ -159,50 +181,51 @@ export class LibraryService {
   }
 
   async saveRecords(body: unknown) {
-    const records = parseRecords(body);
+    const raw = (body as { records?: unknown } | null)?.records;
+    if (!Array.isArray(raw) || raw.length > MAX_RECORDS) fail('records must be an array of at most 50');
+    const records: Incoming[] = [];
+    const rejected: { entityType: unknown; entityId: unknown; error: string }[] = [];
+    for (const row of raw) {
+      try { records.push(parseRecord(row)); }
+      catch (error) {
+        if (!(error instanceof BadRequestException)) throw error;
+        rejected.push({ entityType: row?.entityType, entityId: row?.entityId, error: error.message });
+      }
+    }
     return this.db.transaction(async (client) => {
-      // Serialize writers so change cursors follow commit order, including first inserts.
+      await client.query("SELECT pg_advisory_xact_lock(hashtext('library-quota'))");
       await client.query("SELECT pg_advisory_xact_lock(hashtext('library-records'))");
-      const opt = await client.query<{ value: string }>("SELECT value FROM library_meta WHERE key = 'search_plaintext'");
-      const searchOn = opt.rows[0]?.value === '1';
       const accepted: { entityType: string; entityId: string; version: number }[] = [];
       const conflicts: Record<string, unknown>[] = [];
       for (const row of records) {
-        if (row.searchText && !searchOn) fail('plaintext search is off');
-        const current = await client.query<{ version: string; deleted: boolean; updated_at: string; device_id: string; envelope: unknown }>(
-          'SELECT version::text, deleted, updated_at::text, device_id, envelope FROM library_record WHERE entity_type = $1 AND entity_id = $2 FOR UPDATE',
-          [row.entityType, row.entityId]);
-        const existing = current.rows[0];
-        if (!existing && row.baseVersion !== 0) fail('missing base record');
+        const currentId = row.previousId && row.previousId !== row.entityId ? row.previousId : row.entityId;
+        const lookup = await client.query<{ entity_id: string; version: string; deleted: boolean; updated_at: string; device_id: string; envelope: unknown; blob_id: string | null }>(
+          'SELECT entity_id, version::text, deleted, updated_at::text, device_id, envelope, blob_id FROM library_record WHERE entity_type = $1 AND entity_id IN ($2,$3) ORDER BY (entity_id = $2) DESC FOR UPDATE',
+          [row.entityType, row.entityId, currentId]);
+        const existing = lookup.rows[0];
+        if (!existing && row.baseVersion !== 0) { rejected.push({ entityType: row.entityType, entityId: row.entityId, error: 'missing base record' }); continue; }
         if (existing && Number(existing.version) !== row.baseVersion) {
-          conflicts.push({ entityType: row.entityType, entityId: row.entityId, version: Number(existing.version), deleted: existing.deleted, updatedAt: Number(existing.updated_at), deviceId: existing.device_id, envelope: existing.envelope });
+          conflicts.push({ entityType: row.entityType, entityId: existing.entity_id, version: Number(existing.version), deleted: existing.deleted,
+            updatedAt: Number(existing.updated_at), deviceId: existing.device_id, envelope: existing.envelope });
           continue;
+        }
+        const blob = row.deleted ? null : row.blobId ?? existing?.blob_id ?? null;
+        if (blob) {
+          const found = await client.query('SELECT 1 FROM library_blob WHERE id = $1', [blob]);
+          if (!found.rowCount) { rejected.push({ entityType: row.entityType, entityId: row.entityId, error: 'unknown blob' }); continue; }
         }
         const version = (existing ? Number(existing.version) : 0) + 1;
         if (!existing) {
-          await client.query(
-            `INSERT INTO library_record (entity_type, entity_id, version, deleted, updated_at, device_id, envelope)
-             VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)`,
-            [row.entityType, row.entityId, version, row.deleted, row.updatedAt, row.deviceId, JSON.stringify(row.envelope)]);
+          await client.query(`INSERT INTO library_record (entity_type, entity_id, version, deleted, updated_at, device_id, envelope, blob_id)
+            VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8)`, [row.entityType, row.entityId, version, row.deleted, row.updatedAt, row.deviceId, JSON.stringify(row.envelope), blob]);
         } else {
-          await client.query(
-            `UPDATE library_record SET version = $3, deleted = $4, updated_at = $5, device_id = $6, envelope = $7::jsonb, change_seq = nextval('library_change_seq')
-             WHERE entity_type = $1 AND entity_id = $2`,
-            [row.entityType, row.entityId, version, row.deleted, row.updatedAt, row.deviceId, JSON.stringify(row.envelope)]);
-        }
-        if (searchOn && (row.deleted || row.searchText !== undefined)) {
-          if (row.deleted || row.searchText === '') {
-            await client.query('DELETE FROM library_search WHERE entity_type = $1 AND entity_id = $2', [row.entityType, row.entityId]);
-          } else {
-            await client.query(
-              `INSERT INTO library_search (entity_type, entity_id, text) VALUES ($1, $2, $3)
-               ON CONFLICT (entity_type, entity_id) DO UPDATE SET text = excluded.text`,
-              [row.entityType, row.entityId, row.searchText]);
-          }
+          await client.query(`UPDATE library_record SET entity_id=$2, version=$3, deleted=$4, updated_at=$5, device_id=$6, envelope=$7::jsonb,
+            blob_id=$8, change_seq=nextval('library_change_seq') WHERE entity_type=$1 AND entity_id=$9`,
+            [row.entityType, row.entityId, version, row.deleted, row.updatedAt, row.deviceId, JSON.stringify(row.envelope), blob, existing.entity_id]);
         }
         accepted.push({ entityType: row.entityType, entityId: row.entityId, version });
       }
-      return { accepted, conflicts };
+      return { accepted, conflicts, rejected };
     });
   }
 
@@ -218,28 +241,6 @@ export class LibraryService {
     return { records: rows.map((row) => ({ ...row, changeSeq: Number(row.changeSeq), version: Number(row.version), updatedAt: Number(row.updatedAt) })) };
   }
 
-  async setSearch(body: unknown) {
-    const enabled = (body as { enabled?: unknown } | null)?.enabled;
-    if (typeof enabled !== 'boolean') fail('enabled must be boolean');
-    await this.db.transaction(async (client) => {
-      await client.query("SELECT pg_advisory_xact_lock(hashtext('library-records'))");
-      await client.query(
-        `INSERT INTO library_meta (key, value) VALUES ('search_plaintext', $1)
-         ON CONFLICT (key) DO UPDATE SET value = excluded.value`, [enabled ? '1' : '0']);
-      if (!enabled) await client.query('DELETE FROM library_search');
-    });
-    return { searchPlaintext: enabled };
-  }
-
-  async search(q: string | undefined) {
-    const flag = await this.db.pool.query<{ value: string }>("SELECT value FROM library_meta WHERE key = 'search_plaintext'");
-    if (flag.rows[0]?.value !== '1') throw new ForbiddenException('plaintext search is off');
-    if (!q || q.length > 200) fail('q is required');
-    const { rows } = await this.db.pool.query(
-      `SELECT entity_type AS "entityType", entity_id AS "entityId", text FROM library_search
-       WHERE text ILIKE $1 ESCAPE '\\' ORDER BY entity_type, entity_id LIMIT 50`, [`%${q.replace(/[\\%_]/g, '\\$&')}%`]);
-    return { rows };
-  }
 }
 
 function idOfBlob(value: string): string {
@@ -256,13 +257,12 @@ export class LibraryController {
   @Get('state') state() { return this.library.state(); }
   @Post('salt') @HttpCode(200) salt(@Body() body: unknown) { return this.library.setSalt(body); }
   @Post('blobs') @HttpCode(200) blobs(@Body() body: unknown) { return this.library.openBlob(body); }
-  @Post('blobs/:id/chunks/:index') @HttpCode(200) putChunk(@Param('id') id: string, @Param('index') index: string, @Body() body: unknown) {
+  @Post('blobs/:id/chunks/:index') @HttpCode(200) @Throttle({ default: { limit: 3000, ttl: 60_000 } }) putChunk(@Param('id') id: string, @Param('index') index: string, @Body() body: unknown) {
     return this.library.putChunk(id, index, body);
   }
   @Get('blobs/:id') blob(@Param('id') id: string) { return this.library.blob(id); }
-  @Get('blobs/:id/chunks/:index') chunk(@Param('id') id: string, @Param('index') index: string) { return this.library.chunk(id, index); }
+  @Get('blobs/:id/chunks/:index') @Throttle({ default: { limit: 3000, ttl: 60_000 } }) chunk(@Param('id') id: string, @Param('index') index: string) { return this.library.chunk(id, index); }
   @Post('records') @HttpCode(200) records(@Body() body: unknown) { return this.library.saveRecords(body); }
   @Get('changes') changes(@Query('after') after?: string, @Query('limit') limit?: string) { return this.library.changes(after, limit); }
-  @Post('search-opt-in') @HttpCode(200) @Throttle({ default: { limit: 10, ttl: 60_000 } }) optIn(@Body() body: unknown) { return this.library.setSearch(body); }
-  @Get('search') search(@Query('q') q?: string) { return this.library.search(q); }
+  @Post('key-check') @HttpCode(200) @UseGuards(SyncGuard) keyCheck(@Body() body: unknown) { return this.library.setKeyCheck(body); }
 }

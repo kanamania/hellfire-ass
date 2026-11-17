@@ -69,7 +69,8 @@ object Sampling {
         val end = durationMs.coerceAtLeast(0)
         val step = when (mode) {
             SampleMode.FAST -> 10_000L
-            SampleMode.BALANCED, SampleMode.DEEP -> 5_000L
+            SampleMode.BALANCED -> 5_000L
+            SampleMode.DEEP -> 1_000L
         }
         val times = linkedSetOf<Long>()
         var at = 0L
@@ -94,16 +95,17 @@ object Sampling {
     }
 }
 
-data class AnalysisCheckpoint(val doneMs: Long = 0, val audioDoneMs: Long = 0, val phase: String = "frames", val sceneChangesMs: List<Long> = emptyList()) {
+data class AnalysisCheckpoint(val doneMs: Long = 0, val audioDoneMs: Long = 0, val phase: String = "frames", val sceneChangesMs: List<Long> = emptyList(), val histogram: List<Int> = emptyList(), val luma: Double? = null) {
     fun encode(): String = JSONObject().put("doneMs", doneMs).put("audioDoneMs", audioDoneMs).put("phase", phase)
-        .put("scenes", org.json.JSONArray(sceneChangesMs)).toString()
+        .put("scenes", org.json.JSONArray(sceneChangesMs)).put("histogram", org.json.JSONArray(histogram)).put("luma", luma ?: JSONObject.NULL).toString()
 
     companion object {
         fun decode(json: String): AnalysisCheckpoint = runCatching {
             val o = JSONObject(if (json.isBlank()) "{}" else json)
             val scenes = o.optJSONArray("scenes")
             val changes = if (scenes == null) emptyList() else (0 until scenes.length()).map { scenes.optLong(it) }
-            AnalysisCheckpoint(o.optLong("doneMs"), o.optLong("audioDoneMs"), o.optString("phase").ifBlank { "frames" }, changes)
+            AnalysisCheckpoint(o.optLong("doneMs"), o.optLong("audioDoneMs"), o.optString("phase").ifBlank { "frames" }, changes,
+                o.optJSONArray("histogram")?.let { h -> (0 until h.length()).map { h.getInt(it) } }.orEmpty(), if (o.has("luma") && !o.isNull("luma")) o.getDouble("luma") else null)
         }.getOrDefault(AnalysisCheckpoint())
 
         fun skipFrame(checkpoint: AnalysisCheckpoint, atMs: Long) = checkpoint.phase != "frames" || atMs < checkpoint.doneMs
