@@ -160,6 +160,7 @@ fun HellFireRoot(app: HellFireApp, permissions: PermissionStatus, actions: Permi
                     key(tabState.value, route, stack.size) {
                         if (route == null) TabContent(tabState.value) else RouteContent(route)
                     }
+                    com.hellfire.ass.ui.player.MiniPlayerOverlay(Modifier.align(Alignment.BottomCenter))
                     draftError?.let { Banner(it, Tone.Danger, HfIcons.Info, Modifier.align(Alignment.TopCenter).padding(16.dp)) }
                     if (message != null) Banner(message, Tone.Info, HfIcons.Info,
                         Modifier.align(Alignment.TopCenter).padding(horizontal = ScreenPadding, vertical = 8.dp).clickableRow(onMessageShown))

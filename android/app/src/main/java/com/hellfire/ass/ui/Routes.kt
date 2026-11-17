@@ -84,7 +84,7 @@ fun RouteContent(route: Route) {
         // existing real page; each owner replaces its own line.
         Screen.Library -> PushedPage(com.hellfire.ass.ui.tr("Recordings"), breadcrumb = "Settings") { MediaScreen(env.app, env.permissions, a.onMicrophone) } // OWNER: library-agent
         Screen.MediaDetail -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, com.hellfire.ass.library.LibraryRoutes.id(route)) } // OWNER: library-agent
-        Screen.Player -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, com.hellfire.ass.library.LibraryRoutes.id(route)) } // OWNER: player-agent
+        Screen.Player -> com.hellfire.ass.ui.player.PlayerScreen(com.hellfire.ass.library.LibraryRoutes.id(route), com.hellfire.ass.library.LibraryRoutes.startMs(route)) // OWNER: player-agent
         Screen.UniversalInbox -> InboxTab() // OWNER: drawer-inbox-agent
         Screen.InboxItem -> InboxTab() // OWNER: drawer-inbox-agent
         Screen.Search -> MemoryPage("") // OWNER: search-agent

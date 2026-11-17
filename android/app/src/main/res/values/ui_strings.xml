@@ -462,4 +462,69 @@
     <string name="ui_eb5bb0e600" formatted="false">Privacy settings could not be read. Nothing has changed.</string>
     <string name="ui_9f2467da31" formatted="false">Loading privacy settings…</string>
     <string name="ui_942087cc2d" formatted="false">Retry</string>
+    <string name="ui_64aee8c6cb" formatted="false">Player</string>
+    <string name="ui_4ac709aa58" formatted="false">Unlock</string>
+    <string name="ui_f59d9abe42" formatted="false">Lock screen</string>
+    <string name="ui_d47f85a04c" formatted="false">Original is not available.</string>
+    <string name="ui_77d99701fc" formatted="false">Notifications are off, so lock-screen controls may be hidden by Android.</string>
+    <string name="ui_7f7739d908" formatted="false">Thumbnail unavailable</string>
+    <string name="ui_858e4ba7a2" formatted="false">Pause</string>
+    <string name="ui_436e61016e" formatted="false">Play</string>
+    <string name="ui_2876c1f5c3" formatted="false">Skip back</string>
+    <string name="ui_3284049794" formatted="false">Skip forward</string>
+    <string name="ui_a57b08a480" formatted="false">Previous</string>
+    <string name="ui_1ff57a29d7" formatted="false">Next</string>
+    <string name="ui_897e0cf78b" formatted="false">Exit full screen</string>
+    <string name="ui_674fe2acd0" formatted="false">Full screen</string>
+    <string name="ui_3baa2d6ed4" formatted="false">Picture-in-picture</string>
+    <string name="ui_c372fee9b4" formatted="false">Speed</string>
+    <string name="ui_317cb3a7ef" formatted="false">Shuffle</string>
+    <string name="ui_5e87a7bd5a" formatted="false">Unfavorite</string>
+    <string name="ui_ea713ecd85" formatted="false">Favorite</string>
+    <string name="ui_336c84d8da" formatted="false">Sleep timer</string>
+    <string name="ui_bfb99f7ddb" formatted="false">End of item</string>
+    <string name="ui_7781d909b9" formatted="false">Set A</string>
+    <string name="ui_bf8f310bda" formatted="false">Set B</string>
+    <string name="ui_9d10c311ca" formatted="false">Clear loop</string>
+    <string name="ui_67eaebc39f" formatted="false">Save range</string>
+    <string name="ui_2bebdca31f" formatted="false">Previous chapter</string>
+    <string name="ui_4344dde797" formatted="false">Next chapter</string>
+    <string name="ui_b318882ba8" formatted="false">Search in this item</string>
+    <string name="ui_bf1b7b8a4c" formatted="false">Indexed search</string>
+    <string name="ui_1bac400788" formatted="false">Bookmark</string>
+    <string name="ui_67ae3405bc" formatted="false">Seek</string>
+    <string name="ui_ac20a57bfd" formatted="false">Hide</string>
+    <string name="ui_e2d0a54968" formatted="false">Delete</string>
+    <string name="ui_8bb41c4164" formatted="false">Convert to manual</string>
+    <string name="ui_c3812fc4ac" formatted="false">Remove</string>
+    <string name="ui_721164f0dc" formatted="false">Transcript</string>
+    <string name="ui_e21f935f11" formatted="false">Copy</string>
+    <string name="ui_aca01a1a3a" formatted="false">Correct</string>
+    <string name="ui_d34349bbcc" formatted="false">Playback history</string>
+    <string name="ui_5484a3a7f5" formatted="false">No playback history yet.</string>
+    <string name="ui_7e8cd2056d" formatted="false">Title</string>
+    <string name="ui_8a7525b149" formatted="false">Notes</string>
+    <string name="ui_b63ed49a38" formatted="false">Save bookmark</string>
+    <string name="ui_7d9eb7acb1" formatted="false">Close</string>
+    <string name="ui_b10fb966d7" formatted="false">Volume</string>
+    <string name="ui_ec811d30a8" formatted="false">Brightness</string>
+    <string name="ui_eeed1164fe" formatted="false">No extra audio or subtitle tracks reported.</string>
+    <string name="ui_e4a8479838" formatted="false">Audio track</string>
+    <string name="ui_6a5216300c" formatted="false">Subtitles off</string>
+    <string name="ui_b284a23c3c" formatted="false">No bookmarks or chapters yet.</string>
+    <string name="ui_ed077f3d81" formatted="false">Open</string>
+    <string name="ui_afd6047384" formatted="false">System overlay is not available. Picture-in-picture is the supported floating player.</string>
+    <string name="ui_db9061fce2" formatted="false">Playback session could not start.</string>
+    <string name="ui_fa1d54ecfb" formatted="false">Storage permission was not granted. The external file was not opened.</string>
+    <string name="ui_09da75e9c7" formatted="false">Picture-in-picture is not available on this device.</string>
+    <string name="ui_1198f84a2f" formatted="false">Picture-in-picture was refused by this device. Playback continues in the app.</string>
+    <string name="ui_e14509c412" formatted="false">Volume control was refused by this device.</string>
+    <string name="ui_554d3009ce" formatted="false">Waveform not available for this file. Playback can still continue.</string>
+    <string name="ui_ca416eb41e" formatted="false">No indexed match. Analysis was not started.</string>
+    <string name="ui_c730e1984e" formatted="false">This file cannot be played on this device. The codec or container is not supported. The original was not modified.</string>
+    <string name="ui_b84bfebce5" formatted="false">The original could not be read. Nothing was written out as a decrypted file.</string>
+    <string name="ui_2cb0daa2e0" formatted="false">Playback failed. The original was not modified.</string>
+    <string name="ui_1a00dd5a8a" formatted="false">This item is not audio or video.</string>
+    <string name="ui_f0828a29ee" formatted="false">This external item has no content URI.</string>
 </resources>
+
