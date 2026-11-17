@@ -83,8 +83,8 @@ fun RouteContent(route: Route) {
         Screen.TemplateEdit -> com.hellfire.ass.ui.templates.TemplateEditPage(route.arg)
         // Media-intelligence routes (LibraryRoutes contract). Until each owner lands its page, these open the nearest
         // existing real page; each owner replaces its own line.
-        Screen.Library -> PushedPage(com.hellfire.ass.ui.tr("Recordings"), breadcrumb = "Settings") { MediaScreen(env.app, env.permissions, a.onMicrophone) } // OWNER: library-agent
-        Screen.MediaDetail -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, com.hellfire.ass.library.LibraryRoutes.id(route)) } // OWNER: library-agent
+        Screen.Library -> com.hellfire.ass.ui.library.LibraryPage(route) // OWNER: library-agent
+        Screen.MediaDetail -> com.hellfire.ass.ui.library.MediaDetailPage(route) // OWNER: library-agent
         Screen.Player -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, com.hellfire.ass.library.LibraryRoutes.id(route)) } // OWNER: player-agent
         Screen.UniversalInbox -> InboxTab() // OWNER: drawer-inbox-agent
         Screen.InboxItem -> InboxTab() // OWNER: drawer-inbox-agent

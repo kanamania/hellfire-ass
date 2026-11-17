@@ -78,6 +78,8 @@ class HellFireApp : Application() {
                     com.hellfire.ass.media.MediaWork.recover(this@HellFireApp)
                     seedAiUsage()
                     com.hellfire.ass.data.SearchBackfill.schedule(this@HellFireApp)
+                    com.hellfire.ass.library.LibraryScanWork.schedule(this@HellFireApp)
+                    com.hellfire.ass.library.LibraryScanWork.watch(this@HellFireApp)
                     com.hellfire.ass.ai.ModelUpdates.onStartup(this@HellFireApp)
                     watchForWidgets()
                 } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); runCatching { database.events().failure("processing", "WORK_RECOVERY_FAILED") } }

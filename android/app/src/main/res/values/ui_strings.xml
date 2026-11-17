@@ -462,4 +462,63 @@
     <string name="ui_eb5bb0e600" formatted="false">Privacy settings could not be read. Nothing has changed.</string>
     <string name="ui_9f2467da31" formatted="false">Loading privacy settings…</string>
     <string name="ui_942087cc2d" formatted="false">Retry</string>
+    <string name="ui_dc20b3d5d2" formatted="false">Library</string>
+    <string name="ui_1e6245009d" formatted="false">Pictures</string>
+    <string name="ui_c9a9639463" formatted="false">Videos</string>
+    <string name="ui_bc1b88907d" formatted="false">Audio</string>
+    <string name="ui_9f9feade76" formatted="false">Collections</string>
+    <string name="ui_7a1f2a83ac" formatted="false">Favorites</string>
+    <string name="ui_b8b1d894c6" formatted="false">Categories</string>
+    <string name="ui_93c28c3925" formatted="false">Duplicates</string>
+    <string name="ui_ea1c510d1d" formatted="false">Scan</string>
+    <string name="ui_5bbfc5a69b" formatted="false">Add folder</string>
+    <string name="ui_0d7d12ac62" formatted="false">Grid</string>
+    <string name="ui_6f202f54a7" formatted="false">List</string>
+    <string name="ui_d15efa178c" formatted="false">Newest</string>
+    <string name="ui_1af8519073" formatted="false">Size</string>
+    <string name="ui_452ec9f553" formatted="false">Recently played</string>
+    <string name="ui_66115948b1" formatted="false">Managed sync</string>
+    <string name="ui_d11d1aca95" formatted="false">Not selected for sync</string>
+    <string name="ui_0d41d27eca" formatted="false">Not analysed yet</string>
+    <string name="ui_436e61016e" formatted="false">Play</string>
+    <string name="ui_5b9aadad3f" formatted="false">Share with AI</string>
+    <string name="ui_55ecdf8652" formatted="false">Reprocess</string>
+    <string name="ui_d120fc6535" formatted="false">Original metadata</string>
+    <string name="ui_a7ed4b7a2e" formatted="false">AI metadata</string>
+    <string name="ui_bf3a2be349" formatted="false">Your description</string>
+    <string name="ui_3f63a3abbc" formatted="false">Similar</string>
+    <string name="ui_50a206ca76" formatted="false">Partial access</string>
+    <string name="ui_1b4c03a1d1" formatted="false">Media access needed</string>
+    <string name="ui_1d0c5be737" formatted="false">Slideshow</string>
+    <string name="ui_57bca6e1c6" formatted="false">Albums</string>
+    <string name="ui_dcd0a4d2c6" formatted="false">Playlists</string>
+    <string name="ui_c63eb6720c" formatted="false">Private</string>
+    <string name="ui_6e69959866" formatted="false">Merge into</string>
+    <string name="ui_5b76f62e1b" formatted="false">Exclude</string>
+    <string name="ui_8ece895c9b" formatted="false">Assign</string>
+    <string name="ui_1331275bc5" formatted="false">Tags</string>
+    <string name="ui_2a78025de6" formatted="false">Select</string>
+    <string name="ui_a74c5b7741" formatted="false">Indexed only</string>
+    <string name="ui_0f793aaea4" formatted="false">Not backed up</string>
+    <string name="ui_2f2ccea17e" formatted="false">Backed up</string>
+    <string name="ui_7e52b62ffb" formatted="false">Not queued</string>
+    <string name="ui_44671d1d1a" formatted="false">Selected for sync</string>
+    <string name="ui_9bbe98c2ab" formatted="false">Compare pictures</string>
+    <string name="ui_1ab1e121c0" formatted="false">New category</string>
+    <string name="ui_3064d79a29" formatted="false">Rename</string>
+    <string name="ui_488464ba45" formatted="false">Remove tag</string>
+    <string name="ui_52a8f32fd2" formatted="false">Queue processing</string>
+    <string name="ui_d0baec111c" formatted="false">Add to collection</string>
+    <string name="ui_5bf24037c6" formatted="false">Mark favorite</string>
+    <string name="ui_83b12c2216" formatted="false">Clear</string>
+    <string name="ui_ac8991ef01" formatted="false">Load more</string>
+    <string name="ui_6be36ca49e" formatted="false">Missing</string>
+    <string name="ui_d101686dfb" formatted="false">Permission revoked</string>
+    <string name="ui_2a6141e43b" formatted="false">Changed</string>
+    <string name="ui_e674447337" formatted="false">Available</string>
+    <string name="ui_326bbeaa91" formatted="false">Sync on</string>
+    <string name="ui_c8e3e92a62" formatted="false">Processing</string>
+    <string name="ui_838557924a" formatted="false">Backup</string>
+    <string name="ui_bec69036aa" formatted="false">Sort</string>
+    <string name="ui_638e249f4a" formatted="false">Filter</string>
 </resources>

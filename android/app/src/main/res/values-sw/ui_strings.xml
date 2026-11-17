@@ -462,4 +462,63 @@
     <string name="ui_eb5bb0e600" formatted="false">Mipangilio ya faragha haikusomeka. Hakuna kilichobadilishwa.</string>
     <string name="ui_9f2467da31" formatted="false">Inapakia mipangilio ya faragha…</string>
     <string name="ui_942087cc2d" formatted="false">Jaribu tena</string>
+    <string name="ui_dc20b3d5d2" formatted="false">Maktaba</string>
+    <string name="ui_1e6245009d" formatted="false">Picha</string>
+    <string name="ui_c9a9639463" formatted="false">Video</string>
+    <string name="ui_bc1b88907d" formatted="false">Sauti</string>
+    <string name="ui_9f9feade76" formatted="false">Makusanyo</string>
+    <string name="ui_7a1f2a83ac" formatted="false">Vipendwa</string>
+    <string name="ui_b8b1d894c6" formatted="false">Makundi</string>
+    <string name="ui_93c28c3925" formatted="false">Nakala</string>
+    <string name="ui_ea1c510d1d" formatted="false">Chunguza</string>
+    <string name="ui_5bbfc5a69b" formatted="false">Ongeza folda</string>
+    <string name="ui_0d7d12ac62" formatted="false">Gridi</string>
+    <string name="ui_6f202f54a7" formatted="false">Orodha</string>
+    <string name="ui_d15efa178c" formatted="false">Mpya</string>
+    <string name="ui_1af8519073" formatted="false">Ukubwa</string>
+    <string name="ui_452ec9f553" formatted="false">Zilizochezwa karibuni</string>
+    <string name="ui_66115948b1" formatted="false">Usawazishaji unaosimamiwa</string>
+    <string name="ui_d11d1aca95" formatted="false">Haijachaguliwa kusawazishwa</string>
+    <string name="ui_0d41d27eca" formatted="false">Haijachambuliwa bado</string>
+    <string name="ui_436e61016e" formatted="false">Cheza</string>
+    <string name="ui_5b9aadad3f" formatted="false">Shiriki na AI</string>
+    <string name="ui_55ecdf8652" formatted="false">Chakata tena</string>
+    <string name="ui_d120fc6535" formatted="false">Data asili</string>
+    <string name="ui_a7ed4b7a2e" formatted="false">Data ya AI</string>
+    <string name="ui_bf3a2be349" formatted="false">Maelezo yako</string>
+    <string name="ui_3f63a3abbc" formatted="false">Zinazofanana</string>
+    <string name="ui_50a206ca76" formatted="false">Ruhusa ya sehemu</string>
+    <string name="ui_1b4c03a1d1" formatted="false">Ruhusa ya media inahitajika</string>
+    <string name="ui_1d0c5be737" formatted="false">Onyesho</string>
+    <string name="ui_57bca6e1c6" formatted="false">Albamu</string>
+    <string name="ui_dcd0a4d2c6" formatted="false">Orodha za kucheza</string>
+    <string name="ui_c63eb6720c" formatted="false">Faragha</string>
+    <string name="ui_6e69959866" formatted="false">Unganisha na</string>
+    <string name="ui_5b76f62e1b" formatted="false">Ondoa</string>
+    <string name="ui_8ece895c9b" formatted="false">Weka</string>
+    <string name="ui_1331275bc5" formatted="false">Lebo</string>
+    <string name="ui_2a78025de6" formatted="false">Chagua</string>
+    <string name="ui_a74c5b7741" formatted="false">Imeorodheshwa tu</string>
+    <string name="ui_0f793aaea4" formatted="false">Haijahifadhiwa</string>
+    <string name="ui_2f2ccea17e" formatted="false">Imehifadhiwa</string>
+    <string name="ui_7e52b62ffb" formatted="false">Haijawekwa foleni</string>
+    <string name="ui_44671d1d1a" formatted="false">Imechaguliwa kusawazishwa</string>
+    <string name="ui_9bbe98c2ab" formatted="false">Linganisha picha</string>
+    <string name="ui_1ab1e121c0" formatted="false">Kundi jipya</string>
+    <string name="ui_3064d79a29" formatted="false">Badilisha jina</string>
+    <string name="ui_488464ba45" formatted="false">Ondoa lebo</string>
+    <string name="ui_52a8f32fd2" formatted="false">Weka kwenye foleni</string>
+    <string name="ui_d0baec111c" formatted="false">Ongeza kwenye mkusanyiko</string>
+    <string name="ui_5bf24037c6" formatted="false">Weka kipendwa</string>
+    <string name="ui_83b12c2216" formatted="false">Futa</string>
+    <string name="ui_ac8991ef01" formatted="false">Pakia zaidi</string>
+    <string name="ui_6be36ca49e" formatted="false">Haipatikani</string>
+    <string name="ui_d101686dfb" formatted="false">Ruhusa imeondolewa</string>
+    <string name="ui_2a6141e43b" formatted="false">Imebadilika</string>
+    <string name="ui_e674447337" formatted="false">Inapatikana</string>
+    <string name="ui_326bbeaa91" formatted="false">Usawazishaji umewashwa</string>
+    <string name="ui_c8e3e92a62" formatted="false">Inachakata</string>
+    <string name="ui_838557924a" formatted="false">Hifadhi</string>
+    <string name="ui_bec69036aa" formatted="false">Panga</string>
+    <string name="ui_638e249f4a" formatted="false">Chuja</string>
 </resources>
