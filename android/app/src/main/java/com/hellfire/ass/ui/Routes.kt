@@ -81,20 +81,25 @@ fun RouteContent(route: Route) {
         Screen.Bills -> com.hellfire.ass.ui.insights.BillsPage()
         Screen.Templates -> com.hellfire.ass.ui.templates.TemplatesPage()
         Screen.TemplateEdit -> com.hellfire.ass.ui.templates.TemplateEditPage(route.arg)
-        // Media-intelligence routes (LibraryRoutes contract). Until each owner lands its page, these open the nearest
-        // existing real page; each owner replaces its own line.
-        Screen.Library -> PushedPage(com.hellfire.ass.ui.tr("Recordings"), breadcrumb = "Settings") { MediaScreen(env.app, env.permissions, a.onMicrophone) } // OWNER: library-agent
-        Screen.MediaDetail -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, com.hellfire.ass.library.LibraryRoutes.id(route)) } // OWNER: library-agent
-        Screen.Player -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, com.hellfire.ass.library.LibraryRoutes.id(route)) } // OWNER: player-agent
-        Screen.UniversalInbox -> InboxTab() // OWNER: drawer-inbox-agent
-        Screen.InboxItem -> InboxTab() // OWNER: drawer-inbox-agent
-        Screen.Search -> MemoryPage("") // OWNER: search-agent
-        Screen.ShareWithAi -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, com.hellfire.ass.library.LibraryRoutes.id(route)) } // OWNER: sharing-agent
-        Screen.ProcessingQueue -> PushedPage(com.hellfire.ass.ui.tr("Recordings"), breadcrumb = "Settings") { MediaScreen(env.app, env.permissions, a.onMicrophone) } // OWNER: processing-agent
-        Screen.SyncDashboard -> com.hellfire.ass.ui.settings.WebAccessPage() // OWNER: sync-agent
-        Screen.BackupDashboard -> PushedPage(com.hellfire.ass.ui.tr("Encrypted backup"), breadcrumb = "Settings") { BackupScreen(env.app) } // OWNER: backup-agent
-        Screen.StatusDashboard -> com.hellfire.ass.ui.settings.DevicePage() // OWNER: status-agent
-        Screen.MediaSettings -> PushedPage(com.hellfire.ass.ui.tr("Recordings"), breadcrumb = "Settings") { MediaScreen(env.app, env.permissions, a.onMicrophone) } // OWNER: processing-agent
+        Screen.Library -> com.hellfire.ass.ui.library.LibraryPage(route)
+        Screen.MediaDetail -> com.hellfire.ass.ui.library.MediaDetailPage(route)
+        Screen.Player -> com.hellfire.ass.ui.player.PlayerScreen(com.hellfire.ass.library.LibraryRoutes.id(route), com.hellfire.ass.library.LibraryRoutes.startMs(route))
+        Screen.UniversalInbox -> com.hellfire.ass.ui.drawer.UniversalInboxPage()
+        Screen.InboxItem -> com.hellfire.ass.ui.drawer.InboxItemPage(com.hellfire.ass.library.LibraryRoutes.id(route))
+        Screen.Search -> com.hellfire.ass.ui.intelligence.SearchScreen(route)
+        Screen.ShareWithAi -> com.hellfire.ass.ui.sharing.ShareWithAiPage(route)
+        Screen.ProcessingQueue -> com.hellfire.ass.ui.intelligence.ProcessingQueueScreen()
+        Screen.SyncDashboard -> com.hellfire.ass.ui.sync.SyncDashboardPage()
+        Screen.BackupDashboard -> PushedPage(com.hellfire.ass.ui.tr("Backup dashboard"), breadcrumb = "Settings") { BackupDashboardScreen(env.app) }
+        Screen.StatusDashboard -> PushedPage(com.hellfire.ass.ui.tr("Status dashboard"), breadcrumb = "Settings") { StatusDashboardScreen(env.app) }
+        Screen.MediaSettings -> com.hellfire.ass.ui.intelligence.MediaSettingsScreen()
+        Screen.News -> com.hellfire.ass.ui.news.NewsScreen()
+        Screen.NewsReader -> com.hellfire.ass.ui.news.NewsReaderPage(route.arg)
+        Screen.NewsStory -> com.hellfire.ass.ui.news.NewsStoryPage(route.arg)
+        Screen.NewsSettings -> com.hellfire.ass.ui.news.NewsSettingsPage()
+        Screen.NewsSources -> com.hellfire.ass.ui.news.NewsSourcesPage()
+        Screen.NewsInterests -> com.hellfire.ass.ui.news.NewsInterestsPage()
+        Screen.NewsHealth -> com.hellfire.ass.ui.news.NewsHealthPage()
         else -> PushedPage(route.screen.name) { Note("This screen is not available yet.") }
     }
 }

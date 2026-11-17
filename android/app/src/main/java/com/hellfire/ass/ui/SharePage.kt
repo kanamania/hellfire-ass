@@ -8,6 +8,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.hellfire.ass.drawer.DrawerController
+import com.hellfire.ass.drawer.DrawerPipeline
+import com.hellfire.ass.drawer.DropPart
 import com.hellfire.ass.events.NotificationNormalizer
 import com.hellfire.ass.events.NotificationSnapshot
 import com.hellfire.ass.memory.MemoryItem
@@ -58,6 +61,22 @@ fun SharePage() {
         if (action == "Save note" && text.length > 4000) Note("The memory note keeps the first 4,000 characters; the shared source retains up to 60,000.")
         if (action == "Save note") HfTextField(subject, { subject = it.take(200) }, "Person or subject", enabled = !busy)
         message?.let { Banner(it) }
+        SecondaryButton(com.hellfire.ass.ui.tr("Save to drawer"), {
+            busy = true
+            app.captureScope.launch {
+                try {
+                    val parts = buildList {
+                        if (text.isNotBlank()) add(DropPart.Text(text, name = subject.ifBlank { "Shared text" }))
+                        files.forEach { add(DropPart.UriPart(it)) }
+                    }
+                    val outcome = withContext(Dispatchers.IO) { DrawerPipeline(app).ingest(parts, com.hellfire.ass.library.CaptureOrigin.SHARE, incoming.getPackage().orEmpty()) }
+                    DrawerController.show(outcome.inboxId)
+                    message = if (outcome.captureState == "COMPLETE") "Saved to the drawer." else "Incomplete capture. ${outcome.captureError.orEmpty()}"
+                } catch (e: CancellationException) { throw e }
+                catch (e: Exception) { message = e.message ?: "Could not save to the drawer." }
+                finally { busy = false }
+            }
+        }, Modifier.fillMaxWidth(), enabled = !busy && parsed.isSuccess && (text.isNotBlank() || files.isNotEmpty()))
         PrimaryButton(if (busy) "Saving…" else "Save shared content", {
             busy = true
             app.captureScope.launch {
@@ -73,6 +92,31 @@ fun SharePage() {
                 finally { busy = false }
             }
         }, Modifier.fillMaxWidth(), enabled = !busy && parsed.isSuccess && (text.isNotBlank() || files.isNotEmpty()))
+        NewsCheck(text, busy)
     }
     task?.let { TaskEditSheet(it) { msg -> task = null; message = msg } }
+}
+
+@Composable
+private fun NewsCheck(text: String, busy: Boolean) {
+    val app = LocalEnv.current.app
+    val nav = LocalNav.current
+    val scope = rememberCoroutineScope()
+    var checking by remember { mutableStateOf(false) }
+    var result by remember { mutableStateOf<com.hellfire.ass.news.DropResult?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    SecondaryButton(tr(if (checking) "Checking…" else "Check against news"), {
+        checking = true; error = null
+        scope.launch {
+            val r = com.hellfire.ass.ui.news.newsCall { app.news.dropIn(text.take(4000), com.hellfire.ass.ui.news.NewsUi.firstUrl(text)) }
+            checking = false
+            result = r.getOrNull()
+            error = r.exceptionOrNull()?.let { com.hellfire.ass.ui.news.failText(it, "Could not check against news") }
+        }
+    }, Modifier.fillMaxWidth(), enabled = !busy && !checking && text.isNotBlank())
+    error?.let { Banner(it, Tone.Danger, null) }
+    result?.let { r ->
+        Banner(r.message, Tone.Info, com.hellfire.ass.ui.theme.HfIcons.Info)
+        r.eventId?.let { id -> QuietButton(tr("Open story"), { nav.push(Screen.NewsStory, id) }) }
+    }
 }

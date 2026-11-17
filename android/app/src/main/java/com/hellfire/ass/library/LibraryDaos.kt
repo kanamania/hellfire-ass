@@ -1,6 +1,7 @@
 package com.hellfire.ass.library
 
 import androidx.room.*
+import androidx.sqlite.db.SupportSQLiteQuery
 import com.hellfire.ass.media.MediaItem
 import com.hellfire.ass.media.TranscriptSegment
 import kotlinx.coroutines.flow.Flow
@@ -18,6 +19,7 @@ data class SearchHitRef(val ref: String, val itemId: String, val kind: String, v
 data class TimestampHit(val mediaId: String, val startMs: Long, val endMs: Long, val text: String, val kind: String, val ref: String)
 data class CategoryLink(@Embedded val category: MediaCategory, val linkOrigin: String, val linkState: String, val confidence: Double?)
 data class StateCount(val state: String, val count: Int)
+data class BackupStamp(val itemId: String, val verifiedAt: Long)
 
 @Dao
 interface LibraryDao {
@@ -34,12 +36,12 @@ interface LibraryDao {
     suspend fun duplicates(limit: Int): List<MediaItem>
 
     /** One keyset page, newest import first. kinds: ContentKind names (pass all for no filter); storage: StorageMode names. */
-    @Query("SELECT * FROM media_item WHERE state != 'DELETING' AND contentKind IN (:kinds) AND storage IN (:storage) AND (:favoritesOnly = 0 OR favorite = 1) AND (importedAt < :beforeAt OR (importedAt = :beforeAt AND id < :beforeId)) ORDER BY importedAt DESC, id DESC LIMIT :limit")
+    @Query("SELECT * FROM media_item WHERE state NOT IN ('DELETING', 'SYNC_REMOVED') AND contentKind IN (:kinds) AND storage IN (:storage) AND (:favoritesOnly = 0 OR favorite = 1) AND (importedAt < :beforeAt OR (importedAt = :beforeAt AND id < :beforeId)) ORDER BY importedAt DESC, id DESC LIMIT :limit")
     suspend fun page(kinds: List<String>, storage: List<String>, favoritesOnly: Boolean, beforeAt: Long, beforeId: String, limit: Int): List<MediaItem>
-    @Query("SELECT * FROM media_item WHERE state != 'DELETING' ORDER BY importedAt DESC, id DESC LIMIT :limit") fun recent(limit: Int): Flow<List<MediaItem>>
-    @Query("SELECT * FROM media_item WHERE favorite = 1 AND state != 'DELETING' ORDER BY importedAt DESC LIMIT :limit") fun favorites(limit: Int): Flow<List<MediaItem>>
-    @Query("SELECT m.* FROM media_item m JOIN playback_state p ON p.mediaId = m.id ORDER BY p.lastPlayedAt DESC LIMIT :limit") fun recentlyPlayed(limit: Int): Flow<List<MediaItem>>
-    @Query("SELECT contentKind, COUNT(*) AS count FROM media_item WHERE state != 'DELETING' GROUP BY contentKind") fun kindCounts(): Flow<List<KindCount>>
+    @Query("SELECT * FROM media_item WHERE state NOT IN ('DELETING', 'SYNC_REMOVED') ORDER BY importedAt DESC, id DESC LIMIT :limit") fun recent(limit: Int): Flow<List<MediaItem>>
+    @Query("SELECT * FROM media_item WHERE favorite = 1 AND state NOT IN ('DELETING', 'SYNC_REMOVED') ORDER BY importedAt DESC LIMIT :limit") fun favorites(limit: Int): Flow<List<MediaItem>>
+    @Query("SELECT m.* FROM media_item m JOIN playback_state p ON p.mediaId = m.id WHERE m.state NOT IN ('DELETING', 'SYNC_REMOVED') ORDER BY p.lastPlayedAt DESC LIMIT :limit") fun recentlyPlayed(limit: Int): Flow<List<MediaItem>>
+    @Query("SELECT contentKind, COUNT(*) AS count FROM media_item WHERE state NOT IN ('DELETING', 'SYNC_REMOVED') GROUP BY contentKind") fun kindCounts(): Flow<List<KindCount>>
     @Query("UPDATE media_item SET favorite = :favorite WHERE id = :id") suspend fun setFavorite(id: String, favorite: Boolean)
     @Query("UPDATE media_item SET availability = :availability WHERE id = :id") suspend fun setAvailability(id: String, availability: String)
     @Query("UPDATE media_item SET contentHash = :hash WHERE id = :id") suspend fun setHash(id: String, hash: String)
@@ -48,11 +50,15 @@ interface LibraryDao {
     /** External entries still lacking a content hash (hash them in bounded background batches). */
     @Query("SELECT * FROM media_item WHERE storage = 'EXTERNAL' AND contentHash IS NULL AND availability = 'AVAILABLE' LIMIT :limit") suspend fun unhashedExternal(limit: Int): List<MediaItem>
     @Query("SELECT * FROM media_item WHERE storage = 'EXTERNAL' AND externalUri LIKE :prefix || '%' ORDER BY id") suspend fun externalUnder(prefix: String): List<MediaItem>
+    @Query("SELECT * FROM media_item WHERE storage = 'EXTERNAL' OR externalUri IS NOT NULL") suspend fun indexedExternal(): List<MediaItem>
+    @Query("DELETE FROM media_item WHERE id = :id AND storage = 'EXTERNAL'") suspend fun deleteExternal(id: String)
+    @RawQuery suspend fun queryItems(query: SupportSQLiteQuery): List<MediaItem>
 
     // ---- analysis ----
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertAnalysis(analysis: MediaAnalysis)
     @Query("SELECT * FROM media_analysis WHERE mediaId = :mediaId ORDER BY createdAt DESC") fun analyses(mediaId: String): Flow<List<MediaAnalysis>>
     @Query("SELECT * FROM media_analysis WHERE mediaId = :mediaId AND analyzer = :analyzer ORDER BY createdAt DESC LIMIT 1") suspend fun latestAnalysis(mediaId: String, analyzer: String): MediaAnalysis?
+    @Query("SELECT * FROM media_analysis WHERE mediaId = :mediaId ORDER BY createdAt DESC LIMIT 1") suspend fun latestAny(mediaId: String): MediaAnalysis?
     @Query("UPDATE media_analysis SET editedJson = :editedJson, editedAt = :at WHERE id = :id") suspend fun editAnalysis(id: String, editedJson: String?, at: Long)
     @Transaction suspend fun saveAnalysis(analysis: MediaAnalysis) {
         insertAnalysis(analysis); deleteSearch(analysis.id)
@@ -75,6 +81,7 @@ interface LibraryDao {
     @Update suspend fun updateCategory(category: MediaCategory)
     @Query("SELECT * FROM media_category WHERE id = :id") suspend fun category(id: String): MediaCategory?
     @Query("SELECT * FROM media_category WHERE mergedInto IS NULL ORDER BY name COLLATE NOCASE") fun categories(): Flow<List<MediaCategory>>
+    @Query("SELECT * FROM media_category WHERE mergedInto IS NULL ORDER BY name COLLATE NOCASE") suspend fun categoriesNow(): List<MediaCategory>
     @Query("SELECT * FROM media_category WHERE parentId IS :parentId AND mergedInto IS NULL ORDER BY name COLLATE NOCASE") suspend fun children(parentId: String?): List<MediaCategory>
     /** Existing live sibling with this name (case-insensitive): reuse it instead of creating a duplicate. */
     @Query("SELECT * FROM media_category WHERE parentId IS :parentId AND name = :name COLLATE NOCASE AND mergedInto IS NULL LIMIT 1") suspend fun findCategory(parentId: String?, name: String): MediaCategory?
@@ -85,7 +92,9 @@ interface LibraryDao {
     @Query("DELETE FROM media_item_category WHERE itemId = :itemId AND origin = 'AI'") suspend fun clearAiCategories(itemId: String)
     @Query("SELECT c.*, l.origin AS linkOrigin, l.state AS linkState, l.confidence AS confidence FROM media_item_category l JOIN media_category c ON c.id = l.categoryId WHERE l.itemId = :itemId ORDER BY c.name")
     fun itemCategories(itemId: String): Flow<List<CategoryLink>>
-    @Query("SELECT m.* FROM media_item m JOIN media_item_category l ON l.itemId = m.id WHERE l.categoryId = :categoryId AND l.state = 'ASSIGNED' AND m.state != 'DELETING' ORDER BY m.importedAt DESC LIMIT :limit OFFSET :offset")
+    @Query("SELECT c.*, l.origin AS linkOrigin, l.state AS linkState, l.confidence AS confidence FROM media_item_category l JOIN media_category c ON c.id = l.categoryId WHERE l.itemId = :itemId ORDER BY c.name")
+    suspend fun itemCategoriesNow(itemId: String): List<CategoryLink>
+    @Query("SELECT m.* FROM media_item m JOIN media_item_category l ON l.itemId = m.id WHERE l.categoryId = :categoryId AND l.state = 'ASSIGNED' AND m.state NOT IN ('DELETING', 'SYNC_REMOVED') ORDER BY m.importedAt DESC LIMIT :limit OFFSET :offset")
     suspend fun inCategory(categoryId: String, limit: Int, offset: Int): List<MediaItem>
     @Query("INSERT OR IGNORE INTO media_item_category (itemId, categoryId, origin, state, confidence, updatedAt) SELECT itemId, :into, origin, state, confidence, :now FROM media_item_category WHERE categoryId = :from")
     suspend fun copyLinks(from: String, into: String, now: Long)
@@ -103,6 +112,7 @@ interface LibraryDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun suggestTag(tag: ItemTag): Long
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun setTag(tag: ItemTag)
     @Query("SELECT * FROM media_item_tag WHERE itemId = :itemId ORDER BY tag") fun tags(itemId: String): Flow<List<ItemTag>>
+    @Query("SELECT * FROM media_item_tag WHERE itemId = :itemId ORDER BY tag") suspend fun tagsNow(itemId: String): List<ItemTag>
     @Query("SELECT tag, COUNT(*) AS count FROM media_item_tag WHERE state = 'ASSIGNED' GROUP BY tag ORDER BY count DESC, tag") fun allTags(): Flow<List<TagCount>>
     @Query("SELECT m.* FROM media_item m JOIN media_item_tag t ON t.itemId = m.id WHERE t.tag = :tag AND t.state = 'ASSIGNED' ORDER BY m.importedAt DESC LIMIT :limit")
     suspend fun withTag(tag: String, limit: Int): List<MediaItem>
@@ -113,8 +123,11 @@ interface LibraryDao {
     @Update suspend fun updateCollection(collection: MediaCollection)
     @Query("DELETE FROM media_collection WHERE id = :id") suspend fun deleteCollection(id: String)
     @Query("SELECT * FROM media_collection WHERE kind IN (:kinds) ORDER BY name COLLATE NOCASE") fun collections(kinds: List<String>): Flow<List<MediaCollection>>
+    @Query("SELECT * FROM media_collection ORDER BY name COLLATE NOCASE") suspend fun collectionsNow(): List<MediaCollection>
     @Query("SELECT m.* FROM collection_member c JOIN media_item m ON m.id = c.itemId WHERE c.collectionId = :collectionId ORDER BY c.position, c.addedAt")
     fun members(collectionId: String): Flow<List<MediaItem>>
+    @Query("SELECT m.* FROM collection_member c JOIN media_item m ON m.id = c.itemId WHERE c.collectionId = :collectionId ORDER BY c.position, c.addedAt")
+    suspend fun membersNow(collectionId: String): List<MediaItem>
     @Query("SELECT COALESCE(MAX(position), -1) + 1 FROM collection_member WHERE collectionId = :collectionId") suspend fun nextPosition(collectionId: String): Long
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertMember(member: CollectionMember): Long
     @Transaction suspend fun addToCollection(collectionId: String, itemId: String, now: Long) {
@@ -204,14 +217,16 @@ interface JobDao {
     suspend fun fail(id: String, error: String, retryAt: Long, maxAttempts: Int, now: Long)
     /** After process death: running jobs go back to PENDING and resume from their checkpoint. */
     @Query("UPDATE processing_job SET state = 'PENDING', claimToken = NULL WHERE state IN ('PREPARING', 'PROCESSING', 'INDEXING')") suspend fun recoverInterrupted(): Int
+    @Query("UPDATE processing_job SET state = 'PENDING', claimToken = NULL WHERE type = :type AND state IN ('PREPARING', 'PROCESSING', 'INDEXING')") suspend fun recoverType(type: String): Int
     @Query("UPDATE processing_job SET state = 'PAUSED', updatedAt = :now WHERE state IN ('PENDING', 'RETRY_PENDING') AND (:id IS NULL OR id = :id)") suspend fun pause(id: String?, now: Long): Int
     @Query("UPDATE processing_job SET state = 'PENDING', updatedAt = :now WHERE state = 'PAUSED' AND (:id IS NULL OR id = :id)") suspend fun resume(id: String?, now: Long): Int
-    @Query("UPDATE processing_job SET state = 'PENDING', attempts = 0, error = NULL, notBefore = 0, updatedAt = :now WHERE state = 'FAILED' AND (:id IS NULL OR id = :id)") suspend fun retryFailed(id: String?, now: Long): Int
+    @Query("UPDATE processing_job SET state = 'PENDING', attempts = 0, error = NULL, notBefore = 0, updatedAt = :now WHERE state IN ('FAILED', 'RETRY_PENDING') AND (:id IS NULL OR id = :id)") suspend fun retryFailed(id: String?, now: Long): Int
     @Query("UPDATE processing_job SET priority = :priority, updatedAt = :now WHERE id = :id") suspend fun prioritize(id: String, priority: Int, now: Long)
     @Query("DELETE FROM processing_job WHERE id = :id") suspend fun delete(id: String)
     @Query("SELECT * FROM processing_job WHERE state != 'COMPLETED' ORDER BY CASE WHEN state IN ('PREPARING','PROCESSING','INDEXING') THEN 0 ELSE 1 END, priority, createdAt LIMIT :limit")
     fun queue(limit: Int): Flow<List<ProcessingJob>>
     @Query("SELECT * FROM processing_job WHERE itemId = :itemId ORDER BY createdAt") fun forItem(itemId: String): Flow<List<ProcessingJob>>
+    @Query("SELECT * FROM processing_job WHERE itemId IN (:ids)") suspend fun forItems(ids: List<String>): List<ProcessingJob>
     @Query("SELECT state, COUNT(*) AS count FROM processing_job GROUP BY state") fun counts(): Flow<List<StateCount>>
 }
 
@@ -282,6 +297,7 @@ interface ShareDao {
 interface SyncDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun save(record: SyncRecord)
     @Query("SELECT * FROM sync_record WHERE entityType = :type AND entityId = :id") suspend fun record(type: String, id: String): SyncRecord?
+    @Query("SELECT * FROM sync_record WHERE entityType = :type AND entityId IN (:ids)") suspend fun records(type: String, ids: List<String>): List<SyncRecord>
     /** Mark an entity changed locally (new record, or reset to PENDING); [deleted] queues a tombstone. Remote id, version and chunk progress are kept. */
     @Transaction suspend fun markChanged(type: String, id: String, deleted: Boolean, now: Long) {
         val existing = record(type, id)
@@ -319,4 +335,6 @@ interface SyncDao {
     suspend fun notBackedUp(limit: Int): List<MediaItem>
     @Query("SELECT MAX(b.verifiedAt) FROM backup_item b JOIN media_item m ON m.id = b.itemId AND m.contentHash = b.contentHash WHERE b.itemId = :itemId")
     suspend fun lastVerifiedBackup(itemId: String): Long?
+    @Query("SELECT itemId, MAX(verifiedAt) AS verifiedAt FROM backup_item WHERE itemId IN (:ids) AND verifiedAt IS NOT NULL GROUP BY itemId")
+    suspend fun verifiedBackups(ids: List<String>): List<BackupStamp>
 }

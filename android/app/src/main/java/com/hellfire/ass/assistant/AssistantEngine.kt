@@ -23,6 +23,9 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
             return@withContext Answer(LocalAssistant(clock).answer(query))
         val command = try { AssistantCommands.parse(query, clock.instant()) } catch (e: IllegalArgumentException) { return@withContext Answer(e.message ?: "Command not understood.") }
         if (command != null) return@withContext propose(command)
+        app.news.ask(query, clock.millis())?.let { news ->
+            return@withContext Answer(news.text, news.eventIds.map { "news:$it" })
+        }
         when {
             lower.startsWith("search ") || lower.startsWith("tafuta ") || lower.startsWith("find ") -> search(query.substringAfter(' ').trim())
             lower in setOf("", "help", "msaada") -> Answer("Ask: spending today, income this month, balances, tasks tomorrow, morning brief, evening brief, or search <words>. Try spending on Fuel from M-Pesa this month; spending for person \"Asha\" this month; or spending at merchant \"Cafe\" last week.\n" +

@@ -72,10 +72,13 @@ fun AskTab() {
         }
     }
     LaunchedEffect(sources) {
-        sourceNames = withContext(Dispatchers.IO) { sources.orEmpty().mapNotNull { id -> app.database.events().find(id)?.let { event ->
-            val fields = EventText.fields(app, event)
-            id to (EventText.sourceLabel(event) + " · " + (fields["title"]?.firstOrNull() ?: fields["sender_hint"]?.firstOrNull() ?: event.packageName) + " · " + Fmt.dayTime(event.occurredAt))
-        } }.toMap() }
+        sourceNames = withContext(Dispatchers.IO) { sources.orEmpty().mapNotNull { id ->
+            if (id.startsWith("news:")) app.database.news().event(id.removePrefix("news:"))?.let { id to "News · ${it.headline}" }
+            else app.database.events().find(id)?.let { event ->
+                val fields = EventText.fields(app, event)
+                id to (EventText.sourceLabel(event) + " · " + (fields["title"]?.firstOrNull() ?: fields["sender_hint"]?.firstOrNull() ?: event.packageName) + " · " + Fmt.dayTime(event.occurredAt))
+            }
+        }.toMap() }
     }
     LaunchedEffect(items.size) { if (items.isNotEmpty()) list.animateScrollToItem(items.size - 1) }
 
@@ -192,7 +195,7 @@ fun AskTab() {
         Note(com.hellfire.ass.ui.tr("The saved records this answer used. Tap one to see the original."))
         ListCard {
             ids.take(50).forEachIndexed { i, id -> if (i > 0) ListDivider(16.dp)
-                ListRow(sourceNames[id] ?: "Reading source…", chevron = true, onClick = { sources = null; nav.push(Screen.Source, id) }) }
+                ListRow(sourceNames[id] ?: "Reading source…", chevron = true, onClick = { sources = null; if (id.startsWith("news:")) nav.push(Screen.NewsStory, id.removePrefix("news:")) else nav.push(Screen.Source, id) }) }
         }
         if (ids.size > 50) Note("Showing the first 50 of ${ids.size}.")
     } }

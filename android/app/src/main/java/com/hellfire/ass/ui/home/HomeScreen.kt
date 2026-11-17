@@ -78,6 +78,11 @@ fun HomeScreen() {
                 onClick = { nav.push(Screen.Brief) })
         }
         FlowRow(Modifier.offset(y = (-6).dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            HfChip(com.hellfire.ass.ui.tr("Library"), { nav.push(com.hellfire.ass.library.LibraryRoutes.library()) })
+            HfChip(com.hellfire.ass.ui.tr("Pictures"), { nav.push(com.hellfire.ass.library.LibraryRoutes.library(com.hellfire.ass.library.ContentKind.IMAGE)) })
+            HfChip(com.hellfire.ass.ui.tr("Videos"), { nav.push(com.hellfire.ass.library.LibraryRoutes.library(com.hellfire.ass.library.ContentKind.VIDEO)) })
+            HfChip(com.hellfire.ass.ui.tr("Audio"), { nav.push(com.hellfire.ass.library.LibraryRoutes.library(com.hellfire.ass.library.ContentKind.AUDIO)) })
+            HfChip(com.hellfire.ass.ui.tr("Collections"), { nav.push(com.hellfire.ass.library.LibraryRoutes.library()); nav.action = "collections" })
             HfChip(com.hellfire.ass.ui.tr("Record"), { nav.push(Screen.Recordings) })
             HfChip(com.hellfire.ass.ui.tr("Review"), { nav.push(Screen.Review) })
             HfChip(com.hellfire.ass.ui.tr("Templates"), { nav.push(Screen.Templates) })
@@ -85,6 +90,7 @@ fun HomeScreen() {
             HfChip(com.hellfire.ass.ui.tr("People"), { nav.push(Screen.People) })
             HfChip(com.hellfire.ass.ui.tr("Debts"), { nav.push(Screen.Debts) })
             HfChip(com.hellfire.ass.ui.tr("Bills"), { nav.push(Screen.Bills) })
+            HfChip(com.hellfire.ass.ui.tr("News"), { nav.push(Screen.News) })
         }
 
         val pendingDrafts = drafts.filter { it.state == "DRAFT" }

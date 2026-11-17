@@ -1,8 +1,45 @@
 # HellFire Ass — implementation and feasibility
 
-Latest update: 2026-11-17 (adaptive performance, directly below). Earlier
+Latest update: 2026-11-17 (news/media/performance integration, directly below). Earlier
 checkpoints keep the test counts and APK checksums that were true when they were
 written; the newest checkpoint has the current ones.
+
+## News, media and performance integration — 2026-11-17
+
+Room/backup schema **19** preserves the media-library schema 18 and adds news.
+Pending news and seven media implementations were consolidated with adaptive
+performance. Source worktrees were preserved during integration.
+
+- News: feeds/source settings, clustering/ranking, versioned stories, scheduled
+  briefings, quiet-hour alerts, reader/TTS controls, saved/followed stories, Ask
+  routing and web state synchronization. Publisher availability, licensed sources,
+  X access and actual phone speech/delivery remain unverified. News embedding
+  vectors are deferred; current clustering uses English/Kiswahili lexical matching.
+- Media: external library references and managed originals, library scanning,
+  playback/PiP/bookmarks, content analysis/search, drawer/inbox, sanitized sharing,
+  encrypted optional library sync and backup/selective recovery pages.
+- The universal drawer is the in-app edge drawer plus the Android Share target,
+  with durable inbox captures, context/follow-ups and reviewed action suggestions.
+  A system-wide overlay remains unimplemented. Drag/drop and share permission
+  behavior require device verification. Duplicate action types retain their
+  highest-priority provider suggestion.
+- Corrected severe thermal threshold (Android status 3), concurrent interactive
+  waiter accounting, capped concurrent media queue requests, nullable video hashes,
+  and cached-model eviction before benchmarks.
+- Integration/recovery fixes cover metadata-only archives, selective transcript
+  evidence, stable encrypted chunk identity, bounded upload geometry, concurrent
+  record versions, deleted search entries and preservation of library data/salt
+  during ordinary mirror resets.
+
+| Check | Result | Evidence / limit |
+|---|---|---|
+| Performance/media regression subset | PASS (host) | 49 tests, zero failures/errors/skips, including concurrent queue cap and media foundation/vault/speech/semantic tests |
+| Combined web API | PASS (host) | 24 tests against disposable `hellfire_test`, including news actions, encrypted chunks, version conflicts, quota checks and mirror-reset preservation |
+| Combined frontend typecheck / production build | PASS (host) | Pinned Node 24, `npm run typecheck` and `npm run build -- --webpack`; all 14 routes. Next emitted an existing security upgrade reminder; unchanged retry passed, no dependencies changed. No browser rendering claim |
+| Final integrated Android tests | PASS (host) | `:app:testDebugUnitTest --max-workers=1 -Dorg.gradle.jvmargs=-Xmx1536m --offline`: 428 total, 424 passed, 4 opt-in live-provider tests skipped, zero failures/errors |
+| Android lint | PASS (host) | `:app:lintDebug` with the same worker/heap limits; Android 10 compatibility guards and AndroidX Media3 opt-in contracts corrected without disabling checks |
+| APK packaging | PENDING | Updated after packaging from merged main |
+| Physical device | NOT TESTED | `adb devices -l` lists no connected devices; codecs, Keystore/native SQLCipher, actual inference, battery, thermals, permission flows and OEM behavior are not established by host tests |
 
 ## Adaptive performance — 2026-11-17
 

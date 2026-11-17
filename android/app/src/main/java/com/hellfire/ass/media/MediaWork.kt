@@ -16,12 +16,17 @@ import com.hellfire.ass.performance.SpeechPlan
 import com.hellfire.ass.performance.WorkPriority
 import com.hellfire.ass.processing.CaptureWork
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.TimeUnit
 
 object MediaWork {
-    private const val TAG = "analyze-media"
+    const val ANALYSIS = "analyze-media"
+    private const val TAG = ANALYSIS
+    private val pumpLock = Mutex()
     const val OCR_CHECKPOINT = 1
     suspend fun schedule(app: HellFireApp, id: String, followUp: Boolean = false, delaySeconds: Long = 0) = withContext(Dispatchers.IO) {
+        if (app.getSharedPreferences("media", 0).getBoolean("analysis_paused", false)) return@withContext
         WorkManager.getInstance(app).enqueueUniqueWork("analyze-media:$id", if (followUp) ExistingWorkPolicy.APPEND_OR_REPLACE else ExistingWorkPolicy.KEEP,
             OneTimeWorkRequestBuilder<MediaWorker>().setInputData(workDataOf("id" to id)).addTag(TAG)
                 .setInitialDelay(delaySeconds, TimeUnit.SECONDS)
@@ -31,7 +36,7 @@ object MediaWork {
         Unit
     }
     /** Schedules at most [JobBudget.MEDIA_PENDING_CAP] analysis jobs. The rest stay queued for the next pass. */
-    suspend fun pump(app: HellFireApp) = withContext(Dispatchers.IO) {
+    suspend fun pump(app: HellFireApp) = withContext(Dispatchers.IO) { pumpLock.withLock {
         val manager = WorkManager.getInstance(app)
         val pending = manager.getWorkInfos(WorkQuery.Builder.fromTags(listOf(TAG))
             .addStates(listOf(WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING, WorkInfo.State.BLOCKED)).build()).get().size
@@ -44,11 +49,11 @@ object MediaWork {
             schedule(app, item.id)
             slots--
         }
-    }
+    } }
     suspend fun queue(app: HellFireApp, id: String) {
         require(app.database.media().item(id)?.state != "DELETING")
         app.database.media().state(id, "QUEUED", null)
-        schedule(app, id)
+        pump(app)
     }
     suspend fun recover(app: HellFireApp) {
         app.media.recover()
@@ -76,7 +81,7 @@ class MediaWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
         val app = applicationContext as HellFireApp
         val id = inputData.getString("id") ?: return@withContext Result.failure()
         val item = app.database.media().item(id) ?: return@withContext Result.success()
-        if (item.state == "DELETING") return@withContext Result.success()
+        if (item.state in setOf("DELETING", "SYNC_REMOVED")) return@withContext Result.success()
         val signals = DeviceProbe.signals(app)
         val profile = OperatingProfile.of(signals)
         if (signals.thermal >= OperatingProfile.THERMAL_SEVERE || signals.lowMemory) {
@@ -102,11 +107,11 @@ class MediaWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
                     }
                 }
                 item.mime.startsWith("audio/") || item.mime.startsWith("video/") -> {
-                    if (item.mime.startsWith("video/") && progress == 0L && !ProcessingCheckpoint.videoDone(app, id, item.contentHash, MediaWork.OCR_CHECKPOINT)) {
+                    if (item.mime.startsWith("video/") && progress == 0L && !ProcessingCheckpoint.videoDone(app, id, requireNotNull(item.contentHash) { "MANAGED_CONTENT_HASH_REQUIRED" }, MediaWork.OCR_CHECKPOINT)) {
                         VisualReader.video(app, item) { at, text ->
                             MediaWork.text(app, item, at, at, text, "sampled_video_frame")
                         }
-                        ProcessingCheckpoint.markVideo(app, id, item.contentHash, MediaWork.OCR_CHECKPOINT)
+                        ProcessingCheckpoint.markVideo(app, id, requireNotNull(item.contentHash) { "MANAGED_CONTENT_HASH_REQUIRED" }, MediaWork.OCR_CHECKPOINT)
                     }
                     if (!app.speech.model.isFile) error("TRANSCRIPTION_MODEL_REQUIRED")
                     if (ExecutionScheduler.shouldYield(WorkPriority.DEFERRED)) {
@@ -140,7 +145,7 @@ class MediaWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
             if (!complete) MediaWork.schedule(app, id, true, if (yielded) 30 else 0) else MediaWork.pump(app)
             Result.success()
         } catch (e: CancellationException) {
-            PerfLog.record("work_stop_reason", stopReason.toLong())
+            PerfLog.record("work_stop_reason", if (android.os.Build.VERSION.SDK_INT >= 31) stopReason.toLong() else -1L)
             withContext(NonCancellable) { if (app.database.media().item(id)?.state != "DELETING") app.database.media().state(id, "QUEUED", "PROCESSING_INTERRUPTED") }
             throw e
         } catch (error: Exception) {

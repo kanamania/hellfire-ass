@@ -462,4 +462,200 @@
     <string name="ui_eb5bb0e600" formatted="false">Privacy settings could not be read. Nothing has changed.</string>
     <string name="ui_9f2467da31" formatted="false">Loading privacy settings…</string>
     <string name="ui_942087cc2d" formatted="false">Retry</string>
+    <string name="ui_dc20b3d5d2" formatted="false">Library</string>
+    <string name="ui_1e6245009d" formatted="false">Pictures</string>
+    <string name="ui_c9a9639463" formatted="false">Videos</string>
+    <string name="ui_bc1b88907d" formatted="false">Audio</string>
+    <string name="ui_9f9feade76" formatted="false">Collections</string>
+    <string name="ui_7a1f2a83ac" formatted="false">Favorites</string>
+    <string name="ui_b8b1d894c6" formatted="false">Categories</string>
+    <string name="ui_93c28c3925" formatted="false">Duplicates</string>
+    <string name="ui_ea1c510d1d" formatted="false">Scan</string>
+    <string name="ui_5bbfc5a69b" formatted="false">Add folder</string>
+    <string name="ui_0d7d12ac62" formatted="false">Grid</string>
+    <string name="ui_6f202f54a7" formatted="false">List</string>
+    <string name="ui_d15efa178c" formatted="false">Newest</string>
+    <string name="ui_1af8519073" formatted="false">Size</string>
+    <string name="ui_452ec9f553" formatted="false">Recently played</string>
+    <string name="ui_66115948b1" formatted="false">Managed sync</string>
+    <string name="ui_d11d1aca95" formatted="false">Not selected for sync</string>
+    <string name="ui_0d41d27eca" formatted="false">Not analysed yet</string>
+    <string name="ui_436e61016e" formatted="false">Play</string>
+    <string name="ui_5b9aadad3f" formatted="false">Share with AI</string>
+    <string name="ui_55ecdf8652" formatted="false">Reprocess</string>
+    <string name="ui_d120fc6535" formatted="false">Original metadata</string>
+    <string name="ui_a7ed4b7a2e" formatted="false">AI metadata</string>
+    <string name="ui_bf3a2be349" formatted="false">Your description</string>
+    <string name="ui_3f63a3abbc" formatted="false">Similar</string>
+    <string name="ui_50a206ca76" formatted="false">Partial access</string>
+    <string name="ui_1b4c03a1d1" formatted="false">Media access needed</string>
+    <string name="ui_1d0c5be737" formatted="false">Slideshow</string>
+    <string name="ui_57bca6e1c6" formatted="false">Albums</string>
+    <string name="ui_dcd0a4d2c6" formatted="false">Playlists</string>
+    <string name="ui_c63eb6720c" formatted="false">Private</string>
+    <string name="ui_6e69959866" formatted="false">Merge into</string>
+    <string name="ui_5b76f62e1b" formatted="false">Exclude</string>
+    <string name="ui_8ece895c9b" formatted="false">Assign</string>
+    <string name="ui_1331275bc5" formatted="false">Tags</string>
+    <string name="ui_2a78025de6" formatted="false">Select</string>
+    <string name="ui_a74c5b7741" formatted="false">Indexed only</string>
+    <string name="ui_0f793aaea4" formatted="false">Not backed up</string>
+    <string name="ui_2f2ccea17e" formatted="false">Backed up</string>
+    <string name="ui_7e52b62ffb" formatted="false">Not queued</string>
+    <string name="ui_44671d1d1a" formatted="false">Selected for sync</string>
+    <string name="ui_9bbe98c2ab" formatted="false">Compare pictures</string>
+    <string name="ui_1ab1e121c0" formatted="false">New category</string>
+    <string name="ui_3064d79a29" formatted="false">Rename</string>
+    <string name="ui_488464ba45" formatted="false">Remove tag</string>
+    <string name="ui_52a8f32fd2" formatted="false">Queue processing</string>
+    <string name="ui_d0baec111c" formatted="false">Add to collection</string>
+    <string name="ui_5bf24037c6" formatted="false">Mark favorite</string>
+    <string name="ui_83b12c2216" formatted="false">Clear</string>
+    <string name="ui_ac8991ef01" formatted="false">Load more</string>
+    <string name="ui_6be36ca49e" formatted="false">Missing</string>
+    <string name="ui_d101686dfb" formatted="false">Permission revoked</string>
+    <string name="ui_2a6141e43b" formatted="false">Changed</string>
+    <string name="ui_e674447337" formatted="false">Available</string>
+    <string name="ui_326bbeaa91" formatted="false">Sync on</string>
+    <string name="ui_c8e3e92a62" formatted="false">Processing</string>
+    <string name="ui_838557924a" formatted="false">Backup</string>
+    <string name="ui_bec69036aa" formatted="false">Sort</string>
+    <string name="ui_638e249f4a" formatted="false">Filter</string>
+    <string name="ui_64aee8c6cb" formatted="false">Player</string>
+    <string name="ui_4ac709aa58" formatted="false">Unlock</string>
+    <string name="ui_f59d9abe42" formatted="false">Lock screen</string>
+    <string name="ui_d47f85a04c" formatted="false">Original is not available.</string>
+    <string name="ui_77d99701fc" formatted="false">Notifications are off, so lock-screen controls may be hidden by Android.</string>
+    <string name="ui_7f7739d908" formatted="false">Thumbnail unavailable</string>
+    <string name="ui_858e4ba7a2" formatted="false">Pause</string>
+    <string name="ui_2876c1f5c3" formatted="false">Skip back</string>
+    <string name="ui_3284049794" formatted="false">Skip forward</string>
+    <string name="ui_a57b08a480" formatted="false">Previous</string>
+    <string name="ui_1ff57a29d7" formatted="false">Next</string>
+    <string name="ui_897e0cf78b" formatted="false">Exit full screen</string>
+    <string name="ui_674fe2acd0" formatted="false">Full screen</string>
+    <string name="ui_3baa2d6ed4" formatted="false">Picture-in-picture</string>
+    <string name="ui_c372fee9b4" formatted="false">Speed</string>
+    <string name="ui_317cb3a7ef" formatted="false">Shuffle</string>
+    <string name="ui_5e87a7bd5a" formatted="false">Unfavorite</string>
+    <string name="ui_ea713ecd85" formatted="false">Favorite</string>
+    <string name="ui_336c84d8da" formatted="false">Sleep timer</string>
+    <string name="ui_bfb99f7ddb" formatted="false">End of item</string>
+    <string name="ui_7781d909b9" formatted="false">Set A</string>
+    <string name="ui_bf8f310bda" formatted="false">Set B</string>
+    <string name="ui_9d10c311ca" formatted="false">Clear loop</string>
+    <string name="ui_67eaebc39f" formatted="false">Save range</string>
+    <string name="ui_2bebdca31f" formatted="false">Previous chapter</string>
+    <string name="ui_4344dde797" formatted="false">Next chapter</string>
+    <string name="ui_b318882ba8" formatted="false">Search in this item</string>
+    <string name="ui_bf1b7b8a4c" formatted="false">Indexed search</string>
+    <string name="ui_1bac400788" formatted="false">Bookmark</string>
+    <string name="ui_67ae3405bc" formatted="false">Seek</string>
+    <string name="ui_ac20a57bfd" formatted="false">Hide</string>
+    <string name="ui_e2d0a54968" formatted="false">Delete</string>
+    <string name="ui_8bb41c4164" formatted="false">Convert to manual</string>
+    <string name="ui_c3812fc4ac" formatted="false">Remove</string>
+    <string name="ui_721164f0dc" formatted="false">Transcript</string>
+    <string name="ui_e21f935f11" formatted="false">Copy</string>
+    <string name="ui_aca01a1a3a" formatted="false">Correct</string>
+    <string name="ui_d34349bbcc" formatted="false">Playback history</string>
+    <string name="ui_5484a3a7f5" formatted="false">No playback history yet.</string>
+    <string name="ui_7e8cd2056d" formatted="false">Title</string>
+    <string name="ui_8a7525b149" formatted="false">Notes</string>
+    <string name="ui_b63ed49a38" formatted="false">Save bookmark</string>
+    <string name="ui_7d9eb7acb1" formatted="false">Close</string>
+    <string name="ui_b10fb966d7" formatted="false">Volume</string>
+    <string name="ui_ec811d30a8" formatted="false">Brightness</string>
+    <string name="ui_eeed1164fe" formatted="false">No extra audio or subtitle tracks reported.</string>
+    <string name="ui_e4a8479838" formatted="false">Audio track</string>
+    <string name="ui_6a5216300c" formatted="false">Subtitles off</string>
+    <string name="ui_b284a23c3c" formatted="false">No bookmarks or chapters yet.</string>
+    <string name="ui_ed077f3d81" formatted="false">Open</string>
+    <string name="ui_afd6047384" formatted="false">System overlay is not available. Picture-in-picture is the supported floating player.</string>
+    <string name="ui_db9061fce2" formatted="false">Playback session could not start.</string>
+    <string name="ui_fa1d54ecfb" formatted="false">Storage permission was not granted. The external file was not opened.</string>
+    <string name="ui_09da75e9c7" formatted="false">Picture-in-picture is not available on this device.</string>
+    <string name="ui_1198f84a2f" formatted="false">Picture-in-picture was refused by this device. Playback continues in the app.</string>
+    <string name="ui_e14509c412" formatted="false">Volume control was refused by this device.</string>
+    <string name="ui_554d3009ce" formatted="false">Waveform not available for this file. Playback can still continue.</string>
+    <string name="ui_ca416eb41e" formatted="false">No indexed match. Analysis was not started.</string>
+    <string name="ui_c730e1984e" formatted="false">This file cannot be played on this device. The codec or container is not supported. The original was not modified.</string>
+    <string name="ui_b84bfebce5" formatted="false">The original could not be read. Nothing was written out as a decrypted file.</string>
+    <string name="ui_2cb0daa2e0" formatted="false">Playback failed. The original was not modified.</string>
+    <string name="ui_1a00dd5a8a" formatted="false">This item is not audio or video.</string>
+    <string name="ui_f0828a29ee" formatted="false">This external item has no content URI.</string>
+    <string name="ui_intel_search" formatted="false">Search</string>
+    <string name="ui_intel_queue" formatted="false">Processing queue</string>
+    <string name="ui_intel_settings" formatted="false">Media intelligence</string>
+    <string name="ui_intel_pause" formatted="false">Pause</string>
+    <string name="ui_intel_resume" formatted="false">Resume</string>
+    <string name="ui_intel_charging" formatted="false">Charging only</string>
+    <string name="ui_intel_analyze" formatted="false">Analyze library</string>
+    <string name="ui_intel_fast" formatted="false">Fast</string>
+    <string name="ui_intel_balanced" formatted="false">Balanced</string>
+    <string name="ui_intel_deep" formatted="false">Deep</string>
+    <string name="ui_intel_absent" formatted="false">classifier not installed</string>
+    <string name="ui_0e81c52de2" formatted="false">Backup dashboard</string>
+    <string name="ui_452233847f" formatted="false">Status dashboard</string>
+    <string name="ui_6d46697086" formatted="false">Storage usage</string>
+    <string name="ui_1a29a43bc9" formatted="false">Verify backups</string>
+    <string name="ui_bee9dcc44e" formatted="false">Request backup</string>
+    <string name="ui_4f5d99b422" formatted="false">Pause analysis</string>
+    <string name="ui_905dccea41" formatted="false">Resume analysis</string>
+    <string name="ui_1e96a60ec9" formatted="false">Retry failures</string>
+    <string name="ui_bf0066107e" formatted="false">Reindex</string>
+    <string name="ui_430a5aaa1e" formatted="false">Pause sync</string>
+    <string name="ui_41b7c8f0bf" formatted="false">Resume sync</string>
+    <string name="ui_d33461e6c0" formatted="false">Clear cache</string>
+    <string name="ui_464b6e0507" formatted="false">Backup blocked</string>
+    <string name="ui_4159a74294" formatted="false">Thermal state</string>
+    <string name="ui_a748b5aa8c" formatted="false">Model availability</string>
+    <string name="share_with_ai" formatted="false">Share with AI</string>
+    <string name="share_prepare" formatted="false">Prepare sanitized copy</string>
+    <string name="share_open_sheet" formatted="false">Open share sheet</string>
+    <string name="share_copy_caption" formatted="false">Copy caption</string>
+    <string name="share_copy_summary" formatted="false">Copy summary</string>
+    <string name="share_export_json" formatted="false">Export JSON</string>
+    <string name="share_sanitized_copy" formatted="false">Sanitized copy</string>
+    <string name="share_preview" formatted="false">Sanitized preview</string>
+    <string name="share_not_published" formatted="false">Share sheet opened. HellFire Ass did not publish this.</string>
+    <string name="share_not_anonymous" formatted="false">Embedded metadata was removed from this copy. Visible or audible content can still identify people and places.</string>
+    <string name="share_no_face_model" formatted="false">Face and plate detection is not available.</string>
+    <string name="share_no_tracking" formatted="false">Video region tracking is not implemented.</string>
+    <string name="share_original_kept" formatted="false">The original file was not changed.</string>
+    <string name="share_no_model" formatted="false">Local model is not installed.</string>
+    <string name="drawer_inbox" formatted="false">Universal inbox</string>
+    <string name="drawer_saved" formatted="false">Saved drops, files and shares</string>
+    <string name="drawer_save" formatted="false">Save to drawer</string>
+    <string name="drawer_paste" formatted="false">Paste</string>
+    <string name="drawer_files" formatted="false">Choose files</string>
+    <string name="drawer_name" formatted="false">Drawer</string>
+    <string name="drawer_close" formatted="false">Close drawer</string>
+    <string name="drawer_minimize" formatted="false">Minimize</string>
+    <string name="drawer_left" formatted="false">Left</string>
+    <string name="drawer_right" formatted="false">Right</string>
+    <string name="drawer_archive" formatted="false">Archive</string>
+    <string name="drawer_trash" formatted="false">Move to trash</string>
+    <string name="drawer_restore" formatted="false">Restore</string>
+    <string name="drawer_delete" formatted="false">Delete permanently</string>
+    <string name="drawer_favorites" formatted="false">Favorites</string>
+    <string name="drawer_recent" formatted="false">Recent</string>
+    <string name="drawer_collections" formatted="false">Collections</string>
+    <string name="drawer_categories" formatted="false">Categories</string>
+    <string name="drawer_search" formatted="false">Search drawer</string>
+    <string name="drawer_follow" formatted="false">Follow-up</string>
+    <string name="drawer_clear" formatted="false">Clear context</string>
+    <string name="drawer_saved_state" formatted="false">Saved</string>
+    <string name="drawer_processing" formatted="false">Processing</string>
+    <string name="drawer_sync" formatted="false">Sync</string>
+    <string name="drawer_backup" formatted="false">Backup</string>
+    <string name="drawer_incomplete" formatted="false">Incomplete capture</string>
+    <string name="drawer_live" formatted="false">Needs a live source</string>
+    <string name="drawer_map" formatted="false">Open map</string>
+    <string name="drawer_directions" formatted="false">Get directions</string>
+    <string name="drawer_nav" formatted="false">Start navigation</string>
+    <string name="drawer_save_loc" formatted="false">Save location</string>
+    <string name="drawer_copy" formatted="false">Copy address</string>
+    <string name="drawer_float" formatted="false">Open floating player</string>
+    <string name="drawer_close_word" formatted="false">Close</string>
 </resources>
