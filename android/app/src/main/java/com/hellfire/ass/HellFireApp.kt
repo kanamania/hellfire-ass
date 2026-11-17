@@ -49,8 +49,10 @@ class HellFireApp : Application() {
         }
     }
 
+    private val processStarted = android.os.SystemClock.elapsedRealtime()
     override fun onCreate() {
         super.onCreate()
+        com.hellfire.ass.performance.PerfLog.record("startup_oncreate_ms", android.os.SystemClock.elapsedRealtime() - processStarted)
         com.hellfire.ass.ui.UiLanguage.code = getSharedPreferences("ui", 0).getString("language", "en").orEmpty()
         Diagnostics.init(this)
         initializeStorage()
@@ -65,6 +67,7 @@ class HellFireApp : Application() {
                 database.openHelper.writableDatabase
                 if (!recoveredDrafts) { database.communications().recoverAfterProcessStart(); recoveredDrafts = true }
                 storageStatus.value = "READY"
+                com.hellfire.ass.performance.PerfLog.record("startup_ready_ms", android.os.SystemClock.elapsedRealtime() - processStarted)
                 runCatching {
                     if (secrets.read(com.hellfire.ass.security.DriveBackupWork.CONFIG)?.optBoolean("enabled") == true)
                         com.hellfire.ass.security.DriveBackupWork.schedule(this@HellFireApp)

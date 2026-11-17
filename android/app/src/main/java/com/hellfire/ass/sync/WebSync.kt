@@ -41,7 +41,7 @@ object WebSync {
     /** A server call: method, path and optional JSON body to the parsed JSON reply. */
     fun interface Call { fun send(method: String, path: String, body: JSONObject?): JSONObject }
     class Rejected(val status: Int) : Exception("Web server answered HTTP $status")
-    data class Counts(val upserted: Int, val deleted: Int)
+    data class Counts(val upserted: Int, val deleted: Int, val bytes: Int = 0)
 
     private class Kind(val name: String, val sql: String, val at: String, val enrich: ((SupportSQLiteDatabase, PayloadCipher, JSONObject) -> Unit)? = null)
 
@@ -131,6 +131,7 @@ object WebSync {
         val sql = db.openHelper.readableDatabase
         var upserted = 0
         var deleted = 0
+        var bytes = 0
         for (kind in kinds.map { it.name } + "summary") {
             currentCoroutineContext().ensureActive()
             val spec = kinds.firstOrNull { it.name == kind }
@@ -146,7 +147,7 @@ object WebSync {
                 call.send("POST", "/api/sync/batch", JSONObject().put("dataset", dataset).put("kind", kind).put("upserts", upserts).put("deletes", JSONArray(deletes)))
                 pending.forEach { (id, hash) -> server.put(id, hash) }
                 deletes.forEach { server.remove(it) }
-                upserted += pending.size; deleted += deletes.size
+                upserted += pending.size; deleted += deletes.size; bytes += size
                 upserts = JSONArray(); size = 0; pending.clear()
             }
             for ((id, row) in changed) {
@@ -162,9 +163,10 @@ object WebSync {
             save(state)
         }
         call.send("POST", "/api/sync/finish", JSONObject().put("dataset", dataset))
-        return Counts(upserted, deleted)
+        return Counts(upserted, deleted, bytes)
     }
 
+    /** JSON body, not gzip. The server parser does not advertise compression; gzip would break sync. */
     fun https(url: String, token: String) = Call { method, path, body ->
         val connection = URI(url.trim().trimEnd('/') + path).toURL().openConnection() as HttpsURLConnection
         connection.instanceFollowRedirects = false
@@ -251,6 +253,8 @@ class WebSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                 val counts = WebSync.run(app.database, app.cipher, app.secrets.read(WebSync.STATE),
                     WebSync.https(config.getString("url"), config.getString("token")),
                     save = { state -> if (app.secrets.read(WebSync.CONFIG)?.optString("generation") == generation) app.secrets.save(WebSync.STATE, state) else throw Superseded() })
+                com.hellfire.ass.performance.PerfLog.record("web_sync_rows", counts.upserted.toLong() + counts.deleted)
+                com.hellfire.ass.performance.PerfLog.record("web_sync_bytes", counts.bytes.toLong())
                 WebSync.status(app, "Synced · ${counts.upserted} updated, ${counts.deleted} removed", success = true)
                 Result.success()
             } catch (_: Superseded) {

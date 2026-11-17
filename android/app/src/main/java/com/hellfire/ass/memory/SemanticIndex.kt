@@ -10,6 +10,14 @@ import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.text.textembedder.TextEmbedder
 import com.hellfire.ass.HellFireApp
 import com.hellfire.ass.ai.HeavyModelGate
+import com.hellfire.ass.performance.DeviceProbe
+import com.hellfire.ass.performance.ExecutionScheduler
+import com.hellfire.ass.performance.ModelSlots
+import com.hellfire.ass.performance.OperatingProfile
+import com.hellfire.ass.performance.PerfLog
+import com.hellfire.ass.performance.QueryTrace
+import com.hellfire.ass.performance.WorkPriority
+import com.hellfire.ass.performance.rolesToEvict
 import com.hellfire.ass.data.SourceEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -78,6 +86,20 @@ class SemanticIndex(private val app: HellFireApp) {
     private val mutex = Mutex()
     private val dao get() = app.database.semantic()
     private var cachedId: Triple<Long, Long, String>? = null
+    private var embedder: TextEmbedder? = null
+    private var embedderKey = ""
+    private var mapped: java.nio.ByteBuffer? = null
+
+    suspend fun releaseCached() = HeavyModelGate.mutex.withLock { closeCached() }
+
+    /** Caller must already hold [HeavyModelGate]. */
+    fun closeCached() {
+        runCatching { embedder?.close() }
+        embedder = null
+        embedderKey = ""
+        mapped = null
+        ModelSlots.drop("EMBEDDING")
+    }
     val modelFile get() = File(app.filesDir, "models/text_embedder.tflite")
     val configured get() = modelFile.isFile
 
@@ -89,15 +111,32 @@ class SemanticIndex(private val app: HellFireApp) {
         return digest.digest().joinToString("") { "%02x".format(it) }.also { cachedId = Triple(key.first, key.second, it) }
     }
 
-    private suspend inline fun <T> withEmbedder(file: File = modelFile, block: (TextEmbedder) -> T): T = HeavyModelGate.mutex.withLock {
+    private suspend inline fun <T> withEmbedder(file: File = modelFile, interactive: Boolean = false, block: (TextEmbedder) -> T): T = HeavyModelGate.mutex.withLock gate@{
         check(app.getSystemService(PowerManager::class.java).currentThermalStatus < PowerManager.THERMAL_STATUS_SEVERE) { "Device must cool before local inference" }
+        val profile = OperatingProfile.of(DeviceProbe.signals(app).copy(foreground = interactive))
+        val cacheable = file == modelFile && profile.reuseModels
+        val key = DeviceProbe.fileKey(file)
+        if (cacheable && embedder != null && embedderKey == key) return@gate block(embedder!!)
+        closeCached()
+        rolesToEvict("EMBEDDING", ModelSlots.snapshot(), profile).forEach { role ->
+            when (role) {
+                "LANGUAGE" -> app.localModel.closeCached()
+                "SPEECH" -> app.speech.closeCached()
+                "SPEAKER" -> app.speakers.closeCached()
+            }
+        }
         val buffer = FileInputStream(file).channel.use { it.map(FileChannel.MapMode.READ_ONLY, 0, it.size()) }
         val options = TextEmbedder.TextEmbedderOptions.builder()
             .setBaseOptions(BaseOptions.builder().setModelAssetBuffer(buffer).build())
             .setL2Normalize(true).setQuantize(false).build()
-        val embedder = try { TextEmbedder.createFromOptions(app, options) }
+        val created = try { TextEmbedder.createFromOptions(app, options) }
             catch (e: UnsatisfiedLinkError) { throw IllegalStateException("Semantic search needs an arm64-v8a device", e) }
-        embedder.use(block)
+        if (!cacheable) return@gate created.use(block)
+        embedder = created
+        embedderKey = key
+        mapped = buffer
+        ModelSlots.mark("EMBEDDING")
+        block(created)
     }
     private fun embed(embedder: TextEmbedder, text: String): FloatArray =
         VectorMath.normalize(embedder.embed(text.take(2000)).embeddingResult().embeddings().first().floatEmbedding())
@@ -132,6 +171,7 @@ class SemanticIndex(private val app: HellFireApp) {
     suspend fun remove() = withContext(Dispatchers.IO) {
         mutex.withLock {
             WorkManager.getInstance(app).cancelUniqueWork(SemanticIndexWork.NAME).result.get()
+            HeavyModelGate.mutex.withLock { closeCached() }
             modelFile.delete(); cachedId = null; dao.clear()
         }
     }
@@ -156,6 +196,7 @@ class SemanticIndex(private val app: HellFireApp) {
                 while (batch.isNotEmpty()) {
                     currentCoroutineContext().ensureActive()
                     if (app.getSystemService(PowerManager::class.java).currentThermalStatus >= PowerManager.THERMAL_STATUS_SEVERE) break
+                    if (ExecutionScheduler.shouldYield(WorkPriority.DEFERRED)) break
                     val now = System.currentTimeMillis()
                     dao.put(batch.map { event ->
                         val text = sourceText(event)
@@ -173,9 +214,12 @@ class SemanticIndex(private val app: HellFireApp) {
     /** Best [limit] sources by cosine similarity at or above [minScore]. Scores are uncalibrated. */
     suspend fun search(query: String, limit: Int = 10, minScore: Float = 0.35f): List<Pair<String, Float>> = withContext(Dispatchers.IO) {
         if (!configured) return@withContext emptyList()
+        ExecutionScheduler.noteWaiting(WorkPriority.INTERACTIVE)
+        try {
         mutex.withLock {
+            val started = android.os.SystemClock.elapsedRealtime()
             val model = modelId()
-            val q = withEmbedder { embed(it, query) }
+            val q = withEmbedder(interactive = true) { embed(it, query) }
             if (q.isEmpty()) return@withLock emptyList()
             val scored = mutableListOf<Pair<String, Float>>()
             var after = ""
@@ -188,8 +232,12 @@ class SemanticIndex(private val app: HellFireApp) {
                 if (scored.size > 5000) { val best = VectorMath.top(limit, scored.asSequence()); scored.clear(); scored += best }
                 after = page.last().sourceId
             }
-            VectorMath.top(limit, scored.asSequence()).filter { it.second >= minScore }
+            val hits = VectorMath.top(limit, scored.asSequence()).filter { it.second >= minScore }
+            PerfLog.record("semantic_search_ms", android.os.SystemClock.elapsedRealtime() - started)
+            QueryTrace.record("semantic_search", android.os.SystemClock.elapsedRealtime() - started, hits.size)
+            hits
         }
+        } finally { ExecutionScheduler.clearWaiting(WorkPriority.INTERACTIVE) }
     }
 }
 

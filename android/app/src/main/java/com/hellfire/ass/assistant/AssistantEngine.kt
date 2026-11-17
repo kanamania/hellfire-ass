@@ -133,8 +133,12 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
         val terms = SearchText.keywords(query)
         val memories = (listOf(query) + terms).flatMap { app.database.memory().search(it) }.distinctBy { it.id }.take(20)
         val found = mutableListOf<Pair<String, String>>()
-        suspend fun indexed(q: String?, limit: Int) = q?.let { try { app.database.events().search(it, limit) }
-            catch (e: CancellationException) { throw e } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); emptyList() } }.orEmpty()
+        suspend fun indexed(q: String?, limit: Int) = q?.let { try {
+                val started = android.os.SystemClock.elapsedRealtime()
+                val hits = app.database.events().search(it, limit)
+                com.hellfire.ass.performance.QueryTrace.record("source_search", android.os.SystemClock.elapsedRealtime() - started, hits.size)
+                hits
+            } catch (e: CancellationException) { throw e } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); emptyList() } }.orEmpty()
         val strict = indexed(SearchText.query(terms.joinToString(" ").ifBlank { query }), 20)
         val loose = if (strict.size < 5 && terms.size > 1) indexed(SearchText.anyQuery(terms), 100) else emptyList()
         val indexed = (strict + loose).distinctBy { it.eventId }.sortedByDescending { hit -> terms.count { hit.text.contains(it, true) } }.take(20)

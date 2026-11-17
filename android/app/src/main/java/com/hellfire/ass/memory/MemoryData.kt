@@ -26,6 +26,7 @@ interface MemoryDao {
         correct(id, subject, text, now)
     }
     @Query("SELECT * FROM memory_item WHERE state='ACTIVE' ORDER BY createdAt DESC") fun items(): Flow<List<MemoryItem>>
+    @Query("SELECT COUNT(*) FROM memory_item WHERE state='ACTIVE'") fun count(): Flow<Int>
     @Query("SELECT * FROM memory_item WHERE state='ACTIVE' AND (instr(lower(subject),lower(:query))>0 OR instr(lower(text),lower(:query))>0) ORDER BY createdAt DESC LIMIT 50") suspend fun search(query: String): List<MemoryItem>
     @Query("SELECT * FROM memory_item WHERE id=:id") suspend fun item(id: String): MemoryItem?
     @Query("UPDATE memory_item SET subject=:subject, text=:text, kind='OWNER_CORRECTION', confidence=100, confirmedAt=:now WHERE id=:id AND state='ACTIVE'")

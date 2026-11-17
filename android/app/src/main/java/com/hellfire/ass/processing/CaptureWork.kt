@@ -58,6 +58,8 @@ class CaptureMaintenanceWorker(context: Context, params: WorkerParameters) : Cor
             com.hellfire.ass.communications.CommunicationWork.schedule(applicationContext)
             if (SmsCaptureSettings.enabled(applicationContext)) SmsSyncWorker.schedule(applicationContext)
             // A failed health check must not stop the maintenance above from counting as done.
+            runCatching { com.hellfire.ass.media.MediaWork.pump(applicationContext as HellFireApp) }
+                .onFailure { if (it is CancellationException) throw it; com.hellfire.ass.Diagnostics.warn(it) }
             runCatching { (applicationContext as HellFireApp).let { app -> com.hellfire.ass.insights.CaptureGaps.report(app, com.hellfire.ass.insights.CaptureGaps.check(app)) } }
                 .onFailure { if (it is CancellationException) throw it; com.hellfire.ass.Diagnostics.warn(it) }
             Result.success()

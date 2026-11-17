@@ -106,8 +106,8 @@ fun SettingsHub() {
     val env = LocalEnv.current
     val nav = LocalNav.current
     val app = env.app
-    val memories by remember { app.database.memory().items() }.collectAsStateWithLifecycle(emptyList())
-    val media by remember { app.database.media().items() }.collectAsStateWithLifecycle(emptyList())
+    val memories by remember { app.database.memory().count() }.collectAsStateWithLifecycle(0)
+    val media by remember { app.database.media().count() }.collectAsStateWithLifecycle(0)
     val states by remember { app.database.communications().integrations() }.collectAsStateWithLifecycle(emptyList())
     var ai by remember { mutableStateOf<com.hellfire.ass.ai.AiState?>(null) }
     var mail by remember { mutableStateOf(0) }
@@ -185,10 +185,10 @@ fun SettingsHub() {
                 icon = HfIcons.Chat, tone = Tone.Success, chevron = true, onClick = { nav.push(Screen.WhatsApp) })
         }
         Group("Your data") {
-            ListRow(com.hellfire.ass.ui.tr("Memory and proposals"), subtitle = if (memories.isEmpty()) "Nothing saved yet" else "${memories.size} saved", icon = HfIcons.Key, tone = Tone.Neutral, chevron = true,
+            ListRow(com.hellfire.ass.ui.tr("Memory and proposals"), subtitle = if (memories == 0) "Nothing saved yet" else "$memories saved", icon = HfIcons.Key, tone = Tone.Neutral, chevron = true,
                 onClick = { nav.push(Screen.Memory) })
             ListDivider()
-            ListRow(com.hellfire.ass.ui.tr("Recordings"), subtitle = "${media.size} originals kept · import, exclusions, monitoring", icon = HfIcons.Waveform, tone = Tone.Neutral, chevron = true,
+            ListRow(com.hellfire.ass.ui.tr("Recordings"), subtitle = "$media originals kept · import, exclusions, monitoring", icon = HfIcons.Waveform, tone = Tone.Neutral, chevron = true,
                 onClick = { nav.push(Screen.Recordings) })
             ListDivider()
             ListRow(com.hellfire.ass.ui.tr("Encrypted backup"), subtitle = if (lastBackup == 0L) "Never backed up" else "Last backup ${Fmt.dayTime(lastBackup)}", icon = HfIcons.Download, tone = Tone.Neutral,
@@ -291,6 +291,7 @@ fun PermissionsPage() {
 @Composable
 fun DevicePage() {
     val env = LocalEnv.current
+    val nav = LocalNav.current
     val p = env.permissions
     PushedPage(com.hellfire.ass.ui.tr("This device"), breadcrumb = "Settings") {
         KvList(listOf("Manufacturer / model" to "${Build.MANUFACTURER} / ${Build.MODEL}", "Android / API" to "${Build.VERSION.RELEASE} / ${Build.VERSION.SDK_INT}",
@@ -303,6 +304,8 @@ fun DevicePage() {
             SecondaryButton(com.hellfire.ass.ui.tr("Test the assistant session"), env.actions.onSession, Modifier.fillMaxWidth())
             Note("Hotword, lock-screen and OEM gesture behaviour need testing on the phone.")
         }
+        SecondaryButton("Performance (developer)", { nav.push(Screen.Performance) }, Modifier.fillMaxWidth())
+        Note("Counters only: no message text, amounts, transcripts or prompts. Device speed is not claimed until measured on this phone.")
         Note("The model name comes from Android. ColorOS version, OEM gestures, lock-screen invocation, microphone interruptions and overnight behaviour must be checked on the physical phone. No physical verification is claimed here.")
     }
 }

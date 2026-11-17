@@ -923,6 +923,11 @@ SQLCipher/Keystore, actual model execution, live accounts or Android/OEM behavio
   skips native model initialization for an empty backlog, respects the requested
   batch limit and shares the heavy-model lock. Actual battery/peak RAM gains remain
   unmeasured pending device profiling.
+- 2026-11-17, adaptive performance: the same gate and workers now yield to interactive
+  work, reuse one heavy runtime when memory allows, skip silent audio and duplicate
+  video frames, and cap how many media jobs are scheduled. CPU stays selected until a
+  phone benchmark succeeds. Host policy tests pass; OPPO speed, power and codecs are
+  not measured. See `docs/DEVICE_FEASIBILITY.md`.
 
 References: [Android assistant](https://developer.android.com/reference/android/service/voice/VoiceInteractionService),
 [exact alarms](https://developer.android.com/develop/background-work/services/alarms/schedule),

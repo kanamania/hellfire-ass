@@ -6,6 +6,8 @@ import android.media.MediaMetadataRetriever
 import android.os.*
 import android.os.storage.StorageManager
 import com.hellfire.ass.HellFireApp
+import com.hellfire.ass.performance.SceneSampler
+import com.hellfire.ass.performance.fingerprintLuma
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
@@ -26,7 +28,7 @@ object VisualReader {
             catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); null }
         return ImageText(LocalOcr.read(bitmap), labels)
     }
-    suspend fun pdf(app: HellFireApp, item: MediaItem, start: Int, accept: suspend (Int, String) -> Unit): Boolean {
+    suspend fun pdf(app: HellFireApp, item: MediaItem, start: Int, pages: Int = 5, accept: suspend (Int, String) -> Unit): Boolean {
         val reader = app.media.reader(item)
         val thread = HandlerThread("encrypted-pdf").apply { start() }
         try {
@@ -38,7 +40,7 @@ object VisualReader {
                 }, Handler(thread.looper))
             descriptor.use { PdfRenderer(it).use { pdf ->
                 require(pdf.pageCount <= 1000) { "PDF_EXCEEDS_1000_PAGES" }
-                val end = minOf(start + 5, pdf.pageCount)
+                val end = minOf(start + pages.coerceIn(1, 5), pdf.pageCount)
                 for (index in start until end) {
                     currentCoroutineContext().ensureActive()
                     val bitmap = pdf.openPage(index).use { page ->
@@ -61,14 +63,15 @@ object VisualReader {
             val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: error("VIDEO_DURATION_UNAVAILABLE")
             require(duration > 0)
             // At most twenty keyframes. This is a sampled index, never a claim to cover every frame.
-            val step = maxOf(30_000L, duration / 20)
-            var at = 0L
-            while (at < duration) {
+            var previous: Long? = null
+            for (at in SceneSampler.uniform(duration)) {
                 currentCoroutineContext().ensureActive()
-                retriever.getScaledFrameAtTime(at * 1000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 1280, 720)?.let { bitmap ->
-                    accept(at, LocalOcr.read(bitmap))
-                }
-                at += step
+                val bitmap = retriever.getScaledFrameAtTime(at * 1000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC, 1280, 720) ?: continue
+                val fingerprint = fingerprintLuma(bitmap.width, bitmap.height) { x, y -> bitmap.getPixel(x, y) }
+                val keep = fingerprint == null || previous == null || SceneSampler.hamming(previous!!, fingerprint) >= 8
+                if (!keep) { bitmap.recycle(); continue }
+                if (fingerprint != null) previous = fingerprint
+                accept(at, LocalOcr.read(bitmap))
             }
         } finally { retriever.release(); source.close() }
     }
