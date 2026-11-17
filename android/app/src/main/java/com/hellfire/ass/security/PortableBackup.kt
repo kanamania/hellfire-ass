@@ -19,10 +19,10 @@ import java.util.zip.*
 class PortableBackup(private val app: HellFireApp) {
     private val prefix = "HFABACK2".toByteArray(Charsets.US_ASCII)
     suspend fun export(uri: Uri, password: CharArray, incremental: Boolean = false): BackupOutcome =
-        export(password, incremental) { app.contentResolver.openOutputStream(uri, "wt") ?: error("Destination unavailable") }
+        export(password, incremental, uri.toString()) { app.contentResolver.openOutputStream(uri, "wt") ?: error("Destination unavailable") }
     suspend fun export(file: File, password: CharArray, incremental: Boolean = false): BackupOutcome =
-        export(password, incremental) { file.outputStream() }
-    private suspend fun export(password: CharArray, incremental: Boolean, destination: () -> OutputStream): BackupOutcome = withContext(Dispatchers.IO) {
+        export(password, incremental, file.toURI().toString()) { file.outputStream() }
+    private suspend fun export(password: CharArray, incremental: Boolean, destinationRef: String, destination: () -> OutputStream): BackupOutcome = withContext(Dispatchers.IO) {
         require(!com.hellfire.ass.audio.MicrophoneStatus.busy.value) { "Stop microphone recording first" }
         val archiveId = UUID.randomUUID().toString()
         val salt = SecureRandom().generateSeed(16)
@@ -37,7 +37,7 @@ class PortableBackup(private val app: HellFireApp) {
                 media = app.database.media().all()
                 require(media.none { it.state == "DELETING" })
                 previous = verifiedHashes()
-                baseId = if (incremental) app.database.sync().lastVerified()?.id else null
+                baseId = if (incremental) availableBackups().firstOrNull() else null
                 planned = BackupPlanner.plan(media, previous, app.noBackupFilesDir.usableSpace, incremental)
             }
             portable = try { BackupCrypto.derive(password, salt) } finally { password.fill('\u0000') }
@@ -46,7 +46,7 @@ class PortableBackup(private val app: HellFireApp) {
                 media = app.database.media().all()
                 require(media.none { it.state == "DELETING" })
                 previous = verifiedHashes()
-                baseId = if (incremental) app.database.sync().lastVerified()?.id else null
+                baseId = if (incremental) availableBackups().firstOrNull() else null
                 planned = BackupPlanner.plan(media, previous, app.noBackupFilesDir.usableSpace, incremental)
                 val current = planned!!
                 val dbBytes = app.getDatabasePath("hellfire.db").length().coerceAtMost(1024L * 1024 * 1024)
@@ -67,7 +67,7 @@ class PortableBackup(private val app: HellFireApp) {
                 output.write(prefix); output.write(salt)
                 archiveHash = hashCopy(encrypted, output)
             }
-            record(archiveId, written, verified, previous, baseId, archiveHash)
+            record(archiveId, written, verified, previous, baseId, archiveHash, destinationRef)
             if (written.blocked.isNotEmpty()) throw BackupBlocked(written.blocked)
             BackupOutcome(archiveId, written.kind, written.includedHashes.size, written.items.count { it.action == BackupAction.OMITTED }, emptyList(), true)
         } finally { password.fill('\u0000'); encrypted.delete() }
@@ -442,11 +442,11 @@ class PortableBackup(private val app: HellFireApp) {
         while (input.read(buffer) >= 0) {}
     }
 
-    private suspend fun record(id: String, plan: BackupPlan, verified: Set<String>, previously: Set<String>, baseId: String?, archiveHash: String) {
+    private suspend fun record(id: String, plan: BackupPlan, verified: Set<String>, previously: Set<String>, baseId: String?, archiveHash: String, destinationRef: String) {
         val now = System.currentTimeMillis()
         val backed = BackupPlanner.backedUpIds(plan, verified, previously)
         val state = if (plan.blocked.isEmpty()) "VERIFIED" else "PARTIAL"
-        app.database.sync().saveManifest(BackupManifest(id, "portable", plan.kind, baseId, BackupTables.SCHEMA, state, plan.includedHashes.size, plan.bytesIncluded(), archiveHash, null, now, now, now,
+        app.database.sync().saveManifest(BackupManifest(id, "portable", plan.kind, baseId, BackupTables.SCHEMA, state, plan.includedHashes.size, plan.bytesIncluded(), archiveHash, destinationRef, now, now, now,
             plan.blocked.takeIf { it.isNotEmpty() }?.joinToString("; ") { "${it.id}: ${it.reason}" }))
         val rows = plan.items.filter { (it.action == BackupAction.INCLUDE || it.action == BackupAction.DEDUPE) && it.contentHash in verified }
             .map { BackupItemRecord(id, it.id, it.contentHash, it.size, now, now) }
@@ -467,17 +467,38 @@ class PortableBackup(private val app: HellFireApp) {
             app.database.inbox().setBackupState(inbox, inboxState, now)
         }
         val listed = mutableListOf<Pair<String, Long>>()
-        app.database.openHelper.readableDatabase.query("SELECT id, createdAt FROM backup_manifest").use { cursor ->
-            while (cursor.moveToNext()) listed += cursor.getString(0) to cursor.getLong(1)
+        val parents = mutableMapOf<String, String?>()
+        app.database.openHelper.readableDatabase.query("SELECT id, createdAt, baseId FROM backup_manifest").use { cursor ->
+            while (cursor.moveToNext()) {
+                listed += cursor.getString(0) to cursor.getLong(1)
+                parents[cursor.getString(0)] = if (cursor.isNull(2)) null else cursor.getString(2)
+            }
         }
         val writable = app.database.openHelper.writableDatabase
-        for (old in BackupPlanner.retain(listed, keep())) writable.execSQL("DELETE FROM backup_manifest WHERE id = ?", arrayOf(old))
+        for (old in BackupPlanner.retain(listed, keep(), parents)) writable.execSQL("DELETE FROM backup_manifest WHERE id = ?", arrayOf(old))
+    }
+
+    private fun availableBackups(): List<String> {
+        val ids = mutableListOf<String>()
+        app.database.openHelper.readableDatabase.query("SELECT id, remoteRef FROM backup_manifest WHERE destination = 'portable' AND state IN ('VERIFIED', 'PARTIAL') AND verifiedAt IS NOT NULL ORDER BY createdAt DESC").use { cursor ->
+            while (cursor.moveToNext()) {
+                if (cursor.isNull(1)) continue
+                val readable = runCatching {
+                    val uri = Uri.parse(cursor.getString(1))
+                    if (uri.scheme == "file") File(requireNotNull(uri.path)).isFile
+                    else app.contentResolver.openFileDescriptor(uri, "r")?.use { true } ?: false
+                }.getOrDefault(false)
+                if (readable) ids += cursor.getString(0)
+            }
+        }
+        return ids
     }
 
     private fun verifiedHashes(): Set<String> {
+        val available = availableBackups().toSet()
         val hashes = mutableSetOf<String>()
-        app.database.openHelper.readableDatabase.query("SELECT DISTINCT contentHash FROM backup_item WHERE verifiedAt IS NOT NULL").use { cursor ->
-            while (cursor.moveToNext()) hashes += cursor.getString(0)
+        app.database.openHelper.readableDatabase.query("SELECT manifestId, contentHash FROM backup_item WHERE verifiedAt IS NOT NULL").use { cursor ->
+            while (cursor.moveToNext()) if (cursor.getString(0) in available) hashes += cursor.getString(1)
         }
         return hashes
     }

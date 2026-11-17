@@ -91,10 +91,16 @@ object BackupPlanner {
     }
 
     /** Manifest ids to delete so only [keep] newest remain. 0 keeps all. */
-    fun retain(manifests: List<Pair<String, Long>>, keep: Int): List<String> {
+    fun retain(manifests: List<Pair<String, Long>>, keep: Int, parents: Map<String, String?> = emptyMap()): List<String> {
         require(keep >= 0)
         if (keep == 0) return emptyList()
-        return manifests.sortedByDescending { it.second }.drop(keep).map { it.first }
+        val ordered = manifests.sortedByDescending { it.second }
+        val retained = ordered.take(keep).map { it.first }.toMutableSet()
+        for (id in retained.toList()) {
+            var parent = parents[id]
+            while (parent != null && retained.add(parent)) parent = parents[parent]
+        }
+        return ordered.drop(keep).map { it.first }.filterNot { it in retained }
     }
 
     /**
