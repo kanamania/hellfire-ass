@@ -45,6 +45,7 @@ fun RouteContent(route: Route) {
         Screen.MediaItem -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, route.arg) }
         Screen.Backup -> PushedPage(com.hellfire.ass.ui.tr("Encrypted backup"), breadcrumb = "Settings") { BackupScreen(env.app) }
         Screen.Device -> com.hellfire.ass.ui.settings.DevicePage()
+        Screen.Performance -> com.hellfire.ass.ui.PerfScreen()
         Screen.WebAccess -> com.hellfire.ass.ui.settings.WebAccessPage()
         Screen.Reminders -> RemindersPage()
         Screen.Email -> EmailPage()

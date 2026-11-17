@@ -28,6 +28,7 @@ interface MediaDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insert(value: MediaItem): Long
     @Query("SELECT * FROM media_item ORDER BY importedAt DESC") suspend fun all(): List<MediaItem>
     @Query("SELECT * FROM media_item ORDER BY importedAt DESC") fun items(): Flow<List<MediaItem>>
+    @Query("SELECT COUNT(*) FROM media_item") fun count(): Flow<Int>
     @Query("SELECT * FROM media_item WHERE id=:id") suspend fun item(id: String): MediaItem?
     @Query("SELECT * FROM media_item WHERE contentHash=:hash") suspend fun hash(hash: String): MediaItem?
     @Query("SELECT * FROM media_item WHERE id=:id") fun observe(id: String): Flow<MediaItem?>
