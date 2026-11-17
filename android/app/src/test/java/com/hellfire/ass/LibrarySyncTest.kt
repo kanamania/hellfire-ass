@@ -56,10 +56,11 @@ class LibrarySyncTest {
 
     @Test fun `upload resumes from chunks the server already has`() {
         val plain = ByteArray(LibrarySync.CHUNK + 8) { it.toByte() }
+        val hash = LibrarySync.sha256(plain)
         val stored = sortedMapOf<Int, ByteArray>()
         val api = object : LibrarySync.BlobApi {
             override fun open(contentHash: String, size: Long, chunkSize: Int, chunkCount: Int) =
-                JSONObject().put("blobId", "blob-1").put("received", JSONArray(stored.keys.toList())).put("complete", stored.size == chunkCount)
+                JSONObject().put("blobId", "blob-1").put("contentHash", contentHash).put("received", JSONArray(stored.keys.toList())).put("complete", stored.size == chunkCount)
             override fun putChunk(blobId: String, index: Int, sha256: String, bytes: ByteArray): JSONObject {
                 assertEquals(sha256, LibrarySync.sha256(bytes))
                 stored[index] = bytes
@@ -67,14 +68,16 @@ class LibrarySyncTest {
             }
         }
         val cipher = BackupCrypto.derive("correct horse".toCharArray(), ByteArray(16) { 7 })
-        stored[0] = cipher.encrypt(plain.copyOfRange(0, LibrarySync.CHUNK), LibrarySync.aad("chunk", "item:0"))
-        val id = LibrarySync.upload(api, cipher, plain.size.toLong(), LibrarySync.sha256(plain), "item") { index ->
+        stored[0] = cipher.encrypt(plain.copyOfRange(0, LibrarySync.CHUNK), LibrarySync.aad("chunk", "$hash:0"))
+        val id = LibrarySync.upload(api, cipher, plain.size.toLong(), hash) { index ->
             val start = index * LibrarySync.CHUNK
             plain.copyOfRange(start, minOf(plain.size, start + LibrarySync.CHUNK))
         }
         assertEquals("blob-1", id)
         assertEquals(setOf(0, 1), stored.keys)
-        cipher.decrypt(stored.getValue(1), LibrarySync.aad("chunk", "item:1"))
+        assertArrayEquals(plain.copyOfRange(LibrarySync.CHUNK, plain.size), cipher.decrypt(stored.getValue(1), LibrarySync.aad("chunk", "$hash:1")))
+        // The same content under a different item id reuses decryptable chunks.
+        assertEquals(id, LibrarySync.upload(api, cipher, plain.size.toLong(), hash) { error("Complete blob must be reused") })
     }
 
     @Test fun `later field wins and a tied field is a conflict`() {

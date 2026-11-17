@@ -183,7 +183,7 @@ private suspend fun push(app: HellFireApp, client: LibraryClient, cipher: Payloa
             val hash = item.contentHash
             app.database.sync().progress(record.entityType, record.entityId, item.size, record.bytesDone, record.uploadSession)
             ChunkedMedia.Reader(app.media.file(item.id), app.cipher, item.id, item.size).use { reader ->
-                blobId = LibrarySync.upload(client, cipher, item.size, hash, item.id) { index ->
+                blobId = LibrarySync.upload(client, cipher, item.size, hash) { index ->
                     val start = index.toLong() * LibrarySync.CHUNK
                     val length = minOf(LibrarySync.CHUNK.toLong(), item.size - start).toInt()
                     val bytes = ByteArray(length)
@@ -306,7 +306,7 @@ private suspend fun download(app: HellFireApp, client: LibraryClient, cipher: Pa
                 val chunk = client.get("/api/library/blobs/$blobId/chunks/$index")
                 val bytes = Base64.getDecoder().decode(chunk.getString("bytes"))
                 require(LibrarySync.sha256(bytes) == chunk.getString("sha256"))
-                val plain = cipher.decrypt(bytes, LibrarySync.aad("chunk", "$id:$index"))
+                val plain = cipher.decrypt(bytes, LibrarySync.aad("chunk", "$hash:$index"))
                 out.write(plain)
                 plain.fill(0)
             }

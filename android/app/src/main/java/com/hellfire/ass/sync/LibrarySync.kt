@@ -211,7 +211,7 @@ object LibrarySync {
         fun putChunk(blobId: String, index: Int, sha256: String, bytes: ByteArray): JSONObject
     }
 
-    fun upload(api: BlobApi, cipher: PayloadCipher, size: Long, hash: String, blobKey: String, slice: (Int) -> ByteArray): String {
+    fun upload(api: BlobApi, cipher: PayloadCipher, size: Long, hash: String, slice: (Int) -> ByteArray): String {
         val count = chunkCount(size)
         val opened = api.open(hash, size, CHUNK, count)
         if (opened.optBoolean("complete") && opened.optString("contentHash") == hash) return opened.getString("blobId")
@@ -219,7 +219,7 @@ object LibrarySync {
         val received = opened.optJSONArray("received") ?: JSONArray()
         val have = (0 until received.length()).map { received.getInt(it) }.toSet()
         for (index in missing(have, count)) {
-            val sealed = cipher.encrypt(slice(index), aad("chunk", "$blobKey:$index"))
+            val sealed = cipher.encrypt(slice(index), aad("chunk", "$hash:$index"))
             val digest = sha256(sealed)
             val reply = api.putChunk(blobId, index, digest, sealed)
             if (reply.optInt("status") == 413 || reply.optString("error") == "quota") throw Quota()

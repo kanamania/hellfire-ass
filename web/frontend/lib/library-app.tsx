@@ -72,6 +72,10 @@ export function LibraryApp() {
           row.doc = JSON.parse(new TextDecoder().decode(plain));
         } catch { row.doc = undefined; }
       }
+      const encrypted = loaded.filter((row) => !row.deleted);
+      if (encrypted.length && !encrypted.some((row) => row.doc)) throw new Error('Could not decrypt the library. Check the passphrase.');
+      if (encrypted.some((row) => !row.doc)) setError('Some records could not be decrypted.');
+      current.salt = salt;
       setState(current);
       setRows(loaded);
       setKey(derived);
@@ -96,7 +100,7 @@ export function LibraryApp() {
       const chunk = await call(`blobs/${blobId}/chunks/${index}`) as { sha256: string; bytes: string };
       const bytes = unb64(chunk.bytes);
       if (await sha256(bytes) !== chunk.sha256) throw new Error('Downloaded chunk failed its hash check');
-      parts.push(await open(key, bytes, aad('chunk', `${row.entityId}:${index}`)));
+      parts.push(await open(key, bytes, aad('chunk', `${row.doc.fields.contentHash?.v}:${index}`)));
     }
     const all = new Uint8Array(parts.reduce((n, part) => n + part.length, 0));
     let offset = 0;
@@ -117,18 +121,26 @@ export function LibraryApp() {
 
   async function saveRecord(entityType: string, entityId: string, fields: Record<string, string>, baseVersion: number, searchText?: string) {
     if (!key || !state) return;
-    const stamped: Record<string, Field> = {};
-    const now = Date.now();
-    for (const [name, value] of Object.entries(fields)) stamped[name] = { v: value, t: now };
-    const body = JSON.stringify({ deleted: false, fields: stamped });
-    const sealed = await seal(key, new TextEncoder().encode(body), aad('record', `${entityType}:${entityId}`));
-    const salt = state.salt ?? (await call('state') as State).salt;
-    if (!salt) throw new Error('Missing encryption salt');
-    await call('records', {
-      records: [{ entityType, entityId, baseVersion, deleted: false, updatedAt: now, deviceId: deviceId(),
-        envelope: { v: 1, salt, ct: b64(sealed) }, ...(state.searchPlaintext && searchText !== undefined ? { searchText } : {}) }],
-    });
-    setError('Saved. The phone will pull this change on its next sync.');
+    try {
+      const stamped: Record<string, Field> = {};
+      const now = Date.now();
+      const previous = rows.find((row) => row.entityType === entityType && row.entityId === entityId);
+      for (const [name, value] of Object.entries(fields)) stamped[name] = previous?.doc?.fields[name]?.v === value ? previous.doc.fields[name] : { v: value, t: now };
+      const body = JSON.stringify({ deleted: false, fields: stamped });
+      const sealed = await seal(key, new TextEncoder().encode(body), aad('record', `${entityType}:${entityId}`));
+      const salt = state.salt ?? (await call('state') as State).salt;
+      if (!salt) throw new Error('Missing encryption salt');
+      const result = await call('records', {
+        records: [{ entityType, entityId, baseVersion, deleted: false, updatedAt: now, deviceId: deviceId(),
+          envelope: { v: 1, salt, ct: b64(sealed) }, ...(state.searchPlaintext && searchText !== undefined ? { searchText } : {}) }],
+      });
+      const accepted = result.accepted?.find((row: { entityType: string; entityId: string }) => row.entityType === entityType && row.entityId === entityId);
+      if (!accepted) throw new Error('This item changed on another device. Unlock the library again before saving.');
+      const saved: Row = { changeSeq: previous?.changeSeq ?? 0, entityType, entityId, version: accepted.version, deleted: false,
+        updatedAt: now, deviceId: deviceId(), envelope: { ct: b64(sealed) }, doc: { deleted: false, fields: stamped } };
+      setRows((old) => [...old.filter((row) => row.entityType !== entityType || row.entityId !== entityId), saved]);
+      setError('Saved. The phone will pull this change on its next sync.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not save'); }
   }
 
   async function upload(file: File) {
@@ -142,7 +154,7 @@ export function LibraryApp() {
     for (let index = 0; index < count; index++) {
       if (have.has(index)) continue;
       const slice = bytes.subarray(index * CHUNK, Math.min(bytes.length, (index + 1) * CHUNK));
-      const sealed = await seal(key, slice, aad('chunk', `${id}:${index}`));
+      const sealed = await seal(key, slice, aad('chunk', `${contentHash}:${index}`));
       await call(`blobs/${opened.blobId}/chunks/${index}`, { sha256: await sha256(sealed), bytes: b64(sealed) });
     }
     await saveRecord('media_item', id, {
