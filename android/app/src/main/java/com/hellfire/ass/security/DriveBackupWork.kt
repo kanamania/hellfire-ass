@@ -67,7 +67,13 @@ class DriveBackupWorker(context: Context, params: WorkerParameters) : CoroutineW
                 DriveBackupWork.status(app, "Preparing encrypted backup")
                 val token = DriveAuthorization.token(DriveAuthorization.authorize(app, config.getString("account")))
                 password = config.getString("passphrase").toCharArray()
-                PortableBackup(app).export(file, password)
+                var blocked: BackupBlocked? = null
+                try { PortableBackup(app).export(file, password, incremental = true) }
+                catch (e: BackupBlocked) { blocked = e }
+                if (!file.exists() || file.length() == 0L) {
+                    DriveBackupWork.status(app, if (blocked == null) "No new originals since the last verified backup" else "Backup blocked; nothing was uploaded. ${blocked.blocked.size} originals did not fit.")
+                    return@withLock if (blocked == null) Result.success() else Result.failure()
+                }
                 currentCoroutineContext().ensureActive()
                 // A disconnect or consent change must stop a queued upload.
                 if (app.secrets.read(DriveBackupWork.CONFIG)?.optString("generation") != config.getString("generation"))
@@ -75,6 +81,10 @@ class DriveBackupWorker(context: Context, params: WorkerParameters) : CoroutineW
                 DriveBackupWork.status(app, "Uploading encrypted backup")
                 val context = currentCoroutineContext()
                 val id = GoogleDriveBackup().upload(file, token) { context.ensureActive() }
+                if (blocked != null) {
+                    DriveBackupWork.status(app, "Backup uploaded; ${blocked.blocked.size} originals were blocked and are not marked backed up", id)
+                    return@withLock Result.failure()
+                }
                 DriveBackupWork.status(app, "Backup uploaded and size/checksum confirmed", id)
                 // Only after a confirmed upload; only archives this app created, never the one just uploaded.
                 val keep = config.optInt("keep", DriveBackupWork.DEFAULT_KEEP)
