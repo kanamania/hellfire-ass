@@ -150,8 +150,8 @@
   },
   "predevice_2026_11_18": {
     "jvm": {
-      "total": 518,
-      "passed": 514,
+      "total": 521,
+      "passed": 517,
       "skipped": 4,
       "failures": 0,
       "errors": 0,
@@ -161,13 +161,38 @@
     "emulator": {
       "evidence": "emulator-tested",
       "complete": true,
-      "reported_tests": 15,
-      "passed": 15,
+      "suites": {
+        "core": {
+          "evidence": "emulator-tested",
+          "complete": true,
+          "reported_tests": 16,
+          "passed": 16,
+          "failed": 0,
+          "errors": 0,
+          "ignored": 0,
+          "assumptions": 0,
+          "started": 16
+        },
+        "capture": {
+          "evidence": "emulator-tested",
+          "complete": true,
+          "reported_tests": 4,
+          "passed": 4,
+          "failed": 0,
+          "errors": 0,
+          "ignored": 0,
+          "assumptions": 0,
+          "started": 4
+        }
+      },
+      "capture_permission_evidence": "ADB test grants on the owned fixture AVD; not user/OEM grant behavior",
+      "reported_tests": 20,
+      "passed": 20,
       "failed": 0,
       "errors": 0,
       "ignored": 0,
       "assumptions": 0,
-      "started": 15
+      "started": 20
     },
     "host_onnx": {
       "evidence": "host-tested",
@@ -231,6 +256,7 @@
       "command": "PATH=NODE24:$PATH tools/test_predevice_services.sh"
     },
     "physical_device_tested": false,
-    "live_services_tested": false
+    "live_services_tested": false,
+    "scope": "Implemented checkpoint finalized; further software expansion deferred by owner. No full-product completion claim."
   }
 }

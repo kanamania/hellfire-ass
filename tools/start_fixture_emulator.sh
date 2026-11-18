@@ -22,7 +22,7 @@ nohup "$sdk_dir/emulator/emulator" -avd hellfire_fixture_api35 -port 5580 \
     > "$report_dir/emulator-start.log" 2>&1 < /dev/null &
 fixture_pid=$!
 echo "$fixture_pid" > "$report_dir/emulator.pid"
-for attempt in {1..180}; do
+for _attempt in {1..180}; do
     kill -0 "$fixture_pid" || { echo 'Fixture emulator exited; inspect emulator-start.log' >&2; exit 1; }
     if [[ $("$sdk_dir/platform-tools/adb" -s "$serial" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r') == 1 ]]; then
         echo "Ready: $serial (isolated API 35 fixture AVD)"

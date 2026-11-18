@@ -4,12 +4,54 @@ Latest update: 2026-11-18 (pre-device development and performance audit, below).
 checkpoints keep the test counts and APK checksums that were true when they were
 written; the newest checkpoint has the current ones.
 
+## Current scope and remaining plan — owner update 2026-11-18
+
+The owner requested: “Finish what you have done and plan the remaining later.”
+This closes the implemented checkpoint and defers further feature expansion.
+It does **not** claim every originally requested pre-device feature or software
+verification task is complete. The classified audit below is retained for planning.
+
+Next software phases, in order:
+
+1. Run full, incremental and selective backup/restore through native SQLCipher on
+   the emulator, including interrupted staging and original-file recovery. Existing
+   host coverage, Android cryptographic tamper tests and native migrations are
+   complete; a full native backup round trip remains separate work.
+2. Exercise forced process death during visible AAC conversation recording and
+   background jobs. Audit the current 64 KiB authenticated recording chunks: a
+   short recording may not have a committed chunk before abrupt process death.
+   Evaluate a backward-compatible smaller recording chunk with explicit storage,
+   CPU and durability tests before changing the format behavior.
+3. Complete remaining contracted media paths: video blur/pixelation, moving-region
+   treatment and optional voice pitch transformation, with decoded-output goldens
+   and fail-closed export checks. Static video covers and mute ranges work now;
+   automatic tracking and voice transformation remain explicitly unavailable.
+   Extend QR redaction suggestions separately from the completed QR text indexing.
+4. Expand English/Kiswahili model-quality datasets and cross-source/proactive
+   workflow replays. The current deterministic bilingual goldens and real English
+   Whisper/VAD contract tests establish software behavior, not real-world Kiswahili
+   accuracy, speaker identity or multimodal reasoning quality.
+5. Extend acceptance mapping and UI coverage to the remaining settings/recovery/
+   interruption flows; collect app Baseline Profile rules using an appropriate
+   emulator variant where practical. Actual phone performance benefits remain a
+   later physical comparison. Add C++ kernels only after comparative evidence meets
+   the original gain threshold; no speculative native rewrites are planned.
+6. Run the authored hosted CI workflow when repository execution is arranged.
+   Local checks and workflow configuration are reported separately; local success
+   is not hosted CI success. Then repeat release packaging for that later scope.
+
+The current prioritized physical-only suite below covers the actual OnePlus,
+CPU/GPU/NPU delegates, hardware-backed security, hardware codecs, user/OEM permission
+behavior, sustained thermals/battery and real phone profiling. Authorized live
+Gmail/WhatsApp/Drive/AI eligibility remains an external-service gate. Neither list
+is a reason to delay the software phases above when work resumes.
+
 ## Pre-device completion audit — 2026-11-18
 
 The owner's updated instruction reserves the OnePlus 16 for final hardware-specific
 verification. The current code, not historical NOT TESTED rows below, controls this
 audit. Earlier checkpoints remain historical evidence, not a current backlog.
-Work continues in independently verified phases; pending rows below are not
+The classifications are retained for later phases; pending rows below are not
 completion claims. Production stays ARM64-only; a separate x86_64 emulator build
 must report incompatible AI runtimes rather than substitute fake success.
 
@@ -53,17 +95,18 @@ The current LiteRT-LM, ONNX and SQLCipher AARs include x86_64; MediaPipe text
 0.10.26 includes only ARM64. The emulator build can exercise the former natively
 and must explicitly report MediaPipe text inference unavailable.
 
-Execution order: finish the performance checkpoint; establish deterministic host,
+Original execution order: finish the performance checkpoint; establish deterministic host,
 native and synthetic-service checks; fix confirmed software defects; add and run
 the emulator/native/UI suite; complete remaining contracted capabilities; repeat
 regression gates, packaging and evidence collection. The final device list will
 contain only checks that genuinely depend on hardware/OEM behavior or unavailable
-authorized external services.
+authorized external services. The later owner scope update above now defers
+unfinished software work into the prioritized plan.
 
-### Pre-device execution evidence (ongoing)
+### Pre-device execution evidence (completed checkpoint)
 
 - **HOST TESTED:** seeded English/Kiswahili finance/search/media goldens; the
-  latest full JVM run completed **518 tests, 514 passed, 4 optional live-provider
+  latest full JVM run completed **521 tests, 517 passed, 4 optional live-provider
   skips, no failures/errors**. This full run included the live local TLS mail fixture; only the four external AI-provider checks skipped.
   The goldens exposed a Kiswahili failed-payment false positive, now rejected.
   Other confirmed fixes cover NHWC image dimensions, composite video-embedding
@@ -94,8 +137,8 @@ authorized external services.
   vulnerabilities after the patch. No live service credentials or sends used. The real IMAPS/SMTPS fixture test also passed (1 test, zero skips): untrusted certificate, hostname mismatch and wrong password rejected; bilingual capture, replay deduplication and OTP redaction verified through the production mail adapter against cached GreenMail 2.1.3 on loopback. The fixture creates and removes its own short-lived certificate; production TLS checks remain enabled.
 - **EMULATOR TESTED:** isolated API 35 Google APIs x86_64 AVD,
   fingerprint `google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys`.
-  **15/15 integration tests passed, no skips**, in 112.661 seconds for the
-  complete suite (not an inference benchmark). Includes real Whisper model
+  **20/20 integration tests passed, no skips** (16 core and four capture tests).
+  Includes real Whisper model
   transcription through Android MediaExtractor/MediaCodec/JNI, actual VAD ONNX
   inference/reset, nonsquare NCHW/NHWC tensor inference, migration of all historical
   schemas 1–18 to 19 through SQLCipher, Keystore/AES-GCM tamper tests,
@@ -111,6 +154,19 @@ authorized external services.
   verify those automatic components are absent. The prior targeted media/security
   rerun also passed 8/8 tests. Hardware-backed Keystore and production ARM execution
   are not established.
+- **EMULATOR CAPTURE TESTED:** `tools/test_emulator.sh emulator-5580
+  /home/dev/.cache/hellfire-ass/predevice/models` passed the complete suite.
+  Denied SMS/microphone access stays unavailable. On the dedicated
+  `hellfire_fixture_api35` AVD, temporary ADB grants exercised the real notification
+  listener (ordinary text and OTP withholding), Telephony SMS provider/WorkManager
+  import and replay deduplication, foreground AudioRecord capture with an ongoing
+  notification and encrypted sample, and the real assistant service/session through
+  local voice interaction. Cleanup revokes grants and restores the previous assistant.
+  This establishes stock-emulator behavior, not user/OEM permission grant behavior,
+  real microphone acoustics or handset gestures. Recording entry points now reject
+  missing grants, blocked notices/channels and missing monitoring consent/exclusions
+  before requesting a foreground service; three host regression tests cover these
+  gates. The real assistant window also retains `FLAG_SECURE`.
 - **HOST ARTIFACT INSPECTION:** x86_64 test APK contains exactly that ABI and 11
   actual JNI libraries. Existing ARM64 release contains only ARM64 and 11 actual
   JNI libraries. `python3 tools/check_native_apk.py APK --abi ABI` passed ELF

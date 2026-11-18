@@ -32,6 +32,11 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
     private var pending: OwnerCommand? = null
     private var wasLocked = false
 
+    override fun onCreate() {
+        super.onCreate()
+        window?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+    }
+
     override fun onShow(args: Bundle?, showFlags: Int) {
         super.onShow(args, showFlags)
         if (com.hellfire.ass.security.AppLock.enabled(sessionContext)) {

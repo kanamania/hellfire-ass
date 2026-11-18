@@ -149,7 +149,7 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
     Text("Visible, owner-started recording, capped at 30 minutes. Experimental energy-based speech intervals include preceding audio. The whole session is retained. Keep monitoring off for excluded people or places.")
     if (!permissions.microphone || !permissions.notificationPosting) Button(onClick = onPermission) { Text("Allow recording permissions") }
     Button(enabled = notice && !recording && permissions.microphone && permissions.notificationPosting, onClick = {
-        try { app.startForegroundService(Intent(app, MicrophoneService::class.java).setAction(MicrophoneService.ACTION_START).putExtra("monitoring", true).putExtra("notice", notice).putExtra("participants", participants).putExtra("place", place))
+        try { MicrophoneService.requestStart(app, Intent(app, MicrophoneService::class.java).setAction(MicrophoneService.ACTION_START).putExtra("monitoring", true).putExtra("notice", notice).putExtra("participants", participants).putExtra("place", place))
             notice = false }
         catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); result = "Android blocked monitoring. Keep the app visible and check permissions." }
     }) { Text("Start visible monitoring") }

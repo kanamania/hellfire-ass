@@ -23,18 +23,18 @@ used to establish host results. No message has been sent and no gateway deployed
 - **Web access:** an optional read-only web copy (NestJS API, Postgres, Next.js site
   in `web/`) synced from the phone; see [Web access](#web-access-read-only-mirror).
   Local website: `https://hellfire.local`; not yet connected to a real phone.
-- **Current Android host checks:** 501 tests (497 passed, 4 opt-in live-provider
-  tests skipped), Android lint with zero errors, debug/release APKs and isolated
-  benchmark/profile app and test APKs build. The worktree release comparison is
-  unsigned; earlier owner-signed artifacts remain historical. Exact commands and artifact evidence are in
-  [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md). Relay/WhatsApp worker code
-  was unchanged; its earlier results remain recorded there.
-- **Pre-device completion:** the OnePlus 16 is not available. Host-native,
-  synthetic-service and separate x86_64 emulator validation are being completed;
-  the classified audit is in DEVICE_FEASIBILITY.md. Emulator results will remain
-  distinct from actual handset, hardware accelerator, energy and OEM results.
-- **Not done:** nothing has run on the physical OnePlus 16, with a real model file, a live
-  mail/WhatsApp/Google account or a real SMS corpus. Every phase stays **PARTIAL**.
+- **Current checks:** 521 Android JVM tests (517 passed, 4 opt-in live-provider
+  tests skipped), 20 emulator tests without skips, relay 23, WhatsApp worker 6,
+  API 30 and seven Chromium checks passed. Exact build commands and artifact evidence are in
+  [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md).
+- **Pre-device checkpoint:** host-native, synthetic-service and isolated x86_64
+  Android checks are complete for the implemented slice. The owner deferred further
+  feature expansion; the remaining plan is in DEVICE_FEASIBILITY.md. Host and emulator
+  evidence remain distinct from actual handset, energy and OEM results.
+- **Not done:** nothing has run on the physical OnePlus 16, with a live
+  mail/WhatsApp/Google account or a real SMS corpus. Public Whisper and Silero model
+  files ran on the host and emulator; GPU/NPU compatibility remains unverified.
+  Full phase acceptance stays **PARTIAL**.
 - **Earlier project review findings:** covered by host tests; each still needs
   its device or real-data check. DEVICE_FEASIBILITY.md → "Project review implementation" lists what changed
   and what remains to verify.
@@ -865,6 +865,10 @@ Telegram and desktop dashboard have not been added.
 
 ## Pre-device validation
 
+At the owner’s request, this checkpoint is finalized and further expansion
+is deferred. The prioritized remaining software and physical plan is in
+[DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md#current-scope-and-remaining-plan--owner-update-2026-11-18).
+
 Production remains ARM64-only. `emulator` is a separate x86_64 package
 `com.hellfire.ass.emulator`; `deviceTest` is an isolated ARM64 package
 `com.hellfire.ass.devicetest`. Neither replaces the owner's installation.
@@ -886,8 +890,11 @@ tools/start_fixture_emulator.sh
 tools/test_emulator.sh emulator-5580 "$HOME/.cache/hellfire-ass/predevice/models"
 ```
 
-The emulator script uses its own API 35 AVD, never wipes an existing AVD, and does
-not grant permissions or roles. Instrumentation disables automatic model downloads
+The emulator script uses its own API 35 AVD and never wipes another AVD. It first
+checks denied capture permissions, then grants permissions/notification access and
+the assistant role only to the disposable emulator package for capture tests.
+Cleanup revokes the test grants and restores the previous assistant. These are ADB
+test grants, not user-prompt or OEM verification. Instrumentation disables automatic model downloads
 and news fetching only in disposable test packages. Screenshot goldens contain
 synthetic bilingual components; production windows retain `FLAG_SECURE`.
 The public JFK fixture's provenance and checksum are in
@@ -895,8 +902,8 @@ The public JFK fixture's provenance and checksum are in
 checksums are in `tools/fixtures/models.json`; weights stay in the ignored cache.
 
 `tools/test_mail_fixture.sh` runs the full JVM regression with a disposable real
-TLS mail server, preserving certificate/hostname checks. Current checkpoint: 518
-JVM tests (514 passed, four external AI-provider skips), 15 emulator tests with no
+TLS mail server, preserving certificate/hostname checks. Current checkpoint: 521
+JVM tests (517 passed, four external AI-provider skips), 20 emulator tests with no
 skips, and seven browser checks.
 
 With existing development dependencies installed, Node 24 and Docker available,

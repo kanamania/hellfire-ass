@@ -70,6 +70,12 @@ ownership have regression coverage. Exact counts/commands and the current remain
 software/hardware classifications are in `docs/DEVICE_FEASIBILITY.md`; this is not
 a physical OnePlus or GPU/NPU validation claim.
 
+**Owner scope update — 2026-11-18:** “Finish what you have done and plan the
+remaining later.” Finish regression, packaging and integration of this checkpoint;
+defer further feature expansion. The prioritized remaining software and physical
+validation plan is in `docs/DEVICE_FEASIBILITY.md`. This supersedes the immediate
+execution scope above without declaring the complete product finished.
+
 
 ## 0. Requirements locked by the owner
 

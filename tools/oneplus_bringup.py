@@ -51,7 +51,7 @@ def main():
                 raise SystemExit('Fixture APK installation failed; no app data was cleared')
     if args.run_tests:
         result = run(adb, ['shell', 'am', 'instrument', '-r', '-w', '-e', 'notClass',
-            'com.hellfire.ass.ComponentRenderingTest', 'com.hellfire.ass.devicetest.test/com.hellfire.ass.PredeviceRunner'], timeout=900)
+            'com.hellfire.ass.ComponentRenderingTest,com.hellfire.ass.CaptureIntegrationTest,com.hellfire.ass.CapturePermissionTest', 'com.hellfire.ass.devicetest.test/com.hellfire.ass.PredeviceRunner'], timeout=900)
         result['tests'] = parse(result['stdout'], 'emulator-tested' if emulator else 'physical-device-tested')
         result['passed'] = result['tests']['complete'] and result['exit_code'] == 0
         report['checks'].append(result)

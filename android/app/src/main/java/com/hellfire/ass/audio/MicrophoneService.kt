@@ -41,22 +41,13 @@ class MicrophoneService : Service() {
             return START_NOT_STICKY
         }
         if (intent?.action != ACTION_START || job?.isActive == true) return START_NOT_STICKY
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED ||
-            !getSystemService(NotificationManager::class.java).areNotificationsEnabled()) {
-            MicrophoneStatus.state.value = "Permission missing: allow microphone and recording notifications first."
+        val blocked = startBlock(this, intent)
+        if (blocked != null) {
+            MicrophoneStatus.state.value = blocked
             stopSelf()
             return START_NOT_STICKY
         }
         val monitoring = intent.getBooleanExtra("monitoring", false)
-        if (monitoring) {
-            val allowed = runCatching {
-                val settings = (application as HellFireApp).secrets.read("recording-exclusions")
-                intent.getBooleanExtra("notice", false) && com.hellfire.ass.media.RecordingPolicy.allowed(
-                    intent.getStringExtra("participants").orEmpty(), intent.getStringExtra("place").orEmpty(),
-                    settings?.optString("people").orEmpty(), settings?.optString("places").orEmpty())
-            }.getOrDefault(false)
-            if (!allowed) { MicrophoneStatus.state.value = "Monitoring blocked: consent notice or session exclusions need review."; stopSelf(); return START_NOT_STICKY }
-        }
         try {
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(NotificationChannel(CHANNEL, "Microphone recording", NotificationManager.IMPORTANCE_LOW))
@@ -199,6 +190,37 @@ class MicrophoneService : Service() {
     }
 
     companion object {
+        /** Check current grants/consent before creating Android's foreground-service start obligation. */
+        fun requestStart(context: android.content.Context, intent: Intent): Boolean {
+            require(intent.component?.className == MicrophoneService::class.java.name && intent.action == ACTION_START)
+            startBlock(context, intent)?.let { MicrophoneStatus.state.value = it; return false }
+            return try { context.startForegroundService(intent) != null }
+            catch (error: Exception) {
+                com.hellfire.ass.Diagnostics.warn(error)
+                MicrophoneStatus.state.value = "Android blocked recording. Keep the app visible and check permissions."
+                false
+            }
+        }
+
+        private fun startBlock(context: android.content.Context, intent: Intent): String? {
+            val notices = context.getSystemService(NotificationManager::class.java)
+            if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED || !notices.areNotificationsEnabled())
+                return "Permission missing: allow microphone and recording notifications first."
+            if (notices.getNotificationChannel(CHANNEL)?.importance == NotificationManager.IMPORTANCE_NONE)
+                return "Recording channel blocked. Enable it in notification settings."
+            if (intent.getBooleanExtra("monitoring", false)) {
+                val allowed = runCatching {
+                    val app = (context as? HellFireApp) ?: context.applicationContext as HellFireApp
+                    val settings = app.secrets.read("recording-exclusions")
+                    intent.getBooleanExtra("notice", false) && com.hellfire.ass.media.RecordingPolicy.allowed(
+                        intent.getStringExtra("participants").orEmpty(), intent.getStringExtra("place").orEmpty(),
+                        settings?.optString("people").orEmpty(), settings?.optString("places").orEmpty())
+                }.getOrDefault(false)
+                if (!allowed) return "Monitoring blocked: consent notice or session exclusions need review."
+            }
+            return null
+        }
+
         const val ACTION_START = "com.hellfire.ass.START_RECORDING"
         const val ACTION_STOP = "com.hellfire.ass.STOP_RECORDING"
         const val CHANNEL = "microphone"
