@@ -7,8 +7,9 @@ acceptance remains **PARTIAL** pending the device, model, account and real-forma
 gates in [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md).
 
 The owner authorized the remaining phases on 2026-11-13 and kept physical device
-testing until last. No phone, live account, personal corpus or model weights were
-used to establish host results. No message has been sent and no gateway deployed.
+testing until last. No phone, live account or personal corpus was used to establish these results.
+Downloaded public model weights stay outside Git. No real recipient was contacted
+and no gateway was deployed.
 
 ## Current status — 2026-11-18
 
@@ -38,7 +39,11 @@ used to establish host results. No message has been sent and no gateway deployed
 - **Earlier project review findings:** covered by host tests; each still needs
   its device or real-data check. DEVICE_FEASIBILITY.md → "Project review implementation" lists what changed
   and what remains to verify.
-- **Release and CI:** release shrinking and optional local signing are configured; GitHub Actions runs the repository checks. Hosted CI and physical release behavior remain unverified.
+- **Release and CI:** the owner-signed ARM64 release, debug, emulator/device-test
+  and benchmark/profile APKs build and pass signature/alignment inspection.
+  Release mappings and native symbols are retained in the local artifact bundle.
+  GitHub Actions is configured; hosted execution and physical release behavior
+  remain unverified.
 
 The media review on 2026-11-17 found functional defects missed by the integration
 checks. Four interrupted fix branches were completed sequentially; see the
@@ -61,9 +66,10 @@ cd android
 APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.9.0**.
 It is built for **arm64-v8a only** (since 2026-11-16), Android API 29+, target/compile
 API 36. Confirm the phone ABI before installation (`adb shell getprop ro.product.cpu.abilist`);
-32-bit-only phones and x86_64 PC emulators cannot run it. Size: about 164 MB
-(156 MiB): native libraries ≈94 MB (ONNX Runtime 34 MB, LiteRT-LM 15 MB, ML Kit OCR
-22 MB, MediaPipe 8 MB, whisper 5 MB), unshrunk debug code ≈63 MB. Native libraries
+32-bit-only phones and x86_64 PC emulators cannot run it. Size: about 171 MB
+(163 MiB): native libraries ≈99 MB (ONNX Runtime 34 MB, LiteRT-LM 15 MB, ML Kit OCR
+22 MB, MediaPipe 8 MB, whisper 5 MB, barcode decoding 5 MB), plus unshrunk
+debug code and resources. Native libraries
 stay uncompressed in the APK and are not extracted, so installed size is close to the
 APK size plus Android's compiled code and app data. This is a debug artifact, without private release signing.
 
@@ -76,7 +82,8 @@ Android 4.20.0, JavaMail Android/activation 1.6.8, Glance 1.1.1, Play services a
 SHA-256: `ff1a9053feb509ff9d7729703355541ae9690073a6b1c40eb692c962e0dc1720`.
 The whisper MIT notice is bundled in app assets. LiteRT-LM is pinned to the runtime
 that compiles with this Kotlin toolchain; a newer AAR required newer Kotlin metadata.
-Model compatibility is established only by running the selected file on the phone.
+Production ARM64 model compatibility requires running the selected file on the
+phone. Host and emulator compatibility results are reported separately.
 
 The app remains one Gradle module with bounded Kotlin packages. Core capture,
 ledger calculations, task review and bundled OCR work without account credentials.
@@ -864,6 +871,13 @@ those are not evidence that the advanced model-dependent gates passed. Optional
 Telegram and desktop dashboard have not been added.
 
 ## Pre-device validation
+
+Verified local bundle: `~/.cache/hellfire-ass/predevice/releases/536f75d/`.
+It contains the signed `apks/app-release.apk`, nine other APKs, `manifest.json`,
+regression reports, R8 mappings and native symbols. The manifest records SHA-256
+checksums and source revision; private signing material and downloaded test models
+are excluded. This was a successful incremental build; byte-identical clean
+rebuilds have not been compared.
 
 At the owner’s request, this checkpoint is finalized and further expansion
 is deferred. The prioritized remaining software and physical plan is in

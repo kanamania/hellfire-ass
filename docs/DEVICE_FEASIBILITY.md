@@ -32,7 +32,7 @@ Next software phases, in order:
    Whisper/VAD contract tests establish software behavior, not real-world Kiswahili
    accuracy, speaker identity or multimodal reasoning quality.
 5. Extend acceptance mapping and UI coverage to the remaining settings/recovery/
-   interruption flows; collect app Baseline Profile rules using an appropriate
+   interruption flows and API 36 permission/regrant coverage; collect app Baseline Profile rules using an appropriate
    emulator variant where practical. Actual phone performance benefits remain a
    later physical comparison. Add C++ kernels only after comparative evidence meets
    the original gain threshold; no speculative native rewrites are planned.
@@ -168,8 +168,8 @@ unfinished software work into the prioritized plan.
   before requesting a foreground service; three host regression tests cover these
   gates. The real assistant window also retains `FLAG_SECURE`.
 - **HOST ARTIFACT INSPECTION:** x86_64 test APK contains exactly that ABI and 11
-  actual JNI libraries. Existing ARM64 release contains only ARM64 and 11 actual
-  JNI libraries. `python3 tools/check_native_apk.py APK --abi ABI` passed ELF
+  actual JNI libraries. The final signed ARM64 release contains only ARM64 and 12 actual
+  JNI libraries (including bundled barcode decoding). `python3 tools/check_native_apk.py APK --abi ABI` passed ELF
   load-segment and uncompressed APK 16 KiB alignment for both. MediaPipe is
   correctly absent from x86_64 and explicitly unsupported there.
 
@@ -179,6 +179,76 @@ the existing semantic runtime and stored model identities; bundled offline QR
 extraction with authentication/Wi-Fi/token-bearing payloads excluded from search. No private corpus,
 model weights, credentials or owner recording is committed. CI now contains the
 isolated emulator/model/browser gates; no hosted CI success is claimed from local runs.
+
+### Final build and retained evidence — 2026-11-18
+
+**PASS (host build/inspection):** the final APK matrix built from source revision
+`536f75df2f4a888c804426e75fc5be30e9e014ad`. Production debug/release remain
+ARM64-only. All ten retained APKs
+verify their signatures and pass `zipalign -c -P 16 4`; all six app variants pass
+ELF machine/16 KiB segment and ZIP alignment inspection. Emulator contains 11 real
+x86_64 libraries; ARM64 app variants contain 12. The local release uses the existing
+owner signing configuration, which remains ignored/private. CI without that key
+produces an unsigned release and must not claim owner signing.
+
+| Final artifact | Bytes | SHA-256 |
+|---|---:|---|
+| `app-debug.apk` | 170,855,248 | `8aa7ec5dd4be0f628cc28d8fa96c8ce536a55bd270d7e982386626f8ba0248ba` |
+| `app-release.apk` | 114,932,703 | `dd6847033e08e85249980e0e24af9ea9d0105a220ec7bd230e174f1eaab7b773` |
+
+The retained local bundle is
+`/home/dev/.cache/hellfire-ass/predevice/releases/536f75d/`.
+Its `manifest.json` records all ten APK hashes, source/toolchain versions, signatures,
+ABI counts and test evidence. It also contains raw test/build logs, JVM XML/HTML,
+emulator/model/browser reports, release R8 mappings and the native symbol ZIP.
+The ZIP is 4,589,707 bytes and includes the owned bridge's full
+`libhellfire_whisper.so.dbg` (20,026,744 bytes uncompressed); prestripped third-party
+libraries do not acquire missing debug information. Keys, credentials and downloaded
+Whisper/Silero weights are excluded. Later documentation-only commits do not change
+this bundle's source revision. Successful incremental builds were observed; no
+byte-identical clean-rebuild comparison or physical crash-symbolication test ran.
+
+Exact final build commands, from the repository:
+
+```sh
+export ANDROID_HOME=/home/dev/android-sdk
+cd android
+./gradlew :app:lintDebug :app:assembleDebug :app:assembleRelease :app:assembleBenchmark :benchmark:assembleBenchmark :app:assembleProfile :benchmark:assembleProfile :app:assembleEmulator :app:assembleEmulatorAndroidTest :app:assembleDeviceTest --offline --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'
+./gradlew -PintegrationBuildType=deviceTest :app:assembleDeviceTestAndroidTest --offline --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'
+cd ..
+python3 tools/check_native_apk.py android/app/build/outputs/apk/release/app-release.apk --abi arm64-v8a --output android/build/reports/predevice/release-native.json
+python3 tools/check_native_apk.py android/app/build/outputs/apk/emulator/app-emulator.apk --abi x86_64 --output android/build/reports/predevice/emulator-native.json
+$ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose android/app/build/outputs/apk/release/app-release.apk
+$ANDROID_HOME/build-tools/35.0.0/zipalign -c -P 16 4 android/app/build/outputs/apk/release/app-release.apk
+```
+
+The matrix completed in **35m 24s**; the separate ARM64 instrumentation compile
+completed in **47s**. Final debug lint: **0 errors, 384 warnings, 11 hints**.
+Warnings remain visible in the retained report; this is not a warning-free claim. The long-lived 1.5 GiB Gradle
+daemon reported heap pressure during release shrinking, completed it successfully
+and retired after the build. This is a workstation/build observation, not an Android
+memory benchmark.
+
+Final regression commands/outcomes:
+
+- `tools/test_mail_fixture.sh`: **521 JVM tests, 517 passed, four optional live AI
+  skips, zero failures/errors**. The TLS mail test is included, not an extra pass.
+- `tools/test_emulator.sh emulator-5580 /home/dev/.cache/hellfire-ass/predevice/models`:
+  **20 passed, zero skips/failures/errors**; capture uses temporary grants only on
+  the named disposable AVD. Its cleanup revoked grants and restored the prior role.
+- `PATH="$HOME/.nvm/versions/node/v24.13.0/bin:$PATH" tools/test_predevice_services.sh`:
+  **23 relay, six WhatsApp worker, 30 API and seven real-browser checks passed**;
+  frontend typecheck/build passed. All external accounts remain disconnected.
+- `python3 -m unittest discover -s tools -p 'test_*.py'`: **six passed**;
+  `python3 tools/generate_predevice_fixtures.py --check`: **PASS**.
+- Cached `koalaman/shellcheck-alpine:stable` ran `shellcheck` over the seven fixture,
+  emulator, mail, services, model and benchmark shell scripts: **PASS**. Workflow
+  YAML parsed with two jobs; **hosted CI NOT TESTED**.
+
+Only the owned fixture emulator was stopped; fixture containers were cleaned up.
+No personal AVD/database was reset. **Physical-device and authorized external
+live-service tests remain NOT TESTED.** Further software expansion is deferred by
+the owner's scope update, not described as a hardware dependency.
 
 ### Current prioritized physical-only suite
 
