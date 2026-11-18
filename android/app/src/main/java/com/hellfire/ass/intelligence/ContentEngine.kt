@@ -24,6 +24,11 @@ import com.hellfire.ass.media.LocalOcr
 import com.hellfire.ass.media.MediaItem
 import com.hellfire.ass.media.MediaWork
 import com.hellfire.ass.memory.VectorMath
+import com.hellfire.ass.performance.ExecutionScheduler
+import com.hellfire.ass.performance.WorkPriority
+import com.hellfire.ass.performance.timedStage
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -59,11 +64,12 @@ class ContentEngine(private val app: HellFireApp) {
             save(item.id, "image", "none", "1", "FAILED", JSONObject(), "Original image could not be decoded.", null)
             return AnalysisCheckpoint(phase = "done")
         }
-        val observed = observe(bitmap)
-        val now = System.currentTimeMillis()
-        saveLabels(item, observed, now)
-        adultResult(item, bitmap, now)
-        bitmap.recycle()
+        try {
+            val observed = observe(bitmap)
+            val now = System.currentTimeMillis()
+            saveLabels(item, observed, now)
+            adultResult(item, bitmap, now)
+        } finally { bitmap.recycle() }
         return AnalysisCheckpoint(phase = "done")
     }
 
@@ -75,40 +81,48 @@ class ContentEngine(private val app: HellFireApp) {
             }
             dao.clearSegments(item.id, listOf("SCENE", "CHAPTER"))
         }
-        val duration = duration(item) ?: 0L
-        val times = Sampling.schedule(duration, IntelligencePrefs(app).mode(), checkpoint.sceneChangesMs).filter { !AnalysisCheckpoint.skipFrame(checkpoint, it) }
-        val batch = times.take(6)
-        if (batch.isEmpty()) { finishScenes(item, duration, checkpoint.sceneChangesMs); return audio(item, checkpoint.copy(phase = "audio", doneMs = duration), policy) }
-        var last = checkpoint.doneMs
-        val frames = ArrayList<RgbFrame>()
-        batch.forEach { at ->
-            last = at + 1
-            val bitmap = frame(item, at) ?: return@forEach
-            val pixels = pixels(bitmap)
-            frames += RgbFrame(at, pixels)
-            val observed = observe(bitmap)
-            val segmentId = segmentId(item.id, at)
-            val thumb = saveThumb(segmentId, bitmap)
-            val description = observedText(observed)
-            dao.saveSegment(MediaSegment(segmentId, item.id, null, SegmentKind.SCENE.name, at, minOf(duration, at + when (IntelligencePrefs(app).mode()) { SampleMode.FAST -> 10_000; SampleMode.BALANCED -> 5_000; SampleMode.DEEP -> 1_000 }), title = titleFrom(observed.labels, item.name),
-                description = description, labels = JSONArray(observed.labels).toString(), thumbnailPath = thumb, confidence = observed.labels.firstOrNull()?.let { 0.6 }, createdAt = System.currentTimeMillis()))
-            adultResult(item, bitmap, System.currentTimeMillis(), at)
-            bitmap.recycle()
-            last = at + 1
+        val next = withRetriever(item) { retriever ->
+            val duration = item.durationMs ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+            val mode = IntelligencePrefs(app).mode()
+            val times = Sampling.schedule(duration, mode, checkpoint.sceneChangesMs).filter { !AnalysisCheckpoint.skipFrame(checkpoint, it) }
+            val batch = times.take(6)
+            if (batch.isEmpty()) { finishScenes(item, duration, checkpoint.sceneChangesMs); return@withRetriever checkpoint.copy(phase = "audio", doneMs = duration) }
+            var last = checkpoint.doneMs
+            val frames = ArrayList<RgbFrame>()
+            for (at in batch) {
+                currentCoroutineContext().ensureActive()
+                if (ExecutionScheduler.shouldYield(WorkPriority.DEFERRED)) break
+                last = at + 1
+                val bitmap = frame(retriever, at) ?: continue
+                try {
+                    val pixels = pixels(bitmap)
+                    frames += RgbFrame(at, pixels)
+                    val observed = observe(bitmap)
+                    val segmentId = segmentId(item.id, at)
+                    val thumb = saveThumb(segmentId, bitmap)
+                    val description = observedText(observed)
+                    dao.saveSegment(MediaSegment(segmentId, item.id, null, SegmentKind.SCENE.name, at, minOf(duration, at + when (mode) { SampleMode.FAST -> 10_000; SampleMode.BALANCED -> 5_000; SampleMode.DEEP -> 1_000 }), title = titleFrom(observed.labels, item.name),
+                        description = description, labels = JSONArray(observed.labels).toString(), thumbnailPath = thumb, confidence = observed.labels.firstOrNull()?.let { 0.6 }, createdAt = System.currentTimeMillis()))
+                    adultResult(item, bitmap, System.currentTimeMillis(), at)
+                } finally { bitmap.recycle() }
+                last = at + 1
+            }
+            val boundaries = SceneMath.boundaries(frames).toMutableList()
+            frames.firstOrNull()?.let { first ->
+                if (checkpoint.histogram.isNotEmpty() && (SceneMath.histogramDistance(checkpoint.histogram.toIntArray(), SceneMath.histogram(first.pixels)) >= 0.35 ||
+                        kotlin.math.abs((checkpoint.luma ?: SceneMath.luma(first.pixels)) - SceneMath.luma(first.pixels)) >= 0.18)) boundaries.add(0, first.atMs)
+            }
+            if (boundaries.isNotEmpty()) {
+                save(item.id, "scenes", "histogram-luma", "1", "PARTIAL", JSONObject().put("boundariesMs", JSONArray(boundaries)),
+                    "Scene boundaries from colour-histogram and luma difference. ${boundaries.size} change(s) in this batch.", null)
+            }
+            val next = checkpoint.copy(doneMs = last, sceneChangesMs = (checkpoint.sceneChangesMs + boundaries).distinct().sorted(),
+                histogram = frames.lastOrNull()?.let { SceneMath.histogram(it.pixels).toList() } ?: checkpoint.histogram, luma = frames.lastOrNull()?.let { SceneMath.luma(it.pixels) } ?: checkpoint.luma)
+            val more = Sampling.schedule(duration, mode, next.sceneChangesMs).any { !AnalysisCheckpoint.skipFrame(next, it) }
+            if (more) next else { finishScenes(item, duration, next.sceneChangesMs); next.copy(phase = "audio") }
         }
-        val boundaries = SceneMath.boundaries(frames).toMutableList()
-        frames.firstOrNull()?.let { first ->
-            if (checkpoint.histogram.isNotEmpty() && (SceneMath.histogramDistance(checkpoint.histogram.toIntArray(), SceneMath.histogram(first.pixels)) >= 0.35 ||
-                    kotlin.math.abs((checkpoint.luma ?: SceneMath.luma(first.pixels)) - SceneMath.luma(first.pixels)) >= 0.18)) boundaries.add(0, first.atMs)
-        }
-        if (boundaries.isNotEmpty()) {
-            save(item.id, "scenes", "histogram-luma", "1", "PARTIAL", JSONObject().put("boundariesMs", JSONArray(boundaries)),
-                "Scene boundaries from colour-histogram and luma difference. ${boundaries.size} change(s) in this batch.", null)
-        }
-        val next = checkpoint.copy(doneMs = last, sceneChangesMs = (checkpoint.sceneChangesMs + boundaries).distinct().sorted(),
-            histogram = frames.lastOrNull()?.let { SceneMath.histogram(it.pixels).toList() } ?: checkpoint.histogram, luma = frames.lastOrNull()?.let { SceneMath.luma(it.pixels) } ?: checkpoint.luma)
-        val more = Sampling.schedule(duration, IntelligencePrefs(app).mode(), next.sceneChangesMs).any { !AnalysisCheckpoint.skipFrame(next, it) }
-        return if (more) false to next else { finishScenes(item, duration, next.sceneChangesMs); audio(item, next.copy(phase = "audio"), policy) }
+        // Decoder/source must be released before loading the audio/speech pipeline.
+        return if (next.phase == "audio") audio(item, next, policy) else false to next
     }
 
     private suspend fun finishScenes(item: MediaItem, duration: Long, boundaries: List<Long>) {
@@ -230,11 +244,17 @@ class ContentEngine(private val app: HellFireApp) {
 
     private suspend fun observe(bitmap: Bitmap): Observed {
         val software = if (bitmap.config == Bitmap.Config.HARDWARE) bitmap.copy(Bitmap.Config.ARGB_8888, false) else bitmap
-        val labels = runCatching { LocalImageLabels.read(software).map { it.first } }.getOrDefault(emptyList())
-        val copy = software.copy(software.config ?: Bitmap.Config.ARGB_8888, false)
-        val ocr = runCatching { LocalOcr.read(copy) }.getOrDefault("")
-        if (software !== bitmap) software.recycle()
-        return Observed(labels, ocr)
+        return try {
+            // Cancelling a coroutine cannot stop ML Kit's Task. Keep its bitmap alive until
+            // this one call finishes, then honor cancellation before starting another stage.
+            val labels = runCatching { withContext(kotlinx.coroutines.NonCancellable) { LocalImageLabels.read(software).map { it.first } } }
+                .getOrElse { if (it is kotlinx.coroutines.CancellationException) throw it; emptyList() }
+            currentCoroutineContext().ensureActive()
+            val copy = software.copy(software.config ?: Bitmap.Config.ARGB_8888, false)
+            val ocr = runCatching { LocalOcr.read(copy) }
+                .getOrElse { if (it is kotlinx.coroutines.CancellationException) throw it; "" }
+            Observed(labels, ocr)
+        } finally { if (software !== bitmap) software.recycle() }
     }
 
     private fun observedText(observed: Observed): String {
@@ -288,46 +308,36 @@ class ContentEngine(private val app: HellFireApp) {
         app.contentResolver.openInputStream(Uri.parse(item.externalUri)) ?: error("Original unavailable")
     else app.media.openStream(item)
 
-    private fun frame(item: MediaItem, atMs: Long): Bitmap? = runCatching {
-        val retriever = MediaMetadataRetriever()
-        val source = managedSource(item)
-        try {
-            if (source != null) retriever.setDataSource(source) else retriever.setDataSource(app, Uri.parse(item.externalUri))
+    internal fun frame(retriever: MediaMetadataRetriever, atMs: Long): Bitmap? = runCatching {
+        timedStage("video_frame") {
             retriever.getScaledFrameAtTime(atMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST, 320, 180)
                 ?: retriever.getFrameAtTime(atMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
+        }
+    }.getOrNull()
+
+    /** One source/retriever for a bounded batch; cleanup also covers source setup failure. */
+    internal suspend fun <T> withRetriever(item: MediaItem, block: suspend (MediaMetadataRetriever) -> T): T {
+        val retriever = MediaMetadataRetriever()
+        var source: MediaDataSource? = null
+        return try {
+            source = managedSource(item)
+            if (source != null) retriever.setDataSource(source) else retriever.setDataSource(app, Uri.parse(item.externalUri))
+            block(retriever)
         } finally {
             runCatching { retriever.release() }
             runCatching { source?.close() }
         }
-    }.getOrNull()
+    }
 
-    private fun duration(item: MediaItem): Long? = item.durationMs ?: runCatching {
-        val retriever = MediaMetadataRetriever()
-        val source = managedSource(item)
-        try {
-            if (source != null) retriever.setDataSource(source) else retriever.setDataSource(app, Uri.parse(item.externalUri))
-            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
-        } finally {
-            runCatching { retriever.release() }
-            runCatching { source?.close() }
-        }
-    }.getOrNull()
-
-    private fun containerTags(item: MediaItem): JSONObject = runCatching {
-        val retriever = MediaMetadataRetriever()
-        val source = managedSource(item)
-        try {
-            if (source != null) retriever.setDataSource(source) else retriever.setDataSource(app, Uri.parse(item.externalUri))
+    private suspend fun containerTags(item: MediaItem): JSONObject = runCatching {
+        withRetriever(item) { retriever ->
             JSONObject()
                 .put("title", retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: "")
                 .put("artist", retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "")
                 .put("album", retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: "")
                 .put("genre", retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE) ?: "")
-        } finally {
-            runCatching { retriever.release() }
-            runCatching { source?.close() }
         }
-    }.getOrDefault(JSONObject())
+    }.getOrElse { if (it is kotlinx.coroutines.CancellationException) throw it; JSONObject() }
 
     private fun managedSource(item: MediaItem): MediaDataSource? =
         if (item.storage == StorageMode.MANAGED.name) app.media.dataSource(item) else null

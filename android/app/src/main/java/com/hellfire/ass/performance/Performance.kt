@@ -219,6 +219,15 @@ object QueryTrace {
 }
 
 data class PerfSample(val name: String, val value: Long, val atMs: Long)
+data class PerfSummary(val name: String, val count: Int, val p50: Long, val p95: Long)
+
+/** Nearest-rank percentiles, calculated on demand over the bounded ring, never by a polling task. */
+fun timingSummaries(samples: List<PerfSample>): List<PerfSummary> = samples.filter { it.name.endsWith("_ms") }
+    .groupBy { it.name }.map { (name, rows) ->
+        val ordered = rows.map { it.value }.sorted()
+        PerfSummary(name, ordered.size, ordered[(ordered.size + 1) / 2 - 1],
+            ordered[(ordered.size * 95 + 99) / 100 - 1])
+    }
 
 /** Ring of numeric samples. [detail] is a fixed token such as CPU or WAITING_FOR_MEMORY, never content. */
 object PerfLog {

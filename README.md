@@ -10,7 +10,7 @@ The owner authorized the remaining phases on 2026-11-13 and kept physical device
 testing until last. No phone, live account, personal corpus or model weights were
 used to establish host results. No message has been sent and no gateway deployed.
 
-## Current status — 2026-11-17
+## Current status — 2026-11-18
 
 - **Code:** `main` holds every merged slice: Phases 0–6 software, the UI redesign
   (five tabs, reports, 13 home screen widgets), money entry pickers, fingerprint app
@@ -23,11 +23,16 @@ used to establish host results. No message has been sent and no gateway deployed
 - **Web access:** an optional read-only web copy (NestJS API, Postgres, Next.js site
   in `web/`) synced from the phone; see [Web access](#web-access-read-only-mirror).
   Local website: `https://hellfire.local`; not yet connected to a real phone.
-- **Current host checks:** 428 Android tests (424 passed, 4 opt-in live-provider
-  tests skipped), Android lint with zero errors, 24 web API tests, frontend
-  typecheck/production build, and verified debug/signed-release APKs pass. Exact commands and artifact evidence are in
+- **Current Android host checks:** 501 tests (497 passed, 4 opt-in live-provider
+  tests skipped), Android lint with zero errors, debug/release APKs and isolated
+  benchmark/profile app and test APKs build. The worktree release comparison is
+  unsigned; earlier owner-signed artifacts remain historical. Exact commands and artifact evidence are in
   [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md). Relay/WhatsApp worker code
   was unchanged; its earlier results remain recorded there.
+- **Pre-device completion:** the OnePlus 16 is not available. Host-native,
+  synthetic-service and separate x86_64 emulator validation are being completed;
+  the classified audit is in DEVICE_FEASIBILITY.md. Emulator results will remain
+  distinct from actual handset, hardware accelerator, energy and OEM results.
 - **Not done:** nothing has run on the physical OnePlus 16, with a real model file, a live
   mail/WhatsApp/Google account or a real SMS corpus. Every phase stays **PARTIAL**.
 - **Earlier project review findings:** covered by host tests; each still needs
@@ -860,6 +865,29 @@ Telegram and desktop dashboard have not been added.
 
 ## News, library and performance
 
+The [2026-11-18 performance audit and measurement protocol](docs/DEVICE_FEASIBILITY.md#performance-audit--2026-11-18)
+maps existing optimizations, confirmed source-level overhead and device-only
+validation gates. `android/benchmark` contains cold/warm/hot startup, UI journey
+and Baseline Profile collectors against the isolated, release-optimized
+`com.hellfire.ass.benchmark` app. Physical phone results and generated app profiles
+are not available yet. Complete that copy's English setup offline before running
+tests; see the protocol for exact commands and fixed-workload requirements.
+
+Host checks and artifact reporting (repository root):
+
+```sh
+bash tools/test_native_jni.sh
+python3 -m unittest discover -s tools -p 'test_*.py'
+python3 tools/benchmark_media_queue.py
+python3 tools/performance_report.py apk android/app/build/outputs/apk/debug/*.apk
+```
+
+The JNI check uses the real production bridge with a synthetic Whisper API, no
+model or inference. The queue benchmark uses the checked-in Room schema and DAO
+queries on host SQLite; its timings and Python allocations are **not** Android
+latency, app PSS, energy or battery results. Device profiling uses AndroidX JSON
+and Perfetto; the report script computes p50/p95 only from actual recorded samples.
+
 Open **Home → News** for briefings, saved stories and the reader. News settings
 control source selection, interests, morning/evening times, quiet hours and audio.
 Saved news remains readable offline; fetching new stories needs a connection.
@@ -897,6 +925,13 @@ model succeeds in a device probe. Queue limits, thermal policy and cooperative
 yielding are host-tested; speed, memory, power and heat require the OnePlus 16.
 
 ## Verification and change log
+
+- 2026-11-18, performance checkpoint: bounded native audio ownership/error handling,
+  one video retriever per batch, bounded media scheduling queries, idle-model
+  cleanup under the existing gate, local stage diagnostics and isolated AndroidX
+  startup/navigation/profile collectors. 501 host Android tests pass, native
+  CheckJNI and ASan/UBSan checks pass, and debug/release/benchmark/profile APKs
+  compile. Raw comparison evidence is in `docs/performance-results.json`.
 
 - 2026-11-17, news/media/performance/universal drawer: consolidated the pending
   feature branches on schema 19; added news Ask and scheduled notices; corrected

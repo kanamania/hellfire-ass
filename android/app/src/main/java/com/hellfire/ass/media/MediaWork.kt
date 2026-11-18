@@ -29,6 +29,7 @@ object MediaWork {
         if (app.getSharedPreferences("media", 0).getBoolean("analysis_paused", false)) return@withContext
         WorkManager.getInstance(app).enqueueUniqueWork("analyze-media:$id", if (followUp) ExistingWorkPolicy.APPEND_OR_REPLACE else ExistingWorkPolicy.KEEP,
             OneTimeWorkRequestBuilder<MediaWorker>().setInputData(workDataOf("id" to id)).addTag(TAG)
+                .addTag("$TAG:$id")
                 .setInitialDelay(delaySeconds, TimeUnit.SECONDS)
                 .setConstraints(Constraints.Builder().setRequiresBatteryNotLow(true).setRequiresCharging(
                     app.getSharedPreferences("media", 0).getBoolean("charging", true)).build())
@@ -39,14 +40,19 @@ object MediaWork {
     suspend fun pump(app: HellFireApp) = withContext(Dispatchers.IO) { pumpLock.withLock {
         val manager = WorkManager.getInstance(app)
         val pending = manager.getWorkInfos(WorkQuery.Builder.fromTags(listOf(TAG))
-            .addStates(listOf(WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING, WorkInfo.State.BLOCKED)).build()).get().size
-        var slots = JobBudget.slots(pending)
-        for (item in app.database.media().unfinished().sortedBy { it.importedAt }) {
+            .addStates(listOf(WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING, WorkInfo.State.BLOCKED)).build()).get()
+        PerfLog.record("media_pending_jobs", pending.size.toLong())
+        var slots = JobBudget.slots(pending.size)
+        if (slots == 0) return@withLock
+        val activeIds = pending.flatMap { work -> work.tags.filter { it.startsWith("$TAG:") }.map { it.removePrefix("$TAG:") } }.distinct()
+        val legacy = pending.count { work -> work.tags.none { it.startsWith("$TAG:") } }
+        // Requests persisted by older APKs have no item tag. Keep their compatibility lookup
+        // only while they drain; new requests need no per-item WorkManager query.
+        for (id in app.database.media().unfinishedIds(activeIds, slots + legacy)) {
             if (slots <= 0) break
-            val active = manager.getWorkInfosForUniqueWork("analyze-media:${item.id}").get()
-                .any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.BLOCKED }
+            val active = legacy > 0 && manager.getWorkInfosForUniqueWork("$TAG:$id").get().any { !it.state.isFinished }
             if (active) continue
-            schedule(app, item.id)
+            schedule(app, id)
             slots--
         }
     } }
@@ -85,7 +91,7 @@ class MediaWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
         val signals = DeviceProbe.signals(app)
         val profile = OperatingProfile.of(signals)
         if (signals.thermal >= OperatingProfile.THERMAL_SEVERE || signals.lowMemory) {
-            app.localModel.releaseCached(); app.speech.releaseCached(); app.semantic.releaseCached(); app.speakers.releaseCached()
+            app.releaseIdleModels()
             app.database.media().state(id, "QUEUED", if (signals.lowMemory) "WAITING_FOR_MEMORY" else "WAITING_FOR_DEVICE_TO_COOL")
             PerfLog.detail("media_wait", if (signals.lowMemory) "WAITING_FOR_MEMORY" else "WAITING_FOR_DEVICE_TO_COOL")
             return@withContext Result.retry()

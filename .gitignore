@@ -10,6 +10,7 @@ local.properties
 *.jks
 *.keystore
 *.hprof
+*.perfetto-trace
 *.db
 *.db-*
 *.wav
@@ -33,7 +34,7 @@ __pycache__/
 *.pem
 *.key
 
-node_modules/
+node_modules
 .wwebjs_auth/
 .wwebjs_cache/
 server/state/

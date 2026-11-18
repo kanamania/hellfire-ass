@@ -47,6 +47,15 @@ codecs, assistant integration, permissions and accelerators on the actual device
 no precise chipset variant, ISA extension, RAM size or OEM behavior is established
 by the product name. Physical tests remain deferred and NOT TESTED.
 
+**Owner pre-device execution update — 2026-11-18:** The OnePlus 16 is not yet
+available. Complete all feasible implementation and validation using host-native
+tools, deterministic fixtures, synthetic services, CI and a separate compatible
+Android emulator build. Preserve ARM64-only production packaging. Missing phone
+hardware is not a software-development blocker. Distinguish host, emulator,
+authorized live-service and physical-device evidence; only actual hardware/OEM
+checks and explicitly unavailable external integrations may remain unverified.
+Do not weaken permissions, encryption or approval gates to make tests pass.
+
 ## 0. Requirements locked by the owner
 
 These are explicit decisions, not suggestions to reconsider:

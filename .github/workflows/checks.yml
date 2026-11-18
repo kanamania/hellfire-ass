@@ -32,7 +32,12 @@ jobs:
         run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager 'platforms;android-36' 'build-tools;35.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
       - name: Android tests, lint and APKs
         working-directory: android
-        run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'
+        run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease :app:assembleBenchmark :benchmark:assembleBenchmark :app:assembleProfile :benchmark:assembleProfile --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'
+      - name: Host JNI boundary and performance report tests
+        run: |
+          bash tools/test_native_jni.sh
+          bash tools/test_native_jni.sh --sanitize
+          python3 -m unittest discover -s tools -p 'test_*.py'
       - name: Relay tests
         working-directory: server
         run: |

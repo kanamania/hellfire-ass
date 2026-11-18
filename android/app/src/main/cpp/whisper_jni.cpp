@@ -5,11 +5,22 @@
 #include <sstream>
 #include <thread>
 #include <atomic>
+#include <vector>
+#include <memory>
+#include <new>
 struct NativeSession { whisper_context *context; std::atomic_bool aborted{false}; };
 
 static void fail(JNIEnv *env, const char *message) {
     env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), message);
 }
+class UtfChars {
+    JNIEnv *env;
+    jstring value;
+public:
+    const char *chars;
+    UtfChars(JNIEnv *env, jstring value) : env(env), value(value), chars(env->GetStringUTFChars(value, nullptr)) {}
+    ~UtfChars() { if (chars) env->ReleaseStringUTFChars(value, chars); }
+};
 static std::string quoted(const char *text) {
     std::string out = "\"";
     const char hex[] = "0123456789abcdef";
@@ -21,26 +32,42 @@ static std::string quoted(const char *text) {
     return out + "\"";
 }
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_hellfire_ass_media_WhisperNative_load(JNIEnv *env, jobject, jstring path) {
-    const char *model = env->GetStringUTFChars(path, nullptr);
+Java_com_hellfire_ass_media_WhisperNative_load(JNIEnv *env, jobject, jstring path) try {
+    if (!path) { fail(env, "Transcription model path required"); return 0; }
+    const UtfChars model(env, path);
+    if (!model.chars) return 0;
     auto options = whisper_context_default_params();
     options.use_gpu = false;
-    auto *context = whisper_init_from_file_with_params(model, options);
-    env->ReleaseStringUTFChars(path, model);
+    std::unique_ptr<whisper_context, decltype(&whisper_free)> context(
+        whisper_init_from_file_with_params(model.chars, options), whisper_free);
     if (!context) { fail(env, "Local transcription model could not be loaded"); return 0; }
-    return reinterpret_cast<jlong>(new NativeSession{context});
+    auto *session = new NativeSession{context.get()};
+    context.release();
+    return reinterpret_cast<jlong>(session);
+} catch (const std::bad_alloc &) {
+    env->ThrowNew(env->FindClass("java/lang/OutOfMemoryError"), "Transcription session allocation failed");
+    return 0;
+} catch (const std::exception &) {
+    fail(env, "Transcription model could not be loaded");
+    return 0;
 }
 extern "C" JNIEXPORT jbyteArray JNICALL
-Java_com_hellfire_ass_media_WhisperNative_transcribe(JNIEnv *env, jobject, jlong handle, jfloatArray samples, jstring language) {
+Java_com_hellfire_ass_media_WhisperNative_transcribe(JNIEnv *env, jobject, jlong handle, jfloatArray samples, jstring language) try {
     auto *session = reinterpret_cast<NativeSession *>(handle);
     auto *context = session ? session->context : nullptr;
     if (!context) { fail(env, "Transcription context unavailable"); return nullptr; }
+    if (!samples || !language) { fail(env, "Audio and language required"); return nullptr; }
     const int count = env->GetArrayLength(samples);
     if (count <= 0 || count > 16000 * 300) { fail(env, "Audio chunk exceeds the five-minute inference bound"); return nullptr; }
-    const char *lang = env->GetStringUTFChars(language, nullptr);
+    std::string lang;
+    {
+        const UtfChars value(env, language);
+        if (!value.chars) return nullptr;
+        lang = value.chars;
+    }
     auto params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
     params.n_threads = std::min(6, std::max(1, static_cast<int>(std::thread::hardware_concurrency())));
-    params.language = lang;
+    params.language = lang.c_str();
     params.abort_callback = [](void *data) { return static_cast<NativeSession *>(data)->aborted.load(); };
     params.abort_callback_user_data = session;
     params.translate = false;
@@ -49,10 +76,14 @@ Java_com_hellfire_ass_media_WhisperNative_transcribe(JNIEnv *env, jobject, jlong
     params.print_progress = false;
     params.print_realtime = false;
     params.print_timestamps = false;
-    float *audio = env->GetFloatArrayElements(samples, nullptr);
-    const int result = whisper_full(context, params, audio, count);
-    env->ReleaseFloatArrayElements(samples, audio, JNI_ABORT);
-    env->ReleaseStringUTFChars(language, lang);
+    // At most 19.2 MB; no JNI array borrow is held across inference.
+    int result;
+    {
+        std::vector<float> audio(count);
+        env->GetFloatArrayRegion(samples, 0, count, audio.data());
+        if (env->ExceptionCheck()) return nullptr;
+        result = whisper_full(context, params, audio.data(), count);
+    }
     if (result != 0) { fail(env, "Local transcription failed"); return nullptr; }
     std::ostringstream output;
     output << "{\"language\":" << quoted(whisper_lang_str(whisper_full_lang_id(context))) << ",\"segments\":[";
@@ -65,8 +96,15 @@ Java_com_hellfire_ass_media_WhisperNative_transcribe(JNIEnv *env, jobject, jlong
     output << "]}";
     const auto text = output.str();
     jbyteArray bytes = env->NewByteArray(static_cast<jsize>(text.size()));
+    if (!bytes) return nullptr;
     env->SetByteArrayRegion(bytes, 0, static_cast<jsize>(text.size()), reinterpret_cast<const jbyte *>(text.data()));
     return bytes;
+} catch (const std::bad_alloc &) {
+    env->ThrowNew(env->FindClass("java/lang/OutOfMemoryError"), "Native transcription allocation failed");
+    return nullptr;
+} catch (const std::exception &) {
+    fail(env, "Native transcription failed");
+    return nullptr;
 }
 extern "C" JNIEXPORT void JNICALL
 Java_com_hellfire_ass_media_WhisperNative_release(JNIEnv *, jobject, jlong handle) {

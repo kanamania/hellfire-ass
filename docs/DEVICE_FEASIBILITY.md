@@ -1,8 +1,230 @@
 # HellFire Ass — implementation and feasibility
 
-Latest update: 2026-11-17 (sequential media review fixes, directly below). Earlier
+Latest update: 2026-11-18 (performance audit, directly below). Earlier
 checkpoints keep the test counts and APK checksums that were true when they were
 written; the newest checkpoint has the current ones.
+
+## Pre-device completion audit — 2026-11-18
+
+The owner's updated instruction reserves the OnePlus 16 for final hardware-specific
+verification. The current code, not historical NOT TESTED rows below, controls this
+audit. Earlier checkpoints remain historical evidence, not a current backlog.
+Work continues in independently verified phases; pending rows below are not
+completion claims. Production stays ARM64-only; a separate x86_64 emulator build
+must report incompatible AI runtimes rather than substitute fake success.
+
+| Outstanding area | Classification | Work / evidence required |
+|---|---|---|
+| Existing performance slice, release/native footprint, benchmark/profile APKs | HOST TEST NOW | Finish current build, preserve baseline comparisons, verify profile-source prerequisites, symbols/alignment and native cancellation. 501 JVM tests currently pass; debug lint has zero errors. |
+| Full repository/master-spec acceptance mapping | IMPLEMENT NOW | Replace stale phone-only deferrals with this classified backlog and one final prioritized hardware list. |
+| Native JNI ownership, error paths and sanitizers | HOST TEST NOW | Production bridge with synthetic Whisper API; add ASan/UBSan and real compatible host Whisper checks where models are available. No synthetic inference counted as real. |
+| Emulator ABI/build/runtime status | IMPLEMENT NOW | Dedicated x86_64 test variant and isolated app data. Inspect actual packaged libraries; unavailable delegates/models stay visibly unavailable. |
+| SQLCipher/Keystore, migrations, encrypted originals and full/incremental/selective recovery | EMULATOR TEST NOW | Use genuine Android libraries and synthetic data; interrupt/reopen/recover and inspect ciphertext. These are not limited to the OnePlus. |
+| Compose navigation, permission denial/regrant, app lock and screenshots | EMULATOR TEST NOW | Automate representative flows and deterministic synthetic UI capture; retain production security gates. |
+| Notification/SMS capture, assistant selection, microphone foreground-service lifecycle and alarms | EMULATOR TEST NOW | Exercise supported stock-Android flows and interruption/recovery; record ADB-granted test permissions separately from user/OEM behavior. |
+| Platform decoding, OCR/labels, playback and sanitized exports | EMULATOR TEST NOW | Generated audio/video/images, timestamps and output verification; distinguish software/emulated codecs from physical hardware codecs. |
+| Media semantic pagination, ONNX input-layout handling, cancellation and identity defects | IMPLEMENT NOW | Correct confirmed source defects with regression tests before adding acceleration. |
+| Financial/media goldens and English/Kiswahili AI evaluation fixtures | IMPLEMENT NOW | Seeded generators, expected typed outcomes and failure cases; no generated result represented as a real model accuracy score. |
+| Cross-source memory, proactive workflows, provider success/failure contracts | HOST TEST NOW | Replay synthetic events through existing adapters, approval policy, deterministic finance/time parsing and memory provenance. |
+| Previously deferred media/intelligence capabilities | IMPLEMENT NOW | Audit QR extraction, learned VAD/model adapters, news embeddings, overlay and video-redaction/tracking paths against current contracts; implement feasible missing paths without inventing inference outputs. |
+| Relay/WhatsApp adapters and mail protocol behavior | TEST WITH SYNTHETIC SERVICES | Isolated fixture accounts/servers and encrypted capture/replay, failures, malformed content and approval boundaries; never contact a real recipient. |
+| Multi-client sync, browser crypto, conflicts, backups and interrupted transfer | TEST WITH SYNTHETIC SERVICES | Disposable Postgres/API instances and multiple synthetic clients; no reset of a personal database. |
+| API and web frontend regression/navigation | TEST WITH SYNTHETIC SERVICES | Existing API tests, real frontend build/typecheck and browser checks against synthetic services. |
+| Host-compatible real model files/formats | HOST TEST NOW | Inventory available files/tooling and evaluate actual supported models; record unavailable external artifacts explicitly. Android delegate results remain separate. |
+| Live AI providers, Gmail, WhatsApp pairing and Google Drive | TEST WITH OPTIONAL AUTHORIZED LIVE SERVICES | Run only when existing explicit opt-in and credentials authorize the exact operation. Do not extract credentials or send real messages to obtain a pass. |
+| CI, reproducible packaging, native diagnostics and reports | IMPLEMENT NOW | Automate deterministic checks, artifact manifests and failure reporting; a local run does not establish hosted CI success. |
+| Automated handset bring-up and benchmark collection | IMPLEMENT NOW | Read-only hardware inventory, verified artifact install workflow, fixed workloads and local evidence bundle; no automatic permission/security bypass. |
+| Actual OnePlus CPU/GPU/NPU compatibility/throughput, OEM restrictions, real sensors, battery/thermals and sustained hardware behavior | REQUIRES PHYSICAL DEVICE | Final controlled tests on the actual handset; emulator/host results cannot satisfy these rows. |
+| Real owner corpora, call-recording locations and live integration eligibility | REQUIRES PHYSICAL DEVICE / TEST WITH OPTIONAL AUTHORIZED LIVE SERVICES | Validate only authorized accessible evidence; synthetic correctness does not establish real-world extraction accuracy or provider eligibility. |
+
+Available workstation evidence: SDK images `android-34/google_apis/x86_64` and
+`android-35/google_apis/x86_64`, emulator executable and accessible `/dev/kvm`.
+Fresh test AVD/data will be isolated from the existing MyPhone/Karibu/Kisima AVDs.
+Existing Node 24, PostgreSQL tools, Chromium and test dependency caches are present.
+No physical OnePlus is connected. Native model files have not yet been located in
+the project/cache inventory; compatible public test artifacts and tooling will be
+evaluated separately from Android inference.
+
+Fresh host checks: relay **23 passed**; WhatsApp Web capture **6 passed**; API
+**30 passed** against a new disposable PostgreSQL 18 container on loopback port
+55439 (not the existing workstation databases); frontend TypeScript check passed.
+No live AI opt-in is configured, so the four live-provider tests remain skipped.
+The current LiteRT-LM, ONNX and SQLCipher AARs include x86_64; MediaPipe text
+0.10.26 includes only ARM64. The emulator build can exercise the former natively
+and must explicitly report MediaPipe text inference unavailable.
+
+Execution order: finish the performance checkpoint; establish deterministic host,
+native and synthetic-service checks; fix confirmed software defects; add and run
+the emulator/native/UI suite; complete remaining contracted capabilities; repeat
+regression gates, packaging and evidence collection. The final device list will
+contain only checks that genuinely depend on hardware/OEM behavior or unavailable
+authorized external services.
+
+## Performance audit — 2026-11-18
+
+Base: `9eae49f`, identical to `origin/main` after fetch. Clean checkout; work is
+isolated in `.worktrees/performance-audit`. Repository-wide tracked-file inventory
+and performance-path source review preceded implementation. Installed tooling:
+JDK 21.0.13, SDK 36, NDK 28.2.13676358, CMake 3.22.1. `adb devices -l` is empty.
+All phone performance, accuracy, energy and accelerator outcomes are **NOT TESTED**.
+
+### Architecture and existing optimizations
+
+| Area | Current implementation and limitations |
+|---|---|
+| Android/build | One Kotlin/Compose app module, min API 29, ARM64 only; AGP 8.13.2/Kotlin 2.2.21. Release R8/resource shrinking already enabled. No Macrobenchmark module or generated app Baseline Profile. Startup opens SQLCipher on IO and gates content on recovery; background recovery follows readiness. Existing startup counters are not cold/warm/hot launch measurements. |
+| Native speech | Checksummed whisper.cpp 1.9.5, CPU only, no Vulkan/OpenMP/KleidiAI, context reuse through `HeavyModelGate`, cancellation callback, six-thread maximum. The owner-selected `armv8.2-a+dotprod+fp16+i8mm` target requires every reported core to pass a feature guard; generic ARM64 speech is already unsupported. Preserve that decision; no chipset/SVE/GPU/NPU claim. |
+| Other inference | LiteRT-LM 0.12.0 CPU by default; manual single-probe CPU/GPU/NPU selection and CPU fallback. MediaPipe text embedder defaults to CPU with mapped model and normalized float vectors. ONNX 1.31.1 speaker/adult sessions use the default CPU provider, with no explicit GPU/NPU delegate. ML Kit labels/OCR are bundled. No rebuilding of runtime internals is justified. |
+| Model lifecycle | `HeavyModelGate`, `ModelSlots`, `OperatingProfile`, cooperative interactive waiter counts and owner-specific caches already exist. No second scheduler is needed. Model slot eviction handles transitions; OS memory-pressure callbacks do not currently release idle models. Adult classification opens a session per frame outside the shared model gate (opportunity requiring output/lifecycle validation). |
+| Media/audio | Managed originals use authenticated encrypted 64 KiB chunks, platform decoders and bounded 30-second intelligence audio chunks; visible authorized microphone capture uses AAC and local VAD. Video intelligence persists six-frame checkpoints/scene boundaries, labels/OCR/chapters and transcript provenance. Legacy `VisualReader` scene/silence helpers exist, but current audio/video ownership routes to `ContentEngine`; do not mistake unused helpers for active optimization. |
+| Jobs/capture | Bounded notification channel/batches, WorkManager durable recovery, Room processing claims/priorities, charging/battery/thermal constraints, 20-job media cap and periodic maintenance already exist. Capture and alarms do not depend on model inference. Intelligence jobs run sequentially; `maxConcurrent` is a batch count, not parallel native inference. |
+| Database/search | SQLCipher/Room schema 19, FTS4, existing indexes and keyset paging; semantic source reads in pages of 500 with bounded top-k pruning. Some media search/filter paths materialize up to 100,000 IDs and run per-hit queries. No measured query plan justifies changing schema/encryption/backup formats yet. |
+| News | Bounded feed ingestion, lexical English/Kiswahili features, persistent clusters/versions, backoff, ranking and saved briefings. Per-story/article reads and repeated feature JSON parsing are suspected hotspots. No news embedding runtime exists to accelerate. |
+| UI/player | Compose navigation, lazy library grid/list, 60-row library pages, bounded thumbnail cache, Media3 playback and decoder-based scrubbing. Other report/recording screens use bounded windows in scroll containers. Jank/recomposition cannot be established from source. Existing diagnostics frame callback is not Macrobenchmark evidence. |
+| Sync/backup/services | Bounded encrypted library transfer/chunks, incremental/change-based records, conflict recovery and verified passphrase archives already exist. Mirror, relay and WhatsApp capture are separate services. Their contracts are preserved; no unsolicited deployment, sending, gzip or database engine changes. |
+
+### Prioritized findings and proposed changes (before implementation)
+
+| Priority | Finding | Evidence and proposed improvement | Risk / measurement |
+|---|---|---|---|
+| P1 confirmed | JVM array held across Whisper inference | `GetFloatArrayElements` is released only after `whisper_full`. Copy once into a bounded native-owned buffer using `GetFloatArrayRegion`, release language chars before inference, check JNI failures. | Native copy may use more memory if ART previously pinned; same maximum 19.2 MB audio buffer. Test bridge errors/cancellation/timestamps; real inference/GC benefit unmeasured. |
+| P1 confirmed | Retriever initialized per sampled frame | `ContentEngine.frame` creates, opens and releases a decoder source for each of six frames, plus duration metadata. Keep one retriever/source for each bounded video step; preserve timestamps, fallback and encryption. | Count opens in host tests; codec throughput/quality requires a phone. Ensure cleanup on exceptions/cancellation. |
+| P1 confirmed | Repeated scheduler reads and full backlog hydration | `MediaWork.pump` queries active WorkManager rows, then queries unique work for each candidate and sorts all unfinished `MediaItem`s. Use one active-work snapshot plus a bounded ordered ID query. | Preserve unique-work KEEP, pump lock and cap. Test existing tagged/legacy work, ordering and large queues. No timing gain asserted yet. |
+| P1 confirmed | No idle-model release on OS memory pressure | Owners cache runtimes but Application has no pressure callback. Release already-created caches under the existing gate when Android reports pressure; never close active inference concurrently or initialize unused owners. | Host lock/cancellation regression tests; native PSS/thermal behavior needs device verification. |
+| P2 measurement | Missing reproducible device baselines | Add an isolated AndroidX Macrobenchmark test module for cold/warm/hot startup and representative UI journeys, plus a Baseline Profile collector and Perfetto trace markers for heavy stages. | Optimized non-debuggable benchmark target; no guessed/generated profile committed without running it. No phone results invented. |
+| P2 suspected | Inference initialization, frame OCR/ONNX, semantic scans, UI/filter reads | Record stage load/inference/queue timings locally; use fixed workloads, p50/p95 and profiles before new delegates, vector SIMD, caching or indexes. | New native DSP/vector modules require measured ≥15–20% gain or substantial memory/energy savings. Defer until actual comparative evidence exists. |
+
+The changes above retain Kotlin orchestration and existing AI runtimes. Quantized
+models, ISA/thread tuning, ONNX/GPU/NPU delegates, memory-budget sizes and sustained
+concurrency remain device experiments, not automatically enabled optimizations.
+
+### Implemented changes and regression evidence
+
+| Change | Result and practical limit |
+|---|---|
+| Native speech ownership | `GetFloatArrayRegion` copies to a native-owned buffer, freed before JSON formatting. No JNI array borrow or language chars span inference; null/bounds/allocation errors become Java exceptions. Existing abort callback, context reuse, text and timestamp conversion are preserved. No new C++ DSP/vector engine or compiler flags were added without comparative evidence. Native scratch is at most 19.2 MB; peak RAM may increase on ART implementations that previously pinned the array. |
+| Video batches | One retriever/encrypted source per six-frame step, including duration metadata; closed before audio inference. Existing scaled extraction and full-frame fallback timestamps are preserved. Host shadow tests check six timestamps, one source open, fallback and release on cancellation/setup failure. These are resource-lifecycle checks, not codec results. ML Kit does not support cancellation of its Task: finish the current label call before recycling its bitmap, then honor cancellation before the next stage. |
+| Queue/database reads | New requests carry their item tag. Pump reads active WorkManager rows once and queries only the oldest bounded IDs in Room. Legacy requests retain compatibility lookups until they drain. Existing mutex, unique-work policy and 20-job cap remain. A real host WorkManager/Room test covers a 1,000-item backlog, legacy requests, cap, ordering and resumption; no schema/migration/backup change. |
+| Memory/model coordination | Android pressure callbacks and the existing hot/low-memory media path release only initialized model owners, under the same `HeavyModelGate` as active inference. Host test confirms cleanup waits for the gate and does not initialize unused models. Callback delivery/native RSS reclamation on modern Android/OEM firmware is NOT TESTED. No unmeasured budget size, new queue or speculative scheduler. |
+| Cooperative background work | Intelligence worker rechecks device policy and interactive waiters between jobs; video checks cancellation/yield between frames and persists completed progress through the existing checkpoint. Android capture/permission/lifecycle restrictions are preserved. |
+| Startup and diagnostics | `ReportDrawnWhen` reports the unlocked, storage-ready UI for future full-display startup measurement. Fixed-label synchronous `hf.*` Perfetto spans and bounded local load/inference samples cover language, speech, embedding, speaker load and frame extraction. Diagnostics show counts, PSS snapshot, jobs and nearest-rank p50/p95 on manual refresh. The self-posting per-frame diagnostics callback was removed; no continuous monitoring thread was added. |
+| Benchmark infrastructure | Separate optimized `com.hellfire.ass.benchmark` target and test APK; ten-iteration cold/warm/hot startup, tab/library scrolling and offline news navigation, actual profile collectors and a profile-required comparison. APK/native-footprint and AndroidX JSON reporters, synthetic host SQL workload, native CheckJNI harness and CI compile checks are included. Device collection has NOT RUN; no generated app profile is committed. |
+
+Automated checks so far: **501 Android tests, 497 passed, 4 opt-in live-provider
+tests skipped, zero failures/errors** (baseline 495/491/4). The host JNI harness
+passes with `-Xcheck:jni` against the production bridge and a synthetic Whisper API:
+null/bounds errors, UTF-8/JSON escaping, timestamps, unchanged samples, concurrent
+abort, reset and context reuse. This is not real Whisper inference. Three Python
+report-format tests pass. No device, live account or real model was used for this
+performance checkpoint.
+
+| Final performance gate | Observed result |
+|---|---|
+| `:app:testDebugUnitTest :app:lintDebug :app:assembleDebug :benchmark:assembleBenchmark` | PASS, 501 tests / 4 skipped / zero failures; lint zero errors, 380 warnings, 11 hints |
+| `:app:assembleRelease :app:assembleBenchmark :app:assembleProfile :benchmark:assembleBenchmark :benchmark:assembleProfile --offline --max-workers=1 -Dorg.gradle.jvmargs=-Xmx1536m` | PASS, 217 tasks (23 executed, 194 up to date), after rebuilding current test configuration |
+| `bash tools/test_native_jni.sh --sanitize` | PASS with real host JNI bridge, synthetic Whisper API, ASan/UBSan and CheckJNI; JVM leak detection is disabled, so this is not a process-leak result |
+| Debug signature and 16 KiB ZIP alignment | PASS using SDK 35.0.0 `apksigner verify` and `zipalign -c -P 16 4` |
+| Debug APK comparison | 164,173,237 → 164,222,389 bytes (+49,152); Whisper library 5,214,448 → 5,219,080 bytes (+4,632) |
+| Unsigned release APK comparison | 108,676,676 → 108,676,676 bytes; Whisper library 2,737,464 → 2,739,168 bytes (+1,704), absorbed within APK alignment/layout |
+| Synthetic host queue query | 10,000 full rows → 20 IDs, using the existing imported-time index. Raw p50/p95 and Python allocation evidence are in `docs/performance-results.json`; these are not Android/SQLCipher, battery or app-memory measurements |
+
+Debug SHA-256: `1d2accab3e1a721c36aa3fe0bf04548467736ce94b89575df21059d110bec931`.
+Unsigned release SHA-256: `8362e0db635e40f830d07d96ecf6a2164c7a89ff6fa1f62aa82abd12c948f718`.
+The comparison APKs were built from this checkpoint's working changes on base
+`9eae49f`; the base revision alone does not reproduce those modified sources.
+The owner's primary checkout/signing material was not changed.
+
+### Reproducible device measurement protocol (NOT RUN)
+
+The `benchmark` build inherits release optimization and uses a debug signing key
+with **separate application ID `com.hellfire.ass.benchmark`**. It does not replace
+`com.hellfire.ass`. A separate `profile` variant disables R8/shrinking for collecting
+unobfuscated method names, using the same disposable benchmark application ID and
+signing key. Only these test variants are shell-profileable. The test APK is separate;
+new AndroidX Macrobenchmark/runner/UI Automator dependencies are test tooling.
+Macrobenchmark 1.4.1 is a verified stable version compatible with this Kotlin/AGP
+setup; existing production inference dependencies are unchanged.
+
+Use a physical ARM64 phone, cool and unlocked. Install with `:app:installBenchmark`,
+enable airplane mode before first launch (prevent the existing auto model downloader),
+complete setup in English, leave app lock off in this disposable benchmark copy,
+and return Home. Do not configure accounts or permissions that ingest private data.
+For list/scroll comparisons import the same synthetic library files and record
+their hashes, counts and duration; an empty-library run measures empty UI only.
+Preserve that dataset between revisions. For inference runs import the same
+owner-selected compatible models manually; no weights are part of this repository.
+
+From `android/`:
+
+```sh
+./gradlew :app:assembleBenchmark :benchmark:assembleBenchmark :app:assembleProfile :benchmark:assembleProfile
+./gradlew :app:installBenchmark
+# Before optimization and again after, with the same device/setup/workload:
+./gradlew :benchmark:connectedBenchmarkAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.hellfire.ass.macrobenchmark.StartupBenchmark
+# Generate real startup + navigation/library profiles (API 33+ or a rooted test device):
+./gradlew :benchmark:connectedProfileAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.hellfire.ass.macrobenchmark.BaselineProfileGenerator
+```
+
+AndroidX writes JSON, `.perfetto-trace` and generated profile text under the test
+module's connected-test `build/outputs/` artifacts. Copy the **generated**
+`*-baseline-prof.txt` rules (combine startup and navigation results, remove duplicate
+lines) to `app/src/main/baseline-prof.txt`; copy the startup collector's generated
+`*-startup-prof.txt` to `app/src/main/startup-prof.txt`. Rebuild/reinstall, repeat
+`StartupBenchmark`, then run `ProfileStartupBenchmark` with the same `class` argument
+above. The latter requires an installed profile and fails if it is missing.
+Its Gradle configuration also requires generated app rules in the source file:
+profiles bundled by dependency libraries alone are not evidence of app coverage.
+No made-up class list is installed. Device-generated profiles are still absent.
+Profile packaging/install is therefore **NOT TESTED** pending this collection.
+Use the **profile** variant only for collection; verify names are unobfuscated in
+the output. Reinstall **benchmark** for timing comparisons so R8 optimization is
+enabled. Collection itself is not a release-performance result.
+
+```sh
+# From the repository root; paths are actual files copied from connected-test output:
+python3 tools/performance_report.py macrobenchmark path/to/before-benchmarkData.json path/to/after-benchmarkData.json
+python3 tools/performance_report.py apk android/app/build/outputs/apk/release/*.apk
+adb shell getprop ro.build.fingerprint
+adb shell getprop ro.product.cpu.abilist
+adb shell cat /proc/cpuinfo
+adb shell dumpsys meminfo com.hellfire.ass.benchmark
+adb shell dumpsys thermalservice
+adb shell dumpsys battery
+adb shell dumpsys jobscheduler
+# In one terminal; exercise the fixed workload during the 30-second capture:
+adb shell perfetto --txt -c - -o /data/misc/perfetto-traces/hellfire.perfetto-trace < tools/performance.pbtxt
+adb pull /data/misc/perfetto-traces/hellfire.perfetto-trace ./hellfire.perfetto-trace
+```
+
+Use Macrobenchmark JSON for ten cold/warm/hot launches and frame CPU/overrun samples.
+Full-display timing uses the app's unlocked/storage-ready `ReportDrawnWhen` signal;
+initial-display timing alone can include the storage-opening screen. API 34+ is
+recommended for preserving the fixed dataset across compilation resets; on older
+Android the benchmark library can reinstall the app and clear prepared state.
+The report uses nearest-rank p50/p95 and distinguishes per-iteration values from
+pooled frame samples; missing metrics remain null. Archive raw JSON/traces before
+changing revisions. Trace synchronous `hf.*` stages, CPU scheduling/frequency,
+GC and process memory in Perfetto; one `dumpsys meminfo` sample is not peak RSS.
+Device kernel trace availability and GPU/NPU counters vary: verify advertised
+Perfetto data sources and working runtime delegates on the actual phone. No GPU
+or NPU utilization percentage can be inferred from a selected backend name.
+
+| Workload | Repeated controlled measurement still required |
+|---|---|
+| Speech | Same English/Kiswahili audio and multilingual GGML/quantized model; verify exact segment text/timestamps before accepting speed. Record load time separately, per-chunk inference ms / audio ms (RTF), wall time, max PSS/RSS and thermals. Compare thread counts/backends only with compatible CPU features. |
+| Video/images | Same managed encrypted and external files, same FAST/BALANCED/DEEP mode, all optional models/settings identical. Reset analysis checkpoints via existing retry/reprocess UI for each full run; compare frame/item throughput, OCR/scene/chapter output, decode errors and queue completion. Test cancellation/resume and revoked URI access. |
+| Embedding/search | Fixed synthetic 1k/10k-source libraries, same model hash/dimensions, fixed literal/semantic queries. Separate embedding/load ms, FTS/semantic search p50/p95, query plans, result IDs/scores and maximum process memory. Host SQLite timings do not establish SQLCipher performance. |
+| Language | Import same `.litertlm`; record separate cold load and warm inference on identical prompts, token budget 4096. Existing synchronous API does not expose true first-token timing or token counts: TTFT/tokens per second remain unmeasured, never estimate from text characters. Verify accelerator output/quality as well as time. Existing one-probe backend chooser is not a sustained benchmark. |
+| Resource policy | Run indexing while asking questions, then charging/unplugged, saver, low memory and moderate/severe thermal states; confirm source capture continues and jobs resume. Compare serial/gated throughput and peak memory before increasing concurrency. No second queue/scheduler. |
+| Battery/sustained load | Equal-duration overnight idle/capture/indexing runs with the same screen/radio/battery state and source rates; record battery/thermal traces, work completed and interruptions. Instant current is not energy per job; do not call a short burst sustained performance. |
+
+Official guidance checked for these choices: [JNI region calls](https://developer.android.com/ndk/guides/jni-tips),
+[scaled frame extraction](https://developer.android.com/reference/android/media/MediaMetadataRetriever),
+[Macrobenchmark](https://developer.android.com/topic/performance/benchmarking/macrobenchmark-overview),
+[Baseline Profile collection](https://developer.android.com/topic/performance/baselineprofiles/create-baselineprofile),
+[Benchmark 1.4.1 release](https://developer.android.com/jetpack/androidx/releases/benchmark#1.4.1).
 
 ## Sequential media review fixes — 2026-11-17
 

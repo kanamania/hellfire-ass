@@ -7,3 +7,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "HellFire Ass"
 include(":app")
+include(":benchmark")

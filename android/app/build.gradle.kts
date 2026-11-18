@@ -41,6 +41,18 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             if (ownerSigning.isNotEmpty()) signingConfig = signingConfigs.getByName("ownerRelease")
         }
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            applicationIdSuffix = ".benchmark"
+            matchingFallbacks += "release"
+        }
+        create("profile") {
+            initWith(getByName("benchmark"))
+            // Collect original method names; R8 rewrites these rules in the optimized build.
+            isMinifyEnabled = false
+            isShrinkResources = false
+        }
     }
     buildFeatures { compose = true }
     compileOptions {
@@ -49,6 +61,7 @@ android {
     }
     testOptions { unitTests.isIncludeAndroidResources = true }
     sourceSets.getByName("test").resources.srcDir("schemas")
+    sourceSets.getByName("profile").manifest.srcFile("src/benchmark/AndroidManifest.xml")
     lint { abortOnError = true }
     packaging { resources { excludes += setOf("META-INF/NOTICE.md", "META-INF/LICENSE.md", "META-INF/LICENSE.txt", "META-INF/NOTICE.txt") } }
 }
@@ -82,6 +95,8 @@ dependencies {
     implementation(libs.media3.session)
     implementation(libs.media3.transformer)
     implementation(libs.exifinterface)
+    "benchmarkImplementation"(libs.profileinstaller)
+    "profileImplementation"(libs.profileinstaller)
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
 }

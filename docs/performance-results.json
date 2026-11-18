@@ -1,0 +1,151 @@
+{
+  "date": "2026-11-18",
+  "base_revision": "9eae49f",
+  "scope": "Performance checkpoint; host evidence only. APKs built from the working changes on this base.",
+  "android_unit_tests": {
+    "before": {
+      "total": 495,
+      "passed": 491,
+      "skipped": 4,
+      "failures": 0
+    },
+    "after": {
+      "total": 501,
+      "passed": 497,
+      "skipped": 4,
+      "failures": 0
+    }
+  },
+  "lint_debug": {
+    "errors": 0,
+    "warnings": 380,
+    "hints": 11
+  },
+  "native_jni": {
+    "plain_checkjni": "PASS",
+    "asan_ubsan_checkjni": "PASS",
+    "implementation": "Production JNI bridge with synthetic Whisper API; no real inference.",
+    "limits": "ASan leak detection disabled for the HotSpot VM; no Android execution claim."
+  },
+  "host_queue": {
+    "kind": "synthetic host SQLite query + Python row materialization",
+    "host": "x86_64",
+    "python": "3.14.8",
+    "sqlite": "3.54.0",
+    "workload_rows": 10000,
+    "excluded_active": 10,
+    "requested_ids": 20,
+    "before": {
+      "elapsed_ms": {
+        "count": 30,
+        "p50": 31.249382,
+        "p95": 47.434642
+      },
+      "rows_materialized": 10000,
+      "python_peak_bytes": 14484350,
+      "plan": [
+        "SCAN media_item"
+      ]
+    },
+    "after": {
+      "elapsed_ms": {
+        "count": 30,
+        "p50": 0.034679,
+        "p95": 0.03915
+      },
+      "rows_materialized": 20,
+      "python_peak_bytes": 1375,
+      "plan": [
+        "SCAN media_item USING INDEX index_media_item_importedAt",
+        "USE TEMP B-TREE FOR LAST TERM OF ORDER BY"
+      ]
+    },
+    "limit": "No Android, ART, Room, SQLCipher, WorkManager, battery or native inference measured. Old Kotlin sorting and scheduler calls excluded; Python allocation is not app PSS."
+  },
+  "apks": {
+    "before-apk": {
+      "file": "android/app/build/outputs/apk/debug/app-debug.apk",
+      "sha256": "1887d4b6d2b506196c0e33d36ef7f7b0281757fff2357919cf0a135073481963",
+      "apk_bytes": 164173237,
+      "native_uncompressed_bytes": 93733112,
+      "native_zip_bytes": 93733112,
+      "native_libraries": {
+        "lib/arm64-v8a/libLiteRt.so": 5047688,
+        "lib/arm64-v8a/libLiteRtClGlAccelerator.so": 2761680,
+        "lib/arm64-v8a/libandroidx.graphics.path.so": 10096,
+        "lib/arm64-v8a/libhellfire_whisper.so": 5214448,
+        "lib/arm64-v8a/liblitertlm_jni.so": 14667424,
+        "lib/arm64-v8a/libmediapipe_tasks_text_jni.so": 7566368,
+        "lib/arm64-v8a/libmlkit_google_ocr_pipeline.so": 11064544,
+        "lib/arm64-v8a/libmlkitcommonpipeline.so": 10989136,
+        "lib/arm64-v8a/libonnxruntime.so": 34208672,
+        "lib/arm64-v8a/libonnxruntime4j_jni.so": 92064,
+        "lib/arm64-v8a/libsqlcipher.so": 2110992
+      }
+    },
+    "before-release": {
+      "file": "android/app/build/outputs/apk/release/app-release-unsigned.apk",
+      "sha256": "97f96ea245fe6c3eef91563701f2e910a247c0c0301672c38ad27380dab77cca",
+      "apk_bytes": 108676676,
+      "native_uncompressed_bytes": 91256128,
+      "native_zip_bytes": 91256128,
+      "native_libraries": {
+        "lib/arm64-v8a/libLiteRt.so": 5047688,
+        "lib/arm64-v8a/libLiteRtClGlAccelerator.so": 2761680,
+        "lib/arm64-v8a/libandroidx.graphics.path.so": 10096,
+        "lib/arm64-v8a/libhellfire_whisper.so": 2737464,
+        "lib/arm64-v8a/liblitertlm_jni.so": 14667424,
+        "lib/arm64-v8a/libmediapipe_tasks_text_jni.so": 7566368,
+        "lib/arm64-v8a/libmlkit_google_ocr_pipeline.so": 11064544,
+        "lib/arm64-v8a/libmlkitcommonpipeline.so": 10989136,
+        "lib/arm64-v8a/libonnxruntime.so": 34208672,
+        "lib/arm64-v8a/libonnxruntime4j_jni.so": 92064,
+        "lib/arm64-v8a/libsqlcipher.so": 2110992
+      }
+    },
+    "after-apk": {
+      "file": "android/app/build/outputs/apk/debug/app-debug.apk",
+      "sha256": "1d2accab3e1a721c36aa3fe0bf04548467736ce94b89575df21059d110bec931",
+      "apk_bytes": 164222389,
+      "native_uncompressed_bytes": 93737744,
+      "native_zip_bytes": 93737744,
+      "native_libraries": {
+        "lib/arm64-v8a/libLiteRt.so": 5047688,
+        "lib/arm64-v8a/libLiteRtClGlAccelerator.so": 2761680,
+        "lib/arm64-v8a/libandroidx.graphics.path.so": 10096,
+        "lib/arm64-v8a/libhellfire_whisper.so": 5219080,
+        "lib/arm64-v8a/liblitertlm_jni.so": 14667424,
+        "lib/arm64-v8a/libmediapipe_tasks_text_jni.so": 7566368,
+        "lib/arm64-v8a/libmlkit_google_ocr_pipeline.so": 11064544,
+        "lib/arm64-v8a/libmlkitcommonpipeline.so": 10989136,
+        "lib/arm64-v8a/libonnxruntime.so": 34208672,
+        "lib/arm64-v8a/libonnxruntime4j_jni.so": 92064,
+        "lib/arm64-v8a/libsqlcipher.so": 2110992
+      }
+    },
+    "after-release": {
+      "file": "android/app/build/outputs/apk/release/app-release-unsigned.apk",
+      "sha256": "8362e0db635e40f830d07d96ecf6a2164c7a89ff6fa1f62aa82abd12c948f718",
+      "apk_bytes": 108676676,
+      "native_uncompressed_bytes": 91257832,
+      "native_zip_bytes": 91257832,
+      "native_libraries": {
+        "lib/arm64-v8a/libLiteRt.so": 5047688,
+        "lib/arm64-v8a/libLiteRtClGlAccelerator.so": 2761680,
+        "lib/arm64-v8a/libandroidx.graphics.path.so": 10096,
+        "lib/arm64-v8a/libhellfire_whisper.so": 2739168,
+        "lib/arm64-v8a/liblitertlm_jni.so": 14667424,
+        "lib/arm64-v8a/libmediapipe_tasks_text_jni.so": 7566368,
+        "lib/arm64-v8a/libmlkit_google_ocr_pipeline.so": 11064544,
+        "lib/arm64-v8a/libmlkitcommonpipeline.so": 10989136,
+        "lib/arm64-v8a/libonnxruntime.so": 34208672,
+        "lib/arm64-v8a/libonnxruntime4j_jni.so": 92064,
+        "lib/arm64-v8a/libsqlcipher.so": 2110992
+      }
+    }
+  },
+  "physical_device": {
+    "status": "NOT TESTED",
+    "connected_devices": 0
+  }
+}

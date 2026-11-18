@@ -17,6 +17,7 @@ import com.hellfire.ass.performance.OperatingProfile
 import com.hellfire.ass.performance.PerfLog
 import com.hellfire.ass.performance.WorkPriority
 import com.hellfire.ass.performance.rolesToEvict
+import com.hellfire.ass.performance.timedStage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -64,7 +65,7 @@ class SpeakerModel(private val app: HellFireApp) {
         val key = DeviceProbe.fileKey(file)
         if (reuse && cached != null && cachedKey == key) return block(cached!!, cachedInput)
         if (file == modelFile) closeCached()
-        val created = OrtEnvironment.getEnvironment().createSession(file.path)
+        val created = timedStage("speaker_load") { OrtEnvironment.getEnvironment().createSession(file.path) }
         var keep = false
         return try {
             val name = created.inputNames.singleOrNull() ?: error("Speaker model must have exactly one input")

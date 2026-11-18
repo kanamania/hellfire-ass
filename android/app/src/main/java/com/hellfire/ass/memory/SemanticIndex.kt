@@ -18,6 +18,7 @@ import com.hellfire.ass.performance.PerfLog
 import com.hellfire.ass.performance.QueryTrace
 import com.hellfire.ass.performance.WorkPriority
 import com.hellfire.ass.performance.rolesToEvict
+import com.hellfire.ass.performance.timedStage
 import com.hellfire.ass.data.SourceEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -129,7 +130,7 @@ class SemanticIndex(private val app: HellFireApp) {
         val options = TextEmbedder.TextEmbedderOptions.builder()
             .setBaseOptions(BaseOptions.builder().setModelAssetBuffer(buffer).build())
             .setL2Normalize(true).setQuantize(false).build()
-        val created = try { TextEmbedder.createFromOptions(app, options) }
+        val created = try { timedStage("embedding_load") { TextEmbedder.createFromOptions(app, options) } }
             catch (e: UnsatisfiedLinkError) { throw IllegalStateException("Semantic search needs an arm64-v8a device", e) }
         if (!cacheable) return@gate created.use(block)
         embedder = created
@@ -139,7 +140,7 @@ class SemanticIndex(private val app: HellFireApp) {
         block(created)
     }
     private fun embed(embedder: TextEmbedder, text: String): FloatArray =
-        VectorMath.normalize(embedder.embed(text.take(2000)).embeddingResult().embeddings().first().floatEmbedding())
+        timedStage("embedding_infer") { VectorMath.normalize(embedder.embed(text.take(2000)).embeddingResult().embeddings().first().floatEmbedding()) }
 
     fun sourceText(event: SourceEvent): String {
         val fields = JSONObject(app.cipher.decrypt(event.encryptedPayload).toString(Charsets.UTF_8)).getJSONObject("fields")

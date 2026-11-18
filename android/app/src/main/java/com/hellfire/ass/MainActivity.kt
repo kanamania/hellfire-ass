@@ -28,6 +28,8 @@ import android.provider.Settings
 import android.service.voice.VoiceInteractionService
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.ReportDrawnWhen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
@@ -88,6 +90,8 @@ class MainActivity : ComponentActivity() {
         locked = lockSession.requiresUnlock(lockEnabled)
         deepLink = linkFor(intent)
         setContent {
+            val storage by (application as HellFireApp).storageStatus.collectAsStateWithLifecycle()
+            ReportDrawnWhen { !locked && storage == "READY" }
             val privateUi = rememberSaveableStateHolder()
             if (!locked) privateUi.SaveableStateProvider("private-ui") {
                 HellFireRoot(

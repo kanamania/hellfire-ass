@@ -19,6 +19,7 @@ import com.hellfire.ass.library.ProcessingJob
 import com.hellfire.ass.library.StorageMode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -101,6 +102,12 @@ class IntelligenceWorker(context: Context, params: WorkerParameters) : Coroutine
         var ran = 0
         var pending = false
         while (ran < prefs.maxConcurrent) {
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            if (com.hellfire.ass.performance.ExecutionScheduler.shouldYield(com.hellfire.ass.performance.WorkPriority.DEFERRED) ||
+                DeviceGate.blockReason(prefs.policy(), IntelligenceWork.snapshot(app)) != null) {
+                pending = true
+                break
+            }
             val token = UUID.randomUUID().toString()
             val job = app.database.jobs().claim(token, System.currentTimeMillis(), ContentEngine.JOB) ?: break
             val item = job.itemId?.let { app.database.library().item(it) }
