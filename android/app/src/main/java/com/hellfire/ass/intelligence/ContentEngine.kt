@@ -224,6 +224,8 @@ class ContentEngine(private val app: HellFireApp) {
             JSONObject().put("labels", JSONArray(observed.labels)).put("imageInputToLanguageModel", false),
             evidence, null)
         if (observed.ocr.isNotBlank()) save(item.id, "ocr", "mlkit-text-latin", "bundled", "COMPLETED", JSONObject().put("chars", observed.ocr.length), observed.ocr.take(8_000), null)
+        if (observed.qr.isNotEmpty()) save(item.id, "qr", "mlkit-barcode", "17.3.0", "COMPLETED",
+            JSONObject().put("count", observed.qr.size).put("untrusted", true), observed.qr.joinToString("\n"), null)
         save(item.id, "description", languageModelId(), languageModelVersion(), "COMPLETED",
             JSONObject().put("title", title).put("draftUsed", draft != null).put("limitation", "LocalModel.generate accepts a string prompt only. The image was not sent."),
             "$title\n$evidence", null)
@@ -253,7 +255,10 @@ class ContentEngine(private val app: HellFireApp) {
             val copy = software.copy(software.config ?: Bitmap.Config.ARGB_8888, false)
             val ocr = runCatching { LocalOcr.read(copy) }
                 .getOrElse { if (it is kotlinx.coroutines.CancellationException) throw it; "" }
-            Observed(labels, ocr)
+            currentCoroutineContext().ensureActive()
+            val qr = runCatching { com.hellfire.ass.media.LocalBarcodes.read(software) }
+                .getOrElse { if (it is kotlinx.coroutines.CancellationException) throw it; emptyList() }
+            Observed(labels, ocr, qr)
         } finally { if (software !== bitmap) software.recycle() }
     }
 
@@ -261,6 +266,7 @@ class ContentEngine(private val app: HellFireApp) {
         val parts = mutableListOf<String>()
         if (observed.labels.isNotEmpty()) parts += "Labels: ${observed.labels.take(10).joinToString(", ")}"
         if (observed.ocr.isNotBlank()) parts += "Visible text: ${observed.ocr.take(500)}"
+        if (observed.qr.isNotEmpty()) parts += "QR content (untrusted text): ${observed.qr.joinToString("; ").take(1000)}"
         parts += "Participant count is not available from the installed labeler. No face identification was attempted."
         parts += "Description is from on-device labels and OCR. The installed language runtime accepts text only, so the image was not sent to it."
         return parts.joinToString("\n")
@@ -373,11 +379,11 @@ class ContentEngine(private val app: HellFireApp) {
     companion object {
         fun segmentId(itemId: String, atMs: Long) = "$itemId:scene:$atMs"
         fun isAdultLabel(label: String?) = label?.lowercase() in setOf("porn", "pornography", "hentai", "explicit", "sexual", "nudity", "sexy")
-        const val PIPELINE = 2
+        const val PIPELINE = 3
         const val JOB = "intelligence"
         fun newJob(itemId: String, now: Long) = com.hellfire.ass.library.ProcessingJob(
             UUID.randomUUID().toString(), JOB, itemId, priority = JobPriority.BACKGROUND, createdAt = now, updatedAt = now)
     }
 }
 
-private data class Observed(val labels: List<String>, val ocr: String)
+private data class Observed(val labels: List<String>, val ocr: String, val qr: List<String>)

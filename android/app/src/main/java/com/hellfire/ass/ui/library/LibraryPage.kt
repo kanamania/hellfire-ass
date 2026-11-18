@@ -68,6 +68,7 @@ fun LibraryPage(route: Route) {
     var nameFilter by remember { mutableStateOf("") }
     var tagFilter by remember { mutableStateOf("") }
     var folders by remember { mutableStateOf(FolderImport.libraryTrees(app)) }
+    var reloadToken by remember { mutableIntStateOf(0) }
     val categoryId = args["category"]?.ifBlank { null }
     val collectionId = args["collection"]?.ifBlank { null }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -89,8 +90,9 @@ fun LibraryPage(route: Route) {
         }
         withContext(Dispatchers.IO) { runCatching { LibraryOrganize.seedDefaults(app.database.library(), System.currentTimeMillis()) } }
     }
-    fun reload() {
-        scope.launch {
+    fun reload() { reloadToken++ }
+    LaunchedEffect(kind, sort, favoritesOnly, categoryId, collectionId, offset, mode, nameFilter, tagFilter, reloadToken) {
+        if (mode == "browse") {
             val page = withContext(Dispatchers.IO) {
                 app.database.library().queryItems(LibraryQuery.sql(LibraryFilter(
                     kinds = if (kind.isBlank()) listOf(ContentKind.IMAGE.name, ContentKind.VIDEO.name, ContentKind.AUDIO.name) else listOf(kind),
@@ -99,11 +101,10 @@ fun LibraryPage(route: Route) {
                     limit = 60, offset = offset,
                 )))
             }
-            rows = if (offset == 0) page else rows + page
+            rows = if (offset == 0) page else (rows.take(offset) + page).distinctBy { it.id }
             statuses = withContext(Dispatchers.IO) { runCatching { LibraryStatus.load(app, rows) }.getOrDefault(emptyMap()) }
         }
     }
-    LaunchedEffect(kind, sort, favoritesOnly, categoryId, collectionId, offset, mode, nameFilter, tagFilter) { if (mode == "browse") reload() }
     val title = when {
         kind == ContentKind.IMAGE.name -> tr("Pictures")
         kind == ContentKind.VIDEO.name -> tr("Videos")

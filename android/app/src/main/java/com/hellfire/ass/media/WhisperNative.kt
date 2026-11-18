@@ -22,7 +22,7 @@ object WhisperNative {
     private val missing by lazy { missingCpuFeatures(runCatching { File("/proc/cpuinfo").readText() }.getOrDefault("")) }
 
     fun open(path: String): Long {
-        check(missing.isEmpty()) { "Local transcription needs CPU features this phone lacks: ${missing.joinToString()}" }
+        check(com.hellfire.ass.BuildConfig.EMULATOR_BUILD || missing.isEmpty()) { "Local transcription needs CPU features this phone lacks: ${missing.joinToString()}" }
         System.loadLibrary("hellfire_whisper")
         return load(path)
     }

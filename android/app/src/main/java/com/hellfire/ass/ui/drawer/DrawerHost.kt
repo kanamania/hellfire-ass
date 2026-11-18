@@ -2,7 +2,6 @@
 
 package com.hellfire.ass.ui.drawer
 
-import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
@@ -48,6 +47,7 @@ fun DrawerHost() {
     val env = LocalEnv.current
     val nav = LocalNav.current
     val context = LocalContext.current
+    val activity = androidx.activity.compose.LocalActivity.current
     val app = env.app
     val scope = rememberCoroutineScope()
     val prefs = remember { app.getSharedPreferences("ui", 0) }
@@ -69,11 +69,11 @@ fun DrawerHost() {
     fun acceptDrop(event: DragAndDropEvent): Boolean {
         val drag = event.toAndroidDragEvent()
         if (drag.action != DragEvent.ACTION_DROP) return false
-        (context as? Activity)?.requestDragAndDropPermissions(drag)
+        val permission = activity?.requestDragAndDropPermissions(drag)
         val clip = drag.clipData ?: return false
         val parts = (0 until clip.itemCount).mapNotNull { index -> clipPart(clip.getItemAt(index), context) }
-        if (parts.isEmpty()) return false
-        scope.launch { ingest(app, parts, CaptureOrigin.DRAWER) { busy = it } }
+        if (parts.isEmpty()) { permission?.release(); return false }
+        scope.launch { try { ingest(app, parts, CaptureOrigin.DRAWER) { busy = it } } finally { permission?.release() } }
         return true
     }
     val dropTarget = remember {

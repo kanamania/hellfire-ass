@@ -808,7 +808,7 @@ Node 24. API: `cd web/api && TEST_DATABASE_URL='postgresql:///hellfire_test?host
 npm run typecheck && npm run build`; `npm run dev` serves it on 127.0.0.1:3910. `API_URL`
 (default `http://127.0.0.1:3911`) is fixed into the `/api/sync` forward at build time.
 Phone side: `WebSyncTest` in the Android unit tests. Pinned: NestJS 12.3.2,
-@nestjs/throttler 6.7.1, pg 8.23.1, Next.js 16.4.3, React 19.2.9, TypeScript 6.0.3.
+@nestjs/throttler 6.7.1, pg 8.23.1, Next.js 16.4.6, React 19.2.9, TypeScript 6.0.3.
 
 ## Storage, recovery and boundaries
 
@@ -862,6 +862,64 @@ embedding and image-label quality on a real device, and battery/thermal
 measurements. Literal retrieval, OCR and manual speaker correction are implemented;
 those are not evidence that the advanced model-dependent gates passed. Optional
 Telegram and desktop dashboard have not been added.
+
+## Pre-device validation
+
+Production remains ARM64-only. `emulator` is a separate x86_64 package
+`com.hellfire.ass.emulator`; `deviceTest` is an isolated ARM64 package
+`com.hellfire.ass.devicetest`. Neither replaces the owner's installation.
+MediaPipe text 0.10.26 has no x86_64 runtime and reports that limitation;
+Whisper, SQLCipher, ONNX Runtime, LiteRT-LM and bundled vision libraries are real
+packaged native libraries. A packaged runtime still needs a compatible model test.
+
+```sh
+cd android
+./gradlew :app:testDebugUnitTest :app:assembleEmulator :app:assembleEmulatorAndroidTest
+cd ..
+python3 tools/generate_predevice_fixtures.py --check
+python3 tools/fetch_test_models.py
+python3 -m venv tools/.venv
+tools/.venv/bin/python -m pip install -r tools/requirements-model-tests.txt
+tools/.venv/bin/python tools/evaluate_onnx.py --models "$HOME/.cache/hellfire-ass/predevice/models" --sample android/app/src/androidTest/assets/jfk.wav
+tools/test_real_whisper.sh "$HOME/.cache/hellfire-ass/predevice/models/ggml-tiny.en-q5_1.bin"
+tools/start_fixture_emulator.sh
+tools/test_emulator.sh emulator-5580 "$HOME/.cache/hellfire-ass/predevice/models"
+```
+
+The emulator script uses its own API 35 AVD, never wipes an existing AVD, and does
+not grant permissions or roles. Instrumentation disables automatic model downloads
+and news fetching only in disposable test packages. Screenshot goldens contain
+synthetic bilingual components; production windows retain `FLAG_SECURE`.
+The public JFK fixture's provenance and checksum are in
+`tools/fixtures/public-audio.json`. Small public model revisions, sizes and SHA-256
+checksums are in `tools/fixtures/models.json`; weights stay in the ignored cache.
+
+`tools/test_mail_fixture.sh` runs the full JVM regression with a disposable real
+TLS mail server, preserving certificate/hostname checks. Current checkpoint: 518
+JVM tests (514 passed, four external AI-provider skips), 15 emulator tests with no
+skips, and seven browser checks.
+
+With existing development dependencies installed, Node 24 and Docker available,
+`tools/test_predevice_services.sh` creates a disposable tmpfs Postgres database,
+runs relay/worker/API/frontend checks and launches a real Chromium browser.
+It has no WhatsApp account or real mail recipient. An occupied service port is
+never killed. Reports under `android/build/reports/predevice/` and
+`web/frontend/build/` distinguish host, emulator and model evidence. Hosted CI
+results require an actual workflow run.
+
+`tools/benchmark_device.sh SERIAL NEW_PRIVATE_DIRECTORY startup` installs only
+the separate benchmark APKs and collects real JSON/traces plus before/after
+hardware snapshots. Enable airplane mode and finish that disposable copy’s English
+setup first. `profile` and `compare` modes collect and compare actual app profiles;
+the comparison requires collected app rules. No phone benchmark has run.
+
+For later physical bring-up, first build the isolated ARM64 test APKs:
+`cd android && ./gradlew -PintegrationBuildType=deviceTest :app:assembleDeviceTest :app:assembleDeviceTestAndroidTest`.
+Then `python3 tools/oneplus_bringup.py --serial DEVICE_SERIAL --output /private/path/bringup.json`
+collects a read-only hardware survey. Add `--install-fixtures --run-tests` to install
+and exercise only `.devicetest`. No production app reset, permissions, role or
+background exemptions are performed. Follow the current prioritized physical suite
+in [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md).
 
 ## News, library and performance
 

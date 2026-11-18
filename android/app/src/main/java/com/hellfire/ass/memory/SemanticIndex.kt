@@ -64,8 +64,8 @@ object SemanticSchema {
 
 object VectorMath {
     fun normalize(values: FloatArray): FloatArray {
-        val norm = kotlin.math.sqrt(values.fold(0.0) { sum, v -> sum + v * v })
-        return if (norm == 0.0 || norm.isNaN()) FloatArray(0) else FloatArray(values.size) { (values[it] / norm).toFloat() }
+        val norm = kotlin.math.sqrt(values.fold(0.0) { sum, v -> sum + v.toDouble() * v.toDouble() })
+        return if (norm == 0.0 || !norm.isFinite()) FloatArray(0) else FloatArray(values.size) { (values[it] / norm).toFloat() }
     }
     fun encode(values: FloatArray): ByteArray = ByteBuffer.allocate(values.size * 4).order(ByteOrder.LITTLE_ENDIAN).apply { values.forEach(::putFloat) }.array()
     fun decode(bytes: ByteArray): FloatArray {
@@ -102,7 +102,8 @@ class SemanticIndex(private val app: HellFireApp) {
         ModelSlots.drop("EMBEDDING")
     }
     val modelFile get() = File(app.filesDir, "models/text_embedder.tflite")
-    val configured get() = modelFile.isFile
+    val supported get() = !com.hellfire.ass.BuildConfig.EMULATOR_BUILD
+    val configured get() = supported && modelFile.isFile
 
     private fun modelId(): String {
         val key = modelFile.length() to modelFile.lastModified()
@@ -113,6 +114,7 @@ class SemanticIndex(private val app: HellFireApp) {
     }
 
     private suspend inline fun <T> withEmbedder(file: File = modelFile, interactive: Boolean = false, block: (TextEmbedder) -> T): T = HeavyModelGate.mutex.withLock gate@{
+        check(supported) { "The pinned MediaPipe text embedder has no x86_64 runtime; use an ARM64 device" }
         check(app.getSystemService(PowerManager::class.java).currentThermalStatus < PowerManager.THERMAL_STATUS_SEVERE) { "Device must cool before local inference" }
         val profile = OperatingProfile.of(DeviceProbe.signals(app).copy(foreground = interactive))
         val cacheable = file == modelFile && profile.reuseModels

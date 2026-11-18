@@ -56,6 +56,21 @@ authorized live-service and physical-device evidence; only actual hardware/OEM
 checks and explicitly unavailable external integrations may remain unverified.
 Do not weaken permissions, encryption or approval gates to make tests pass.
 
+
+**Pre-device implementation checkpoint — 2026-11-18:** Production ABI remains
+ARM64; isolated x86_64 and ARM64 test packages now support real Android integration
+without replacing owner data. Host and emulator checks execute real Whisper and
+Silero ONNX models; the pinned MediaPipe text runtime is explicitly unavailable on
+x86_64. Optional learned VAD uses the existing authorized visible recording path,
+with adaptive-energy fallback. News embeddings reuse the existing semantic runtime
+and preserve model identity. Offline QR extraction excludes authentication/Wi-Fi
+credentials and token-bearing URLs from searchable evidence. Source defects in
+bilingual parsing, search pagination/identity, metadata parsing and localized UI
+ownership have regression coverage. Exact counts/commands and the current remaining
+software/hardware classifications are in `docs/DEVICE_FEASIBILITY.md`; this is not
+a physical OnePlus or GPU/NPU validation claim.
+
+
 ## 0. Requirements locked by the owner
 
 These are explicit decisions, not suggestions to reconsider:

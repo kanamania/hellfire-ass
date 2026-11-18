@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "models": [
+    {
+      "name": "ggml-tiny.en-q5_1.bin",
+      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-tiny.en-q5_1.bin",
+      "sha256": "c77c5766f1cef09b6b7d47f21b546cbddd4157886b3b5d6d4f709e91e66c7c2b",
+      "bytes": 32166155,
+      "purpose": "Public English-only quantized Whisper test model; does not validate Kiswahili or phone acceleration.",
+      "source": "https://huggingface.co/ggerganov/whisper.cpp"
+    },
+    {
+      "name": "silero_vad.onnx",
+      "url": "https://raw.githubusercontent.com/snakers4/silero-vad/066409f3d9db45a30d21dfcbf9147826ffdd7052/src/silero_vad/data/silero_vad.onnx",
+      "sha256": "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3",
+      "bytes": 2327524,
+      "purpose": "Optional real CPU learned VAD contract, not speaker identity or microphone accuracy.",
+      "source": "https://github.com/snakers4/silero-vad"
+    }
+  ]
+}

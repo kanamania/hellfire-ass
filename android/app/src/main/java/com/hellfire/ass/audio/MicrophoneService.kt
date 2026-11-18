@@ -102,7 +102,7 @@ class MicrophoneService : Service() {
         var written = 0
         val startedAt = System.currentTimeMillis()
         val id = UUID.randomUUID().toString()
-        val activity = com.hellfire.ass.media.SpeechActivity()
+        var learnedVad: com.hellfire.ass.media.LearnedVad? = null
         val maximum = if (monitoring) SAMPLE_RATE * 2 * 30 * 60 else MAX_BYTES
         try {
             val bufferSize = maxOf(4096, AudioRecord.getMinBufferSize(SAMPLE_RATE,
@@ -113,12 +113,25 @@ class MicrophoneService : Service() {
                 .setBufferSizeInBytes(bufferSize).build()
             check(recorder.state == AudioRecord.STATE_INITIALIZED) { "Microphone unavailable" }
             val app = application as HellFireApp
+            if (monitoring && com.hellfire.ass.media.VadModels.file(app).isFile) {
+                learnedVad = runCatching { com.hellfire.ass.media.LearnedVad.open(com.hellfire.ass.media.VadModels.file(app)) }
+                    .onFailure(com.hellfire.ass.Diagnostics::warn).getOrNull()
+            }
+            val activity = if (learnedVad == null) com.hellfire.ass.media.SpeechActivity() else com.hellfire.ass.media.SpeechActivity(frameProbability = { frame ->
+                runCatching { learnedVad?.probability(frame) }.getOrElse {
+                    com.hellfire.ass.Diagnostics.warn(it)
+                    runCatching { learnedVad?.close() }; learnedVad = null
+                    MicrophoneStatus.state.value = "Monitoring active · encrypted · adaptive VAD fallback · 30 minute limit"
+                    null
+                }
+            })
             val cipher = app.cipher
             file = if (monitoring) app.media.file(id) else File(recordingDirectory(app), "$id.pcm.enc")
             recorder.startRecording()
             check(recorder.recordingState == AudioRecord.RECORDSTATE_RECORDING)
             MicrophoneStatus.active.value = true
             MicrophoneStatus.state.value = if (monitoring) "Monitoring active · visibly recording · encrypted · 30 minute limit" else "Recording · encrypted on device · 60 second limit"
+            if (monitoring) MicrophoneStatus.state.value += if (learnedVad != null) " · learned VAD" else " · adaptive energy VAD"
             val audio = recorder
             var nextNoticeCheck = 0L
             val input = object : InputStream() {
@@ -164,6 +177,7 @@ class MicrophoneService : Service() {
             if (!monitoring) file?.delete()
             MicrophoneStatus.state.value = "Error: microphone interrupted, silenced, permission denied, or storage unavailable. Start again from the app."
         } finally {
+            runCatching { learnedVad?.close() }
             capturing = false
             try { recorder?.stop() } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); }
             recorder?.release()

@@ -103,7 +103,8 @@ object ImagePrivacyScan {
         var i = 12
         while (i + 8 <= bytes.size) {
             val type = bytes.copyOfRange(i, i + 4).toString(Charsets.ISO_8859_1)
-            val length = readInt(bytes, i + 4)
+            // RIFF/WebP chunk lengths are little-endian; PNG lengths are big-endian.
+            val length = java.nio.ByteBuffer.wrap(bytes, i + 4, 4).order(java.nio.ByteOrder.LITTLE_ENDIAN).int
             if (length < 0 || i + 8L + length > bytes.size) break
             if (type == "EXIF" || type == "XMP ") hits += MarkerHit("WEBP", type)
             i += 8 + length + (length and 1)

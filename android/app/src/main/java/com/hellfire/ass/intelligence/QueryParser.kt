@@ -16,6 +16,20 @@ data class SearchConstraints(
 
 object QueryParser {
     val zone: ZoneId = ZoneId.of("Africa/Dar_es_Salaam")
+    private val swahili = mapOf(
+        "tafuta" to "find", "nionyeshe" to "show", "onyesha" to "show", "zangu" to "my", "yangu" to "my",
+        "vyangu" to "my", "za" to "from", "ya" to "from", "vya" to "from", "tu" to "only", "zenye" to "containing",
+        "picha" to "pictures", "video" to "videos", "sauti" to "audio", "nyimbo" to "songs", "muziki" to "music",
+        "maeneo" to "locations", "nyaraka" to "documents", "safari" to "travel", "chakula" to "food",
+        "wanyama" to "animals", "magari" to "vehicles", "kazi" to "work", "familia" to "family", "asili" to "nature",
+        "leo" to "today", "jana" to "yesterday",
+    )
+    private fun canonical(text: String): String {
+        val dated = text.lowercase(java.util.Locale.ROOT)
+            .replace(Regex("\\bmwaka (jana|uliopita)\\b"), "last year")
+            .replace(Regex("\\bwiki iliyopita\\b"), "last week")
+        return Regex("[\\p{L}]+").replace(dated) { swahili[it.value] ?: it.value }
+    }
     private val categoryWords = setOf(
         "travel", "beach", "nature", "food", "animals", "animal", "vehicles", "vehicle", "work", "technology",
         "documents", "document", "screenshots", "screenshot", "artwork", "memes", "meme", "entertainment",
@@ -28,7 +42,7 @@ object QueryParser {
     )
 
     fun parse(utterance: String, now: Long, zone: ZoneId = this.zone): SearchConstraints {
-        val lower = utterance.lowercase()
+        val lower = canonical(utterance)
         val kinds = linkedSetOf<ContentKind>()
         if (Regex("\\b(pictures?|photos?|images?)\\b").containsMatchIn(lower)) kinds += ContentKind.IMAGE
         if (Regex("\\b(videos?|footage)\\b").containsMatchIn(lower)) kinds += ContentKind.VIDEO
@@ -51,10 +65,10 @@ object QueryParser {
     }
 
     fun refine(prior: SearchConstraints, utterance: String, now: Long, zone: ZoneId = this.zone): SearchConstraints {
-        if (utterance.trim().lowercase().startsWith("find ")) return parse(utterance, now, zone)
+        if (canonical(utterance).trim().startsWith("find ")) return parse(utterance, now, zone)
         val next = parse(utterance, now, zone)
         val explicitKind = Regex("\\b(pictures?|photos?|images?|videos?|footage|audio|recordings?|podcasts?|music|songs?|locations?|places|documents?|screenshots?)\\b")
-            .containsMatchIn(utterance.lowercase())
+            .containsMatchIn(canonical(utterance))
         return SearchConstraints(
             kinds = if (explicitKind) next.kinds else prior.kinds,
             categories = prior.categories + next.categories,

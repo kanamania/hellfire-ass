@@ -106,7 +106,8 @@ interface LibraryDao {
     /** Older builds wrote unencrypted JPEG scene thumbnails; their references are dropped (the files are deleted by the sweep). */
     @Query("UPDATE media_segment SET thumbnailPath = NULL WHERE thumbnailPath LIKE '%.jpg'") suspend fun dropPlainThumbs(): Int
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertEmbedding(embedding: MediaEmbedding)
-    @Query("SELECT * FROM media_embedding WHERE model = :model AND mediaId > :afterMediaId ORDER BY mediaId LIMIT :limit") suspend fun embeddings(model: String, afterMediaId: String, limit: Int): List<MediaEmbedding>
+    @Query("SELECT * FROM media_embedding WHERE model = :model AND (mediaId > :afterMediaId OR (mediaId = :afterMediaId AND id > :afterEmbeddingId)) ORDER BY mediaId, id LIMIT :limit")
+    suspend fun embeddings(model: String, afterMediaId: String, limit: Int, afterEmbeddingId: String = ""): List<MediaEmbedding>
 
     // ---- categories ----
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertCategory(category: MediaCategory): Long

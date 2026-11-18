@@ -98,13 +98,25 @@ class NewsRuntimeTest {
                 val rss = """<rss version="2.0"><channel><item><title>Floods kill 12 in Dar es Salaam</title><link>$link</link><description>12 people died after flooding in Dar es Salaam. Rescue teams are searching Jangwani.</description></item></channel></rss>"""
                 NewsResponse(200, rss.toByteArray(), emptyMap(), url)
             }
-            val repository = NewsRepository(app, http, NewsPoster { false }, db)
+            var embeddingCalls = 0
+            val repository = NewsRepository(app, http, NewsPoster { false }, db, embedding = {
+                embeddingCalls++
+                "synthetic-embedding-v1" to floatArrayOf(3f, 4f)
+            })
             val result = repository.refresh(true)
             assertEquals(3, result.articlesNew); assertEquals(1, result.eventsNew)
             val event = db.news().topEvents(10).single()
             assertEquals(3, event.articleCount)
             assertEquals(3, db.news().articlesFor(event.id).size)
+            assertEquals(3, embeddingCalls)
+            db.news().articlesFor(event.id).forEach { article ->
+                assertArrayEquals(floatArrayOf(0.6f, 0.8f), com.hellfire.ass.memory.VectorMath.decode(article.vector!!), 0.000001f)
+                assertEquals("synthetic-embedding-v1", org.json.JSONObject(article.featuresJson).getString("embeddingModel"))
+            }
+            assertEquals("synthetic-embedding-v1", org.json.JSONObject(event.featuresJson).getString("embeddingModel"))
+            assertArrayEquals(floatArrayOf(0.6f, 0.8f), EventCentroid.fromJson(event.id, event.featuresJson).vector!!, 0.000001f)
             assertEquals(0, repository.refresh(true).articlesNew)
+            assertEquals(3, embeddingCalls) // Existing articles are not re-embedded on replay.
             assertTrue(runCatching { repository.dropIn("Your OTP is 123456", null) }.isFailure)
             assertEquals(1, db.news().topEvents(10).size)
         } finally { db.close() }

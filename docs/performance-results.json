@@ -147,5 +147,90 @@
   "physical_device": {
     "status": "NOT TESTED",
     "connected_devices": 0
+  },
+  "predevice_2026_11_18": {
+    "jvm": {
+      "total": 518,
+      "passed": 514,
+      "skipped": 4,
+      "failures": 0,
+      "errors": 0,
+      "command": "bash tools/test_mail_fixture.sh",
+      "skipped_reason": "External AI opt-in not configured"
+    },
+    "emulator": {
+      "evidence": "emulator-tested",
+      "complete": true,
+      "reported_tests": 15,
+      "passed": 15,
+      "failed": 0,
+      "errors": 0,
+      "ignored": 0,
+      "assumptions": 0,
+      "started": 15
+    },
+    "host_onnx": {
+      "evidence": "host-tested",
+      "runtime": "1.31.1",
+      "providers": [
+        "CPUExecutionProvider"
+      ],
+      "synthetic_layouts": [
+        {
+          "model": "color-nhwc.onnx",
+          "sha256": "d6f56eb70aba675bcd924a49666bf2e37dcafa64f35dd2d9af3fb18d67e6dbe8",
+          "output": [
+            [
+              1.0,
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "model": "color-nchw.onnx",
+          "sha256": "23a8e59f8599d76fa414affbcbf17aa1aa66361e2379e291749f5c1ebd783fe0",
+          "output": [
+            [
+              1.0,
+              0.0,
+              0.0
+            ]
+          ]
+        }
+      ],
+      "real_vad": {
+        "model_sha256": "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3",
+        "silence_frames": 93,
+        "silence_max": 0.008910685777664185,
+        "speech_frames": 343,
+        "speech_frames_above_threshold": 233,
+        "recurrent_reset_reproducible": true,
+        "limits": "Public English sample and digital silence; not microphone, Kiswahili, speaker identity or battery validation."
+      }
+    },
+    "host_browser": {
+      "evidence": "host-browser-tested",
+      "synthetic": true,
+      "browser": "Chrome/155.0.8059.84",
+      "checks": [
+        "Unauthenticated private routes redirect to login",
+        "Build-time sync proxy reaches the isolated API and preserves authentication",
+        "Wrong password is rejected visibly",
+        "Login establishes a secure HttpOnly SameSite session",
+        "Eight authenticated routes render without browser exceptions",
+        "Synthetic synced ledger is visible; mobile news content fits viewport",
+        "Logout removes access to private pages"
+      ],
+      "errors": []
+    },
+    "services": {
+      "relay_passed": 23,
+      "whatsapp_worker_passed": 6,
+      "api_passed": 30,
+      "command": "PATH=NODE24:$PATH tools/test_predevice_services.sh"
+    },
+    "physical_device_tested": false,
+    "live_services_tested": false
   }
 }

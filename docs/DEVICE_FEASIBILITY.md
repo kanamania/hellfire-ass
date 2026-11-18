@@ -1,6 +1,6 @@
 # HellFire Ass — implementation and feasibility
 
-Latest update: 2026-11-18 (performance audit, directly below). Earlier
+Latest update: 2026-11-18 (pre-device development and performance audit, below). Earlier
 checkpoints keep the test counts and APK checksums that were true when they were
 written; the newest checkpoint has the current ones.
 
@@ -41,9 +41,9 @@ Available workstation evidence: SDK images `android-34/google_apis/x86_64` and
 `android-35/google_apis/x86_64`, emulator executable and accessible `/dev/kvm`.
 Fresh test AVD/data will be isolated from the existing MyPhone/Karibu/Kisima AVDs.
 Existing Node 24, PostgreSQL tools, Chromium and test dependency caches are present.
-No physical OnePlus is connected. Native model files have not yet been located in
-the project/cache inventory; compatible public test artifacts and tooling will be
-evaluated separately from Android inference.
+No physical OnePlus is connected. The initial inventory found no owner model files.
+Small pinned public Whisper/Silero artifacts were subsequently fetched and tested
+separately on the host and emulator, as recorded below.
 
 Fresh host checks: relay **23 passed**; WhatsApp Web capture **6 passed**; API
 **30 passed** against a new disposable PostgreSQL 18 container on loopback port
@@ -59,6 +59,106 @@ the emulator/native/UI suite; complete remaining contracted capabilities; repeat
 regression gates, packaging and evidence collection. The final device list will
 contain only checks that genuinely depend on hardware/OEM behavior or unavailable
 authorized external services.
+
+### Pre-device execution evidence (ongoing)
+
+- **HOST TESTED:** seeded English/Kiswahili finance/search/media goldens; the
+  latest full JVM run completed **518 tests, 514 passed, 4 optional live-provider
+  skips, no failures/errors**. This full run included the live local TLS mail fixture; only the four external AI-provider checks skipped.
+  The goldens exposed a Kiswahili failed-payment false positive, now rejected.
+  Other confirmed fixes cover NHWC image dimensions, composite video-embedding
+  cursors, namespaced search identities/duplicate evidence, WebP little-endian
+  chunk scanning and cancellation of obsolete library filter queries.
+- **HOST REAL MODEL TESTED:** `tools/test_real_whisper.sh MODEL [PINNED_SOURCE]`
+  compiled the production CMake/JNI source against real whisper.cpp 1.9.5 and
+  transcribed the public 11-second JFK sample with `ggml-tiny.en-q5_1.bin`.
+  CheckJNI passed; abort/reset/release ran. One observed host run loaded in
+  192.473 ms and inferred in 12,595.655 ms. These are single host observations,
+  not phone benchmarks or acceleration results. Model: 32,166,155 bytes,
+  SHA-256 `c77c5766f1cef09b6b7d47f21b546cbddd4157886b3b5d6d4f709e91e66c7c2b`.
+- **HOST REAL ONNX TESTED:** `tools/.venv/bin/python tools/evaluate_onnx.py
+  --models CACHE --sample android/app/src/androidTest/assets/jfk.wav` with
+  ONNX Runtime 1.31.1 CPU. Actual Silero ONNX model (2,327,524 bytes,
+  SHA-256 `1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3`)
+  returned finite states/probabilities, digital silence maximum 0.008910686 over
+  93 frames, 233/343 public English-speech frames over 0.5, deterministic reset.
+  These are contract checks, not speech accuracy or Kiswahili evaluation scores.
+  Two generated nonsquare NCHW/NHWC graphs also executed real ONNX inference;
+  their synthetic weights do not establish adult-classifier accuracy.
+- **HOST SYNTHETIC SERVICES TESTED:** relay 23, WhatsApp worker 6, API 30 tests
+  passed against isolated Postgres 18. Next.js patched from 16.4.3 to 16.4.6 for
+  GHSA-mfr8-8qww-v76h / GHSA-vc7v-qv4w-wrv8; the frontend does not use the affected
+  cache APIs. Production build and seven Chromium browser checks passed: private
+  redirects, authenticated build-time sync proxy, incorrect password, secure HttpOnly SameSite session, eight routes,
+  synced ledger/mobile viewport, logout access removal. `npm audit`: zero known
+  vulnerabilities after the patch. No live service credentials or sends used. The real IMAPS/SMTPS fixture test also passed (1 test, zero skips): untrusted certificate, hostname mismatch and wrong password rejected; bilingual capture, replay deduplication and OTP redaction verified through the production mail adapter against cached GreenMail 2.1.3 on loopback. The fixture creates and removes its own short-lived certificate; production TLS checks remain enabled.
+- **EMULATOR TESTED:** isolated API 35 Google APIs x86_64 AVD,
+  fingerprint `google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys`.
+  **15/15 integration tests passed, no skips**, in 112.661 seconds for the
+  complete suite (not an inference benchmark). Includes real Whisper model
+  transcription through Android MediaExtractor/MediaCodec/JNI, actual VAD ONNX
+  inference/reset, nonsquare NCHW/NHWC tensor inference, migration of all historical
+  schemas 1–18 to 19 through SQLCipher, Keystore/AES-GCM tamper tests,
+  wrong-key/truncated-password envelopes, native invalid-model rejection,
+  navigation, synthetic screenshot comparison, bundled QR decoding, actual video
+  clipping/cover pixels/mute RMS/metadata stripping and cancellation cleanup.
+  The first runs exposed localization losing the Activity owner and the emulated
+  goldfish video decoder timing out. Both are resolved: locale wrappers preserve
+  Activity ownership; only the x86 test variant selects real Android software
+  decoders. Production codec selection is unchanged. Automatic ONNX telemetry
+  initialization and the CCT transport backend are removed from the manifest,
+  and owned ONNX sessions explicitly disable telemetry. Runtime package checks
+  verify those automatic components are absent. The prior targeted media/security
+  rerun also passed 8/8 tests. Hardware-backed Keystore and production ARM execution
+  are not established.
+- **HOST ARTIFACT INSPECTION:** x86_64 test APK contains exactly that ABI and 11
+  actual JNI libraries. Existing ARM64 release contains only ARM64 and 11 actual
+  JNI libraries. `python3 tools/check_native_apk.py APK --abi ABI` passed ELF
+  load-segment and uncompressed APK 16 KiB alignment for both. MediaPipe is
+  correctly absent from x86_64 and explicitly unsupported there.
+
+Implemented software paths: optional imported Silero learned VAD during visible
+authorized recordings, with adaptive fallback; optional real news embeddings using
+the existing semantic runtime and stored model identities; bundled offline QR
+extraction with authentication/Wi-Fi/token-bearing payloads excluded from search. No private corpus,
+model weights, credentials or owner recording is committed. CI now contains the
+isolated emulator/model/browser gates; no hosted CI success is claimed from local runs.
+
+### Current prioritized physical-only suite
+
+This list supersedes historical hardware lists below. All fixture/host/emulator
+work remains software work until actually completed; this list does not move it to
+hardware to hide an unfinished task.
+
+1. **Platform and security backing:** verify actual model/firmware/SoC/ABI/CPU
+   features, install isolated ARM64 fixtures, run native integration, verify
+   hardware-backed Keystore/StrongBox and recovery after real lock/reboot.
+2. **CPU inference:** pinned real multilingual STT, learned VAD, speaker and
+   embedding models; English/Kiswahili/noise fixtures, cancellation/context reuse,
+   concurrent recording, actual PSS and sustained correctness.
+3. **GPU/NPU:** one explicitly selected runtime/model/delegate at a time, actual
+   inference/output comparison to CPU, supported-op/fallback evidence. A chipset
+   description or library load is insufficient.
+4. **Capture and permissions:** user-granted notification/SMS/mic/media access,
+   protected fields, revocation during work, assistant role/gestures, visible
+   recording notices, exact alarm and OEM power/background policies.
+5. **Hardware media paths:** encoder/decoder identity, codec outputs/timestamps,
+   playback/PiP/audio focus, sharing/redaction exports and real call-recording
+   file access through authorized Android pickers.
+6. **Sustained battery/thermals:** fixed 5/15/30-minute workloads, idle capture,
+   screen-off jobs, thermal throttling, charging, low battery/storage, reboot and
+   OEM process kills. Record repeatable initial conditions and all interruptions.
+7. **Startup/UI/profile:** real cold/warm/hot and scroll traces, app-specific
+   Baseline Profile collection/comparison, frame timing and memory after repeated
+   model transitions using the fixed synthetic library.
+
+Use `tools/oneplus_bringup.py --serial SERIAL --output PRIVATE_REPORT` for a
+read-only survey; `--install-fixtures --run-tests` installs only the separate
+ARM64 `.devicetest` package. The script never grants permissions/roles, changes
+background exemptions, clears personal app data, or calls an external recipient.
+Use the existing Macrobenchmark/Perfetto protocol below for actual timed runs.
+Live Gmail eligibility, linked WhatsApp pairing, Drive and optional paid AI remain
+explicit authorized external-service checks, separate from hardware results.
 
 ## Performance audit — 2026-11-18
 

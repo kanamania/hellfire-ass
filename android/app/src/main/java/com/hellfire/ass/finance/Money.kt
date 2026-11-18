@@ -53,7 +53,7 @@ object FinanceParser {
     }
     fun parse(sender: String, text: String): ParsedFinance? {
         val provider = provider(sender, text) ?: return null
-        if (Regex("(?i)\\b(failed|unsuccessful|declined|imeshindwa|haijafanikiwa|pending)\\b").containsMatchIn(text)) return null
+        if (Regex("(?i)\\b(failed|unsuccessful|declined|imeshindwa|umeshindwa|haijafanikiwa|haikufanikiwa|haijakamilika|haujakamilika|inasubiri|pending)\\b").containsMatchIn(text)) return null
         val kind = when {
             Regex("(?i)\\b(reversal|reversed|imebatilishwa|refund|returned|umerejeshewa)\\b").containsMatchIn(text) -> "REFUND"
             Regex("(?i)\\b(received|credited|umepokea|imeingia)\\b").containsMatchIn(text) -> "INCOME"

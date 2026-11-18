@@ -11,7 +11,18 @@ set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
 set(GGML_VULKAN OFF CACHE BOOL "" FORCE)
 set(GGML_CPU_KLEIDIAI OFF CACHE BOOL "" FORCE)
 # Owner-selected CPU target; handset/SoC remain unverified. WhisperNative.open() checks required features at runtime.
-set(GGML_CPU_ARM_ARCH "armv8.2-a+dotprod+fp16+i8mm" CACHE STRING "" FORCE)
+if(ANDROID AND ANDROID_ABI STREQUAL "arm64-v8a")
+    set(GGML_CPU_ARM_ARCH "armv8.2-a+dotprod+fp16+i8mm" CACHE STRING "" FORCE)
+else()
+    # Baseline x86 for the isolated emulator and host verification, not an ARM fallback.
+    foreach(feature SSE42 AVX AVX2 BMI2 FMA F16C AVX_VNNI AVX512 AMX_TILE AMX_INT8 AMX_BF16)
+        set(GGML_${feature} OFF CACHE BOOL "" FORCE)
+    endforeach()
+endif()
+if(ANDROID AND ANDROID_ABI STREQUAL "x86_64")
+    # Keep real inference practical in the debuggable emulator APK; retain symbols and assertions.
+    add_compile_options(-O2)
+endif()
 FetchContent_Declare(whisper
     URL https://github.com/ggml-org/whisper.cpp/archive/refs/tags/v1.9.5.tar.gz
     URL_HASH SHA256=ff1a9053feb509ff9d7729703355541ae9690073a6b1c40eb692c962e0dc1720
@@ -19,4 +30,10 @@ FetchContent_Declare(whisper
 FetchContent_MakeAvailable(whisper)
 add_library(hellfire_whisper SHARED whisper_jni.cpp)
 target_compile_features(hellfire_whisper PRIVATE cxx_std_17)
-target_link_libraries(hellfire_whisper PRIVATE whisper log)
+target_link_libraries(hellfire_whisper PRIVATE whisper)
+if(ANDROID)
+    target_link_libraries(hellfire_whisper PRIVATE log)
+else()
+    find_package(JNI REQUIRED)
+    target_include_directories(hellfire_whisper PRIVATE ${JNI_INCLUDE_DIRS})
+endif()
