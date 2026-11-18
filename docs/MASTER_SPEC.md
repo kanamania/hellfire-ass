@@ -47,6 +47,12 @@ codecs, assistant integration, permissions and accelerators on the actual device
 no precise chipset variant, ISA extension, RAM size or OEM behavior is established
 by the product name. Physical tests remain deferred and NOT TESTED.
 
+**Owner build-naming update — 2026-11-18:** Builds must use versioned artifact
+names. Include the actual Android `versionName`, `versionCode`, and build variant,
+for example `HellFire-Ass-0.9.0-code9-debug.apk` or
+`HellFire-Ass-0.9.0-code9-release.apk`. Label unsigned release artifacts with
+`-release-unsigned.apk`. Apply this naming when preparing or handing over builds.
+
 ## 0. Requirements locked by the owner
 
 These are explicit decisions, not suggestions to reconsider:

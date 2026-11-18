@@ -53,7 +53,14 @@ cd android
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'
 ```
 
-APK: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.9.0**.
+**Build naming (owner requirement, 2026-11-18):** Use versioned names for prepared
+and delivered build artifacts: `HellFire-Ass-<versionName>-code<versionCode>-<variant>.apk`.
+Read the actual version from `android/app/build.gradle.kts`; for the current version,
+use `HellFire-Ass-0.9.0-code9-debug.apk` or `HellFire-Ass-0.9.0-code9-release.apk`.
+Unsigned releases must end in `-release-unsigned.apk`. Copy the Gradle output to
+the versioned name when preparing a build for handover.
+
+Gradle output: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.9.0**.
 It is built for **arm64-v8a only** (since 2026-11-16), Android API 29+, target/compile
 API 36. Confirm the phone ABI before installation (`adb shell getprop ro.product.cpu.abilist`);
 32-bit-only phones and x86_64 PC emulators cannot run it. Size: about 164 MB

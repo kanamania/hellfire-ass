@@ -20,6 +20,7 @@ Read `docs/MASTER_SPEC.md` (the provided `HellFire_Ass_Codex_Master_Spec.md`) fu
 - External sends/side effects must be user-approved by default.
 - Never commit secrets, credentials, personal notifications, raw recordings, real SMS corpora or private data.
 - Don't upgrade OS/global packages or unrelated dependencies.
+- Builds must use versioned artifact names: include the actual Android `versionName`, `versionCode`, and build variant, e.g. `HellFire-Ass-0.9.0-code9-debug.apk`. Label unsigned releases explicitly; apply this naming when preparing or handing over builds.
 
 ## Definition of Done — each phase
 1. Build works with available tooling, or exact missing prerequisites documented.
