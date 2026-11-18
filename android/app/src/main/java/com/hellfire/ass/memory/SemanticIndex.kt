@@ -18,6 +18,7 @@ import com.hellfire.ass.performance.PerfLog
 import com.hellfire.ass.performance.QueryTrace
 import com.hellfire.ass.performance.WorkPriority
 import com.hellfire.ass.performance.rolesToEvict
+import com.hellfire.ass.performance.timedStage
 import com.hellfire.ass.data.SourceEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -63,8 +64,8 @@ object SemanticSchema {
 
 object VectorMath {
     fun normalize(values: FloatArray): FloatArray {
-        val norm = kotlin.math.sqrt(values.fold(0.0) { sum, v -> sum + v * v })
-        return if (norm == 0.0 || norm.isNaN()) FloatArray(0) else FloatArray(values.size) { (values[it] / norm).toFloat() }
+        val norm = kotlin.math.sqrt(values.fold(0.0) { sum, v -> sum + v.toDouble() * v.toDouble() })
+        return if (norm == 0.0 || !norm.isFinite()) FloatArray(0) else FloatArray(values.size) { (values[it] / norm).toFloat() }
     }
     fun encode(values: FloatArray): ByteArray = ByteBuffer.allocate(values.size * 4).order(ByteOrder.LITTLE_ENDIAN).apply { values.forEach(::putFloat) }.array()
     fun decode(bytes: ByteArray): FloatArray {
@@ -101,7 +102,8 @@ class SemanticIndex(private val app: HellFireApp) {
         ModelSlots.drop("EMBEDDING")
     }
     val modelFile get() = File(app.filesDir, "models/text_embedder.tflite")
-    val configured get() = modelFile.isFile
+    val supported get() = !com.hellfire.ass.BuildConfig.EMULATOR_BUILD
+    val configured get() = supported && modelFile.isFile
 
     private fun modelId(): String {
         val key = modelFile.length() to modelFile.lastModified()
@@ -112,6 +114,7 @@ class SemanticIndex(private val app: HellFireApp) {
     }
 
     private suspend inline fun <T> withEmbedder(file: File = modelFile, interactive: Boolean = false, block: (TextEmbedder) -> T): T = HeavyModelGate.mutex.withLock gate@{
+        check(supported) { "The pinned MediaPipe text embedder has no x86_64 runtime; use an ARM64 device" }
         check(app.getSystemService(PowerManager::class.java).currentThermalStatus < PowerManager.THERMAL_STATUS_SEVERE) { "Device must cool before local inference" }
         val profile = OperatingProfile.of(DeviceProbe.signals(app).copy(foreground = interactive))
         val cacheable = file == modelFile && profile.reuseModels
@@ -129,7 +132,7 @@ class SemanticIndex(private val app: HellFireApp) {
         val options = TextEmbedder.TextEmbedderOptions.builder()
             .setBaseOptions(BaseOptions.builder().setModelAssetBuffer(buffer).build())
             .setL2Normalize(true).setQuantize(false).build()
-        val created = try { TextEmbedder.createFromOptions(app, options) }
+        val created = try { timedStage("embedding_load") { TextEmbedder.createFromOptions(app, options) } }
             catch (e: UnsatisfiedLinkError) { throw IllegalStateException("Semantic search needs an arm64-v8a device", e) }
         if (!cacheable) return@gate created.use(block)
         embedder = created
@@ -139,7 +142,7 @@ class SemanticIndex(private val app: HellFireApp) {
         block(created)
     }
     private fun embed(embedder: TextEmbedder, text: String): FloatArray =
-        VectorMath.normalize(embedder.embed(text.take(2000)).embeddingResult().embeddings().first().floatEmbedding())
+        timedStage("embedding_infer") { VectorMath.normalize(embedder.embed(text.take(2000)).embeddingResult().embeddings().first().floatEmbedding()) }
 
     fun sourceText(event: SourceEvent): String {
         val fields = JSONObject(app.cipher.decrypt(event.encryptedPayload).toString(Charsets.UTF_8)).getJSONObject("fields")

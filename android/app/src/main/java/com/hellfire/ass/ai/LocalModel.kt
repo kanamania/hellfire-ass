@@ -13,6 +13,7 @@ import com.hellfire.ass.performance.OperatingProfile
 import com.hellfire.ass.performance.PerfLog
 import com.hellfire.ass.performance.WorkPriority
 import com.hellfire.ass.performance.rolesToEvict
+import com.hellfire.ass.performance.timedStage
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -146,12 +147,14 @@ class LocalModel(private val context: Context) {
         val opened = if (reuse && engineKey == key && engine?.isInitialized() == true) engine!! else {
             closeCached()
             val created = Engine(EngineConfig(modelPath = modelFile.path, backend = DeviceProbe.backend(name), cacheDir = context.cacheDir.path, maxNumTokens = 4096))
-            val ready = runCatching { created.initialize(); created }.onFailure { runCatching { created.close() }; com.hellfire.ass.Diagnostics.warn(it) }.getOrNull() ?: return null
+            val ready = runCatching { timedStage("language_load") { created.initialize() }; created }.onFailure { runCatching { created.close() }; com.hellfire.ass.Diagnostics.warn(it) }.getOrNull() ?: return null
             if (reuse) { engine = ready; engineKey = key; ModelSlots.mark("LANGUAGE") }
             ready
         }
         return try {
-            val text = opened.createConversation(ConversationConfig(automaticToolCalling = false)).use { it.sendMessage(prompt).toString() }
+            val text = timedStage("language_infer") {
+                opened.createConversation(ConversationConfig(automaticToolCalling = false)).use { it.sendMessage(prompt).toString() }
+            }
             if (!reuse) runCatching { opened.close() }
             text to name
         } catch (cancelled: kotlinx.coroutines.CancellationException) {

@@ -1,7 +1,6 @@
 package com.hellfire.ass.intelligence
 
 import ai.onnxruntime.OnnxTensor
-import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.TensorInfo
 import android.graphics.Bitmap
 import android.net.Uri
@@ -14,6 +13,24 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.nio.FloatBuffer
+
+internal data class ImageTensorShape(val width: Int, val height: Int, val channelsFirst: Boolean) {
+    companion object {
+        fun from(shape: LongArray): ImageTensorShape {
+            require(shape.size == 4 && shape[0] in listOf(-1L, 1L)) { "Image input must have one batch and four dimensions" }
+            val channelsFirst = shape[1] == 3L
+            require(channelsFirst || shape[3] == 3L) { "Image input must have three RGB channels" }
+            fun dimension(value: Long): Int {
+                require(value == -1L || value in 1..2048) { "Image input dimension is unsupported" }
+                return if (value == -1L) 224 else value.toInt()
+            }
+            val height = dimension(shape[if (channelsFirst) 2 else 1])
+            val width = dimension(shape[if (channelsFirst) 3 else 2])
+            require(width.toLong() * height <= 1_048_576) { "Image input exceeds the one-megapixel inference bound" }
+            return ImageTensorShape(width, height, channelsFirst)
+        }
+    }
+}
 
 data class AdultVerdict(
     val installed: Boolean,
@@ -39,7 +56,7 @@ class AdultClassifier(private val app: HellFireApp) {
             try {
                 copyLimited(uri, temp, 300L * 1024 * 1024)
                 val opened = runCatching {
-                    OrtEnvironment.getEnvironment().createSession(temp.path).use { it.inputNames.isNotEmpty() }
+                    com.hellfire.ass.ai.onnxEnvironment.createSession(temp.path).use { it.inputNames.isNotEmpty() }
                 }.getOrDefault(false)
                 require(opened) { "Select an ONNX classifier file. Nothing was installed." }
                 java.nio.file.Files.move(temp.toPath(), modelFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
@@ -57,14 +74,14 @@ class AdultClassifier(private val app: HellFireApp) {
     fun classify(bitmap: Bitmap): AdultVerdict {
         if (!installed) return AdultVerdict(false, false, null, null, message = NOT_INSTALLED)
         return runCatching {
-            OrtEnvironment.getEnvironment().createSession(modelFile.path).use { session ->
+            com.hellfire.ass.ai.onnxEnvironment.createSession(modelFile.path).use { session ->
                 val name = session.inputNames.firstOrNull() ?: return AdultVerdict(true, false, null, null, message = "classifier installed but it has no input")
                 val shape = (session.inputInfo[name]?.info as? TensorInfo)?.shape
                 if (shape == null || shape.size != 4) return AdultVerdict(true, false, null, null, message = "classifier installed but input shape is unsupported")
-                val height = shape[2].toInt().takeIf { it > 0 } ?: 224
-                val width = shape[3].toInt().takeIf { it > 0 } ?: 224
-                val channelsFirst = shape[1] == 3L
-                if (!channelsFirst && shape[3] != 3L) return AdultVerdict(true, false, null, null, message = "classifier installed but input shape is unsupported")
+                val layout = ImageTensorShape.from(shape)
+                val height = layout.height
+                val width = layout.width
+                val channelsFirst = layout.channelsFirst
                 val scaled = Bitmap.createScaledBitmap(bitmap, width, height, true)
                 val pixels = IntArray(width * height)
                 scaled.getPixels(pixels, 0, width, 0, 0, width, height)
@@ -88,7 +105,7 @@ class AdultClassifier(private val app: HellFireApp) {
                 buffer.put(values)
                 buffer.rewind()
                 val tensorShape = if (channelsFirst) longArrayOf(1, 3, height.toLong(), width.toLong()) else longArrayOf(1, height.toLong(), width.toLong(), 3)
-                OnnxTensor.createTensor(OrtEnvironment.getEnvironment(), buffer, tensorShape).use { tensor ->
+                OnnxTensor.createTensor(com.hellfire.ass.ai.onnxEnvironment, buffer, tensorShape).use { tensor ->
                     session.run(mapOf(name to tensor)).use { result ->
                         val scores = flatten(result.get(0).value)
                         val index = scores.indices.maxByOrNull { scores[it] } ?: return AdultVerdict(true, false, null, null, message = "classifier returned no scores")

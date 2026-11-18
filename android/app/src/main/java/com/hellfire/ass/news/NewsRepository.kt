@@ -17,6 +17,11 @@ class NewsRepository(
     private val http: NewsHttp = HttpsNewsHttp(),
     private val poster: NewsPoster = AndroidNewsPoster(app),
     private val database: com.hellfire.ass.data.EventDatabase = app.database,
+    private val embedding: suspend (String) -> Pair<String, FloatArray>? = { text ->
+        val model = app.semantic.embeddingModel()
+        val vector = if (model == null) null else app.semantic.embedText(text)
+        if (vector != null && model == app.semantic.embeddingModel()) model!! to vector else null
+    },
 ) : NewsService {
     private val dao get() = database.news()
     private val connectors by lazy { listOf(FeedConnector(http), SiteConnector(http), XConnector(http) { xToken() }) }
@@ -371,14 +376,23 @@ class NewsRepository(
         val input = ArticleInput(articleId(canonical), source.id, source.name, item.title, item.text, item.url, item.publishedAt ?: now,
             source.reliability, source.agency, source.official, source.kind.startsWith("X_"), item.language)
         val features = NewsText.features(input)
+        val encoded = try { embedding("${item.title}\n${item.text.take(1800)}") }
+            catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (error: Exception) { com.hellfire.ass.Diagnostics.warn(error); null }
+        val model = encoded?.first?.takeIf { it.isNotBlank() }
+        val vector = encoded?.second?.takeIf { model != null && it.size in 1..4096 && it.all(Float::isFinite) }
+            ?.let(com.hellfire.ass.memory.VectorMath::normalize)?.takeIf { it.isNotEmpty() }
         val since = now - 7L * 86_400_000L
-        val candidates = dao.activeEvents(since, 300).mapNotNull { centroidOf(it) }
-        val decision = NewsClusterer.assign(input.id, features, input.publishedAt, null, candidates, constraints())
+        val candidates = dao.activeEvents(since, 300).mapNotNull { event -> centroidOf(event)?.let { centroid ->
+            if (model != null && JSONObject(event.featuresJson).optString("embeddingModel") == model) centroid else centroid.copy(vector = null)
+        } }
+        val decision = NewsClusterer.assign(input.id, features, input.publishedAt, vector, candidates, constraints())
         val eventId = decision.eventId ?: NewsClusterer.newEventId(input.id)
         val article = NewsArticle(input.id, source.id, item.url, canonical, item.title, item.text.take(4000), item.author,
             features.language, input.publishedAt, now, features.contentType, features.agency, features.fingerprint.toString(16),
             JSONArray(item.media.map { JSONObject().put("type", it.type).put("url", it.url).put("mime", it.mime ?: JSONObject.NULL) }).toString(),
-            features.toJson(), eventId = eventId, shared = shared)
+            JSONObject(features.toJson()).put("embeddingModel", if (vector == null) JSONObject.NULL else model).toString(),
+            vector = vector?.let(com.hellfire.ass.memory.VectorMath::encode), eventId = eventId, shared = shared)
         if (dao.insertArticle(article) == -1L) return false
         touched += eventId
         // Publish the centroid before the next article in this same refresh is clustered.
@@ -404,7 +418,16 @@ class NewsRepository(
                 delta?.previously.orEmpty(), text, delta?.whyItMatters.orEmpty(), JSONArray(articles.map { it.id }).toString()))
         }
         var centroid = null as EventCentroid?
-        pairs.forEach { (input, feat) -> centroid = NewsClusterer.add(centroid, eventId, input.id, feat, input.publishedAt, null) }
+        val embeddingModel = articles.sortedByDescending { it.fetchedAt }.firstNotNullOfOrNull { article ->
+            JSONObject(article.featuresJson).opt("embeddingModel")?.takeIf { it != JSONObject.NULL }?.toString()?.takeIf { it.isNotBlank() }
+        }
+        pairs.forEachIndexed { index, (input, feat) ->
+            val article = articles[index]
+            val vector = if (embeddingModel != null && JSONObject(article.featuresJson).optString("embeddingModel") == embeddingModel)
+                article.vector?.let { bytes -> runCatching { com.hellfire.ass.memory.VectorMath.decode(bytes) }.getOrNull() }
+                    ?.takeIf { it.size in 1..4096 && it.all(Float::isFinite) } else null
+            centroid = NewsClusterer.add(centroid, eventId, input.id, feat, input.publishedAt, vector)
+        }
         val topics = features.flatMap { it.topics }.distinct().joinToString(",")
         val place = features.flatMap { it.places }.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key
         val headline = NewsText.neutralHeadline(pairs.maxBy { it.first.sourceReliability }.first.title)
@@ -417,7 +440,8 @@ class NewsRepository(
         val event = NewsEvent(eventId, headline, features.first().eventType, topics, place, centroid?.let { NewsClusterer.signature(it) } ?: eventId,
             existing?.firstSeenAt ?: articles.minOf { it.publishedAt }, if (classification == "NONE") existing?.updatedAt ?: now else now,
             articles.maxOf { it.publishedAt }, version, if (snapshot.resolved) "RESOLVED" else "DEVELOPING", score.total, score.level, score.toJson(),
-            score.protectedPublic, snapshot.independentSources, articles.size, snapshot.verification, centroid?.toJson() ?: "{}",
+            score.protectedPublic, snapshot.independentSources, articles.size, snapshot.verification,
+            JSONObject(centroid?.toJson() ?: "{}").put("embeddingModel", embeddingModel ?: JSONObject.NULL).toString(),
             existing?.summaryJson, if (classification == "NONE") existing?.summaryKey else null, existing?.mergedInto, existing?.breakingNotifiedVersion ?: 0)
         dao.saveEvent(event)
         val state = dao.state(eventId)

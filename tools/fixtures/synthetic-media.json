@@ -1,0 +1,40 @@
+{
+  "file": "android/app/src/androidTest/assets/synthetic-av.mp4",
+  "synthetic": true,
+  "bytes": 64861,
+  "sha256": "13280fb35413758459046e5d4dba6cd6970b37e2fbf6711084baaec9a8135990",
+  "duration_ms": 2000,
+  "video": {
+    "width": 320,
+    "height": 240,
+    "frame_rate": 15,
+    "codec": "h264"
+  },
+  "audio": {
+    "sample_rate": 16000,
+    "tone_hz": 440,
+    "codec": "aac"
+  },
+  "generator": "ffmpeg -f lavfi -i testsrc2=size=320x240:rate=15 -f lavfi -i sine=frequency=440:sample_rate=16000 -t 2 -c:v libx264 -preset fast -pix_fmt yuv420p -c:a aac -b:a 32k -metadata 'title=Synthetic fixture only' -metadata location=+00.0000+000.0000/ -movflags +faststart synthetic-av.mp4",
+  "expectations": {
+    "trimmed_duration_ms": [
+      1400,
+      1700
+    ],
+    "muted_region_ms": [
+      300,
+      700
+    ],
+    "mute_rms_ratio_max": 0.1,
+    "cover_rect": [
+      0,
+      0,
+      0.5,
+      0.5
+    ],
+    "covered_pixel_channel_max": 24
+  },
+  "limits": "Generated fixture with synthetic identifying tags; emulator software codec output is not physical hardware codec evidence.",
+  "ffmpeg_version": "ffmpeg version n9.0.2 Copyright (c) 2000-2026 the FFmpeg developers",
+  "reproducibility": "Tests use the committed asset and its SHA-256. Regeneration across encoder versions may differ in bytes; behavioral goldens apply to decoded output."
+}

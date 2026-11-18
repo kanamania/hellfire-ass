@@ -93,9 +93,10 @@ class IntelligenceSearch(private val app: HellFireApp) {
         val model = app.semantic.embeddingModel() ?: return
         val vector = app.semantic.embedText(query) ?: return
         var after = ""
+        var afterEmbedding = ""
         var scanned = 0
         while (scanned < 1500) {
-            val page = app.database.library().embeddings(model, after, 200)
+            val page = app.database.library().embeddings(model, after, 200, afterEmbedding)
             if (page.isEmpty()) break
             page.forEach { row ->
                 val stored = runCatching { VectorMath.decode(row.vector) }.getOrNull() ?: return@forEach
@@ -104,6 +105,7 @@ class IntelligenceSearch(private val app: HellFireApp) {
                 if (score >= 0.35) raw += Triple("${row.mediaId}:${row.startMs ?: -1}", "SEMANTIC", score.coerceIn(0.0, 1.0))
             }
             after = page.last().mediaId
+            afterEmbedding = page.last().id
             scanned += page.size
             if (page.size < 200) break
         }

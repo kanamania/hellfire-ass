@@ -1,0 +1,8 @@
+{
+  "file": "android/app/src/androidTest/assets/jfk.wav",
+  "bytes": 352078,
+  "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+  "source": "https://github.com/ggml-org/whisper.cpp/blob/v1.9.5/samples/jfk.wav",
+  "license": "Public JFK inaugural address sample distributed by whisper.cpp (MIT repository).",
+  "purpose": "Public English model-format and timestamp integration fixture; not owner audio or Kiswahili speech evidence."
+}

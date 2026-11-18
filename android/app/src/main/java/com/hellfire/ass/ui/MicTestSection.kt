@@ -78,7 +78,7 @@ fun MicTestSection(app: HellFireApp, permissions: PermissionStatus, onPermission
     }
     Button(enabled = !busy && playback == null && permissions.microphone && permissions.notificationPosting, onClick = {
         try {
-            app.startForegroundService(Intent(app, MicrophoneService::class.java).setAction(MicrophoneService.ACTION_START))
+            MicrophoneService.requestStart(app, Intent(app, MicrophoneService::class.java).setAction(MicrophoneService.ACTION_START))
         } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); MicrophoneStatus.state.value = "Android blocked recording. Keep the app visible and check permissions." }
     }) { Text("Start 60-second recording") }
     OutlinedButton(enabled = busy, onClick = {

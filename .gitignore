@@ -10,9 +10,11 @@ local.properties
 *.jks
 *.keystore
 *.hprof
+*.perfetto-trace
 *.db
 *.db-*
 *.wav
+!/android/app/src/androidTest/assets/jfk.wav
 *.m4a
 *.pcm
 *.enc
@@ -33,7 +35,7 @@ __pycache__/
 *.pem
 *.key
 
-node_modules/
+node_modules
 .wwebjs_auth/
 .wwebjs_cache/
 server/state/

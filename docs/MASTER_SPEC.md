@@ -53,6 +53,36 @@ for example `HellFire-Ass-0.9.0-code9-debug.apk` or
 `HellFire-Ass-0.9.0-code9-release.apk`. Label unsigned release artifacts with
 `-release-unsigned.apk`. Apply this naming when preparing or handing over builds.
 
+**Owner pre-device execution update — 2026-11-18:** The OnePlus 16 is not yet
+available. Complete all feasible implementation and validation using host-native
+tools, deterministic fixtures, synthetic services, CI and a separate compatible
+Android emulator build. Preserve ARM64-only production packaging. Missing phone
+hardware is not a software-development blocker. Distinguish host, emulator,
+authorized live-service and physical-device evidence; only actual hardware/OEM
+checks and explicitly unavailable external integrations may remain unverified.
+Do not weaken permissions, encryption or approval gates to make tests pass.
+
+
+**Pre-device implementation checkpoint — 2026-11-18:** Production ABI remains
+ARM64; isolated x86_64 and ARM64 test packages now support real Android integration
+without replacing owner data. Host and emulator checks execute real Whisper and
+Silero ONNX models; the pinned MediaPipe text runtime is explicitly unavailable on
+x86_64. Optional learned VAD uses the existing authorized visible recording path,
+with adaptive-energy fallback. News embeddings reuse the existing semantic runtime
+and preserve model identity. Offline QR extraction excludes authentication/Wi-Fi
+credentials and token-bearing URLs from searchable evidence. Source defects in
+bilingual parsing, search pagination/identity, metadata parsing and localized UI
+ownership have regression coverage. Exact counts/commands and the current remaining
+software/hardware classifications are in `docs/DEVICE_FEASIBILITY.md`; this is not
+a physical OnePlus or GPU/NPU validation claim.
+
+**Owner scope update — 2026-11-18:** “Finish what you have done and plan the
+remaining later.” Finish regression, packaging and integration of this checkpoint;
+defer further feature expansion. The prioritized remaining software and physical
+validation plan is in `docs/DEVICE_FEASIBILITY.md`. This supersedes the immediate
+execution scope above without declaring the complete product finished.
+
+
 ## 0. Requirements locked by the owner
 
 These are explicit decisions, not suggestions to reconsider:

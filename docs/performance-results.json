@@ -1,0 +1,432 @@
+{
+  "date": "2026-11-18",
+  "base_revision": "9eae49f",
+  "scope": "Performance checkpoint; host evidence only. APKs built from the working changes on this base.",
+  "android_unit_tests": {
+    "before": {
+      "total": 495,
+      "passed": 491,
+      "skipped": 4,
+      "failures": 0
+    },
+    "after": {
+      "total": 501,
+      "passed": 497,
+      "skipped": 4,
+      "failures": 0
+    }
+  },
+  "lint_debug": {
+    "errors": 0,
+    "warnings": 380,
+    "hints": 11
+  },
+  "native_jni": {
+    "plain_checkjni": "PASS",
+    "asan_ubsan_checkjni": "PASS",
+    "implementation": "Production JNI bridge with synthetic Whisper API; no real inference.",
+    "limits": "ASan leak detection disabled for the HotSpot VM; no Android execution claim."
+  },
+  "host_queue": {
+    "kind": "synthetic host SQLite query + Python row materialization",
+    "host": "x86_64",
+    "python": "3.14.8",
+    "sqlite": "3.54.0",
+    "workload_rows": 10000,
+    "excluded_active": 10,
+    "requested_ids": 20,
+    "before": {
+      "elapsed_ms": {
+        "count": 30,
+        "p50": 31.249382,
+        "p95": 47.434642
+      },
+      "rows_materialized": 10000,
+      "python_peak_bytes": 14484350,
+      "plan": [
+        "SCAN media_item"
+      ]
+    },
+    "after": {
+      "elapsed_ms": {
+        "count": 30,
+        "p50": 0.034679,
+        "p95": 0.03915
+      },
+      "rows_materialized": 20,
+      "python_peak_bytes": 1375,
+      "plan": [
+        "SCAN media_item USING INDEX index_media_item_importedAt",
+        "USE TEMP B-TREE FOR LAST TERM OF ORDER BY"
+      ]
+    },
+    "limit": "No Android, ART, Room, SQLCipher, WorkManager, battery or native inference measured. Old Kotlin sorting and scheduler calls excluded; Python allocation is not app PSS."
+  },
+  "apks": {
+    "before-apk": {
+      "file": "android/app/build/outputs/apk/debug/app-debug.apk",
+      "sha256": "1887d4b6d2b506196c0e33d36ef7f7b0281757fff2357919cf0a135073481963",
+      "apk_bytes": 164173237,
+      "native_uncompressed_bytes": 93733112,
+      "native_zip_bytes": 93733112,
+      "native_libraries": {
+        "lib/arm64-v8a/libLiteRt.so": 5047688,
+        "lib/arm64-v8a/libLiteRtClGlAccelerator.so": 2761680,
+        "lib/arm64-v8a/libandroidx.graphics.path.so": 10096,
+        "lib/arm64-v8a/libhellfire_whisper.so": 5214448,
+        "lib/arm64-v8a/liblitertlm_jni.so": 14667424,
+        "lib/arm64-v8a/libmediapipe_tasks_text_jni.so": 7566368,
+        "lib/arm64-v8a/libmlkit_google_ocr_pipeline.so": 11064544,
+        "lib/arm64-v8a/libmlkitcommonpipeline.so": 10989136,
+        "lib/arm64-v8a/libonnxruntime.so": 34208672,
+        "lib/arm64-v8a/libonnxruntime4j_jni.so": 92064,
+        "lib/arm64-v8a/libsqlcipher.so": 2110992
+      }
+    },
+    "before-release": {
+      "file": "android/app/build/outputs/apk/release/app-release-unsigned.apk",
+      "sha256": "97f96ea245fe6c3eef91563701f2e910a247c0c0301672c38ad27380dab77cca",
+      "apk_bytes": 108676676,
+      "native_uncompressed_bytes": 91256128,
+      "native_zip_bytes": 91256128,
+      "native_libraries": {
+        "lib/arm64-v8a/libLiteRt.so": 5047688,
+        "lib/arm64-v8a/libLiteRtClGlAccelerator.so": 2761680,
+        "lib/arm64-v8a/libandroidx.graphics.path.so": 10096,
+        "lib/arm64-v8a/libhellfire_whisper.so": 2737464,
+        "lib/arm64-v8a/liblitertlm_jni.so": 14667424,
+        "lib/arm64-v8a/libmediapipe_tasks_text_jni.so": 7566368,
+        "lib/arm64-v8a/libmlkit_google_ocr_pipeline.so": 11064544,
+        "lib/arm64-v8a/libmlkitcommonpipeline.so": 10989136,
+        "lib/arm64-v8a/libonnxruntime.so": 34208672,
+        "lib/arm64-v8a/libonnxruntime4j_jni.so": 92064,
+        "lib/arm64-v8a/libsqlcipher.so": 2110992
+      }
+    },
+    "after-apk": {
+      "file": "android/app/build/outputs/apk/debug/app-debug.apk",
+      "sha256": "1d2accab3e1a721c36aa3fe0bf04548467736ce94b89575df21059d110bec931",
+      "apk_bytes": 164222389,
+      "native_uncompressed_bytes": 93737744,
+      "native_zip_bytes": 93737744,
+      "native_libraries": {
+        "lib/arm64-v8a/libLiteRt.so": 5047688,
+        "lib/arm64-v8a/libLiteRtClGlAccelerator.so": 2761680,
+        "lib/arm64-v8a/libandroidx.graphics.path.so": 10096,
+        "lib/arm64-v8a/libhellfire_whisper.so": 5219080,
+        "lib/arm64-v8a/liblitertlm_jni.so": 14667424,
+        "lib/arm64-v8a/libmediapipe_tasks_text_jni.so": 7566368,
+        "lib/arm64-v8a/libmlkit_google_ocr_pipeline.so": 11064544,
+        "lib/arm64-v8a/libmlkitcommonpipeline.so": 10989136,
+        "lib/arm64-v8a/libonnxruntime.so": 34208672,
+        "lib/arm64-v8a/libonnxruntime4j_jni.so": 92064,
+        "lib/arm64-v8a/libsqlcipher.so": 2110992
+      }
+    },
+    "after-release": {
+      "file": "android/app/build/outputs/apk/release/app-release-unsigned.apk",
+      "sha256": "8362e0db635e40f830d07d96ecf6a2164c7a89ff6fa1f62aa82abd12c948f718",
+      "apk_bytes": 108676676,
+      "native_uncompressed_bytes": 91257832,
+      "native_zip_bytes": 91257832,
+      "native_libraries": {
+        "lib/arm64-v8a/libLiteRt.so": 5047688,
+        "lib/arm64-v8a/libLiteRtClGlAccelerator.so": 2761680,
+        "lib/arm64-v8a/libandroidx.graphics.path.so": 10096,
+        "lib/arm64-v8a/libhellfire_whisper.so": 2739168,
+        "lib/arm64-v8a/liblitertlm_jni.so": 14667424,
+        "lib/arm64-v8a/libmediapipe_tasks_text_jni.so": 7566368,
+        "lib/arm64-v8a/libmlkit_google_ocr_pipeline.so": 11064544,
+        "lib/arm64-v8a/libmlkitcommonpipeline.so": 10989136,
+        "lib/arm64-v8a/libonnxruntime.so": 34208672,
+        "lib/arm64-v8a/libonnxruntime4j_jni.so": 92064,
+        "lib/arm64-v8a/libsqlcipher.so": 2110992
+      }
+    }
+  },
+  "physical_device": {
+    "status": "NOT TESTED",
+    "connected_devices": 0
+  },
+  "predevice_2026_11_18": {
+    "jvm": {
+      "total": 521,
+      "passed": 517,
+      "skipped": 4,
+      "failures": 0,
+      "errors": 0,
+      "command": "bash tools/test_mail_fixture.sh",
+      "skipped_reason": "External AI opt-in not configured"
+    },
+    "emulator": {
+      "evidence": "emulator-tested",
+      "complete": true,
+      "suites": {
+        "core": {
+          "evidence": "emulator-tested",
+          "complete": true,
+          "reported_tests": 16,
+          "passed": 16,
+          "failed": 0,
+          "errors": 0,
+          "ignored": 0,
+          "assumptions": 0,
+          "started": 16
+        },
+        "capture": {
+          "evidence": "emulator-tested",
+          "complete": true,
+          "reported_tests": 4,
+          "passed": 4,
+          "failed": 0,
+          "errors": 0,
+          "ignored": 0,
+          "assumptions": 0,
+          "started": 4
+        }
+      },
+      "capture_permission_evidence": "ADB test grants on the owned fixture AVD; not user/OEM grant behavior",
+      "reported_tests": 20,
+      "passed": 20,
+      "failed": 0,
+      "errors": 0,
+      "ignored": 0,
+      "assumptions": 0,
+      "started": 20
+    },
+    "host_onnx": {
+      "evidence": "host-tested",
+      "runtime": "1.31.1",
+      "providers": [
+        "CPUExecutionProvider"
+      ],
+      "synthetic_layouts": [
+        {
+          "model": "color-nhwc.onnx",
+          "sha256": "d6f56eb70aba675bcd924a49666bf2e37dcafa64f35dd2d9af3fb18d67e6dbe8",
+          "output": [
+            [
+              1.0,
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "model": "color-nchw.onnx",
+          "sha256": "23a8e59f8599d76fa414affbcbf17aa1aa66361e2379e291749f5c1ebd783fe0",
+          "output": [
+            [
+              1.0,
+              0.0,
+              0.0
+            ]
+          ]
+        }
+      ],
+      "real_vad": {
+        "model_sha256": "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3",
+        "silence_frames": 93,
+        "silence_max": 0.008910685777664185,
+        "speech_frames": 343,
+        "speech_frames_above_threshold": 233,
+        "recurrent_reset_reproducible": true,
+        "limits": "Public English sample and digital silence; not microphone, Kiswahili, speaker identity or battery validation."
+      }
+    },
+    "host_browser": {
+      "evidence": "host-browser-tested",
+      "synthetic": true,
+      "browser": "Chrome/155.0.8059.84",
+      "checks": [
+        "Unauthenticated private routes redirect to login",
+        "Build-time sync proxy reaches the isolated API and preserves authentication",
+        "Wrong password is rejected visibly",
+        "Login establishes a secure HttpOnly SameSite session",
+        "Eight authenticated routes render without browser exceptions",
+        "Synthetic synced ledger is visible; mobile news content fits viewport",
+        "Logout removes access to private pages"
+      ],
+      "errors": []
+    },
+    "services": {
+      "relay_passed": 23,
+      "whatsapp_worker_passed": 6,
+      "api_passed": 30,
+      "command": "PATH=NODE24:$PATH tools/test_predevice_services.sh"
+    },
+    "physical_device_tested": false,
+    "live_services_tested": false,
+    "scope": "Implemented checkpoint finalized; further software expansion deferred by owner. No full-product completion claim.",
+    "final_packaging": {
+      "source_revision": "536f75df2f4a888c804426e75fc5be30e9e014ad",
+      "bundle": "/home/dev/.cache/hellfire-ass/predevice/releases/536f75d",
+      "lint": {
+        "Error": 0,
+        "Fatal": 0,
+        "Warning": 384,
+        "Hint": 11,
+        "Information": 0
+      },
+      "apks": [
+        {
+          "file": "apks/HellFire-Ass-0.9.0-code9-deviceTest-androidTest.apk",
+          "bytes": 3156819,
+          "sha256": "932a773362ac556c02f107c5b5fd059bc6cdfefa8d48da59720e1b6efb9d8114",
+          "variant": "deviceTestAndroidTest",
+          "application_id": "com.hellfire.ass.devicetest.test",
+          "signature_verification": "Verifies\nVerified using v1 scheme (JAR signing): false\nVerified using v2 scheme (APK Signature Scheme v2): true\nVerified using v3 scheme (APK Signature Scheme v3): false\nVerified using v3.1 scheme (APK Signature Scheme v3.1): false\nVerified using v4 scheme (APK Signature Scheme v4): false\nVerified for SourceStamp: false\nNumber of signers: 1",
+          "zipalign_16k": "PASS",
+          "gradle_file": "apks/app-deviceTest-androidTest.apk",
+          "version_name": "",
+          "version_code": 0,
+          "filename_version_source": "app-under-test",
+          "target_version_name": "0.9.0",
+          "target_version_code": 9
+        },
+        {
+          "file": "apks/HellFire-Ass-0.9.0-code9-emulator-androidTest.apk",
+          "bytes": 3237292,
+          "sha256": "88b614123013a6637f7f6fa53aad79e9ca1d2845887b8f52f2ce4a1368e0ed2a",
+          "variant": "emulatorAndroidTest",
+          "application_id": "com.hellfire.ass.emulator.test",
+          "signature_verification": "Verifies\nVerified using v1 scheme (JAR signing): false\nVerified using v2 scheme (APK Signature Scheme v2): true\nVerified using v3 scheme (APK Signature Scheme v3): false\nVerified using v3.1 scheme (APK Signature Scheme v3.1): false\nVerified using v4 scheme (APK Signature Scheme v4): false\nVerified for SourceStamp: false\nNumber of signers: 1",
+          "zipalign_16k": "PASS",
+          "gradle_file": "apks/app-emulator-androidTest.apk",
+          "version_name": "",
+          "version_code": 0,
+          "filename_version_source": "app-under-test",
+          "target_version_name": "0.9.0",
+          "target_version_code": 9
+        },
+        {
+          "file": "apks/HellFire-Ass-0.9.0-code9-benchmark.apk",
+          "bytes": 114928675,
+          "sha256": "8373ab0098b8a705e3f577609cdb7196dabe09f49a3aa9ab6ac6945ff2c65422",
+          "variant": "benchmark",
+          "application_id": "com.hellfire.ass.benchmark",
+          "signature_verification": "Verifies\nVerified using v1 scheme (JAR signing): false\nVerified using v2 scheme (APK Signature Scheme v2): true\nVerified using v3 scheme (APK Signature Scheme v3): false\nVerified using v3.1 scheme (APK Signature Scheme v3.1): false\nVerified using v4 scheme (APK Signature Scheme v4): false\nVerified for SourceStamp: false\nNumber of signers: 1",
+          "zipalign_16k": "PASS",
+          "abi": "arm64-v8a",
+          "native_libraries": 12,
+          "gradle_file": "apks/app-benchmark.apk",
+          "version_name": "0.9.0",
+          "version_code": 9,
+          "filename_version_source": "APK metadata"
+        },
+        {
+          "file": "apks/HellFire-Ass-0.9.0-code9-debug.apk",
+          "bytes": 170855248,
+          "sha256": "8aa7ec5dd4be0f628cc28d8fa96c8ce536a55bd270d7e982386626f8ba0248ba",
+          "variant": "debug",
+          "application_id": "com.hellfire.ass",
+          "signature_verification": "Verifies\nVerified using v1 scheme (JAR signing): false\nVerified using v2 scheme (APK Signature Scheme v2): true\nVerified using v3 scheme (APK Signature Scheme v3): false\nVerified using v3.1 scheme (APK Signature Scheme v3.1): false\nVerified using v4 scheme (APK Signature Scheme v4): false\nVerified for SourceStamp: false\nNumber of signers: 1",
+          "zipalign_16k": "PASS",
+          "abi": "arm64-v8a",
+          "native_libraries": 12,
+          "gradle_file": "apks/app-debug.apk",
+          "version_name": "0.9.0",
+          "version_code": 9,
+          "filename_version_source": "APK metadata"
+        },
+        {
+          "file": "apks/HellFire-Ass-0.9.0-code9-deviceTest.apk",
+          "bytes": 170855491,
+          "sha256": "d57b931ae217c2ea933c800d9c41248217062e9cea14c38df4252a3b849a1554",
+          "variant": "deviceTest",
+          "application_id": "com.hellfire.ass.devicetest",
+          "signature_verification": "Verifies\nVerified using v1 scheme (JAR signing): false\nVerified using v2 scheme (APK Signature Scheme v2): true\nVerified using v3 scheme (APK Signature Scheme v3): false\nVerified using v3.1 scheme (APK Signature Scheme v3.1): false\nVerified using v4 scheme (APK Signature Scheme v4): false\nVerified for SourceStamp: false\nNumber of signers: 1",
+          "zipalign_16k": "PASS",
+          "abi": "arm64-v8a",
+          "native_libraries": 12,
+          "gradle_file": "apks/app-deviceTest.apk",
+          "version_name": "0.9.0",
+          "version_code": 9,
+          "filename_version_source": "APK metadata"
+        },
+        {
+          "file": "apks/HellFire-Ass-0.9.0-code9-emulator.apk",
+          "bytes": 179931721,
+          "sha256": "ae99d32730e0fac7aca5b88b4f7bfe99246f1ab9715332e19c2b887b1fff0344",
+          "variant": "emulator",
+          "application_id": "com.hellfire.ass.emulator",
+          "signature_verification": "Verifies\nVerified using v1 scheme (JAR signing): false\nVerified using v2 scheme (APK Signature Scheme v2): true\nVerified using v3 scheme (APK Signature Scheme v3): false\nVerified using v3.1 scheme (APK Signature Scheme v3.1): false\nVerified using v4 scheme (APK Signature Scheme v4): false\nVerified for SourceStamp: false\nNumber of signers: 1",
+          "zipalign_16k": "PASS",
+          "abi": "x86_64",
+          "native_libraries": 11,
+          "gradle_file": "apks/app-emulator.apk",
+          "version_name": "0.9.0",
+          "version_code": 9,
+          "filename_version_source": "APK metadata"
+        },
+        {
+          "file": "apks/HellFire-Ass-0.9.0-code9-profile.apk",
+          "bytes": 154891091,
+          "sha256": "02f5a5e3830e09af5573e92ebad5f1f270be08b49c8aee0a792f151841681b0c",
+          "variant": "profile",
+          "application_id": "com.hellfire.ass.benchmark",
+          "signature_verification": "Verifies\nVerified using v1 scheme (JAR signing): false\nVerified using v2 scheme (APK Signature Scheme v2): true\nVerified using v3 scheme (APK Signature Scheme v3): false\nVerified using v3.1 scheme (APK Signature Scheme v3.1): false\nVerified using v4 scheme (APK Signature Scheme v4): false\nVerified for SourceStamp: false\nNumber of signers: 1",
+          "zipalign_16k": "PASS",
+          "abi": "arm64-v8a",
+          "native_libraries": 12,
+          "gradle_file": "apks/app-profile.apk",
+          "version_name": "0.9.0",
+          "version_code": 9,
+          "filename_version_source": "APK metadata"
+        },
+        {
+          "file": "apks/HellFire-Ass-0.9.0-code9-release.apk",
+          "bytes": 114932703,
+          "sha256": "dd6847033e08e85249980e0e24af9ea9d0105a220ec7bd230e174f1eaab7b773",
+          "variant": "release",
+          "application_id": "com.hellfire.ass",
+          "signature_verification": "Verifies\nVerified using v1 scheme (JAR signing): false\nVerified using v2 scheme (APK Signature Scheme v2): true\nVerified using v3 scheme (APK Signature Scheme v3): false\nVerified using v3.1 scheme (APK Signature Scheme v3.1): false\nVerified using v4 scheme (APK Signature Scheme v4): false\nVerified for SourceStamp: false\nNumber of signers: 1",
+          "zipalign_16k": "PASS",
+          "abi": "arm64-v8a",
+          "native_libraries": 12,
+          "gradle_file": "apks/app-release.apk",
+          "version_name": "0.9.0",
+          "version_code": 9,
+          "filename_version_source": "APK metadata"
+        },
+        {
+          "file": "apks/HellFire-Ass-0.9.0-code9-benchmark-androidTest.apk",
+          "bytes": 46176118,
+          "sha256": "cb92497975d25accce393dea4c966917742dbc8829c05c8cbeba8c4044fc5f38",
+          "variant": "benchmark",
+          "application_id": "com.hellfire.ass.macrobenchmark",
+          "signature_verification": "Verifies\nVerified using v1 scheme (JAR signing): false\nVerified using v2 scheme (APK Signature Scheme v2): true\nVerified using v3 scheme (APK Signature Scheme v3): false\nVerified using v3.1 scheme (APK Signature Scheme v3.1): false\nVerified using v4 scheme (APK Signature Scheme v4): false\nVerified for SourceStamp: false\nNumber of signers: 1",
+          "zipalign_16k": "PASS",
+          "gradle_file": "apks/benchmark-benchmark.apk",
+          "version_name": "",
+          "version_code": 0,
+          "filename_version_source": "app-under-test",
+          "target_version_name": "0.9.0",
+          "target_version_code": 9
+        },
+        {
+          "file": "apks/HellFire-Ass-0.9.0-code9-profile-androidTest.apk",
+          "bytes": 46176118,
+          "sha256": "6509973e09dad58a9cc8a455be2bdcbfec5b262a42c05790e0bb07eeef239ce4",
+          "variant": "profile",
+          "application_id": "com.hellfire.ass.macrobenchmark",
+          "signature_verification": "Verifies\nVerified using v1 scheme (JAR signing): false\nVerified using v2 scheme (APK Signature Scheme v2): true\nVerified using v3 scheme (APK Signature Scheme v3): false\nVerified using v3.1 scheme (APK Signature Scheme v3.1): false\nVerified using v4 scheme (APK Signature Scheme v4): false\nVerified for SourceStamp: false\nNumber of signers: 1",
+          "zipalign_16k": "PASS",
+          "gradle_file": "apks/benchmark-profile.apk",
+          "version_name": "",
+          "version_code": 0,
+          "filename_version_source": "app-under-test",
+          "target_version_name": "0.9.0",
+          "target_version_code": 9
+        }
+      ],
+      "native_symbols": {
+        "zip_bytes": 4589707,
+        "owned_bridge_debug_bytes": 20026744
+      },
+      "clean_build_byte_identity_tested": false,
+      "hosted_ci_tested": false,
+      "artifact_naming": "Owner-required actual app versionName/versionCode/variant. Instrumentation companions use the app-under-test version; their own manifest version is unset (metadata empty/0). Renaming preserves verified bytes."
+    }
+  }
+}

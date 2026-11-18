@@ -45,6 +45,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.HellFire"
         android:usesCleartextTraffic="false">
+        <provider android:name="ai.onnxruntime.TelemetryInitializer" tools:node="remove" />
+        <service android:name="com.google.android.datatransport.runtime.backends.TransportBackendDiscovery" tools:node="remove" />
         <!-- WorkManager runs the model download in the foreground (visible progress notification). -->
         <service android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync" tools:node="merge" />

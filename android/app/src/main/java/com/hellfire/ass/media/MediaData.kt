@@ -72,4 +72,5 @@ interface MediaDao {
     @Query("SELECT * FROM speech_span WHERE mediaId=:id ORDER BY startMs") suspend fun spans(id: String): List<SpeechSpan>
     @Query("SELECT * FROM media_item WHERE state = 'DELETING'") suspend fun deleting(): List<MediaItem>
     @Query("SELECT * FROM media_item WHERE state IN ('QUEUED','PROCESSING')") suspend fun unfinished(): List<MediaItem>
+    @Query("SELECT id FROM media_item WHERE state IN ('QUEUED','PROCESSING') AND id NOT IN (:activeIds) ORDER BY importedAt, id LIMIT :limit") suspend fun unfinishedIds(activeIds: List<String>, limit: Int): List<String>
 }

@@ -63,6 +63,9 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
         if (uri != null) action { try { app.speakers.import(uri); "Speaker model imported. Enroll your voice, then label transcribed recordings." }
             catch (e: IllegalArgumentException) { e.message ?: "Speaker model import failed." } }
     }
+    val vadModel = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) action { com.hellfire.ass.media.VadModels.import(app, uri); "Learned VAD installed for future authorized recording sessions. Accuracy remains unverified." }
+    }
     val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
         val item = exporting; exporting = null
         if (uri != null && item != null) action {
@@ -88,7 +91,7 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
         }
     }
     if (initialSelected == null && analysisSettings) SectionCard(tr("Import and analysis")) {
-    Text("Originals remain encrypted locally until you delete them. Import uses Android’s file picker; inaccessible OPPO call recordings need sharing/export from the dialer.")
+    Text("Originals remain encrypted locally until you delete them. Import uses Android’s file picker; inaccessible call recordings need sharing/export from the dialer.")
     Choice("Import as", listOf("CALL_RECORDING", "IN_PERSON_AUDIO", "IMAGE", "DOCUMENT", "VIDEO", "VOICE_NOTE"), kind) { kind = it }
     Button(enabled = !busy, onClick = { importer.launch(arrayOf("audio/*", "image/*", "video/*", "application/pdf")) }) { Text(com.hellfire.ass.ui.tr("Import original")) }
     OutlinedButton(enabled = !busy, onClick = { model.launch(arrayOf("*/*")) }) { Text("Import whisper.cpp GGML model") }
@@ -105,6 +108,13 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
         try { app.speakers.enrollOwner() } catch (e: IllegalArgumentException) { e.message ?: "Enrollment failed." }
     } }) { Text("Enroll my voice from latest test sample") }
     TextButton(enabled = !busy && app.speakers.configured, onClick = { action { app.speakers.remove(); "Speaker model and owner voice enrollment removed. Existing labels stay until corrected." } }) { Text("Remove speaker model and enrollment") }
+    Text("Speech activity detection", style = MaterialTheme.typography.titleMedium)
+    Text(if (com.hellfire.ass.media.VadModels.file(app).isFile) "Learned VAD installed. Used only during visibly active recording; it does not identify a speaker."
+        else "Adaptive energy VAD. Import a Silero recurrent ONNX model to use learned speech probabilities.")
+    OutlinedButton(enabled = !busy, onClick = { vadModel.launch(arrayOf("*/*")) }) { Text("Import learned VAD (.onnx)") }
+    TextButton(enabled = !busy && com.hellfire.ass.media.VadModels.file(app).isFile, onClick = { action {
+        com.hellfire.ass.media.VadModels.remove(app); "Learned VAD removed. Future recordings use adaptive energy detection."
+    } }) { Text("Remove learned VAD") }
     val prefs = remember { app.getSharedPreferences("media", 0) }
     var charging by remember { mutableStateOf(prefs.getBoolean("charging", true)) }
     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
@@ -139,7 +149,7 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
     Text("Visible, owner-started recording, capped at 30 minutes. Experimental energy-based speech intervals include preceding audio. The whole session is retained. Keep monitoring off for excluded people or places.")
     if (!permissions.microphone || !permissions.notificationPosting) Button(onClick = onPermission) { Text("Allow recording permissions") }
     Button(enabled = notice && !recording && permissions.microphone && permissions.notificationPosting, onClick = {
-        try { app.startForegroundService(Intent(app, MicrophoneService::class.java).setAction(MicrophoneService.ACTION_START).putExtra("monitoring", true).putExtra("notice", notice).putExtra("participants", participants).putExtra("place", place))
+        try { MicrophoneService.requestStart(app, Intent(app, MicrophoneService::class.java).setAction(MicrophoneService.ACTION_START).putExtra("monitoring", true).putExtra("notice", notice).putExtra("participants", participants).putExtra("place", place))
             notice = false }
         catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); result = "Android blocked monitoring. Keep the app visible and check permissions." }
     }) { Text("Start visible monitoring") }

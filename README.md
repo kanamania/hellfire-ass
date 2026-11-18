@@ -7,10 +7,11 @@ acceptance remains **PARTIAL** pending the device, model, account and real-forma
 gates in [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md).
 
 The owner authorized the remaining phases on 2026-11-13 and kept physical device
-testing until last. No phone, live account, personal corpus or model weights were
-used to establish host results. No message has been sent and no gateway deployed.
+testing until last. No phone, live account or personal corpus was used to establish these results.
+Downloaded public model weights stay outside Git. No real recipient was contacted
+and no gateway was deployed.
 
-## Current status — 2026-11-17
+## Current status — 2026-11-18
 
 - **Code:** `main` holds every merged slice: Phases 0–6 software, the UI redesign
   (five tabs, reports, 13 home screen widgets), money entry pickers, fingerprint app
@@ -23,17 +24,26 @@ used to establish host results. No message has been sent and no gateway deployed
 - **Web access:** an optional read-only web copy (NestJS API, Postgres, Next.js site
   in `web/`) synced from the phone; see [Web access](#web-access-read-only-mirror).
   Local website: `https://hellfire.local`; not yet connected to a real phone.
-- **Current host checks:** 428 Android tests (424 passed, 4 opt-in live-provider
-  tests skipped), Android lint with zero errors, 24 web API tests, frontend
-  typecheck/production build, and verified debug/signed-release APKs pass. Exact commands and artifact evidence are in
-  [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md). Relay/WhatsApp worker code
-  was unchanged; its earlier results remain recorded there.
-- **Not done:** nothing has run on the physical OnePlus 16, with a real model file, a live
-  mail/WhatsApp/Google account or a real SMS corpus. Every phase stays **PARTIAL**.
+- **Current checks:** 521 Android JVM tests (517 passed, 4 opt-in live-provider
+  tests skipped), 20 emulator tests without skips, relay 23, WhatsApp worker 6,
+  API 30 and seven Chromium checks passed. Exact build commands and artifact evidence are in
+  [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md).
+- **Pre-device checkpoint:** host-native, synthetic-service and isolated x86_64
+  Android checks are complete for the implemented slice. The owner deferred further
+  feature expansion; the remaining plan is in DEVICE_FEASIBILITY.md. Host and emulator
+  evidence remain distinct from actual handset, energy and OEM results.
+- **Not done:** nothing has run on the physical OnePlus 16, with a live
+  mail/WhatsApp/Google account or a real SMS corpus. Public Whisper and Silero model
+  files ran on the host and emulator; GPU/NPU compatibility remains unverified.
+  Full phase acceptance stays **PARTIAL**.
 - **Earlier project review findings:** covered by host tests; each still needs
   its device or real-data check. DEVICE_FEASIBILITY.md → "Project review implementation" lists what changed
   and what remains to verify.
-- **Release and CI:** release shrinking and optional local signing are configured; GitHub Actions runs the repository checks. Hosted CI and physical release behavior remain unverified.
+- **Release and CI:** the owner-signed ARM64 release, debug, emulator/device-test
+  and benchmark/profile APKs build and pass signature/alignment inspection.
+  Release mappings and native symbols are retained in the local artifact bundle.
+  GitHub Actions is configured; hosted execution and physical release behavior
+  remain unverified.
 
 The media review on 2026-11-17 found functional defects missed by the integration
 checks. Four interrupted fix branches were completed sequentially; see the
@@ -63,9 +73,10 @@ the versioned name when preparing a build for handover.
 Gradle output: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.9.0**.
 It is built for **arm64-v8a only** (since 2026-11-16), Android API 29+, target/compile
 API 36. Confirm the phone ABI before installation (`adb shell getprop ro.product.cpu.abilist`);
-32-bit-only phones and x86_64 PC emulators cannot run it. Size: about 164 MB
-(156 MiB): native libraries ≈94 MB (ONNX Runtime 34 MB, LiteRT-LM 15 MB, ML Kit OCR
-22 MB, MediaPipe 8 MB, whisper 5 MB), unshrunk debug code ≈63 MB. Native libraries
+32-bit-only phones and x86_64 PC emulators cannot run it. Size: about 171 MB
+(163 MiB): native libraries ≈99 MB (ONNX Runtime 34 MB, LiteRT-LM 15 MB, ML Kit OCR
+22 MB, MediaPipe 8 MB, whisper 5 MB, barcode decoding 5 MB), plus unshrunk
+debug code and resources. Native libraries
 stay uncompressed in the APK and are not extracted, so installed size is close to the
 APK size plus Android's compiled code and app data. This is a debug artifact, without private release signing.
 
@@ -78,7 +89,8 @@ Android 4.20.0, JavaMail Android/activation 1.6.8, Glance 1.1.1, Play services a
 SHA-256: `ff1a9053feb509ff9d7729703355541ae9690073a6b1c40eb692c962e0dc1720`.
 The whisper MIT notice is bundled in app assets. LiteRT-LM is pinned to the runtime
 that compiles with this Kotlin toolchain; a newer AAR required newer Kotlin metadata.
-Model compatibility is established only by running the selected file on the phone.
+Production ARM64 model compatibility requires running the selected file on the
+phone. Host and emulator compatibility results are reported separately.
 
 The app remains one Gradle module with bounded Kotlin packages. Core capture,
 ledger calculations, task review and bundled OCR work without account credentials.
@@ -810,7 +822,7 @@ Node 24. API: `cd web/api && TEST_DATABASE_URL='postgresql:///hellfire_test?host
 npm run typecheck && npm run build`; `npm run dev` serves it on 127.0.0.1:3910. `API_URL`
 (default `http://127.0.0.1:3911`) is fixed into the `/api/sync` forward at build time.
 Phone side: `WebSyncTest` in the Android unit tests. Pinned: NestJS 12.3.2,
-@nestjs/throttler 6.7.1, pg 8.23.1, Next.js 16.4.3, React 19.2.9, TypeScript 6.0.3.
+@nestjs/throttler 6.7.1, pg 8.23.1, Next.js 16.4.6, React 19.2.9, TypeScript 6.0.3.
 
 ## Storage, recovery and boundaries
 
@@ -865,7 +877,104 @@ measurements. Literal retrieval, OCR and manual speaker correction are implement
 those are not evidence that the advanced model-dependent gates passed. Optional
 Telegram and desktop dashboard have not been added.
 
+## Pre-device validation
+
+Verified local bundle: `~/.cache/hellfire-ass/predevice/releases/536f75d/`.
+It contains the signed `apks/HellFire-Ass-0.9.0-code9-release.apk`, nine other APKs, `manifest.json`,
+regression reports, R8 mappings and native symbols. Prepared APK names include the
+actual app version and variant; instrumentation companions use the app-under-test
+version, with their own unset version recorded separately. The manifest records SHA-256
+checksums and source revision; private signing material and downloaded test models
+are excluded. This was a successful incremental build; byte-identical clean
+rebuilds have not been compared.
+
+At the owner’s request, this checkpoint is finalized and further expansion
+is deferred. The prioritized remaining software and physical plan is in
+[DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md#current-scope-and-remaining-plan--owner-update-2026-11-18).
+
+Production remains ARM64-only. `emulator` is a separate x86_64 package
+`com.hellfire.ass.emulator`; `deviceTest` is an isolated ARM64 package
+`com.hellfire.ass.devicetest`. Neither replaces the owner's installation.
+MediaPipe text 0.10.26 has no x86_64 runtime and reports that limitation;
+Whisper, SQLCipher, ONNX Runtime, LiteRT-LM and bundled vision libraries are real
+packaged native libraries. A packaged runtime still needs a compatible model test.
+
+```sh
+cd android
+./gradlew :app:testDebugUnitTest :app:assembleEmulator :app:assembleEmulatorAndroidTest
+cd ..
+python3 tools/generate_predevice_fixtures.py --check
+python3 tools/fetch_test_models.py
+python3 -m venv tools/.venv
+tools/.venv/bin/python -m pip install -r tools/requirements-model-tests.txt
+tools/.venv/bin/python tools/evaluate_onnx.py --models "$HOME/.cache/hellfire-ass/predevice/models" --sample android/app/src/androidTest/assets/jfk.wav
+tools/test_real_whisper.sh "$HOME/.cache/hellfire-ass/predevice/models/ggml-tiny.en-q5_1.bin"
+tools/start_fixture_emulator.sh
+tools/test_emulator.sh emulator-5580 "$HOME/.cache/hellfire-ass/predevice/models"
+```
+
+The emulator script uses its own API 35 AVD and never wipes another AVD. It first
+checks denied capture permissions, then grants permissions/notification access and
+the assistant role only to the disposable emulator package for capture tests.
+Cleanup revokes the test grants and restores the previous assistant. These are ADB
+test grants, not user-prompt or OEM verification. Instrumentation disables automatic model downloads
+and news fetching only in disposable test packages. Screenshot goldens contain
+synthetic bilingual components; production windows retain `FLAG_SECURE`.
+The public JFK fixture's provenance and checksum are in
+`tools/fixtures/public-audio.json`. Small public model revisions, sizes and SHA-256
+checksums are in `tools/fixtures/models.json`; weights stay in the ignored cache.
+
+`tools/test_mail_fixture.sh` runs the full JVM regression with a disposable real
+TLS mail server, preserving certificate/hostname checks. Current checkpoint: 521
+JVM tests (517 passed, four external AI-provider skips), 20 emulator tests with no
+skips, and seven browser checks.
+
+With existing development dependencies installed, Node 24 and Docker available,
+`tools/test_predevice_services.sh` creates a disposable tmpfs Postgres database,
+runs relay/worker/API/frontend checks and launches a real Chromium browser.
+It has no WhatsApp account or real mail recipient. An occupied service port is
+never killed. Reports under `android/build/reports/predevice/` and
+`web/frontend/build/` distinguish host, emulator and model evidence. Hosted CI
+results require an actual workflow run.
+
+`tools/benchmark_device.sh SERIAL NEW_PRIVATE_DIRECTORY startup` installs only
+the separate benchmark APKs and collects real JSON/traces plus before/after
+hardware snapshots. Enable airplane mode and finish that disposable copy’s English
+setup first. `profile` and `compare` modes collect and compare actual app profiles;
+the comparison requires collected app rules. No phone benchmark has run.
+
+For later physical bring-up, first build the isolated ARM64 test APKs:
+`cd android && ./gradlew -PintegrationBuildType=deviceTest :app:assembleDeviceTest :app:assembleDeviceTestAndroidTest`.
+Then `python3 tools/oneplus_bringup.py --serial DEVICE_SERIAL --output /private/path/bringup.json`
+collects a read-only hardware survey. Add `--install-fixtures --run-tests` to install
+and exercise only `.devicetest`. No production app reset, permissions, role or
+background exemptions are performed. Follow the current prioritized physical suite
+in [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md).
+
 ## News, library and performance
+
+The [2026-11-18 performance audit and measurement protocol](docs/DEVICE_FEASIBILITY.md#performance-audit--2026-11-18)
+maps existing optimizations, confirmed source-level overhead and device-only
+validation gates. `android/benchmark` contains cold/warm/hot startup, UI journey
+and Baseline Profile collectors against the isolated, release-optimized
+`com.hellfire.ass.benchmark` app. Physical phone results and generated app profiles
+are not available yet. Complete that copy's English setup offline before running
+tests; see the protocol for exact commands and fixed-workload requirements.
+
+Host checks and artifact reporting (repository root):
+
+```sh
+bash tools/test_native_jni.sh
+python3 -m unittest discover -s tools -p 'test_*.py'
+python3 tools/benchmark_media_queue.py
+python3 tools/performance_report.py apk android/app/build/outputs/apk/debug/*.apk
+```
+
+The JNI check uses the real production bridge with a synthetic Whisper API, no
+model or inference. The queue benchmark uses the checked-in Room schema and DAO
+queries on host SQLite; its timings and Python allocations are **not** Android
+latency, app PSS, energy or battery results. Device profiling uses AndroidX JSON
+and Perfetto; the report script computes p50/p95 only from actual recorded samples.
 
 Open **Home → News** for briefings, saved stories and the reader. News settings
 control source selection, interests, morning/evening times, quiet hours and audio.
@@ -904,6 +1013,13 @@ model succeeds in a device probe. Queue limits, thermal policy and cooperative
 yielding are host-tested; speed, memory, power and heat require the OnePlus 16.
 
 ## Verification and change log
+
+- 2026-11-18, performance checkpoint: bounded native audio ownership/error handling,
+  one video retriever per batch, bounded media scheduling queries, idle-model
+  cleanup under the existing gate, local stage diagnostics and isolated AndroidX
+  startup/navigation/profile collectors. 501 host Android tests pass, native
+  CheckJNI and ASan/UBSan checks pass, and debug/release/benchmark/profile APKs
+  compile. Raw comparison evidence is in `docs/performance-results.json`.
 
 - 2026-11-17, news/media/performance/universal drawer: consolidated the pending
   feature branches on schema 19; added news Ask and scheduled notices; corrected

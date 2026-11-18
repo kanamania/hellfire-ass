@@ -1,0 +1,328 @@
+{
+  "schema": 1,
+  "synthetic": true,
+  "seed": 18112026,
+  "now": "2026-11-18T12:00:00+03:00",
+  "finance": [
+    {
+      "id": "finance-en-0",
+      "language": "en",
+      "sender": "M-PESA",
+      "text": "Paid TZS 66,800 ref SYNTHEN000. Synthetic fixture.",
+      "expected": {
+        "provider": "MPESA",
+        "kind": "EXPENSE",
+        "amount": 66800,
+        "fee": 0,
+        "reference": "SYNTHEN000"
+      }
+    },
+    {
+      "id": "finance-en-1",
+      "language": "en",
+      "sender": "Airtel",
+      "text": "Paid TZS 44,400 ref SYNTHEN001. Synthetic fixture.",
+      "expected": {
+        "provider": "AIRTEL",
+        "kind": "EXPENSE",
+        "amount": 44400,
+        "fee": 0,
+        "reference": "SYNTHEN001"
+      }
+    },
+    {
+      "id": "finance-en-2",
+      "language": "en",
+      "sender": "CRDB",
+      "text": "Paid TZS 13,200 ref SYNTHEN002. Synthetic fixture.",
+      "expected": {
+        "provider": "CRDB",
+        "kind": "EXPENSE",
+        "amount": 13200,
+        "fee": 0,
+        "reference": "SYNTHEN002"
+      }
+    },
+    {
+      "id": "finance-en-3",
+      "language": "en",
+      "sender": "NMB",
+      "text": "Paid TZS 37,500 ref SYNTHEN003. Synthetic fixture.",
+      "expected": {
+        "provider": "NMB",
+        "kind": "EXPENSE",
+        "amount": 37500,
+        "fee": 0,
+        "reference": "SYNTHEN003"
+      }
+    },
+    {
+      "id": "finance-sw-0",
+      "language": "sw",
+      "sender": "M-PESA",
+      "text": "Umelipa TZS 35,600 ref SYNTHSW000. Synthetic fixture.",
+      "expected": {
+        "provider": "MPESA",
+        "kind": "EXPENSE",
+        "amount": 35600,
+        "fee": 0,
+        "reference": "SYNTHSW000"
+      }
+    },
+    {
+      "id": "finance-sw-1",
+      "language": "sw",
+      "sender": "Airtel",
+      "text": "Umelipa TZS 14,300 ref SYNTHSW001. Synthetic fixture.",
+      "expected": {
+        "provider": "AIRTEL",
+        "kind": "EXPENSE",
+        "amount": 14300,
+        "fee": 0,
+        "reference": "SYNTHSW001"
+      }
+    },
+    {
+      "id": "finance-sw-2",
+      "language": "sw",
+      "sender": "CRDB",
+      "text": "Umelipa TZS 12,300 ref SYNTHSW002. Synthetic fixture.",
+      "expected": {
+        "provider": "CRDB",
+        "kind": "EXPENSE",
+        "amount": 12300,
+        "fee": 0,
+        "reference": "SYNTHSW002"
+      }
+    },
+    {
+      "id": "finance-sw-3",
+      "language": "sw",
+      "sender": "NMB",
+      "text": "Umelipa TZS 20,400 ref SYNTHSW003. Synthetic fixture.",
+      "expected": {
+        "provider": "NMB",
+        "kind": "EXPENSE",
+        "amount": 20400,
+        "fee": 0,
+        "reference": "SYNTHSW003"
+      }
+    },
+    {
+      "id": "reject-8",
+      "language": "en",
+      "sender": "M-PESA",
+      "text": "Payment failed. Paid TZS 5,000 ref SYNTH0001",
+      "expected": null
+    },
+    {
+      "id": "reject-9",
+      "language": "sw",
+      "sender": "M-PESA",
+      "text": "Muamala umeshindwa. Umelipa TZS 5,000 ref SYNTH0002",
+      "expected": null
+    },
+    {
+      "id": "reject-10",
+      "language": "en",
+      "sender": "M-PESA",
+      "text": "Paid TZS 1.25 ref SYNTH0003",
+      "expected": null
+    },
+    {
+      "id": "reject-11",
+      "language": "sw",
+      "sender": "M-PESA",
+      "text": "Umelipa TZS 0 ref SYNTH0004",
+      "expected": null
+    }
+  ],
+  "queries": [
+    {
+      "id": "query-0",
+      "language": "en",
+      "text": "Find my travel videos last year",
+      "expected": {
+        "kinds": [
+          "VIDEO"
+        ],
+        "categories": [
+          "travel"
+        ],
+        "date": "last-year"
+      }
+    },
+    {
+      "id": "query-1",
+      "language": "sw",
+      "text": "Tafuta video zangu za safari mwaka jana",
+      "expected": {
+        "kinds": [
+          "VIDEO"
+        ],
+        "categories": [
+          "travel"
+        ],
+        "date": "last-year"
+      }
+    },
+    {
+      "id": "query-2",
+      "language": "en",
+      "text": "Show pictures of food today",
+      "expected": {
+        "kinds": [
+          "IMAGE"
+        ],
+        "categories": [
+          "food"
+        ],
+        "date": "today"
+      }
+    },
+    {
+      "id": "query-3",
+      "language": "sw",
+      "text": "Nionyeshe picha za chakula leo",
+      "expected": {
+        "kinds": [
+          "IMAGE"
+        ],
+        "categories": [
+          "food"
+        ],
+        "date": "today"
+      }
+    },
+    {
+      "id": "query-4",
+      "language": "en",
+      "text": "Show my audio yesterday",
+      "expected": {
+        "kinds": [
+          "AUDIO"
+        ],
+        "categories": [],
+        "date": "yesterday"
+      }
+    },
+    {
+      "id": "query-5",
+      "language": "sw",
+      "text": "Nionyeshe sauti yangu jana",
+      "expected": {
+        "kinds": [
+          "AUDIO"
+        ],
+        "categories": [],
+        "date": "yesterday"
+      }
+    },
+    {
+      "id": "query-6",
+      "language": "en",
+      "text": "Find documents last week",
+      "expected": {
+        "kinds": [
+          "DOCUMENT"
+        ],
+        "categories": [
+          "document"
+        ],
+        "date": "last-week"
+      }
+    },
+    {
+      "id": "query-7",
+      "language": "sw",
+      "text": "Tafuta nyaraka wiki iliyopita",
+      "expected": {
+        "kinds": [
+          "DOCUMENT"
+        ],
+        "categories": [
+          "document"
+        ],
+        "date": "last-week"
+      }
+    },
+    {
+      "id": "query-8",
+      "language": "en",
+      "text": "Find family pictures",
+      "expected": {
+        "kinds": [
+          "IMAGE"
+        ],
+        "categories": [
+          "family"
+        ],
+        "date": null
+      }
+    },
+    {
+      "id": "query-9",
+      "language": "sw",
+      "text": "Tafuta picha za familia",
+      "expected": {
+        "kinds": [
+          "IMAGE"
+        ],
+        "categories": [
+          "family"
+        ],
+        "date": null
+      }
+    },
+    {
+      "id": "query-10",
+      "language": "en",
+      "text": "Find music",
+      "expected": {
+        "kinds": [
+          "AUDIO"
+        ],
+        "categories": [
+          "music"
+        ],
+        "date": null
+      }
+    },
+    {
+      "id": "query-11",
+      "language": "sw",
+      "text": "Tafuta muziki",
+      "expected": {
+        "kinds": [
+          "AUDIO"
+        ],
+        "categories": [
+          "music"
+        ],
+        "date": null
+      }
+    }
+  ],
+  "media": {
+    "sample_rate": 16000,
+    "seconds": 8,
+    "bpm": 120,
+    "fast_schedule_ms": [
+      0,
+      10000,
+      20000,
+      30000
+    ],
+    "balanced_schedule_ms": [
+      0,
+      5000,
+      7000,
+      10000
+    ]
+  },
+  "evaluation_limits": [
+    "Parser goldens are not model accuracy measurements.",
+    "Synthetic tones do not validate speech recognition or speaker identity.",
+    "No GPU, NPU, codec, battery or thermal result is implied."
+  ]
+}

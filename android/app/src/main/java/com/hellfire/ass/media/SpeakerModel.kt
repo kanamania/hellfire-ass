@@ -1,7 +1,6 @@
 package com.hellfire.ass.media
 
 import ai.onnxruntime.OnnxTensor
-import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import ai.onnxruntime.TensorInfo
 import android.net.Uri
@@ -17,6 +16,7 @@ import com.hellfire.ass.performance.OperatingProfile
 import com.hellfire.ass.performance.PerfLog
 import com.hellfire.ass.performance.WorkPriority
 import com.hellfire.ass.performance.rolesToEvict
+import com.hellfire.ass.performance.timedStage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -64,7 +64,7 @@ class SpeakerModel(private val app: HellFireApp) {
         val key = DeviceProbe.fileKey(file)
         if (reuse && cached != null && cachedKey == key) return block(cached!!, cachedInput)
         if (file == modelFile) closeCached()
-        val created = OrtEnvironment.getEnvironment().createSession(file.path)
+        val created = timedStage("speaker_load") { com.hellfire.ass.ai.onnxEnvironment.createSession(file.path) }
         var keep = false
         return try {
             val name = created.inputNames.singleOrNull() ?: error("Speaker model must have exactly one input")
@@ -86,7 +86,7 @@ class SpeakerModel(private val app: HellFireApp) {
         val features = Fbank.compute(samples)
         require(features.size >= 50) { "Segment too short for a speaker embedding" }
         val buffer = FloatBuffer.allocate(features.size * Fbank.BINS).apply { features.forEach { put(it) }; rewind() }
-        return OnnxTensor.createTensor(OrtEnvironment.getEnvironment(), buffer, longArrayOf(1, features.size.toLong(), Fbank.BINS.toLong())).use { tensor ->
+        return OnnxTensor.createTensor(com.hellfire.ass.ai.onnxEnvironment, buffer, longArrayOf(1, features.size.toLong(), Fbank.BINS.toLong())).use { tensor ->
             session.run(mapOf(input to tensor)).use { result -> VectorMath.normalize(flatten(result.get(0).value)) }
         }
     }

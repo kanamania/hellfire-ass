@@ -13,6 +13,7 @@ import com.hellfire.ass.processing.CaptureWork
 import com.hellfire.ass.sms.SmsCaptureSettings
 import com.hellfire.ass.sms.SmsSyncWorker
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.withLock
 
 class HellFireApp : Application() {
     val ai by lazy {
@@ -25,11 +26,15 @@ class HellFireApp : Application() {
     val database by lazy { EventDatabase.open(this) }
     val secrets by lazy { com.hellfire.ass.security.SecretStore(this) { cipher } }
     val communications by lazy { com.hellfire.ass.communications.CommunicationRepository(this) }
-    val localModel by lazy { com.hellfire.ass.ai.LocalModel(this) }
-    val semantic by lazy { com.hellfire.ass.memory.SemanticIndex(this) }
+    private val localModelInstance = lazy { com.hellfire.ass.ai.LocalModel(this) }
+    val localModel by localModelInstance
+    private val semanticInstance = lazy { com.hellfire.ass.memory.SemanticIndex(this) }
+    val semantic by semanticInstance
     val media by lazy { com.hellfire.ass.media.MediaVault(this) }
-    val speech by lazy { com.hellfire.ass.media.LocalSpeech(this) }
-    val speakers by lazy { com.hellfire.ass.media.SpeakerModel(this) }
+    private val speechInstance = lazy { com.hellfire.ass.media.LocalSpeech(this) }
+    val speech by speechInstance
+    private val speakersInstance = lazy { com.hellfire.ass.media.SpeakerModel(this) }
+    val speakers by speakersInstance
     val skills by lazy { com.hellfire.ass.memory.AiSkills(database) }
     val assistant by lazy { com.hellfire.ass.assistant.AssistantEngine(this) }
     val finances by lazy { com.hellfire.ass.finance.FinanceRepository(database) { id, text -> skills.ignoredFor(this, "IGNORE_FINANCE", id, text) } }
@@ -58,6 +63,26 @@ class HellFireApp : Application() {
         Diagnostics.init(this)
         initializeStorage()
         refreshSmsCapture()
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level == TRIM_MEMORY_RUNNING_LOW || level == TRIM_MEMORY_RUNNING_CRITICAL || level >= TRIM_MEMORY_BACKGROUND) {
+            captureScope.launch { releaseIdleModels() }
+        }
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        captureScope.launch { releaseIdleModels() }
+    }
+
+    /** Wait for active inference, then release only owners that have actually been used. */
+    internal suspend fun releaseIdleModels() = HeavyModelGate.mutex.withLock {
+        if (localModelInstance.isInitialized()) localModelInstance.value.closeCached()
+        if (speechInstance.isInitialized()) speechInstance.value.closeCached()
+        if (semanticInstance.isInitialized()) semanticInstance.value.closeCached()
+        if (speakersInstance.isInitialized()) speakersInstance.value.closeCached()
     }
 
     fun initializeStorage() {

@@ -8,6 +8,7 @@ import com.hellfire.ass.performance.ModelSlots
 import com.hellfire.ass.performance.OperatingProfile
 import com.hellfire.ass.performance.PerfLog
 import com.hellfire.ass.performance.rolesToEvict
+import com.hellfire.ass.performance.timedStage
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
@@ -60,7 +61,7 @@ class LocalSpeech(private val app: HellFireApp) {
                 val reuse = profile.reuseModels
                 if (!reuse || handle == 0L || handleKey != key) {
                     closeCached()
-                    handle = WhisperNative.open(model.path)
+                    handle = timedStage("speech_load") { WhisperNative.open(model.path) }
                     handleKey = key
                     if (reuse) ModelSlots.mark("SPEECH")
                 }
@@ -73,9 +74,10 @@ class LocalSpeech(private val app: HellFireApp) {
                         }
                         try {
                             val started = android.os.SystemClock.elapsedRealtime()
-                            val result = WhisperNative.transcribe(active, samples, language)
+                            val result = timedStage("speech_infer") { WhisperNative.transcribe(active, samples, language) }
                             ensureActive()
                             PerfLog.record("whisper_ms", android.os.SystemClock.elapsedRealtime() - started)
+                            PerfLog.record("whisper_audio_ms", samples.size * 1000L / 16000)
                             JSONObject(result.toString(Charsets.UTF_8))
                         } finally { withContext(NonCancellable) { watcher.cancelAndJoin() } }
                     }

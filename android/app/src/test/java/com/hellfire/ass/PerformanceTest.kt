@@ -136,4 +136,11 @@ class PerformanceTest {
         assertEquals(5, StartupProfile.critical.size)
         assertTrue(StartupProfile.critical.all { it.startsWith("com.hellfire.ass.") })
     }
+
+    @Test fun `timing percentiles use nearest ranks with explicit sample counts`() {
+        val samples = (1L..20).reversed().map { PerfSample("speech_infer_ms", it, 0) } + PerfSample("speech_infer_ok", 1, 0)
+        assertEquals(PerfSummary("speech_infer_ms", 20, 10, 19), timingSummaries(samples).single())
+        assertEquals(PerfSummary("load_ms", 1, 0, 0), timingSummaries(listOf(PerfSample("load_ms", 0, 0))).single())
+        assertTrue(timingSummaries(emptyList()).isEmpty())
+    }
 }

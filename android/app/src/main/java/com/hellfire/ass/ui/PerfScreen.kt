@@ -1,6 +1,5 @@
 package com.hellfire.ass.ui
 
-import android.view.Choreographer
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -12,6 +11,7 @@ import com.hellfire.ass.ui.components.SectionCard
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.first
 
 /** Developer counters. Labels and numbers only — never prompts, transcripts, amounts or message text. */
 @Composable
@@ -20,29 +20,18 @@ fun PerfScreen() {
     val scope = rememberCoroutineScope()
     var tick by remember { mutableIntStateOf(0) }
     var message by remember { mutableStateOf("No benchmark has been run on this phone.") }
-    var frames by remember { mutableStateOf("Sampling frames while this screen is open") }
-    DisposableEffect(Unit) {
-        var last = 0L
-        var slow = 0
-        var seen = 0
-        val callback = object : Choreographer.FrameCallback {
-            override fun doFrame(time: Long) {
-                if (last != 0L) {
-                    val deltaMs = (time - last) / 1_000_000
-                    seen++
-                    if (deltaMs > 32) slow++
-                    if (seen % 30 == 0) frames = "$slow of $seen frames over 32 ms on this screen"
-                    PerfLog.record("frame_ms", deltaMs)
-                }
-                last = time
-                Choreographer.getInstance().postFrameCallback(this)
-            }
+    var readings by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    LaunchedEffect(tick) {
+        readings = withContext(Dispatchers.IO) {
+            try { listOf(
+                "Process PSS" to "${android.os.Debug.getPss()} KiB (snapshot, not peak)",
+                "Analysis jobs" to app.database.jobs().counts().first().joinToString { "${it.state}: ${it.count}" }.ifEmpty { "none" },
+            ) } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (_: Exception) { listOf("Readings" to "Unavailable") }
         }
-        Choreographer.getInstance().postFrameCallback(callback)
-        onDispose { Choreographer.getInstance().removeFrameCallback(callback) }
     }
     PushedPage("Performance", breadcrumb = "This device") {
-        Note("These figures are from this process only. They are not a battery, thermal or accelerator result for the OPPO until that phone is measured. Nothing here is personal content.")
+        Note("Local counters refresh on request. Stage times include failed attempts; completion counters end in _ok. These are not controlled device benchmarks.")
         SectionCard("Hardware") {
             KvList(DeviceProbe.hardwareSummary(app) + listOf(
                 "Thermal / battery / memory" to runCatching {
@@ -51,7 +40,7 @@ fun PerfScreen() {
                 }.getOrDefault("Unavailable"),
                 "Current" to (DeviceProbe.currentMicroamps(app)?.let { "$it µA" } ?: "Not exposed by this device"),
                 "Profile" to OperatingProfile.of(runCatching { DeviceProbe.signals(app) }.getOrDefault(DeviceSignals())).mode.name,
-            ))
+            ) + readings)
         }
         SectionCard("This process") {
             val samples = PerfLog.samples().takeLast(12).map { "${it.name} ${it.value}" }
@@ -63,8 +52,8 @@ fun PerfScreen() {
             Text("Cached heavy runtimes: $resident")
             Text("Waiting: ${ExecutionScheduler.waitingSnapshot().joinToString().ifEmpty { "none" }}")
             PerfLog.details().takeLast(6).forEach { Text("${it.first} ${it.second}") }
-            Text(frames)
-            if (tick > 0) Note("Refreshed.")
+            timingSummaries(PerfLog.samples()).forEach { Text("${it.name}: n=${it.count} p50=${it.p50} p95=${it.p95} ms") }
+            SecondaryButton("Refresh counters", { tick++ })
         }
         SectionCard("Language backend benchmark") {
             Note("Runs CPU, then GPU, then NPU on the imported language model and keeps the fastest backend that actually loaded. A failed accelerator falls back to CPU. This can take several minutes and is not run automatically. Output text is discarded.")
@@ -88,7 +77,7 @@ fun PerfScreen() {
             Text(message)
         }
         SectionCard("Not measured here") {
-            Note("Startup and baseline profiles are not installed in the release APK. Macrobenchmark, overnight battery, ColorOS job quota and codec behaviour need the OPPO checklist in DEVICE_FEASIBILITY.md.")
+            Note("Use the benchmark module for startup/frame timing and Baseline Profile collection. No generated app profile or OnePlus 16 measurements are installed yet. Battery, thermals and codecs need the DEVICE_FEASIBILITY.md protocol.")
             Note("Web sync stays uncompressed. The server does not advertise gzip, so compressing requests would break sync.")
         }
     }

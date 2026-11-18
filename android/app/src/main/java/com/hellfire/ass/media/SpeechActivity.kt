@@ -7,8 +7,10 @@ package com.hellfire.ass.media
  * A span needs 3 consecutive speech frames (rejects clicks), ends after 2 s of quiet, and keeps a
  * 30 s pre-roll for transcription context; overlapping spans are merged.
  */
-class SpeechActivity(private val sampleRate: Int = 16000) {
-    private val frameSize = sampleRate / 50
+class SpeechActivity(private val sampleRate: Int = 16000, private val frameProbability: ((FloatArray) -> Float?)? = null) {
+    init { require(sampleRate > 0 && (frameProbability == null || sampleRate == 16000)) }
+    private val frameSize = if (frameProbability == null) sampleRate / 50 else 512
+    private val learnedFrame = if (frameProbability == null) null else FloatArray(frameSize)
     private val blockFrames = 25
     private val maxBlocks = 20
     private val blockMinima = ArrayDeque<Double>()
@@ -33,6 +35,7 @@ class SpeechActivity(private val sampleRate: Int = 16000) {
 
     private fun sample(value: Short) {
         val x = value / 32768.0
+        learnedFrame?.set(frameFill, x.toFloat())
         frameSum += x * x
         if (++frameFill == frameSize) { frame(kotlin.math.sqrt(frameSum / frameSize)); frameSum = 0.0; frameFill = 0 }
     }
@@ -46,7 +49,8 @@ class SpeechActivity(private val sampleRate: Int = 16000) {
             blockMin = Double.MAX_VALUE; blockCount = 0
         }
         val floor = minOf(blockMinima.minOrNull() ?: Double.MAX_VALUE, blockMin).coerceAtLeast(0.001)
-        val speech = rms >= maxOf(MIN_LEVEL, floor * RATIO)
+        val probability = learnedFrame?.let { frameProbability?.invoke(it) }?.takeIf { it.isFinite() && it in 0f..1f }
+        val speech = probability?.let { it >= 0.5f } ?: (rms >= maxOf(MIN_LEVEL, floor * RATIO))
         val index = frames++
         if (speech) {
             run++

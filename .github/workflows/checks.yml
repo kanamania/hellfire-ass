@@ -32,7 +32,16 @@ jobs:
         run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager 'platforms;android-36' 'build-tools;35.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
       - name: Android tests, lint and APKs
         working-directory: android
-        run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'
+        run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease :app:assembleBenchmark :benchmark:assembleBenchmark :app:assembleProfile :benchmark:assembleProfile --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'
+      - name: Real TLS mail fixture and full JVM regression
+        run: bash tools/test_mail_fixture.sh
+      - name: Host JNI boundary and performance report tests
+        run: |
+          bash tools/test_native_jni.sh
+          bash tools/test_native_jni.sh --sanitize
+          python3 -m unittest discover -s tools -p 'test_*.py'
+          python3 tools/generate_predevice_fixtures.py --check
+          python3 tools/check_native_apk.py android/app/build/outputs/apk/release/app-release-unsigned.apk --abi arm64-v8a --output android/build/reports/predevice/release-native.json
       - name: Relay tests
         working-directory: server
         run: |
@@ -54,8 +63,69 @@ jobs:
           npm ci
           npm test
       - name: Web frontend
+        env:
+          API_URL: http://127.0.0.1:43911
         working-directory: web/frontend
         run: |
           npm ci
           npm run typecheck
           npm run build
+          npm audit --audit-level=moderate
+      - name: Real browser with synthetic services
+        env:
+          TEST_DATABASE_URL: postgresql://hellfire_test:synthetic-ci-only@127.0.0.1:5432/hellfire_test
+          TEST_CHROMIUM: /usr/bin/google-chrome
+        run: node tools/test_web_browser.mjs
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: host-reports
+          path: |
+            android/app/build/reports/
+            android/build/reports/
+            web/frontend/build/
+
+  emulator:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - name: Android test SDK
+        run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager 'platforms;android-36' 'build-tools;35.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1' 'emulator' 'system-images;android-35;google_apis;x86_64'
+      - name: Compile real x86 JNI and instrumentation
+        working-directory: android
+        run: ./gradlew :app:assembleEmulator :app:assembleEmulatorAndroidTest --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'
+      - name: Pin and verify public model artifacts
+        run: |
+          python3 tools/fetch_test_models.py
+          python3 -m venv tools/.venv
+          tools/.venv/bin/python -m pip install -r tools/requirements-model-tests.txt
+          tools/.venv/bin/python tools/evaluate_onnx.py --models "$HOME/.cache/hellfire-ass/predevice/models" --sample android/app/src/androidTest/assets/jfk.wav
+          git diff --exit-code -- android/app/src/androidTest/assets/onnx/
+      - name: Real host Whisper through production JNI
+        run: tools/test_real_whisper.sh "$HOME/.cache/hellfire-ass/predevice/models/ggml-tiny.en-q5_1.bin"
+      - name: Start isolated fixture emulator
+        run: |
+          sudo setfacl -m u:"$USER":rw /dev/kvm
+          tools/start_fixture_emulator.sh
+      - name: Android platform, models, navigation and screenshot checks
+        run: |
+          python3 tools/check_native_apk.py android/app/build/outputs/apk/emulator/app-emulator.apk --abi x86_64 --output android/build/reports/predevice/emulator-native.json
+          tools/test_emulator.sh emulator-5580 "$HOME/.cache/hellfire-ass/predevice/models"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: emulator-reports
+          path: android/build/reports/predevice/
+      - name: Stop only the fixture emulator
+        if: always()
+        run: $ANDROID_HOME/platform-tools/adb -s emulator-5580 emu kill || true
