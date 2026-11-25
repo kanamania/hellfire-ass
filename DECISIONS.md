@@ -348,3 +348,58 @@ No new runtime dependencies. Existing action approvals and capture-all policy st
 - Keep the existing intelligence job contract (`intelligence`, with legacy
   `ANALYZE` normalization) and the single persistent sync pause API. No second
   worker queue, model manager or pause mechanism was introduced.
+
+## 2026-11-25 — TheftGuard owner authorization and stock-platform limits
+
+- The owner explicitly authorized the guard module (`com.hellfire.ass.guard`) to
+  use one biometric arming action as device-level consent for subsequent triggered
+  camera/location capture, unattended evidence uploads and owner email alerts,
+  sticky service recovery and armed-state boot recovery. Capture may occur without
+  another interactive prompt while armed. This authorization is restricted to the
+  owner's own device and the guard module. Other microphone/recording paths retain
+  their visible, per-session authorization, no automatic reboot recording, and
+  normal external-action approval gates. Guard captures no microphone audio.
+- The request's four exceptions (covert guard operation, unattended sends, reboot
+  re-arming and pre-armed consent) do not grant Android privileges. No root,
+  indicator hiding, protected-field access, power-key interception or shutdown
+  veto is implemented. The guard notification remains low-importance and visible;
+  camera/location platform indicators remain present. Hardware power-off, dead
+  battery, force-stop and OEM termination cannot be prevented.
+- Android target/compile SDK is already 36. Stock boot recovery can request a
+  **location-only** foreground service with background location granted, after
+  credential-protected storage becomes available. Camera service recovery needs a
+  foreground owner tap/biometric; missing permissions produce a resume notification
+  or a blocked status. Neither START_STICKY nor a battery exemption guarantees
+  minute delivery. Missing heartbeats are an alarm signal, not proof of theft.
+- Device Owner scaffold guards every policy call with `isDeviceOwnerApp`. It
+  snapshots and restores this admin's previous uninstall, safe-boot and lock-task
+  settings. Removing `LOCK_TASK_FEATURE_GLOBAL_ACTIONS` affects the power menu only
+  in lock-task mode; this slice does not enter kiosk mode or block hardware power.
+  Tier 3/root is out of scope. Legacy Device Admin alone grants no Tier 2 policies.
+- Keep the existing SQLCipher database and PayloadCipher. Room v20 adds config,
+  state and an encrypted evidence log, with multi-process invalidation. The guard
+  process skips the main application's sync, inference and capture startup. Backups
+  re-encrypt guard evidence under the replacement device key, accept earlier
+  schemas, continue refusing unknown columns, and restore guard state disarmed.
+  SecretStore credentials/consent do not transfer through those tables.
+- The relay cannot decrypt Android's Keystore-only local key, and its existing
+  `seal()` encrypts to the paired device public key. A separate 32-byte guard
+  transport key is therefore configured explicitly in SecretStore and server env.
+  Both routes receive PayloadCipher v1 AES-GCM with AAD `hellfire-guard-v1` over
+  HTTPS. The relay transiently decrypts/validates and reuses `seal()` for retained
+  evidence. A server-store-key-encrypted outbox supplies readable location and JPEG
+  recovery emails via implicit TLS SMTP, so the owner does not need the stolen
+  phone to open them. The outbox payload is cleared after SMTP accepts. The owner's
+  mailbox is an explicitly authorized destination and retains its own readable
+  copy. SMTP credentials remain server-only.
+- Relay receipt and SMTP delivery are separate: evidence acknowledgment means
+  durable acceptance plus queued mail, not inbox delivery. The outbox retries SMTP
+  failures; a crash after SMTP accepts but before committing sent status can repeat
+  an email. The server persists session/sequence/dead-man state across restarts;
+  old or disarmed sessions cannot revive the alarm. Local disarm immediately stops
+  capture and queues remote cancellation; offline cancellation can still produce
+  a missing-heartbeat alert until acknowledged.
+- New dependencies are CameraX camera2/lifecycle 1.5.3, Play services location
+  21.4.0 and lifecycle-service at the existing 2.9.4 pin, checked against official
+  Android/Google release documentation. No unrelated dependency or global package
+  upgrades are included. Physical OnePlus tests and live SMTP remain NOT TESTED.

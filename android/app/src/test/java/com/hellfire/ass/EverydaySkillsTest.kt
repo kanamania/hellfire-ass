@@ -157,7 +157,7 @@ class EverydaySkillsTest {
             old.execSQL("INSERT INTO finance_account VALUES ('cash','Cash','CASH','TZS',1)")
         }
         val migrated = Room.databaseBuilder(context, EventDatabase::class.java, name).addMigrations(*EventDatabase.ALL_MIGRATIONS).build()
-        try { assertEquals(19, migrated.openHelper.writableDatabase.version); assertEquals("Cash", migrated.finances().account("cash")!!.label); assertTrue(migrated.skills().watch().first().isEmpty()) }
+        try { assertEquals(com.hellfire.ass.security.BackupTables.SCHEMA, migrated.openHelper.writableDatabase.version); assertEquals("Cash", migrated.finances().account("cash")!!.label); assertTrue(migrated.skills().watch().first().isEmpty()) }
         finally { migrated.close(); context.deleteDatabase(name) }
     }
     @Test fun `backup round trip retains skills provenance usage and correction versions`() = runBlocking {

@@ -1120,3 +1120,102 @@ Local release signing material for this machine is kept under
 600). Ignored `android/signing.properties` links to that private configuration.
 Keep a separate private backup of the signing key and properties for future APK
 updates. They are deliberately excluded from Git, CI and application backups.
+
+### TheftGuard (owner-device vertical slice, 2026-11-25)
+
+Open **Settings → TheftGuard**. Configure the existing FastAPI relay's HTTPS
+**origin**, its existing device bearer token, and a separate random 32-byte,
+base64-encoded guard transport key. Store that same key as
+`GUARD_PAYLOAD_KEY_BASE64` in the relay's private environment. Do not reuse
+`STORE_KEY_BASE64` or put keys in commands, source files or screenshots. Existing
+relay configuration (device public key, store key, token and selected WhatsApp
+transport requirements) is still required.
+
+Server-only SMTP configuration:
+
+| Variable | Purpose |
+|---|---|
+| `GUARD_SMTP_HOST` | SMTP hostname with implicit TLS |
+| `GUARD_SMTP_PORT` | Implicit TLS port; default 465 |
+| `GUARD_SMTP_USER`, `GUARD_SMTP_PASSWORD` | SMTP login; never stored in APK |
+| `GUARD_MAIL_FROM`, `GUARD_MAIL_TO` | Sender and owner destination |
+| `GUARD_TIMEOUT_SECONDS` | Missing-heartbeat threshold; default 180, env minimum 120 |
+
+The existing Compose `env_file: .env` passes these values to the relay. Run one
+Uvicorn worker per relay database; its lifespan task checks persisted deadlines and
+mail approximately every ten seconds. No scheduler runs unless the app lifespan
+is started. The configured relay refuses remote arming when SMTP settings are
+missing; configured does not mean live delivery has been verified.
+
+Allow **precise location**, camera and notifications, and optionally phone/SIM
+access. Background location is a separate Android Settings grant after foreground
+location; the app never represents it as granted automatically. Enable Device
+Admin for repeated wrong-unlock callbacks (three failures; callback support must
+be verified on firmware). Request battery optimization exemption if desired.
+Arming, camera resume and disarming each require a fresh strong biometric;
+ordinary app-lock screen-lock fallback does not bypass guard biometric checks.
+
+Once armed, the guard service runs in `:guard` with a low-importance persistent
+notification. An independent best-effort 60-second heartbeat keeps the server
+informed while sequential front/back CameraX and fused-location cycles collect
+triggered evidence. Missing cameras, unavailable location, Google Play services,
+revoked access and upload failures are recorded as unavailable/unconfirmed, not
+synthetic successes. Triggers are repeated wrong unlock, observed subscription
+change, loss of validated connectivity, manual owner test and server-reported
+missed heartbeat. Only the first trigger is retained until disarm/re-arm. Camera
+bytes stay in memory until encrypted in the Room log. Local evidence has a 50 MiB
+budget; full storage pauses new capture. Offline uploads are retried while the
+same session remains armed. Disarm retains evidence and stops further uploads.
+
+Both new bearer-authenticated, existing-rate-limited routes accept
+`{"payload":"<base64 PayloadCipher envelope>"}` with AES-256-GCM v1
+(`0x01 || 12-byte nonce || ciphertext-and-tag`), AAD `hellfire-guard-v1`, and
+4 MiB maximum request bodies:
+
+- `POST /device/theft/heartbeat`: `session_id` UUID, increasing `sequence`, Unix
+  `timestamp` **seconds**, `armed`, `active`, `battery` (-1 unknown or 0–100),
+  `network` (`online`/`offline`). The relay uses its receipt clock for timeout;
+  heartbeat timestamps must be within five minutes. Acknowledgments report
+  `active`, allowing a server dead-man trigger to reach a reconnected phone.
+- `POST /device/theft/evidence`: `id` UUID, `session_id`, Unix `timestamp` seconds,
+  `trigger`, nullable `location` (latitude, longitude, accuracy metres, timestamp),
+  `images` (up to two distinct front/back base64 JPEGs, each ≤1 MiB), and bounded
+  capture-status `errors`. An armed heartbeat must establish the session first.
+  Evidence IDs are idempotent; reused IDs with changed content are refused.
+
+Evidence is sealed to the existing paired device public key on the relay. A
+separate server-store-key-encrypted outbox supplies **readable coordinates and JPEG
+attachments** to the owner through implicit TLS SMTP; it clears the payload after
+SMTP accepts. This makes recovery email usable without the stolen phone. The
+configured owner mailbox intentionally retains its own readable evidence copy.
+Relay retention for evidence and unsent mail is seven days, with a 256 MiB retained
+evidence budget (storage-full responses preserve the phone's pending upload). Mail acknowledgment is queueing,
+not verified inbox delivery; SMTP failure retries and rare crash-related duplicate
+emails are possible. Offline local disarm queues remote cancellation with
+WorkManager; re-arming waits for acknowledgment. Lost network, power-off, Doze,
+force-stop or OEM termination may all cause the same missing-heartbeat alert.
+
+Boot recovery is dedicated to guard and resumes only saved armed state after the
+first unlock makes credential-protected storage available. Background location
+allows a **location-only** foreground service; stock Android camera recovery needs
+an owner tap and biometric. Without background location, tap the guard notification
+to resume the service. Android can block either path; no indicator suppression,
+power-key interception, shutdown veto or root path exists.
+
+Tier 2 provisioning is a scaffold, **NOT TESTED**: on an empty, owner-approved
+provisioning/test device with no conflicting accounts/owners, Android's Device
+Owner provisioning tooling can assign `com.hellfire.ass/.guard.GuardAdminReceiver`
+(for example `adb shell dpm set-device-owner com.hellfire.ass/.guard.GuardAdminReceiver`
+when Android permits it). Do not reset the owner's phone for this slice. Arming
+checks actual Device Owner status before applying uninstall/safe-boot restrictions
+and lock-task policy. Disarming restores the previous settings. Power-menu
+suppression only applies if a future explicitly authorized kiosk flow enters
+lock-task mode; this slice does not. Hardware shutdown is always outside userspace
+control. Tier 3 root support is out of scope.
+
+Official constraints checked: [foreground service types](https://developer.android.com/develop/background-work/services/fgs/service-types),
+[background-start restrictions](https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start),
+[DevicePolicyManager](https://developer.android.com/reference/android/app/admin/DevicePolicyManager),
+[CameraX releases](https://developer.android.com/jetpack/androidx/releases/camera),
+[Google Play services releases](https://developers.google.com/android/guides/releases).
+See `docs/DEVICE_FEASIBILITY.md` for actual test results and the final-device checklist.

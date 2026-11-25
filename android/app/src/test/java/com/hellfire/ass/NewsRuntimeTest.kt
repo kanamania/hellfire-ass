@@ -130,7 +130,7 @@ class NewsRuntimeTest {
         }
         val db = Room.databaseBuilder(context, EventDatabase::class.java, name).addMigrations(*EventDatabase.ALL_MIGRATIONS).build()
         try {
-            assertEquals(19, db.openHelper.writableDatabase.version)
+            assertEquals(com.hellfire.ass.security.BackupTables.SCHEMA, db.openHelper.writableDatabase.version)
             db.openHelper.writableDatabase.query("SELECT name FROM media_collection WHERE id = ?", arrayOf("saved")).use { row ->
                 assertTrue(row.moveToFirst()); assertEquals("Saved", row.getString(0))
             }

@@ -11,6 +11,8 @@ import secrets
 import sqlite3
 import threading
 import time
+import asyncio
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,6 +25,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.whatsapp_web import capture_status, drain_spool
+from app.theft import TheftGuard, Heartbeat, Evidence, open_payload
 
 
 @dataclass(frozen=True)
@@ -39,6 +42,14 @@ class Settings:
     database: str = "state/relay.db"
     whatsapp_transport: str = "meta"
     web_state_directory: str = ""
+    guard_payload_key: bytes = b""
+    guard_timeout_seconds: int = 180
+    guard_smtp_host: str = ""
+    guard_smtp_port: int = 465
+    guard_smtp_user: str = ""
+    guard_smtp_password: str = ""
+    guard_mail_from: str = ""
+    guard_mail_to: str = ""
 
     @classmethod
     def from_env(cls):
@@ -51,6 +62,14 @@ class Settings:
             phone_id=os.getenv("META_PHONE_NUMBER_ID", ""), waba_id=os.getenv("META_WABA_ID", ""), database=os.getenv("RELAY_DATABASE", "state/relay.db"),
             whatsapp_transport=os.getenv("WHATSAPP_TRANSPORT", "meta"),
             web_state_directory=os.getenv("WHATSAPP_WEB_STATE_DIR", ""),
+            guard_payload_key=base64.b64decode(os.getenv("GUARD_PAYLOAD_KEY_BASE64", ""), validate=True),
+            guard_timeout_seconds=max(120, int(os.getenv("GUARD_TIMEOUT_SECONDS", "180"))),
+            guard_smtp_host=os.getenv("GUARD_SMTP_HOST", ""),
+            guard_smtp_port=int(os.getenv("GUARD_SMTP_PORT", "465")),
+            guard_smtp_user=os.getenv("GUARD_SMTP_USER", ""),
+            guard_smtp_password=os.getenv("GUARD_SMTP_PASSWORD", ""),
+            guard_mail_from=os.getenv("GUARD_MAIL_FROM", ""),
+            guard_mail_to=os.getenv("GUARD_MAIL_TO", ""),
         )
 
     def ready(self):
@@ -167,9 +186,34 @@ class Approval(BaseModel):
 
 
 def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
-    app = FastAPI(title="HellFire Ass relay", docs_url=None, redoc_url=None)
     store = Store(settings) if settings.ready() else None
+    guard = TheftGuard(store, settings) if store else None
+
+    @asynccontextmanager
+    async def lifespan(app):
+        stop = asyncio.Event()
+        async def monitor():
+            while not stop.is_set():
+                try:
+                    await asyncio.to_thread(guard.tick)
+                except Exception:
+                    guard.smtp_error = True
+                try:
+                    await asyncio.wait_for(stop.wait(), timeout=10)
+                except asyncio.TimeoutError:
+                    pass
+        task = asyncio.create_task(monitor()) if guard else None
+        try:
+            yield
+        finally:
+            stop.set()
+            if task:
+                # Let any in-flight SMTP/SQLite operation finish before callers close the store.
+                await task
+
+    app = FastAPI(title="HellFire Ass relay", docs_url=None, redoc_url=None, lifespan=lifespan)
     app.state.store = store
+    app.state.guard = guard
 
     @app.middleware("http")
     async def limit(request: Request, call_next):
@@ -192,6 +236,18 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
             raise HTTPException(503, "Gateway not configured")
         if not hmac.compare_digest(authorization or "", "Bearer " + settings.device_token):
             raise HTTPException(401, "Device authorization required")
+
+    @app.post("/device/theft/heartbeat")
+    async def theft_heartbeat(request: Request, authorization: str | None = Header(default=None)):
+        authorized(authorization)
+        value = await open_payload(request, settings, Heartbeat)
+        return await asyncio.to_thread(guard.heartbeat, value)
+
+    @app.post("/device/theft/evidence")
+    async def theft_evidence(request: Request, authorization: str | None = Header(default=None)):
+        authorized(authorization)
+        value = await open_payload(request, settings, Evidence)
+        return await asyncio.to_thread(guard.evidence, value)
 
     @app.get("/health")
     async def health():

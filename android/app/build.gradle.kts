@@ -86,6 +86,10 @@ kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarg
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 
 dependencies {
+    implementation(libs.camera.core)
+    implementation(libs.camera.lifecycle)
+    implementation(libs.camera.service)
+    implementation(libs.fused.location)
     implementation(libs.google.auth)
     implementation(libs.litertlm)
     implementation(libs.ocr)

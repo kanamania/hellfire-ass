@@ -1,6 +1,6 @@
 # HellFire Ass — implementation and feasibility
 
-Latest update: 2026-11-18 (pre-device development and performance audit, below). Earlier
+Latest update: 2026-11-25 (TheftGuard slice, below). Earlier
 checkpoints keep the test counts and APK checksums that were true when they were
 written; the newest checkpoint has the current ones.
 
@@ -1482,3 +1482,97 @@ Keep messages, credentials, recordings, serials and exported backups out of Git.
 - Notifications before a durable commit or while disconnected can be lost; committed
   jobs persist. OTP filtering is conservative, not a universal secret detector.
 - Host tests establish software contracts, not OEM permissions or device success.
+
+## TheftGuard — owner-authorized slice, 2026-11-25
+
+This request supersedes the earlier feature-expansion deferral **for TheftGuard
+only**. Guard-specific pre-armed consent and unattended uploads/alerts are recorded
+in `DECISIONS.md`. Normal microphone and outbound approval contracts remain in
+place. No real credentials, recordings or phone data were used. `adb devices -l`
+returned an empty device list; no physical/emulator capture result is implied.
+
+| Piece | Result | Evidence / limitation | Next action |
+|---|---|---|---|
+| Debug build, Kotlin logic and Room v1→20 migration | PASS (host) | Debug APK assembled; 523 unit tests passed, 5 skipped, 0 failed; JDK 21.0.13 and SDK 36; Room migrations checked | Physical runtime remains separate |
+| Arm/active/disarm logic; stale acknowledgments; fresh session identities | PASS (host) | `GuardTest`: 7 passed, 0 failed; handlers always call fresh strong-biometric prompt | Verify physical prompt last |
+| Permissions and separate guard process | PARTIAL | Manifest declares camera/location FGS and grants individually; `:guard` avoids main app job startup; Room multi-instance invalidation enabled | Verify OEM lifetime and permission revocation |
+| Encrypted evidence, normalized provenance, offline queue, 50 MiB local budget | PARTIAL | Sensor bytes stay in memory then PayloadCipher/SQLCipher; guard provenance is not searchable or enqueued for general inference; existing SecretStore holds token/transport key | Verify actual camera/fix and offline replay on phone |
+| Backup schema 20 and older schemas | PASS (host) | Guard evidence re-key/consent revocation and legacy migrations pass; schema-19 allowlist preserved; unknown-column rejection retained | Native replacement-device round trip remains NOT TESTED |
+| Relay evidence + heartbeat routes and dead-man | PASS (host, synthetic) | 40 passed, 0 failed (18 new guard cases); encryption, auth, rate limits, idempotency, sequence/clock/session rejection, deadlines/disarm and route-to-SMTP message covered | Owner-configured service/device integration last |
+| Durable SMTP queue / owner email adapter | PARTIAL | Synthetic TLS SMTP adapter and failure/retry tests; no actual SMTP login, external send or inbox delivery | Owner-configured SMTP, then one controlled delivery test |
+| CameraX front then back; no concurrent-camera assumption | NOT TESTED (OnePlus 16) | Real adapter compiled/tested as software only; missing facing/provider/timeouts produce unavailable status | Test both cameras, contention, privacy toggle, lock screen and cancellation |
+| Fused precise/background location | NOT TESTED (OnePlus 16) | Real Play services adapter, bounded wait and fix-age validation; no invented coordinates | Grant/revoke precise/all-time access; test Play services absent and no fix |
+| Wrong unlock, SIM and connectivity triggers | NOT TESTED (OnePlus 16) | Watch-login Device Admin callback, three-failure threshold, subscription-ID fingerprint, validated-network loss; pure trigger cases covered on host | Verify actual PIN/password callbacks and dual-SIM/radio transitions |
+| Biometric arm/disarm | NOT TESTED (OnePlus 16) | Fresh strong biometric even while ordinary app lock disabled/unlocked; cancellation/backgrounding do not authorize transitions | Cancel, fail, rotate/background and disarm while inside app |
+| 60-second heartbeat / partial wake locks / Doze | NOT TESTED (OnePlus 16) | Independent bounded heartbeat path so camera/upload latency does not block it; best effort, no delivery guarantee | Screen-off/Doze/low-battery/termination measurements |
+| Boot re-arm | PARTIAL software; NOT TESTED (OnePlus 16) | Dedicated BOOT_COMPLETED receiver preserves armed state after first unlock; background-location grant allows location-only FGS; camera waits for tap/biometric | Test granted/denied/revoked access and blocked notifications |
+| Device Owner uninstall and safe-boot policy | NOT TESTED (OnePlus 16) | Runtime owner checks and previous-policy snapshots/restoration; stock installs never claim owner privileges | Provision only an approved empty test device; verify and restore policy |
+| Device Owner power menu | PARTIAL scaffold; NOT TESTED (OnePlus 16) | Global actions policy is scoped to lock-task mode; no kiosk entry in this slice | Separate explicit kiosk decision before testing power-menu suppression |
+| OEM power-off-PIN interplay | NOT TESTED (OnePlus 16) | No OEM firmware/device evidence | Record OEM Settings behavior without claiming interception |
+| Hardware power-off / dead battery prevention | BLOCKED / OUT OF SCOPE | Not controllable from userspace; no KEYCODE_POWER interception or ACTION_SHUTDOWN veto | Verify server missing-heartbeat alert instead |
+| Hidden camera/location indicators, hidden foreground notification, root | BLOCKED / OUT OF SCOPE | Stock Android indicators stay; guard low-importance notification remains; Tier 3 not implemented | None for this slice |
+
+Host verification (from the task worktree, same committed source):
+
+- `cd server && .venv/bin/python -m pytest -q`: **40 passed, 0 failed**, including
+  18 new guard cases. One existing FastAPI/Starlette httpx deprecation warning;
+  no dependency upgrade was made to silence it.
+- `cd android && ./gradlew --offline --max-workers=2 :app:testDebugUnitTest :app:assembleDebug :app:lintDebug`:
+  unit reports **528 total, 523 passed, 5 skipped, 0 failures/errors**, including
+  **7/7 guard tests**; debug assembly and lint **PASS** (0 errors; existing warnings retained). The five
+  skipped existing tests are four live AI providers and the separately configured
+  TLS mail fixture, not guard cases. No live credentials were supplied.
+- Initial lint found an API-33-only stream call and a Compose activity-context
+  cast; both were corrected. The final offline run keeps source lint enabled
+  while avoiding external Maven version lookups; final Gradle result: **BUILD SUCCESSFUL**. Existing unrelated compiler/
+  dependency/UI warnings were not fixed as part of this slice.
+- `git diff --check`: passed. APK ZIP inspection: **ARM64 only**. SDK 36
+  `apksigner verify --verbose`: **PASS**, v2 signature, one debug signer.
+- Versioned artifact: `build/theftguard/HellFire-Ass-0.9.0-code9-debug.apk`
+  (173,423,805 bytes), metadata **versionName 0.9.0 / versionCode 9 / debug**.
+  SHA-256: `9e4b570a4e8656c5b820e5fdeed6f6d0031bb547aebfa02072591287afaba32f`.
+
+No relay was deployed and no external email was sent. Sensor, biometric, boot,
+Device Owner, OEM power-PIN, and live SMTP/inbox outcomes remain NOT TESTED.
+
+OnePlus 16 hand-test checklist (kept for last):
+
+1. Record actual model, Android/OxygenOS build and API/ABI. Install the versioned
+   ARM64 debug APK without replacing owner data unexpectedly. Confirm the guard is
+   initially disarmed and no camera/location permission is represented as granted.
+2. Configure the owner relay and server-only TLS SMTP using private configuration.
+   Grant notification, precise location and camera access deliberately. Cancel the
+   biometric prompt and confirm no arming; complete a fresh biometric and verify
+   the persistent guard notification plus system access indicators.
+3. Wait for an acknowledged heartbeat, run the manual trigger, verify a real fix
+   plus sequential front/back photos (or explicit unavailable reasons), encrypted
+   local evidence, relay acknowledgment, and readable owner email with actual JPEG
+   attachments. Inspect neither real evidence nor credentials into Git or logs.
+4. Deny/revoke camera, precise location, notifications and phone permissions in
+   separate runs. Test an unavailable camera/another app holding it and no location
+   fix. Confirm honest errors, no invented photos/fixes and continuing heartbeats
+   when OS allows them.
+5. While armed, enable Device Admin and make three wrong PIN/password attempts;
+   exercise SIM removal/replacement and validated-network loss. Confirm the first
+   observed trigger activates capture. Check dual-SIM/radio-startup false positives.
+6. Go offline after a successful heartbeat. Verify one missing-heartbeat email per
+   outage after the configured timeout (default three minutes, monitor jitter).
+   Reconnect and verify server-active escalation plus queued evidence upload.
+   Test server restart during the outage and SMTP outage/retry without losing state.
+7. Disarm from inside the already unlocked app: cancellation/failure must leave it
+   armed; success must stop local service/capture immediately. While offline,
+   confirm remote cancellation stays visibly pending and another arm is blocked
+   until acknowledgment; a timeout email during that interval is expected.
+8. Reboot both with and without background location. Before first unlock, promise
+   no credential-protected recovery. After unlock, verify location-only service or
+   tap-to-resume notification, then biometric camera resume. Ordinary microphone
+   recording must not restart. Force-stop/Doze/OEM termination cannot be defeated;
+   verify the server alarm rather than assume survival.
+9. Only on an approved provisioned test device, verify `isDeviceOwnerApp`, uninstall
+   blocking/safe-boot policies while armed and prior-policy restoration on disarm.
+   This slice does not enter lock-task mode; do not claim ordinary power-menu
+   suppression. Record OEM power-off-PIN behavior separately. Never try to veto
+   hardware shutdown; power off and verify the relay's missing-heartbeat email.
+10. Export/restore an encrypted backup to an empty test installation. Verify guard
+    evidence can be decrypted with the replacement key, the state stays disarmed,
+    and the relay transport secret must be reconfigured deliberately.

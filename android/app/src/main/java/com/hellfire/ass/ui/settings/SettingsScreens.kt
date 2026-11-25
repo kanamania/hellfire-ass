@@ -149,6 +149,7 @@ fun SettingsHub() {
         }
         ListCard { ListRow(tr("Language"), subtitle = if (UiLanguage.code == "sw") "Kiswahili" else "English", chevron = true, onClick = { nav.push(Screen.Language) }) }
         ListCard { ListRow(tr("News"), subtitle = tr("Briefings, sources and interests"), chevron = true, onClick = { nav.push(Screen.News) }) }
+        ListCard { ListRow("TheftGuard", subtitle = "Biometric arming, encrypted evidence and owner alerts", chevron = true, onClick = { nav.push(Screen.Guard) }) }
         Group("Access") {
             ListRow(com.hellfire.ass.ui.tr("Permissions and capture"), subtitle = "${steps.count { it.on }} of ${steps.size} turned on", icon = HfIcons.Lock, chevron = true, onClick = { nav.push(Screen.Permissions) })
             ListDivider()
