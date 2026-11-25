@@ -34,6 +34,7 @@ fun RouteContent(route: Route) {
         Screen.GuidedSetup -> com.hellfire.ass.ui.settings.GuidedSetupPage()
         Screen.Privacy -> com.hellfire.ass.ui.settings.PrivacyPage()
         Screen.Setup -> com.hellfire.ass.ui.settings.SetupScreen()
+        Screen.Guard -> com.hellfire.ass.guard.GuardPage()
         Screen.Settings -> com.hellfire.ass.ui.settings.SettingsHub()
         Screen.Permissions -> com.hellfire.ass.ui.settings.PermissionsPage()
         Screen.CloudAi -> PushedPage(if (route.arg == "budget") "Monthly AI budget" else "Cloud AI", breadcrumb = "Settings") { AiSettingsScreen(env.app, budgetOnly = route.arg == "budget") }

@@ -44,7 +44,7 @@ class ContactLinksTest {
         }
         val migrated = Room.databaseBuilder(context, EventDatabase::class.java, name).addMigrations(*EventDatabase.ALL_MIGRATIONS).build()
         try {
-            assertEquals(19, migrated.openHelper.writableDatabase.version)
+            assertEquals(com.hellfire.ass.security.BackupTables.SCHEMA, migrated.openHelper.writableDatabase.version)
             assertEquals(-5000L, migrated.finances().balance("a"))
             assertNull(migrated.finances().entry("e")!!.personKey)
             assertNull(migrated.tasks().task("t")!!.personKey)
@@ -129,7 +129,7 @@ class ContactLinksTest {
         links.task("t", key); links.ledger("e", key)
         val restored = restore(15)
         try {
-            assertEquals(19, BackupTables.SCHEMA)
+            assertEquals(com.hellfire.ass.security.BackupTables.SCHEMA, BackupTables.SCHEMA)
             assertEquals(db.contacts().all(), restored.contacts().all())
             assertEquals(db.people().all(), restored.people().all())
             assertEquals(key, restored.tasks().task("t")!!.personKey)

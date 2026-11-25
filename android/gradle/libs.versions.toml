@@ -11,6 +11,10 @@ media3 = "1.11.1"
 benchmark = "1.4.1"
 
 [libraries]
+camera-core = { module = "androidx.camera:camera-camera2", version = "1.5.3" }
+camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version = "1.5.3" }
+camera-service = { module = "androidx.lifecycle:lifecycle-service", version.ref = "lifecycle" }
+fused-location = { module = "com.google.android.gms:play-services-location", version = "21.4.0" }
 google-auth = { module = "com.google.android.gms:play-services-auth", version = "22.0.0" }
 litertlm = { module = "com.google.ai.edge.litertlm:litertlm-android", version = "0.12.0" }
 ocr = { module = "com.google.mlkit:text-recognition", version = "16.0.1" }

@@ -61,6 +61,7 @@ class HellFireApp : Application() {
         com.hellfire.ass.performance.PerfLog.record("startup_oncreate_ms", android.os.SystemClock.elapsedRealtime() - processStarted)
         com.hellfire.ass.ui.UiLanguage.code = getSharedPreferences("ui", 0).getString("language", "en").orEmpty()
         Diagnostics.init(this)
+        if (getProcessName() == "$packageName:guard") return
         initializeStorage()
         refreshSmsCapture()
     }

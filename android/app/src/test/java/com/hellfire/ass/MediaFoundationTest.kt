@@ -60,7 +60,7 @@ class MediaFoundationTest {
         }
         val migrated = Room.databaseBuilder(context, EventDatabase::class.java, name).addMigrations(*EventDatabase.ALL_MIGRATIONS).build()
         try {
-            assertEquals(19, migrated.openHelper.writableDatabase.version)
+            assertEquals(com.hellfire.ass.security.BackupTables.SCHEMA, migrated.openHelper.writableDatabase.version)
             val audio = migrated.media().item("a")!!
             assertEquals(listOf("AUDIO", "MANAGED", "IMPORT", "AVAILABLE"), listOf(audio.contentKind, audio.storage, audio.origin, audio.availability))
             assertEquals(900L, audio.durationMs); assertEquals("h1", audio.contentHash); assertFalse(audio.syncEnabled); assertFalse(audio.favorite)
@@ -223,7 +223,7 @@ class MediaFoundationTest {
     }
 
     @Test fun `schema 18 backups register every portable library table and schema 17 media rows restore with defaults`() = runBlocking {
-        assertEquals(19, BackupTables.SCHEMA)
+        assertEquals(com.hellfire.ass.security.BackupTables.SCHEMA, BackupTables.SCHEMA)
         val portable = setOf("media_category", "media_collection", "media_analysis", "media_segment", "media_item_category", "media_item_tag",
             "collection_member", "media_bookmark", "playback_state", "play_history", "processing_job", "inbox_item", "inbox_member", "drawer_message",
             "action_record", "saved_location", "share_export", "privacy_finding", "sync_record", "sync_conflict", "backup_manifest", "backup_item")

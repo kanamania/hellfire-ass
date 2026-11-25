@@ -43,7 +43,7 @@ enum class MainTab(val label: String, val icon: ImageVector) {
 
 /** Screens pushed over the tabs: back arrow, no bottom bar. */
 enum class Screen {
-    Setup, Settings, Permissions, CloudAi, LocalModels, Email, WhatsApp, Backup, Device, Recordings, Reminders, Memory, Widgets, WebAccess, Performance,
+    Setup, Settings, Permissions, CloudAi, LocalModels, Email, WhatsApp, Backup, Device, Recordings, Reminders, Memory, Widgets, WebAccess, Performance, Guard,
     Accounts, Budgets, Transaction, Source, Task, Message, MediaItem,
     Reports, ReportMoney, ReportCategory, ReportAccounts, ReportStatement, ReportCapture, FixSms, ReportTasks, ReportMessages, ReportMedia, ReportAi,
     Brief, Waiting, People, Person, Debts, Bills, Templates, TemplateEdit, Review, Share, Reconcile, Language, Skills, Recovery, GuidedSetup, Privacy,
@@ -124,7 +124,7 @@ class Nav(private val stack: SnapshotStateList<Route>, private val tabState: Mut
             "draft" -> tab(MainTab.Inbox, parts.firstOrNull()?.let { "draft:$it" })
             "message" -> { tab(MainTab.Inbox); parts.firstOrNull()?.let { push(Screen.Message, it) } }
             "note" -> { tab(MainTab.Ask); push(Screen.Memory, "new") }
-            "settings" -> { tab(MainTab.Home); push(Screen.Settings); when (parts.firstOrNull()) { "permissions" -> push(Screen.Permissions); "recordings" -> push(Screen.Recordings) } }
+            "settings" -> { tab(MainTab.Home); push(Screen.Settings); when (parts.firstOrNull()) { "permissions" -> push(Screen.Permissions); "recordings" -> push(Screen.Recordings); "guard" -> push(Screen.Guard) } }
             "report" -> { tab(MainTab.Home); push(Screen.Reports)
                 when (parts.firstOrNull()) {
                     "money" -> uri.getQueryParameter("category")?.let { push(Screen.ReportCategory, it) } ?: push(Screen.ReportMoney)

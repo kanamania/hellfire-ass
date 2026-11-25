@@ -9,7 +9,7 @@ import java.util.zip.*
 /** Fixed table/column allowlists; archives cannot supply executable SQL. */
 object BackupTables {
     /** Backup schema written by this version. Schema 8 archives (before the v10 database) still restore. Full-text indexes and embeddings are rebuilt, not backed up. */
-    const val SCHEMA = 19
+    const val SCHEMA = 20
     private val schema8 = listOf("source_event", "event_processing", "capture_audit", "notification_policy", "finance_account",
         "finance_candidate", "ledger_entry", "ledger_evidence", "merchant_alias", "communication_message", "outbound_draft",
         "action_audit", "assistant_task", "daily_review", "media_item", "transcript_segment", "speech_span", "memory_item")
@@ -23,7 +23,8 @@ object BackupTables {
         "media_item_tag", "collection_member", "media_bookmark", "playback_state", "play_history", "processing_job", "inbox_item",
         "inbox_member", "drawer_message", "action_record", "saved_location", "share_export", "privacy_finding", "sync_record",
         "sync_conflict", "backup_manifest", "backup_item")
-    val tables = schema18 + com.hellfire.ass.news.NewsSchema.tables
+    private val schema19 = schema18 + com.hellfire.ass.news.NewsSchema.tables
+    val tables = schema19 + com.hellfire.ass.guard.GuardSchema.tables
     fun tablesFor(schema: Int): List<String> = when (schema) {
         8 -> schema8
         10 -> schema10
@@ -32,6 +33,7 @@ object BackupTables {
         15, 16 -> schema16
         17 -> schema17
         18 -> schema18
+        19 -> schema19
         SCHEMA -> tables
         else -> throw IllegalArgumentException("Backup schema requires a matching app version")
     }
@@ -56,7 +58,7 @@ object BackupTables {
                             Cursor.FIELD_TYPE_INTEGER -> rows.getLong(i)
                             Cursor.FIELD_TYPE_FLOAT -> rows.getDouble(i)
                             Cursor.FIELD_TYPE_BLOB -> JSONObject().put("blob", Base64.getEncoder().encodeToString(
-                                if (table == "source_event" && name == "encryptedPayload") cipher.decrypt(rows.getBlob(i)) else rows.getBlob(i)))
+                                if (table in setOf("source_event", "guard_evidence") && name == "encryptedPayload") cipher.decrypt(rows.getBlob(i)) else rows.getBlob(i)))
                             else -> rows.getString(i)
                         })
                     }
@@ -109,7 +111,7 @@ object BackupTables {
                         value is JSONObject -> {
                             require(value.keys().asSequence().toSet() == setOf("blob"))
                             val blob = Base64.getDecoder().decode(value.getString("blob"))
-                            statement.bindBlob(index + 1, if (table == "source_event" && name == "encryptedPayload") cipher.encrypt(blob) else blob)
+                            statement.bindBlob(index + 1, if (table in setOf("source_event", "guard_evidence") && name == "encryptedPayload") cipher.encrypt(blob) else blob)
                             blob.fill(0)
                         }
                         value is Int || value is Long -> statement.bindLong(index + 1, (value as Number).toLong())
@@ -124,6 +126,8 @@ object BackupTables {
         return count
     }
     fun revokeRestoredApprovals(db: SupportSQLiteDatabase) {
+        // Device consent and relay sessions must never transfer through a backup.
+        db.execSQL("UPDATE guard_state SET armed=0,active=0,pendingDisarm=0,needsResume=0,status='RESTORED_DISARMED'")
         db.execSQL("UPDATE ai_skill SET state='PENDING' WHERE state='ACTIVE'")
         db.execSQL("UPDATE outbound_draft SET state='DRAFT' WHERE state='APPROVED'")
         db.execSQL("UPDATE outbound_draft SET state='UNKNOWN', error='RESTORED_DELIVERY_UNCONFIRMED' WHERE state='SENDING'")

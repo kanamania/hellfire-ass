@@ -23,3 +23,26 @@ class AppLockSession {
     fun lock() { authenticated = false }
     fun requiresUnlock(enabled: Boolean) = enabled && !authenticated
 }
+
+/** Guard transitions always request a fresh strong biometric, independently of the app UI lock preference. */
+fun AppLock.confirmGuard(
+    activity: androidx.activity.ComponentActivity,
+    onSuccess: () -> Unit,
+    onError: (String) -> Unit,
+): android.os.CancellationSignal {
+    val signal = android.os.CancellationSignal()
+    val builder = android.hardware.biometrics.BiometricPrompt.Builder(activity)
+        .setTitle("Confirm TheftGuard change")
+        .setDescription("Use an enrolled strong biometric to arm, resume or disarm this device.")
+        .setNegativeButton("Cancel", activity.mainExecutor) { _, _ -> onError("Authentication cancelled") }
+    if (android.os.Build.VERSION.SDK_INT >= 30) builder.setAllowedAuthenticators(android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_STRONG)
+    try {
+        builder.build().authenticate(signal, activity.mainExecutor, object : android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: android.hardware.biometrics.BiometricPrompt.AuthenticationResult) {
+                if (!signal.isCanceled && activity.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) onSuccess()
+            }
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) { onError("Biometric cancelled or unavailable. Enroll a strong biometric in Android Settings.") }
+        })
+    } catch (_: Exception) { activity.mainExecutor.execute { onError("Strong biometric authentication is unavailable") } }
+    return signal
+}
