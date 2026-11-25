@@ -1519,13 +1519,15 @@ Host verification (from the task worktree, same committed source):
   no dependency upgrade was made to silence it.
 - `cd android && ./gradlew --offline --max-workers=2 :app:testDebugUnitTest :app:assembleDebug :app:lintDebug`:
   unit reports **528 total, 523 passed, 5 skipped, 0 failures/errors**, including
-  **7/7 guard tests**; debug assembly and lint **PASS** (0 errors; existing warnings retained). The five
+  **7/7 guard tests**; debug assembly and lint **PASS** (0 errors, 391 warnings, 11 hints). The five
   skipped existing tests are four live AI providers and the separately configured
   TLS mail fixture, not guard cases. No live credentials were supplied.
 - Initial lint found an API-33-only stream call and a Compose activity-context
   cast; both were corrected. The final offline run keeps source lint enabled
   while avoiding external Maven version lookups; final Gradle result: **BUILD SUCCESSFUL**. Existing unrelated compiler/
-  dependency/UI warnings were not fixed as part of this slice.
+  dependency/UI warnings were not fixed as part of this slice. Guard lint warnings
+  concern the explicitly requested battery-exemption prompt and KTX-style suggestions;
+  no check or approval/permission gate was disabled.
 - `git diff --check`: passed. APK ZIP inspection: **ARM64 only**. SDK 36
   `apksigner verify --verbose`: **PASS**, v2 signature, one debug signer.
 - Versioned artifact: `build/theftguard/HellFire-Ass-0.9.0-code9-debug.apk`
