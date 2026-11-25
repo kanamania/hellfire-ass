@@ -169,9 +169,10 @@ data class LabelledEvent(@Embedded val event: SourceEvent, val label: String?, v
     com.hellfire.ass.news.NewsSource::class, com.hellfire.ass.news.NewsArticle::class, com.hellfire.ass.news.NewsEvent::class,
     com.hellfire.ass.news.NewsEventVersion::class, com.hellfire.ass.news.NewsBriefing::class, com.hellfire.ass.news.NewsEventState::class,
     com.hellfire.ass.news.NewsProgress::class, com.hellfire.ass.news.NewsPreference::class, com.hellfire.ass.news.NewsFeedback::class,
-    com.hellfire.ass.news.NewsRun::class, com.hellfire.ass.guard.GuardConfig::class, com.hellfire.ass.guard.GuardState::class, com.hellfire.ass.guard.GuardEvidence::class],
-    version = 20, exportSchema = true)
+    com.hellfire.ass.news.NewsRun::class, com.hellfire.ass.guard.GuardConfig::class, com.hellfire.ass.guard.GuardState::class, com.hellfire.ass.guard.GuardEvidence::class, com.hellfire.ass.calendar.CalendarLink::class, com.hellfire.ass.calendar.CalendarChange::class],
+    version = 21, exportSchema = true)
 abstract class EventDatabase : RoomDatabase() {
+    abstract fun calendar(): com.hellfire.ass.calendar.CalendarDao
     abstract fun guard(): com.hellfire.ass.guard.GuardDao
     abstract fun events(): EventDao
     abstract fun finances(): FinanceDao
@@ -304,7 +305,10 @@ abstract class EventDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) { com.hellfire.ass.guard.GuardSchema.migrate(db) }
         }
         const val SOURCE_SEARCH_SQL = "CREATE VIRTUAL TABLE IF NOT EXISTS `source_search` USING FTS4(`eventId` TEXT NOT NULL, `text` TEXT NOT NULL, tokenize=unicode61, notindexed=`eventId`)"
-        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
+        val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) { com.hellfire.ass.calendar.CalendarSchema.migrate(db) }
+        }
+        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21)
         fun open(context: Context): EventDatabase = Room.databaseBuilder(
             context.applicationContext, EventDatabase::class.java, "hellfire.db"
         ).openHelperFactory(EncryptedDatabase.factory(context)).addMigrations(*ALL_MIGRATIONS).enableMultiInstanceInvalidation().build()

@@ -90,7 +90,7 @@ class GuardTest {
             val row = target.guard().pending(session).single()
             assertArrayEquals(payload, fresh.decrypt(row.encryptedPayload))
             assertTrue(runCatching { old.decrypt(row.encryptedPayload) }.isFailure)
-            assertEquals(20, BackupTables.SCHEMA)
+            assertEquals(21, BackupTables.SCHEMA)
             assertFalse("guard_state" in BackupTables.tablesFor(19))
             assertTrue("guard_state" in BackupTables.tablesFor(20))
         } finally { target.close() }

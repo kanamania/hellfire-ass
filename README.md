@@ -11,7 +11,7 @@ testing until last. No phone, live account or personal corpus was used to establ
 Downloaded public model weights stay outside Git. No real recipient was contacted
 and no gateway was deployed.
 
-## Current status — 2026-11-18
+## Current status — 2026-11-25
 
 - **Code:** `main` holds every merged slice: Phases 0–6 software, the UI redesign
   (five tabs, reports, 13 home screen widgets), money entry pickers, fingerprint app
@@ -19,18 +19,23 @@ and no gateway was deployed.
   the 2026-11-16 review findings, **multiple email inboxes and WhatsApp accounts**, and
   **Gemma 4 E2B downloaded on first launch with on-device update checks**, and the
   **daily brief, waiting-on, people, debts, bills, expiry reminders, capture alerts and
-  action templates**, plus **local contact picking and person links**. Debug/release version **0.9.0** (code 9), Room schema **19**, backup schema **19**.
+  action templates**, plus **local contact picking and person links**, and **device-calendar context and approved event changes**. Debug/release version **0.9.0** (code 9), Room schema **21**, backup schema **21**.
 - **News and media:** scheduled/readable/spoken news, source controls, saved stories and news Ask; device library, media playback, local analysis/search, capture drawer, sanitized sharing, encrypted library sync and backup coverage. See the setup notes below.
 - **Web access:** an optional read-only web copy (NestJS API, Postgres, Next.js site
   in `web/`) synced from the phone; see [Web access](#web-access-read-only-mirror).
   Local website: `https://hellfire.local`; not yet connected to a real phone.
-- **Current checks:** 521 Android JVM tests (517 passed, 4 opt-in live-provider
+- **Current Android host checks (2026-11-25):** 550 tests, 545 passed, 5 existing
+  credential/fixture-dependent skips, 0 failures; 22 new calendar tests pass.
+  Debug build and lint pass (0 errors). Provider/permissions/sync on the OnePlus
+  remain NOT TESTED. See the calendar checkpoint in DEVICE_FEASIBILITY.md.
+- **Earlier checks (2026-11-18):** 521 Android JVM tests (517 passed, 4 opt-in live-provider
   tests skipped), 20 emulator tests without skips, relay 23, WhatsApp worker 6,
   API 30 and seven Chromium checks passed. Exact build commands and artifact evidence are in
   [DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md).
 - **Pre-device checkpoint:** host-native, synthetic-service and isolated x86_64
-  Android checks are complete for the implemented slice. The owner deferred further
-  feature expansion; the remaining plan is in DEVICE_FEASIBILITY.md. Host and emulator
+  Android checks are complete for the implemented slice. The owner subsequently authorized core-depth slices; calendar is complete on the host,
+  with background survival, location reminders and Telegram queued. The remaining
+  plan is in DEVICE_FEASIBILITY.md. Host and emulator
   evidence remain distinct from actual handset, energy and OEM results.
 - **Not done:** nothing has run on the physical OnePlus 16, with a live
   mail/WhatsApp/Google account or a real SMS corpus. Public Whisper and Silero model
@@ -1013,6 +1018,19 @@ model succeeds in a device probe. Queue limits, thermal policy and cooperative
 yielding are host-tested; speed, memory, power and heat require the OnePlus 16.
 
 ## Verification and change log
+
+- 2026-11-25, Priority 1 calendar slice: CalendarContract reads feed appointments
+  and overlap warnings into Ask and morning/evening briefs. Confirmed tasks can
+  create/edit/cancel linked one-off events in an owner-chosen device calendar,
+  through fresh approval and the existing audit log. Room/backup schema 21 keeps
+  older archive allowlists and revokes provider links/approvals after restore.
+  Calendar permission status is under Settings → Permissions and capture.
+  Open a confirmed task → Device calendar to review changes; task edits never
+  silently mutate the calendar. Start/end input uses EAT. Synced calendars may
+  upload approved changes through their own sync adapters. No Google Calendar API,
+  invitations, new dependency or server change. Physical OnePlus provider/sync,
+  permissions and calendar-app source links remain NOT TESTED. Detailed commands,
+  limits, recovery behavior and evidence: `docs/DEVICE_FEASIBILITY.md`.
 
 - 2026-11-18, performance checkpoint: bounded native audio ownership/error handling,
   one video retriever per batch, bounded media scheduling queries, idle-model

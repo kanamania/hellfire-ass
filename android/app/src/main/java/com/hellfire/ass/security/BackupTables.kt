@@ -9,7 +9,7 @@ import java.util.zip.*
 /** Fixed table/column allowlists; archives cannot supply executable SQL. */
 object BackupTables {
     /** Backup schema written by this version. Schema 8 archives (before the v10 database) still restore. Full-text indexes and embeddings are rebuilt, not backed up. */
-    const val SCHEMA = 20
+    const val SCHEMA = 21
     private val schema8 = listOf("source_event", "event_processing", "capture_audit", "notification_policy", "finance_account",
         "finance_candidate", "ledger_entry", "ledger_evidence", "merchant_alias", "communication_message", "outbound_draft",
         "action_audit", "assistant_task", "daily_review", "media_item", "transcript_segment", "speech_span", "memory_item")
@@ -24,7 +24,8 @@ object BackupTables {
         "inbox_member", "drawer_message", "action_record", "saved_location", "share_export", "privacy_finding", "sync_record",
         "sync_conflict", "backup_manifest", "backup_item")
     private val schema19 = schema18 + com.hellfire.ass.news.NewsSchema.tables
-    val tables = schema19 + com.hellfire.ass.guard.GuardSchema.tables
+    private val schema20 = schema19 + com.hellfire.ass.guard.GuardSchema.tables
+    val tables = schema20 + com.hellfire.ass.calendar.CalendarSchema.tables
     fun tablesFor(schema: Int): List<String> = when (schema) {
         8 -> schema8
         10 -> schema10
@@ -34,6 +35,7 @@ object BackupTables {
         17 -> schema17
         18 -> schema18
         19 -> schema19
+        20 -> schema20
         SCHEMA -> tables
         else -> throw IllegalArgumentException("Backup schema requires a matching app version")
     }
@@ -126,6 +128,8 @@ object BackupTables {
         return count
     }
     fun revokeRestoredApprovals(db: SupportSQLiteDatabase) {
+        db.execSQL("UPDATE calendar_change SET state='RESTORED', approvalId=NULL, approvedAt=NULL WHERE state IN ('PROPOSED','APPROVED','APPLYING','UNKNOWN')")
+        db.execSQL("UPDATE calendar_link SET state='RESTORED'")
         // Device consent and relay sessions must never transfer through a backup.
         db.execSQL("UPDATE guard_state SET armed=0,active=0,pendingDisarm=0,needsResume=0,status='RESTORED_DISARMED'")
         db.execSQL("UPDATE ai_skill SET state='PENDING' WHERE state='ACTIVE'")

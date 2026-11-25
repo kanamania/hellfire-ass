@@ -40,6 +40,7 @@ class HellFireApp : Application() {
     val finances by lazy { com.hellfire.ass.finance.FinanceRepository(database) { id, text -> skills.ignoredFor(this, "IGNORE_FINANCE", id, text) } }
     val templates by lazy { com.hellfire.ass.templates.TemplateRunner(database, finances, packageName) { events.capture(it, packageName) } }
     val cipher by lazy { PayloadCipher.deviceCipher() }
+    val calendar by lazy { com.hellfire.ass.calendar.CalendarRepository(database, events, com.hellfire.ass.calendar.PhoneCalendar(this), packageName) }
     val events by lazy { EventRepository(database.events()) { cipher } }
     val news by lazy { com.hellfire.ass.news.NewsRepository(this) }
     val storageStatus = kotlinx.coroutines.flow.MutableStateFlow("STARTING")
@@ -92,7 +93,7 @@ class HellFireApp : Application() {
             try {
                 storageStatus.value = "STARTING"
                 database.openHelper.writableDatabase
-                if (!recoveredDrafts) { database.communications().recoverAfterProcessStart(); recoveredDrafts = true }
+                if (!recoveredDrafts) { database.communications().recoverAfterProcessStart(); calendar.recover(); recoveredDrafts = true }
                 storageStatus.value = "READY"
                 com.hellfire.ass.performance.PerfLog.record("startup_ready_ms", android.os.SystemClock.elapsedRealtime() - processStarted)
                 runCatching {

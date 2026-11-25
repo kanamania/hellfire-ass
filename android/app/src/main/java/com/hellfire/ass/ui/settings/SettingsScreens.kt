@@ -246,6 +246,7 @@ fun PermissionsPage() {
         message?.let { Banner(it, Tone.Info, null) }
         SetupRows(setupSteps(p, env.actions))
         ContactsPermissionRow()
+        com.hellfire.ass.calendar.CalendarPermissionRow()
         if (p.smsEnabled) QuietButton(com.hellfire.ass.ui.tr("Turn off SMS capture"), env.actions.onSmsDisable)
         SectionHeader(com.hellfire.ass.ui.tr("Capture status"))
         KvList(listOfNotNull(

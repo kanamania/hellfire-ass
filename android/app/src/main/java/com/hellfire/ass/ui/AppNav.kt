@@ -104,6 +104,7 @@ class Nav(private val stack: SnapshotStateList<Route>, private val tabState: Mut
                     "settings" -> push(Screen.NewsSettings)
                 } }
             "tasks" -> tab(MainTab.Tasks)
+            "source" -> { tab(MainTab.Home); parts.firstOrNull()?.let { push(Screen.Source, it) } }
             "task" -> { tab(MainTab.Tasks); parts.firstOrNull()?.let { push(Screen.Task, it) } }
             "library" -> {
                 tab(MainTab.Home)

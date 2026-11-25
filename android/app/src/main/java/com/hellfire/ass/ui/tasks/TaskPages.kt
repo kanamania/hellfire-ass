@@ -59,15 +59,7 @@ fun TaskPage(id: String) {
                 "DONE" -> SecondaryButton(com.hellfire.ass.ui.tr("Not done yet"), { act("Task is active again.") { TaskScheduler.reopen(app, t.id) } })
             }
         }
-        SecondaryButton(com.hellfire.ass.ui.tr("Add to calendar…"), {
-            val intent = android.content.Intent(android.content.Intent.ACTION_INSERT, android.provider.CalendarContract.Events.CONTENT_URI)
-                .putExtra(android.provider.CalendarContract.Events.TITLE, t.title)
-                .putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, t.dueAt)
-                .putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME, t.dueAt + 3_600_000L)
-                .putExtra(android.provider.CalendarContract.Events.DESCRIPTION, "From HellFire Ass. Confirm in your calendar; the HellFire reminder remains separate.")
-            try { app.startActivity(intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
-            catch (_: android.content.ActivityNotFoundException) { message = "No calendar app is available." }
-        })
+        com.hellfire.ass.calendar.TaskCalendarControls(t)
         QuietButton(com.hellfire.ass.ui.tr("Show source"), { nav.push(Screen.Source, t.sourceId) })
     }
     if (editing && t != null) TaskEditSheet(TaskDraft.of(t)) { msg -> editing = false; if (msg != null) message = msg }
