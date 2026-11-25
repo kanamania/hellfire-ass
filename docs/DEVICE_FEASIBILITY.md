@@ -1,10 +1,18 @@
 # HellFire Ass — implementation and feasibility
 
-Latest update: 2026-11-25 (TheftGuard slice, below). Earlier
+Latest update: 2026-11-25 (Priority 1 calendar slice, below). Earlier
 checkpoints keep the test counts and APK checksums that were true when they were
 written; the newest checkpoint has the current ones.
 
-## Current scope and remaining plan — owner update 2026-11-18
+## Current scope — owner update 2026-11-25
+
+The owner authorized core-depth work in this order: Calendar integration,
+OxygenOS background survival, location-aware reminders, then Telegram. This run
+implements **Priority 1 only**. The earlier deferral below is historical; no new
+media/library/news/player/widget surface is part of this slice. Physical testing
+remains last. The existing TheftGuard consent exception is unchanged.
+
+## Earlier scope and remaining plan — owner update 2026-11-18
 
 The owner requested: “Finish what you have done and plan the remaining later.”
 This closes the implemented checkpoint and defers further feature expansion.
@@ -1578,3 +1586,100 @@ OnePlus 16 hand-test checklist (kept for last):
 10. Export/restore an encrypted backup to an empty test installation. Verify guard
     evidence can be decrypted with the replacement key, the state stays disarmed,
     and the relay transport secret must be reconfigured deliberately.
+
+
+## Priority 1 — device calendar integration, 2026-11-25
+
+Calendar reads and writes use the local synced Android provider, with no Google
+Calendar API or additional dependency. Reads are permission-gated, bounded to
+32 days and 200 occurrences, and display incomplete/unavailable status honestly.
+`CalendarContract.Instances` supplies recurring occurrences; canceled, declined
+and hidden events are excluded. All-day dates use UTC date boundaries and local
+EAT window membership; free/all-day entries do not generate timed overlap flags.
+Touching appointment endpoints do not conflict.
+
+Read snapshots first become normalized immutable `source_event` records, with
+redacted searchable content and encrypted payloads. They are labeled calendar
+snapshots instead of being re-extracted into duplicate commitments or payments.
+Ask understands calendar/appointment/meeting/schedule queries, including upcoming
+appointments; grounded local explanations receive bounded, source-cited upcoming
+context. Morning/evening briefs show today's/tomorrow's appointments, upcoming
+events and overlap warnings. Calendar context is not automatically sent to cloud AI.
+
+Use **Settings → Permissions and capture → Device calendar** to request read/write
+access; live status refreshes on resume. On an active, confirmed task, use
+**Device calendar → Choose calendar…**, check the title, start/end and timezone,
+and review the event. Enter start/end in EAT; the event timezone determines its
+calendar display. The confirmation shows the selected account/calendar and warns
+that the calendar's own sync adapter may upload changes. No attendee invitations
+are created. A writable visible calendar must already exist on the phone.
+
+Create, edit and cancellation each require a separate immutable proposal and
+fresh five-minute owner approval, single-use claim and `action_audit` entries.
+The app checks task version, destination and current event fingerprint again
+before writing. Only linked HellFire one-off events can be edited/canceled;
+recurrence or attendee changes outside HellFire require manual calendar review.
+Task edits and completion never silently write/cancel a provider event: the owner
+reviews the corresponding calendar action on the task. Reminders remain separate.
+The provider description and custom-app link point back to the task/source; the
+read-only exported calendar alias preserves ordinary app-lock enforcement and
+accepts no commands or approval parameters.
+
+Interrupted/uncertain results are checked read-only with **Check calendar result**;
+no provider mutation is retried automatically. If the provider's current row is
+neither the approved result nor the expected original, the action remains
+unconfirmed and blocks more calendar writes for that task. Inspect it manually;
+this deliberately does not guess whether an external calendar edit was ours.
+
+Room **20 → 21** adds `calendar_link` and `calendar_change`, retaining task/source
+foreign keys. Backup schema **21** includes both tables; schema **20** and every
+previously accepted archive version retain their old table allowlists. Unknown
+columns still fail closed. Restore preserves history but invalidates all provider
+links and pending approvals, so old-device calendar IDs can never be mutated.
+A replacement event requires explicit review, with a warning to check the synced
+calendar for an existing event before creating another. Calendar grants/accounts
+are not restored.
+
+| Question | Test | Result | Evidence | Next action |
+|---|---|---|---|---|
+| Calendar adapter and permissions | Synthetic local ContentProvider via production `PhoneCalendar` | PASS (host) | Permission denial/revocation, writable calendars, recurring-instance rows, canceled/declined/hidden exclusion, unspecified status, 200-row cap, provider writes, provenance and concurrent-edit refusal | Verify OEM provider/account behavior last |
+| Approvals and recovery | Room + deterministic integration adapters | PASS (host) | Create/edit/cancel approvals, nonce expiry/replay, duplicate proposals, task/destination changes, process interruption and read-only reconciliation | Exercise actual provider interruption on phone |
+| Calendar context and brief overlap logic | Synthetic source snapshots and brief inputs | PASS (host) | Encrypted/redacted provenance, snapshot dedupe/no re-extraction, EAT/all-day boundaries, half-open overlaps, free entries, morning/evening appointment sections | Inspect actual synced recurrence/timezone data |
+| Schema migration and backup safety | Schema 20 fixture and current backup round trip | PASS (host) | Migration to 21, preserved source/history, restored consent/link invalidation, unknown-column refusal; existing older-backup regressions included | Native replacement-device restore remains separate |
+| Read-only provenance entry | Restricted intent parser | PASS (host) | Task/source links accepted; commands, wrong aliases/actions and malformed IDs refused; query parameters stripped | Physical calendar app link and app-lock interaction NOT TESTED |
+| Android permission prompts and actual local/synced provider read/write | OnePlus 16 | NOT TESTED | `adb devices -l`: no devices attached; no live accounts or credentials used | Grant/revoke access; create/edit/cancel synthetic event in chosen calendar; verify external sync and source link |
+| Screen-off/OxygenOS calendar access and brief delivery | OnePlus 16 | NOT TESTED | No OEM/device execution claimed | Verify with Priority 2 survival work and physical tests last |
+
+Host regression: **550 total, 545 passed, 5 skipped, 0 failures/errors**;
+**22 new calendar tests passed** (14 `CalendarIntegrationTest`, 8 `PhoneCalendarTest`).
+The five existing skips require live AI credentials or the separately configured
+TLS mail fixture. The first full run exposed a SQLite affinity bug in a nullable
+status comparison; the corrected query excludes canceled/declined rows while
+retaining unspecified status. The final full run passes this regression.
+
+Command from `android/`:
+
+```sh
+ANDROID_HOME=/home/dev/android-sdk ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --offline --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8'
+```
+
+Final command: **BUILD SUCCESSFUL**. The strengthened schema-20 fixture restores
+an existing commitment/source relationship and unchanged encrypted source bytes.
+Both `git diff --check` and the exported-schema comparison pass: existing tables
+are unchanged, with exactly the two calendar tables added.
+
+- Lint: **0 errors, 371 warnings, 11 hints**. No lint gate was disabled.
+- Debug APK: **ARM64 only**, **172,896,708 bytes**, `com.hellfire.ass`, actual metadata
+  **versionName 0.9.0 / versionCode 9 / debug**.
+- Versioned artifact: `build/calendar/HellFire-Ass-0.9.0-code9-debug.apk`.
+- SHA-256: `2cbf771e7b3ce949f0de4406484f9c9b6fa8d716548d5971c66068db1f9c7c51`.
+- SDK 36 `apksigner verify --verbose`: **PASS**, v2 signature, one debug signer.
+  `zipalign -c -P 16 4`: **PASS**.
+- Full JUnit XML reports, lint XML, APK metadata and the successful final Gradle log
+  are retained beside the versioned artifact in `build/calendar/` (ignored build outputs).
+
+ Priorities 2–4 remain queued; no survival, geofence or Telegram behavior is
+claimed by this calendar slice.
+
+References consulted: [Android Calendar Provider guide](https://developer.android.com/identity/providers/calendar-provider),
+[Events contract](https://developer.android.com/reference/android/provider/CalendarContract.Events).

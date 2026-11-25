@@ -28,7 +28,7 @@ data class Brief(val evening: Boolean, val day: LocalDate, val headline: String,
 
 /** Everything the brief is built from. [spent] and [received] cover today in the evening and yesterday in the morning. */
 data class BriefInputs(val evening: Boolean, val now: Long, val tasks: List<AssistantTask>, val spent: Long, val received: Long,
-    val toConfirm: Int, val reviewsPending: Int, val waiting: WaitingOn, val debts: List<DebtBalance>, val forecast: BillForecast, val gaps: List<CaptureGap>)
+    val toConfirm: Int, val reviewsPending: Int, val waiting: WaitingOn, val debts: List<DebtBalance>, val forecast: BillForecast, val gaps: List<CaptureGap>, val calendar: com.hellfire.ass.calendar.CalendarAgenda = com.hellfire.ass.calendar.CalendarAgenda("NOT_CHECKED"))
 
 object Briefs {
     private const val CHANNEL = "daily-brief"
@@ -90,6 +90,19 @@ object Briefs {
             })
             if (proposals > 0) section("To review", listOf(BriefLine(if (proposals == 1) "1 new task found in your messages and documents" else "$proposals new tasks found in your messages and documents", link = "hellfire://tasks")))
         }
+        val calendarStart = if (i.evening) end else start
+        val calendarEnd = if (i.evening) end2 else end
+        val appointments = i.calendar.events.filter { com.hellfire.ass.calendar.CalendarAgendaLogic.inWindow(it, calendarStart, calendarEnd) }
+        val conflicts = com.hellfire.ass.calendar.CalendarAgendaLogic.conflicts(i.calendar.events)
+        section(if (i.evening) "Tomorrow's appointments" else "Today's appointments", appointments.map {
+            BriefLine(com.hellfire.ass.calendar.CalendarAgendaLogic.whenText(it) + " · " + it.title,
+                if (it in conflicts) "OVERLAP with another appointment" else null, it.sourceId?.let { id -> "hellfire://source/$id" }, it in conflicts)
+        }.ifEmpty { listOf(BriefLine(if (i.calendar.status == "AVAILABLE") "No appointments in this window." else "Calendar: ${i.calendar.statusLabel}", link = "hellfire://settings/permissions")) } +
+            if (i.calendar.truncated) listOf(BriefLine("Calendar results limited to 200 occurrences; check the calendar for more.", warn = true)) else emptyList())
+        if (i.calendar.status == "AVAILABLE") section("Upcoming appointments", i.calendar.events.filter { it.start >= calendarEnd }.take(8).map {
+            BriefLine(com.hellfire.ass.calendar.CalendarAgendaLogic.whenText(it) + " · " + it.title,
+                if (it in conflicts) "OVERLAP" else null, it.sourceId?.let { id -> "hellfire://source/$id" }, it in conflicts)
+        })
         section("Capture", capture)
 
         val parts = if (i.evening) listOfNotNull("Spent ${Money.display(i.spent)} today",
@@ -110,7 +123,7 @@ object Briefs {
         val tasks = app.database.tasks().all()
         val waiting = Waiting.compute(loadInteractions(app, now - Waiting.WINDOW), loadAliases(app), now, WaitingPrefs.dismissed(app), loadIdentities(app))
         return build(BriefInputs(evening, now, tasks, totals.expenses, totals.income, dao.reviewCount(), app.database.tasks().reviewsNow().size,
-            waiting, Debts.balances(app.database.debts().all()), Recurring.forecast(tasks, balance, now), CaptureGaps.check(app, now)))
+            waiting, Debts.balances(app.database.debts().all()), Recurring.forecast(tasks, balance, now), CaptureGaps.check(app, now), app.calendar.agenda(start, Fmt.startOf(day.plusDays(8)))))
     }
 
     /** Quiet morning notification with counts only; details stay inside the app. */

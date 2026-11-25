@@ -164,6 +164,7 @@ class MainActivity : ComponentActivity() {
             com.hellfire.ass.ui.SharedContent.intent = Intent(intent)
             Uri.parse("hellfire://share")
         }
+        com.hellfire.ass.calendar.CalendarLinks.external(intent) != null -> com.hellfire.ass.calendar.CalendarLinks.external(intent)
         intent?.action == Intent.ACTION_ASSIST -> Uri.parse("hellfire://ask")
         intent?.data?.scheme == "hellfire" && intent.component?.className == MainActivity::class.java.name -> intent.data
         else -> null

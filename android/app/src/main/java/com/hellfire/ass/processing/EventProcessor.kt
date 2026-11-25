@@ -24,6 +24,7 @@ class EventProcessor(private val dao: EventDao,
                 }
                 try {
                     val label = when {
+                        event.source == "device_calendar" -> "CALENDAR_SNAPSHOT" // Already scheduled; do not extract duplicate tasks or payments.
                         event.securitySensitive -> "SECURITY_REDACTED"
                         !event.contentAvailable -> "CONTENT_UNAVAILABLE"
                         // The removal is retained as evidence; its content was already processed when posted.
