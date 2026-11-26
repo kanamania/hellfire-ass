@@ -68,7 +68,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-041 | P2 | Budget warnings and 30-day cash-flow in the brief | — | M | PARTLY DONE (2c117e7): morning brief lists budgets over or ahead of the month. Open: income-inclusive cash-flow projection |
 | HF-042 | P2 | Waiting-on includes notification-only chats | — | S | OPEN |
 | HF-043 | P2 | Reply through a live notification's reply action | A1.16 | M | OPEN |
-| HF-044 | P2 | Missed-call follow-up from dialer notifications | A1.17 | S | OPEN |
+| HF-044 | P2 | Missed-call follow-up from dialer notifications | A1.17 | S | DONE (this branch): from the dialer notification, no call-log permission; OEM dialer formats NOT TESTED |
 | HF-045 | P2 | Quick Settings tile and text-selection action | — | S | DONE (5136024); device NOT TESTED |
 | HF-046 | P2 | LUKU token kept in an encrypted field | D-20 | S | OPEN |
 | HF-050 | P2 | Local-model fallback that emits existing `OwnerCommand` text | A1.9 | M | OPEN |

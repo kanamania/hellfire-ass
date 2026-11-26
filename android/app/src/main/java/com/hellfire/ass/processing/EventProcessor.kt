@@ -11,6 +11,7 @@ import com.hellfire.ass.Diagnostics
 class EventProcessor(private val dao: EventDao,
     private val collectFinance: suspend (String, Long, String, String) -> Unit = { _, _, _, _ -> },
     private val collectTask: suspend (String, Long, String, Boolean) -> Unit = { _, _, _, _ -> },
+    private val collectMissedCall: suspend (String, Long, String) -> Unit = { _, _, _ -> },
     private val cipher: () -> PayloadCipher) {
     suspend fun drain() {
         while (true) {
@@ -43,6 +44,9 @@ class EventProcessor(private val dao: EventDao,
                             if (event.source !in setOf("owner_share", "owner_memory", "owner_skill_use") && label != "PROMOTION_CANDIDATE" && label != "SYSTEM" &&
                                 payload.optJSONObject("provenance")?.optString("recorded_time_known") != "false" && event.source != "media_summary")
                                 collectTask(event.id, event.occurredAt, text, event.kind == "OUTGOING")
+                            if (event.source == "android_notification" && event.kind != "OUTGOING")
+                                MissedCalls.caller(fields.optJSONArray("category")?.optString(0), fields.optJSONArray("title")?.optString(0).orEmpty(),
+                                    fields.optJSONArray("text")?.optString(0).orEmpty())?.let { collectMissedCall(event.id, event.occurredAt, it) }
                             label
                         }
                     }
