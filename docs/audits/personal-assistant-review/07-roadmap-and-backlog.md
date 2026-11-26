@@ -47,9 +47,10 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-007 | P0 | Relay: quarantine unreadable WhatsApp spool files | D-23 | S | DONE (cef9843) |
 | HF-008 | P0 | Deleting a recording purges its transcript events, search rows and vectors | D-19 | S | DONE (8a62ea8); task evidence text the owner accepted is kept |
 | HF-009 | P0 | TheftGuard: owner-gated Device Owner relinquish | D-24 | S | DONE (073e419); device NOT TESTED |
-| HF-010 | P0 | Reminder channels: pre-alerts and review off the alarm channel; one sound for many overdue tasks | A1.10, A1.13 | S | OPEN |
-| HF-011 | P1 | Reminder actions (Done, Snooze), open the exact task, `setAlarmClock` when exact is allowed | A1.11, A1.12 | M | OPEN |
-| HF-012 | P1 | Configurable evening review time; quiet hours for non-alarm notices | — | S | OPEN |
+| HF-010 | P0 | Reminder channels: pre-alerts and review off the alarm channel; one sound for many overdue tasks | A1.10, A1.13 | S | DONE (this branch) |
+| HF-011 | P1 | Open the exact task, `setAlarmClock` for commitments | A1.12 | S | DONE (this branch) |
+| HF-011b | P1 | Done/Snooze buttons on the reminder notification. Locked requirement 9 says the owner chooses Done, Snooze or Reschedule *inside the application* | A1.11 | S | OWNER DECISION |
+| HF-012 | P1 | Configurable evening review time; quiet hours for non-alarm notices | — | S | DONE (this branch): quiet hours cover task heads-ups; news has its own; brief is at an owner-chosen morning hour |
 | HF-013 | P1 | Voice session: listen on open, speak a short answer without source IDs | A1.8, D-08, D-09 | M | OPEN |
 | HF-014 | P1 | Owner commands: idempotent execution, re-validation, template snapshot | D-11, D-12, D-13, D-14 | S | DONE (e26816c); per-process guard, not persisted |
 | HF-020 | P1 | Indexes for hot queries (schema v22) | D-25 | S | OPEN |
