@@ -26,6 +26,18 @@ The backlog's implementation status is tracked in the **Status** column of
 `07-roadmap-and-backlog.md`. Each implemented item is merged to `main` through its
 own worktree branch with tests.
 
+## Implemented so far (2026-11-26)
+
+HF-001–HF-010, HF-012–HF-014, HF-020, HF-022, HF-025 and HF-030 are done; HF-011, HF-023 and HF-024 are partly done. Each one's status and commit are in `07-roadmap-and-backlog.md`. Android unit tests: 583, 0 failures, 5 skips.
+
+Items waiting for an owner decision:
+- HF-004b: amounts with cents.
+- HF-011b: Done/Snooze buttons on reminder notifications (locked requirement 9).
+- HF-040: auto-posting money.
+- HF-060: Telegram.
+- HF-066: Microsoft 365.
+- HF-073: hosted CI.
+
 ## Next starting point
 
 Take the first item in `07-roadmap-and-backlog.md` whose status is `OPEN`, in
