@@ -51,7 +51,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-011 | P1 | Reminder actions (Done, Snooze), open the exact task, `setAlarmClock` when exact is allowed | A1.11, A1.12 | M | OPEN |
 | HF-012 | P1 | Configurable evening review time; quiet hours for non-alarm notices | — | S | OPEN |
 | HF-013 | P1 | Voice session: listen on open, speak a short answer without source IDs | A1.8, D-08, D-09 | M | OPEN |
-| HF-014 | P1 | Owner commands: idempotent execution, re-validation, template snapshot | D-11, D-12, D-13, D-14 | S | DONE (this branch); per-process guard, not persisted |
+| HF-014 | P1 | Owner commands: idempotent execution, re-validation, template snapshot | D-11, D-12, D-13, D-14 | S | DONE (e26816c); per-process guard, not persisted |
 | HF-020 | P1 | Indexes for hot queries (schema v22) | D-25 | S | OPEN |
 | HF-021 | P1 | Coalesce ongoing and progress notification re-posts | D-28 | M | OPEN |
 | HF-022 | P1 | Separate mail authentication failures from network failures | D-29 | S | OPEN |
