@@ -26,23 +26,31 @@ data class ParsedFinance(val provider: String, val reference: String?, val kind:
 /** Conservative candidate recognizers. Real provider-format accuracy needs a reviewed corpus. */
 object FinanceParser {
     private val providers = linkedMapOf(
-        "MPESA" to listOf("m-pesa", "mpesa"), "AIRTEL" to listOf("airtel"),
-        "MIXX" to listOf("mixx", "tigo pesa", "tigopesa"), "HALOPESA" to listOf("halopesa"),
-        "CRDB" to listOf("crdb"), "NMB" to listOf("nmb"), "NBC" to listOf("nbc"),
+        "MPESA" to listOf("m-pesa", "mpesa"), "AIRTEL" to listOf("airtel money", "airtelmoney", "airtel"),
+        "MIXX" to listOf("mixx by yas", "mixx", "tigo pesa", "tigopesa"), "HALOPESA" to listOf("halopesa", "halo pesa"),
+        "AZAMPESA" to listOf("azampesa", "azam pesa"), "SELCOM" to listOf("selcom pesa", "selcom"),
+        "CRDB" to listOf("crdb bank", "crdb"), "NMB" to listOf("nmb bank", "nmb"), "NBC" to listOf("nbc bank", "nbc"),
     )
+    /** Longest alias first, so "azampesa" is never read as "mpesa". */
+    private val aliases = providers.flatMap { (code, names) -> names.map { it to code } }.sortedByDescending { it.first.length }
+    private fun named(text: String): String? =
+        aliases.firstOrNull { (alias, _) -> Regex("(?<![\\p{L}\\p{N}])" + Regex.escape(alias) + "(?![\\p{L}\\p{N}])").containsMatchIn(text) }?.second
     // "TZS 5,000" or "5,000 TZS" / "5000/=".
-    private val amount = Regex("(?i)\\b(?:TZS|TShs?|Tsh)\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)|(?<![\\p{L}\\p{N}])([0-9][0-9,]*(?:\\.[0-9]{1,2})?)\\s*(?:TZS|TShs?|Tsh|/=)")
+    // Thousands groups are exact, so the comma in "TZS 300, tozo" is punctuation, not part of the number.
+    private const val NUMBER = "(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\\.[0-9]{1,2})?(?![0-9])"
+    private val amount = Regex("(?i)\\b(?:TZS|TShs?|Tsh)\\s*($NUMBER)|(?<![\\p{L}\\p{N}])($NUMBER)\\s*(?:TZS|TShs?|Tsh|/=)")
     private val reference = Regex("(?i)\\b(?:ref(?:erence)?|kumbukumbu|muamala(?:\\s+no)?)[ :#.-]+([A-Z0-9-]{5,40})\\b")
     // M-Pesa style "QK12ABC3D4 Confirmed." where the transaction ID leads the message without a keyword.
     private val leadingId = Regex("^\\s*([A-Z0-9]{8,12})\\.?\\s+(?i:confirmed|imethibitishwa|imekamilika)")
     private fun reference(text: String): String? = reference.find(text)?.groupValues?.get(1)
         ?: leadingId.find(text)?.groupValues?.get(1)?.takeIf { id -> id.any(Char::isLetter) && id.any(Char::isDigit) }
     private val merchant = Regex("(?i)\\b(?:lipa\\s+namba|merchant(?:\\s+id)?)[ :#-]*([0-9]{3,12})\\b")
-    /** Provider named in the sender or text, or null. */
-    fun provider(sender: String, text: String): String? {
-        val lower = "$sender $text".lowercase(Locale.ROOT)
-        return providers.entries.firstOrNull { (_, aliases) -> aliases.any(lower::contains) }?.key
-    }
+    /**
+     * Provider for a message. A known provider sender ID (the SMS address, e.g. "M-PESA", "AzamPesa") decides first;
+     * the message text only decides when the sender names no provider, e.g. a notification or an email.
+     */
+    fun provider(sender: String, text: String): String? =
+        named(sender.lowercase(Locale.ROOT)) ?: named(text.lowercase(Locale.ROOT))
     private val balanceRegex = Regex("(?i)\\b(?:salio(?:\\s+jipya)?(?:\\s+(?:ni|la|lako))?|new\\s+balance(?:\\s+is)?|available\\s+balance(?:\\s+is)?|balance(?:\\s+is)?|bal)[\\s:.]*(?:TZS|TShs?|Tsh)\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)")
     /** Balance stated in a provider message, in whole TZS, or null. Display only. */
     fun balance(sender: String, text: String): Pair<String, Long>? {
@@ -54,20 +62,43 @@ object FinanceParser {
     fun parse(sender: String, text: String): ParsedFinance? {
         val provider = provider(sender, text) ?: return null
         if (Regex("(?i)\\b(failed|unsuccessful|declined|imeshindwa|umeshindwa|haijafanikiwa|haikufanikiwa|haijakamilika|haujakamilika|inasubiri|pending)\\b").containsMatchIn(text)) return null
-        val kind = when {
-            Regex("(?i)\\b(reversal|reversed|imebatilishwa|refund|returned|umerejeshewa)\\b").containsMatchIn(text) -> "REFUND"
-            Regex("(?i)\\b(received|credited|umepokea|imeingia)\\b").containsMatchIn(text) -> "INCOME"
-            Regex("(?i)\\b(paid|debited|sent|umelipa|umetuma|imelipwa)\\b").containsMatchIn(text) -> "EXPENSE"
-            else -> return null
-        }
-        val feeMatch = Regex("(?i)\\b(?:fee|charge|ada)(?:\\s+ya\\s+muamala)?[ :]*?(?:TZS|TShs?)?\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)").find(text)
-        val main = amount.findAll(text).firstOrNull { hit -> feeMatch == null || hit.range.first !in feeMatch.range } ?: return null
+        val kind = kind(text) ?: return null
+        val amounts = amount.findAll(text).toList()
+        val firstAmount = amounts.firstOrNull()?.range?.first ?: return null
+        // Plain "ada" is a fee only after the main amount: "Umelipa ada TZS 500,000 kwa SHULE" is a school-fee payment.
+        val fees = feeRegex.findAll(text).filter { m -> !m.groupValues[1].equals("ada", ignoreCase = true) || m.range.first > firstAmount }.toList()
+        val main = amounts.firstOrNull { hit -> fees.none { hit.range.first in it.range } } ?: return null
         return runCatching {
             val total = Money.tzs(main.groups[1]?.value ?: main.groups[2]!!.value)
-            val fee = feeMatch?.groupValues?.get(1)?.let { if (BigDecimal(it.replace(",", "")).signum() == 0) 0 else Money.tzs(it) } ?: 0
+            val fee = fees.fold(0L) { sum, m ->
+                val value = m.groupValues[2]
+                Math.addExact(sum, if (BigDecimal(value.replace(",", "")).signum() == 0) 0 else Money.tzs(value))
+            }
             ParsedFinance(provider, reference(text)?.uppercase(Locale.ROOT), kind,
                 total, fee, merchant.find(text)?.groupValues?.get(1), text)
         }.getOrNull()
+    }
+
+    private val feeRegex = Regex("(?i)\\b((?:total\\s+)?transaction\\s+(?:cost|fee|charge)s?|fees?|charges?|makato|gharama(?:\\s+za\\s+muamala)?|tozo|levy|ada\\s+ya\\s+muamala|ada)" +
+        "[\\s:,.-]*?(?:(?:ni|of|is)\\s+)?(?:TZS|TShs?|Tsh)?\\s*($NUMBER)")
+    private val refund = Regex("(?i)\\b(reversal|reversed|imebatilishwa|refund|returned|umerejeshewa)\\b")
+    private val incoming = Regex("(?i)\\b(received|umepokea|imeingia|umeweka|deposited|amekutumia|amekuwekea|sent\\s+you)\\b|\\bcredited\\b(?!\\s+to\\s+(?!your|ur|you|account|a/c|akaunti))")
+    private val outgoing = Regex("(?i)\\b(paid|debited|sent(?!\\s+you\\b)|umelipa|umetuma|imelipwa|umetoa|withdrawn|withdrew|umenunua|bought|purchased)\\b|\\bcredited\\s+to\\s+(?!your|ur|you|account|a/c|akaunti)")
+
+    /**
+     * Direction from the owner's side. The earliest direction verb wins, so "debited TZS 50,000 and credited to JOHN"
+     * is an expense. A reversed incoming payment ("the TZS 5,000 you received ... has been reversed") is money leaving.
+     */
+    private fun kind(text: String): String? {
+        val inAt = incoming.find(text)?.range?.first
+        val outAt = outgoing.find(text)?.range?.first
+        if (refund.containsMatchIn(text)) return if (inAt != null && (outAt == null || inAt < outAt)) "EXPENSE" else "REFUND"
+        return when {
+            inAt == null && outAt == null -> null
+            outAt == null -> "INCOME"
+            inAt == null -> "EXPENSE"
+            else -> if (outAt < inAt) "EXPENSE" else "INCOME"
+        }
     }
 }
 

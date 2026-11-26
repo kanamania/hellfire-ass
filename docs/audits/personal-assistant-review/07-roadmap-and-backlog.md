@@ -37,12 +37,13 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 
 | ID | Pri | Title | Defects | Cx | Status |
 |---|---|---|---|---|---|
-| HF-001 | P0 | Time understanding: am/pm, relative, time-only, day parts, weekday rollover, Swahili period, title stripping | A1.1, A1.2, N5, N6, N7, D-06, D-07 | M | OPEN |
-| HF-002 | P0 | Commitment detection without noun false positives | N10 | S | OPEN |
+| HF-001 | P0 | Time understanding: am/pm, relative, time-only, day parts, weekday rollover, Swahili period, title stripping | A1.1, A1.2, N5, N6, N7, D-06, D-07 | M | DONE (9e641ed) |
+| HF-002 | P0 | Commitment detection without noun false positives | N10 | S | DONE (9e641ed) |
 | HF-003 | P0 | Ask routing: news, finance, tasks, follow-ups, word boundaries, generic verbs | A1.3, A1.7, N8, N9, D-01–D-05 | M | OPEN |
-| HF-004 | P0 | Finance direction, fee words, cents, school fees, withdrawals, airtime, reversed income | A1.4, A1.5, N1–N4 | M | OPEN |
-| HF-005 | P0 | Providers: AzamPesa, Selcom, whole-word aliases | A1.6 | S | OPEN |
-| HF-006 | P0 | Sender-ID priority for provider detection | A1.6 | M | OPEN |
+| HF-004 | P0 | Finance direction, fee words, school fees, withdrawals, airtime, reversed income | A1.4, A1.5, N2–N4 | M | DONE (294f81d) |
+| HF-004b | P2 | Amounts with cents: the golden fixture deliberately rejects `TZS 1.25`; rounding would change the whole-shilling ledger contract | N1 | S | OWNER DECISION |
+| HF-005 | P0 | Providers: AzamPesa, Selcom, whole-word aliases | A1.6 | S | DONE (294f81d) |
+| HF-006 | P0 | Sender-ID priority for provider detection | A1.6 | M | DONE (294f81d): sender decides first. Open: flag a personal number that claims to be a provider; exact sender IDs unverified on the phone |
 | HF-007 | P0 | Relay: quarantine unreadable WhatsApp spool files | D-23 | S | OPEN |
 | HF-008 | P0 | Deleting a recording purges its transcript events, search rows and vectors | D-19 | S | OPEN |
 | HF-009 | P0 | TheftGuard: owner-gated Device Owner relinquish | D-24 | S | OPEN |
