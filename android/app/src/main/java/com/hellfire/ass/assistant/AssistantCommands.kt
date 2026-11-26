@@ -66,8 +66,7 @@ object AssistantCommands {
     private val done = Regex("(?is)^(?:mark\\s+(?:task\\s+)?(.+?)(?:\\s+as)?\\s+(?:done|complete|completed)|(?:complete|finish|maliza)\\s+(?:task\\s+)?(.+))$")
     private val snooze = Regex("(?is)^(?:snooze|ahirisha)\\s+(?:task\\s+)?(.+)$")
     private val reschedule = Regex("(?is)^(?:reschedule|move|hamisha)\\s+(?:task\\s+)?(.+?)\\s+(?:to|hadi)\\s+(.+)$")
-    private val weekdays = "monday|tuesday|wednesday|thursday|friday|saturday|sunday|jumatatu|jumanne|jumatano|alhamisi|ijumaa|jumamosi|jumapili"
-    private const val WHEN_HINT = "Say when: today, tomorrow, a weekday or yyyy-MM-dd, optionally with HH:MM (default 09:00)."
+    private const val WHEN_HINT = "Say when: today, tomorrow, a weekday, the 1st or yyyy-MM-dd, optionally with a time (17:00, 5pm, saa tisa alasiri), or in 20 minutes."
 
     /** Returns null when the text is a question rather than a command. Throws IllegalArgumentException with an owner-facing message for malformed commands. */
     fun parse(text: String, now: Instant): OwnerCommand? {
@@ -127,14 +126,11 @@ object AssistantCommands {
         return OwnerCommand.TaskAction(input, q, action, due)
     }
 
-    internal fun stripWhen(text: String): String = text
-        .replace(Regex("(?i)\\bsaa nne asubuhi\\b"), " ")
-        .replace(Regex("(?i)\\b(?:at\\s+|saa\\s+)?(?:[01]?[0-9]|2[0-3]):[0-5][0-9]\\b"), " ")
-        .replace(Regex("(?i)\\b(?:on\\s+)?20[0-9]{2}-[0-9]{2}-[0-9]{2}\\b"), " ")
-        .replace(Regex("(?i)\\b(?:the\\s+)?(?:day after tomorrow|keshokutwa|kesho kutwa)\\b"), " ")
-        .replace(Regex("(?i)\\b(?:today|tomorrow|leo|kesho)\\b"), " ")
-        .replace(Regex("(?i)\\b(?:on\\s+|next\\s+)?(?:$weekdays)\\b"), " ")
-        .replace(Regex("\\s+"), " ").trim().trimEnd(',', '.', ';').trim()
+    internal fun stripWhen(text: String): String =
+        TaskExtractor.whenPhrases.fold(text) { acc, phrase -> phrase.replace(acc, " ") }
+            .replace(Regex("\\s+"), " ").trim()
+            .replace(Regex("(?i)\\s+(?:at|on|by|ifikapo|saa)$"), "")
+            .trimEnd(',', '.', ';').trim()
 
     /** Applies a confirmed command. Callers must only invoke this after explicit owner confirmation. */
     suspend fun execute(app: HellFireApp, command: OwnerCommand): String {
