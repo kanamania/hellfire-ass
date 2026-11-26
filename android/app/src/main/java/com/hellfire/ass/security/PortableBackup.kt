@@ -16,6 +16,7 @@ import java.security.*
 import java.util.*
 import java.util.zip.*
 
+
 class PortableBackup(
     private val app: HellFireApp,
     private val stagingDatabase: (File, ByteArray) -> EventDatabase = { file, key ->
@@ -303,22 +304,6 @@ class PortableBackup(
             db.query("SELECT COUNT(*) FROM $table").use { require(it.moveToFirst() && it.getLong(0) == 0L) { "Restore requires an empty local database; existing data is never replaced" } }
         }
     }
-    private fun readSmall(input: InputStream): String {
-        val output = ByteArrayOutputStream(); val buffer = ByteArray(8192)
-        while (true) { val count = input.read(buffer); if (count < 0) break; require(output.size() + count <= 8 * 1024 * 1024); output.write(buffer, 0, count) }
-        return output.toString(Charsets.UTF_8.name())
-    }
-    private suspend fun copyBounded(input: InputStream, output: OutputStream, maximum: Long) {
-        val buffer = ByteArray(65536); var count = 0L
-        try { while (true) { currentCoroutineContext().ensureActive(); val n = input.read(buffer); if (n < 0) break
-            require(n > 0); count += n; require(count <= maximum); output.write(buffer, 0, n) }
-        } finally { buffer.fill(0) }
-    }
-    private class NonClosingInput(input: InputStream) : FilterInputStream(input) { override fun close() {} }
-    private class Discard : OutputStream() {
-        override fun write(b: Int) {}
-        override fun write(bytes: ByteArray, off: Int, len: Int) {}
-    }
 
     private suspend fun writeFormat2(zip: ZipOutputStream, id: String, plan: BackupPlan, media: List<MediaItem>, baseId: String?) {
         val manifest = JSONObject()
@@ -503,11 +488,6 @@ class PortableBackup(
         return items
     }
 
-    private fun discard(input: InputStream) {
-        val buffer = ByteArray(65536)
-        while (input.read(buffer) >= 0) {}
-    }
-
     private suspend fun record(id: String, plan: BackupPlan, verified: Set<String>, previously: Set<String>, baseId: String?, archiveHash: String, destinationRef: String, destination: String) {
         val now = System.currentTimeMillis()
         val backed = BackupPlanner.backedUpIds(plan, verified, previously)
@@ -634,52 +614,4 @@ class PortableBackup(
         }
     }
 
-    /** Sequential reader for the ChunkedMedia layout, for archives that are only available as a stream. */
-    private class SequentialChunks(private val input: DataInputStream, private val cipher: PayloadCipher) : InputStream() {
-        private val id: String
-        private val size: Long
-        private var index = 0
-        private var done = 0L
-        private var chunk = ByteArray(0)
-        private var position = 0
-        init {
-            val magic = ByteArray(9); input.readFully(magic)
-            require(magic.contentEquals("HFAMEDIA2".toByteArray(Charsets.US_ASCII))) { "Unsupported backup format" }
-            id = UUID(input.readLong(), input.readLong()).toString()
-            input.readInt()
-            require(input.readInt() == ChunkedMedia.CHUNK)
-            size = input.readLong()
-            require(size in 0..BackupReadiness.MAX_ARCHIVE) { "Incomplete backup" }
-        }
-        override fun read(): Int { val one = ByteArray(1); return if (read(one, 0, 1) < 0) -1 else one[0].toInt() and 255 }
-        override fun read(b: ByteArray, off: Int, len: Int): Int {
-            if (len == 0) return 0
-            if (position == chunk.size) {
-                if (done >= size) return -1
-                val plain = input.readInt()
-                require(plain == minOf(ChunkedMedia.CHUNK.toLong(), size - done).toInt()) { "Corrupt backup chunk" }
-                val envelope = ByteArray(plain + 29); input.readFully(envelope)
-                chunk.fill(0)
-                chunk = cipher.decrypt(envelope, ChunkedMedia.aad(id, index, plain))
-                index++; done += plain; position = 0
-            }
-            val count = minOf(len, chunk.size - position)
-            chunk.copyInto(b, off, position, position + count)
-            position += count
-            return count
-        }
-        override fun close() { chunk.fill(0); input.close() }
-    }
-
-    private fun hashCopy(file: File, output: OutputStream): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        file.inputStream().use { input ->
-            val buffer = ByteArray(65536)
-            while (true) {
-                val n = input.read(buffer); if (n < 0) break
-                digest.update(buffer, 0, n); output.write(buffer, 0, n)
-            }
-        }
-        return digest.digest().joinToString("") { "%02x".format(it) }
-    }
 }
