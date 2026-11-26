@@ -41,7 +41,7 @@ jobs:
           bash tools/test_native_jni.sh --sanitize
           python3 -m unittest discover -s tools -p 'test_*.py'
           python3 tools/generate_predevice_fixtures.py --check
-          python3 tools/check_native_apk.py android/app/build/outputs/apk/release/app-release-unsigned.apk --abi arm64-v8a --output android/build/reports/predevice/release-native.json
+          python3 tools/check_native_apk.py android/app/build/outputs/apk/release/HellFire-Ass-*-release-unsigned.apk --abi arm64-v8a --output android/build/reports/predevice/release-native.json
       - name: Relay tests
         working-directory: server
         run: |
