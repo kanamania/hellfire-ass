@@ -168,7 +168,8 @@ object WebSync {
      * One pass. [saved] is the stored state (null forces a full copy); [save] persists state after each kind,
      * so an interrupted pass resumes without resending finished kinds.
      */
-    suspend fun run(db: EventDatabase, cipher: PayloadCipher, saved: JSONObject?, call: Call, save: (JSONObject) -> Unit, now: Long = System.currentTimeMillis()): Counts {
+    suspend fun run(db: EventDatabase, cipher: PayloadCipher, saved: JSONObject?, call: Call, save: (JSONObject) -> Unit, now: Long = System.currentTimeMillis(),
+        device: String? = null): Counts {
         val remote = call.send("GET", "/api/sync/state", null).getString("dataset")
         val previous = saved?.takeIf { it.optString("dataset") == remote && it.has("rows") }
         // Owner news choices made on the web go into Room first, so this pass pushes the merged state.
@@ -179,7 +180,7 @@ object WebSync {
             newsSeq = maxOf(newsSeq, actions.maxOf { it.seq })
         }
         val state = previous ?: JSONObject()
-            .put("dataset", call.send("POST", "/api/sync/reset", JSONObject()).getString("dataset")).put("rows", JSONObject()).also(save)
+            .put("dataset", call.send("POST", "/api/sync/reset", JSONObject().apply { device?.let { put("device", it) } }).getString("dataset")).put("rows", JSONObject()).also(save)
         state.put("newsActionSeq", newsSeq)
         val dataset = state.getString("dataset")
         val held = state.getJSONObject("rows")
@@ -292,6 +293,10 @@ object WebSync {
         if (success) edit.putLong("last-success", System.currentTimeMillis())
         edit.apply()
     }
+    /** Stable id of this install, so the server can keep its web copy with one phone. */
+    private const val DEVICE = "web-device"
+    fun device(app: HellFireApp): String = app.secrets.read(DEVICE)?.optString("id")?.takeIf { it.isNotBlank() }
+        ?: UUID.randomUUID().toString().also { app.secrets.save(DEVICE, JSONObject().put("id", it)) }
     fun lastSuccess(context: Context): Long = context.getSharedPreferences(CONFIG, Context.MODE_PRIVATE).getLong("last-success", 0)
     fun readStatus(context: Context): String = context.getSharedPreferences(CONFIG, Context.MODE_PRIVATE).getString("status", "Off").orEmpty()
 
@@ -307,7 +312,7 @@ object WebSync {
     suspend fun disable(app: HellFireApp, wipe: Boolean) = withContext(Dispatchers.IO) {
         mutex.withLock {
             val config = app.secrets.read(CONFIG)
-            if (wipe && config != null) https(config.getString("url"), config.getString("token")).send("POST", "/api/sync/reset", JSONObject())
+            if (wipe && config != null) https(config.getString("url"), config.getString("token")).send("POST", "/api/sync/reset", JSONObject().put("device", device(app)))
             stop(app)
             app.secrets.remove(CONFIG)
             if (wipe) app.secrets.remove(STATE)
@@ -329,7 +334,8 @@ class WebSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                 WebSync.status(app, "Syncing")
                 val counts = WebSync.run(app.database, app.cipher, app.secrets.read(WebSync.STATE),
                     WebSync.https(config.getString("url"), config.getString("token")),
-                    save = { state -> if (app.secrets.read(WebSync.CONFIG)?.optString("generation") == generation) app.secrets.save(WebSync.STATE, state) else throw Superseded() })
+                    save = { state -> if (app.secrets.read(WebSync.CONFIG)?.optString("generation") == generation) app.secrets.save(WebSync.STATE, state) else throw Superseded() },
+                    device = WebSync.device(app))
                 PerfLog.record("web_sync_rows", counts.upserted.toLong() + counts.deleted)
                 PerfLog.record("web_sync_bytes", counts.bytes.toLong())
                 WebSync.status(app, "Synced · ${counts.upserted} updated, ${counts.deleted} removed", success = true)
@@ -341,6 +347,7 @@ class WebSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                 throw e
             } catch (e: WebSync.Rejected) {
                 if (e.status == 401) { WebSync.status(app, "The server refused the sync token. Check it in Web access."); Result.failure() }
+                else if (e.status == 423) { WebSync.status(app, "Another phone already syncs this web copy. Turn web access off on that phone first, or use another server."); Result.failure() }
                 else { WebSync.status(app, "Server error (HTTP ${e.status}); will retry"); Result.retry() }
             } catch (_: Exception) {
                 WebSync.status(app, "Could not reach the server; will retry")

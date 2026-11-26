@@ -76,7 +76,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-052 | P2 | Interactive inference priority for background `generate` | A1.22 | S | OPEN |
 | HF-060 | P2 | Telegram capture | — | L | OWNER DECISION |
 | HF-061 | P2 | Web approvals through a phone-applied command channel | — | L | OPEN |
-| HF-062 | P2 | Refuse a second phone resetting the web dataset | — | S | OPEN |
+| HF-062 | P2 | Refuse a second phone resetting the web dataset | — | S | DONE (de8c58c) |
 | HF-063 | P2 | Per-record deletion and retention for events and news | — | M | OPEN |
 | HF-064 | P2 | Location-aware reminders (owner Priority 3) | — | L | OPEN |
 | HF-065 | P2 | Assist context (screen text) behind an owner toggle | A1.18 | M | OPEN |

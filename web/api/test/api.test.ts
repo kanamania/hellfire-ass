@@ -142,6 +142,16 @@ describe('sync', () => {
     assert.deepEqual((await owner('/api/records?kinds=ledger')).body.rows, []);
   });
 
+  it('keeps the web copy with the phone that syncs it; a second phone cannot wipe it', async () => {
+    const first = (await phone('/api/sync/reset', { device: 'phone-aaaa1111' })).body.dataset;
+    assert.equal((await phone('/api/sync/batch', { dataset: first, kind: 'ledger', upserts: [ledger('a', 1)] })).status, 200);
+    assert.equal((await phone('/api/sync/finish', { dataset: first })).status, 200);
+    assert.equal((await phone('/api/sync/reset', { device: 'phone-bbbb2222' })).status, 423);
+    assert.equal((await owner('/api/records?kinds=ledger')).body.rows.length, 1);
+    assert.equal((await phone('/api/sync/reset', { device: 'phone-aaaa1111' })).status, 200);
+    assert.equal((await phone('/api/sync/reset', { device: 'bad device!' })).status, 400);
+  });
+
   it('builds the overview from synced rows and records the finish time', async () => {
     const now = Date.now();
     await phone('/api/sync/batch', { dataset, kind: 'summary', upserts: [{ id: 'current', at: 0, data: { month: '2026-11', income: 5000, expenses: 1500 } }] });
