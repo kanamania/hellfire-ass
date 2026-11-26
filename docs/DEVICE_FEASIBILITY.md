@@ -12,6 +12,16 @@ implements **Priority 1 only**. The earlier deferral below is historical; no new
 media/library/news/player/widget surface is part of this slice. Physical testing
 remains last. The existing TheftGuard consent exception is unchanged.
 
+## Personal-assistant audit — 2026-11-26
+
+A source-level audit of `main @ 85f5ae5` is in `docs/audits/personal-assistant-review/`.
+It verifies the 2026-11-26 code-review findings (18 confirmed, 3 partly, 1 refuted) and
+records further defects. Its backlog (`07-roadmap-and-backlog.md`, IDs `HF-001…`) maps onto
+the priorities above: Priority 2 becomes HF-011/HF-024 plus device check HF-070, Priority 3
+becomes HF-064 after the interruption coordinator, and Priority 4 (Telegram) is HF-060, which
+needs an owner decision on the TDLib dependency. Host checks at audit time: 551 Android tests
+(0 failures, 5 skipped), lint 0 errors, relay 40, worker 6/6, web API 31/31. No device evidence.
+
 ## Earlier scope and remaining plan — owner update 2026-11-18
 
 The owner requested: “Finish what you have done and plan the remaining later.”
