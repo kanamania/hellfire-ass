@@ -61,7 +61,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-025 | P1 | Ask search uses the full-text index, not the decrypt scan | A1.20 | S | DONE (c659cd6) |
 | HF-030 | P1 | Ledger: corrected re-post after reversal | D-17 | M | DONE (0ca9f5d) |
 | HF-031 | P1 | Person- and month-aware search | D-22 | M | DONE (d940e37) without a new table: names expand to saved handles in the existing FTS index; months filter by date. Open: citation check for model answers (moved to HF-051) |
-| HF-032 | P1 | Interruption coordinator: quiet hours, dedup, budget, "not useful" | — | M | OPEN |
+| HF-032 | P1 | Interruption coordinator: quiet hours, dedup, budget, "not useful" | — | M | PARTLY DONE (this branch): shared quiet hours and a daily cap (`Interruptions`) for capture-problem alerts and task heads-ups. Open: news through the same gate, `notice_log`, "not useful" feedback |
 | HF-033 | P1 | Conditional reminders ("remind me Friday if Juma hasn't paid") | — | M | DONE (c554a4a): schema 23 adds `assistant_task.condition` |
 | HF-034 | P1 | Scenario replay evaluation harness | — | M | OPEN |
 | HF-040 | P2 | Opt-in auto-post for trusted provider formats | A1.15 | M | OWNER DECISION |

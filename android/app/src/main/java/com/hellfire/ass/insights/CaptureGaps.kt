@@ -65,6 +65,7 @@ object CaptureGaps {
      * Tells the owner once when capture breaks and again each day it stays broken; clears the alert when it recovers.
      * A silent notification listener is also asked to reconnect.
      */
+    private const val DAILY_CAP = 3
     fun report(app: HellFireApp, gaps: List<CaptureGap>, now: Long = System.currentTimeMillis()) {
         val prefs = app.getSharedPreferences("capture_gaps", 0)
         val manager = app.getSystemService(NotificationManager::class.java)
@@ -76,6 +77,8 @@ object CaptureGaps {
         if (!app.getSharedPreferences("capture", 0).getBoolean("gap_alerts", true)) return
         val signature = gaps.map { it.source }.sorted().joinToString("|")
         if (signature == prefs.getString("signature", null) && now - prefs.getLong("at", 0) < RENOTIFY) return
+        // A source that keeps flapping must not alert all day or overnight; the Needs attention page still shows it.
+        if (!Interruptions.allow(app, "capture_gap", DAILY_CAP, now)) return
         manager.createNotificationChannel(NotificationChannel(CHANNEL, "Capture problems", NotificationManager.IMPORTANCE_DEFAULT))
         val open = PendingIntent.getActivity(app, 73, Intent(app, MainActivity::class.java).setData(Uri.parse("hellfire://settings/permissions")),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
@@ -85,5 +88,6 @@ object CaptureGaps {
             .setStyle(Notification.BigTextStyle().bigText(gaps.joinToString("\n") { it.message }))
             .setContentIntent(open).setAutoCancel(true).build())
         prefs.edit().putString("signature", signature).putLong("at", now).apply()
+        Interruptions.record(app, "capture_gap", now)
     }
 }
