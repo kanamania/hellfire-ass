@@ -66,11 +66,11 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-034 | P1 | Scenario replay evaluation harness | — | M | PARTLY DONE (d639f8f): `AssistantEvalTest` with bilingual time, finance and routing sets, report in `build/reports/assistant-eval.json`. Open: the 12-week timeline replay and proactive and retrieval metrics |
 | HF-040 | P2 | Opt-in auto-post for trusted provider formats | A1.15 | M | OWNER DECISION |
 | HF-041 | P2 | Budget warnings and 30-day cash-flow in the brief | — | M | PARTLY DONE (2c117e7): morning brief lists budgets over or ahead of the month. Open: income-inclusive cash-flow projection |
-| HF-042 | P2 | Waiting-on includes notification-only chats | — | S | OPEN |
+| HF-042 | P2 | Waiting-on includes notification-only chats | — | S | REJECTED: notifications never show the owner's own replies, so every such chat would look unanswered forever. Needs the WhatsApp relay (which sees outgoing messages) or Telegram capture |
 | HF-043 | P2 | Reply through a live notification's reply action | A1.16 | M | OPEN |
 | HF-044 | P2 | Missed-call follow-up from dialer notifications | A1.17 | S | DONE (368fd52): from the dialer notification, no call-log permission; OEM dialer formats NOT TESTED |
 | HF-045 | P2 | Quick Settings tile and text-selection action | — | S | DONE (5136024); device NOT TESTED |
-| HF-046 | P2 | LUKU token kept in an encrypted field | D-20 | S | OPEN |
+| HF-046 | P2 | LUKU token kept in an encrypted field | D-20 | S | OWNER DECISION: `NotificationNormalizer` redacts LUKU tokens on purpose (its comment names them) under the code-redaction rule |
 | HF-050 | P2 | Local-model fallback that emits existing `OwnerCommand` text | A1.9 | M | OPEN |
 | HF-051 | P2 | Router: real on-device provider, `InputKind`, citation check | D-15, D-16 | M | OPEN |
 | HF-052 | P2 | Interactive inference priority for background `generate` | A1.22 | S | OPEN |
