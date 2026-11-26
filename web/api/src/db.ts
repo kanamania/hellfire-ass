@@ -71,6 +71,8 @@ CREATE INDEX IF NOT EXISTS news_action_target ON news_action (target);
 @Injectable()
 export class Db implements OnModuleInit, OnModuleDestroy {
   readonly pool: pg.Pool;
+  /** Owner sessions issued at or before this time (epoch ms) were signed out. */
+  sessionsAfter = 0;
 
   constructor(@Inject(CONFIG) config: Config) {
     this.pool = new pg.Pool({ connectionString: config.databaseUrl, max: 10 });
@@ -78,6 +80,14 @@ export class Db implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     await this.pool.query(SCHEMA);
+    const { rows } = await this.pool.query("SELECT value FROM meta WHERE key = 'sessions_after'");
+    this.sessionsAfter = Number(rows[0]?.value ?? 0);
+  }
+
+  /** Signs out every owner session issued so far; there is one owner, so logout ends all of them. */
+  async revokeSessions(now = Date.now()) {
+    await this.pool.query("INSERT INTO meta (key, value) VALUES ('sessions_after', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [String(now)]);
+    this.sessionsAfter = now;
   }
 
   async onModuleDestroy() {
