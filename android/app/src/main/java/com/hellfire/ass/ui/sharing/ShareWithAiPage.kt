@@ -107,9 +107,9 @@ fun ShareWithAiPage(route: Route) {
     var muteRanges by remember { mutableStateOf(listOf<Pair<Long, Long>>()) }
     var extraIds by remember { mutableStateOf(setOf<String>()) }
     var extras by remember { mutableStateOf(listOf<String>()) }
-    val history by app.database.shares().exports(itemId).collectAsStateWithLifecycle(emptyList())
-    val segments by app.database.library().segments(itemId).collectAsStateWithLifecycle(emptyList())
-    val bookmarks by app.database.playback().bookmarks(itemId, false).collectAsStateWithLifecycle(emptyList())
+    val history by remember(itemId) { app.database.shares().exports(itemId) }.collectAsStateWithLifecycle(emptyList())
+    val segments by remember(itemId) { app.database.library().segments(itemId) }.collectAsStateWithLifecycle(emptyList())
+    val bookmarks by remember(itemId) { app.database.playback().bookmarks(itemId, false) }.collectAsStateWithLifecycle(emptyList())
 
     fun apply(draft: ShareDraft) {
         title = draft.title

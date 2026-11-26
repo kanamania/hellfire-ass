@@ -112,7 +112,7 @@ fun BackupScreen(app: HellFireApp) {
     var readiness by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     LaunchedEffect(busy) {
         if (!busy) readiness = withContext(Dispatchers.IO) {
-            val originals = app.database.media().all().fold(0L) { n, m -> Math.addExact(n, m.size) }
+            val originals = app.database.media().totalSize()
             val bytes = app.getDatabasePath("hellfire.db").length()
             val required = runCatching { BackupReadiness.stagingBytes(originals, bytes) }.getOrNull()
             val verified = app.getSharedPreferences("ui", 0).getLong("last_backup_verified_at", 0)

@@ -30,7 +30,7 @@ import java.io.FileNotFoundException
 @Composable
 fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: () -> Unit, initialSelected: String? = null) {
     val nav = LocalNav.current
-    val items by app.database.media().items().collectAsStateWithLifecycle(initialValue = emptyList())
+    val items by remember { app.database.media().items() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val scope = rememberCoroutineScope()
     var result by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -172,7 +172,7 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
         if (shownItems < items.size) TextButton(onClick = { itemPages++ }) { Text("Show more originals") }
     }
     items.firstOrNull { it.id == selected }?.let { item -> key(item.id) {
-        val segments by app.database.media().segments(item.id).collectAsStateWithLifecycle(initialValue = emptyList())
+        val segments by remember(item.id) { app.database.media().segments(item.id) }.collectAsStateWithLifecycle(initialValue = emptyList())
         var name by remember { mutableStateOf(item.name) }
         var date by remember { mutableStateOf(item.recordedAt?.let(TaskTime::display).orEmpty()) }
         Text(item.name, style = MaterialTheme.typography.titleMedium)

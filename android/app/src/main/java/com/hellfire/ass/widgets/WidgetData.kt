@@ -75,7 +75,7 @@ private fun day(d: LocalDate) = d.atStartOfDay(TaskTime.zone).toInstant().toEpoc
 data class Spend(val total: Long, val income: Long, val byCategory: Map<String, Long>)
 
 suspend fun spendFor(app: HellFireApp, from: Long, to: Long): Spend {
-    val all = posted(app.database.finances().allEntries().filter { it.occurredAt >= from && it.occurredAt < to }, app.database.finances().allAccounts())
+    val all = posted(app.database.finances().entriesBetween(from, to), app.database.finances().allAccounts())
     val totals = app.finances.summary(from, to)
     return Spend(totals.expenses, totals.income, all.groupBy { it.entry.category }.mapValues { (_, v) -> v.sumOf(::spend) })
 }
@@ -90,10 +90,9 @@ data class BriefingData(
 suspend fun loadBriefing(app: HellFireApp, now: Long = System.currentTimeMillis()): BriefingData {
     val today = Instant.ofEpochMilli(now).atZone(TaskTime.zone).toLocalDate()
     val evening = isEvening(now)
-    val tasks = app.database.tasks().all()
-    val active = tasks.filter { it.state == "ACTIVE" }
+    val active = app.database.tasks().active()
     val start = day(today); val end = day(today.plusDays(1)); val end2 = day(today.plusDays(2))
-    val candidates = app.database.finances().allCandidates().filter { it.state == "REVIEW" }
+    val candidates = app.database.finances().reviewCandidates()
     val unknown = candidates.filter { c -> c.merchant != null && app.database.finances().merchant(c.provider, c.merchant) == null }
     return BriefingData(
         evening, today,

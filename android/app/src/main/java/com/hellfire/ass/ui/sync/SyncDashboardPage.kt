@@ -26,10 +26,10 @@ fun SyncDashboardPage() {
     val app = LocalEnv.current.app
     val nav = LocalNav.current
     val scope = rememberCoroutineScope()
-    val counts by app.database.sync().counts().collectAsStateWithLifecycle(emptyList())
-    val queueChanges by app.database.sync().queueChanges().collectAsStateWithLifecycle(emptyList())
+    val counts by remember { app.database.sync().counts() }.collectAsStateWithLifecycle(emptyList())
+    val queueChanges by remember { app.database.sync().queueChanges() }.collectAsStateWithLifecycle(emptyList())
     var queue by remember { mutableStateOf(emptyList<SyncQueueRow>()) }
-    val conflicts by app.database.sync().openConflicts().collectAsStateWithLifecycle(emptyList())
+    val conflicts by remember { app.database.sync().openConflicts() }.collectAsStateWithLifecycle(emptyList())
     var status by remember { mutableStateOf("") }
     var paused by remember { mutableStateOf(false) }
     var wifi by remember { mutableStateOf(false) }

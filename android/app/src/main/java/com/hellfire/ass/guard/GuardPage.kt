@@ -32,8 +32,8 @@ fun GuardPage() {
     val app = LocalEnv.current.app
     val activity = androidx.activity.compose.LocalActivity.current as ComponentActivity
     val scope = rememberCoroutineScope()
-    val state by app.database.guard().observe().collectAsStateWithLifecycle(null)
-    val evidence by app.database.guard().evidenceLog().collectAsStateWithLifecycle(emptyList())
+    val state by remember { app.database.guard().observe() }.collectAsStateWithLifecycle(null)
+    val evidence by remember { app.database.guard().evidenceLog() }.collectAsStateWithLifecycle(emptyList())
     var url by remember { mutableStateOf("") }
     var token by remember { mutableStateOf("") }
     var key by remember { mutableStateOf("") }

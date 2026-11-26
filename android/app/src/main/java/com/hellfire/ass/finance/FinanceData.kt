@@ -81,6 +81,8 @@ interface FinanceDao {
     @Query("SELECT * FROM merchant_alias ORDER BY name") fun aliases(): Flow<List<MerchantAlias>>
     @Query("SELECT * FROM ledger_entry WHERE occurredAt >= :start AND occurredAt < :end ORDER BY occurredAt DESC") fun periodFlow(start: Long, end: Long): Flow<List<LedgerEntry>>
     @Query("SELECT * FROM ledger_entry ORDER BY occurredAt") suspend fun allEntries(): List<LedgerEntry>
+    @Query("SELECT * FROM ledger_entry WHERE occurredAt >= :from AND occurredAt < :to ORDER BY occurredAt") suspend fun entriesBetween(from: Long, to: Long): List<LedgerEntry>
+    @Query("SELECT * FROM finance_candidate WHERE state = 'REVIEW' ORDER BY occurredAt DESC") suspend fun reviewCandidates(): List<FinanceCandidate>
     @Query("SELECT * FROM ledger_evidence") suspend fun allEvidence(): List<LedgerEvidence>
     @Query("SELECT DISTINCT sourceId FROM ledger_evidence WHERE sourceId IN (:ids)") suspend fun evidenced(ids: List<String>): List<String>
     @Query("SELECT * FROM finance_candidate WHERE sourceId = :sourceId") suspend fun candidatesFor(sourceId: String): List<FinanceCandidate>
