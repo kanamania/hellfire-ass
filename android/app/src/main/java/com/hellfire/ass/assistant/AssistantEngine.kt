@@ -161,35 +161,47 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
     }
     private suspend fun search(query: String): Answer {
         require(query.length in 2..300) { "Use 2–300 characters for source search" }
-        val terms = SearchText.keywords(query)
-        val memories = (listOf(query) + terms).flatMap { app.database.memory().search(it) }.distinctBy { it.id }.take(20)
+        val month = SearchScope.month(query, clock.instant())
+        val words = SearchText.keywords(query).filter { month == null || it !in month.words }
+        val person = SearchScope.person(words, app.database.people().all(), app.database.contacts().all())
+        val terms = words.filter { it != person?.word }
+        val memories = (listOf(query) + words).flatMap { app.database.memory().search(it) }.distinctBy { it.id }.take(20)
         val found = mutableListOf<Pair<String, String>>()
         suspend fun indexed(q: String?, limit: Int) = q?.let { try {
                 val started = android.os.SystemClock.elapsedRealtime()
-                val hits = app.database.events().search(it, limit)
+                val hits = if (month != null) app.database.events().searchBetween(it, month.start, month.end, limit) else app.database.events().search(it, limit)
                 QueryTrace.record("source_search", android.os.SystemClock.elapsedRealtime() - started, hits.size)
                 hits
             } catch (e: CancellationException) { throw e } catch (caught: Exception) { Diagnostics.warn(caught); emptyList() } }.orEmpty()
-        val strict = indexed(SearchText.query(terms.joinToString(" ").ifBlank { query }), 20)
-        val loose = if (strict.size < 5 && terms.size > 1) indexed(SearchText.anyQuery(terms), 100) else emptyList()
-        val indexed = (strict + loose).distinctBy { it.eventId }.sortedByDescending { hit -> terms.count { hit.text.contains(it, true) } }.take(20)
+        val indexed = if (person != null) {
+            // The person's sources (an OR-only query, read the same under either FTS syntax), ranked by the topic words they contain.
+            val theirs = indexed(person.clause, 1000)
+            if (terms.isEmpty()) theirs.take(20)
+            else theirs.map { hit -> hit to terms.count { hit.text.contains(it, true) } }.filter { it.second > 0 }
+                .sortedByDescending { it.second }.map { it.first }.take(20)
+        } else {
+            val strict = indexed(SearchText.query(terms.joinToString(" ").ifBlank { if (month == null) query else "" }), 20)
+            val loose = if (strict.size < 5 && terms.size > 1) indexed(SearchText.anyQuery(terms), 100) else emptyList()
+            (strict + loose).distinctBy { it.eventId }.sortedByDescending { hit -> terms.count { hit.text.contains(it, true) } }.take(20)
+        }
         for (hit in indexed) {
             val event = app.database.events().find(hit.eventId)?.takeIf { it.contentAvailable && !it.securitySensitive && it.source != "owner_skill_use" } ?: continue
             val at = terms.firstNotNullOfOrNull { hit.text.indexOf(it, ignoreCase = true).takeIf { position -> position >= 0 } } ?: 0
             found += event.id to "${event.source} · ${TaskTime.display(event.occurredAt)} · ${hit.text.substring((at - 80).coerceAtLeast(0), (at + query.length + 200).coerceAtMost(hit.text.length))}"
         }
         // Exact phrase through the full-text index (adjacent words, any punctuation), instead of decrypting recent events.
-        val words = Regex("[\\p{L}\\p{N}]+").findAll(query.lowercase(Locale.ROOT)).map { it.value }.toList()
-        val phrase = if (words.size >= 2 && found.size < 20) indexed("\"" + words.joinToString(" ") + "\"", 20) else emptyList()
+        val phraseWords = Regex("[\\p{L}\\p{N}]+").findAll(query.lowercase(Locale.ROOT)).map { it.value }.toList()
+        val phrase = if (phraseWords.size >= 2 && found.size < 20) indexed("\"" + phraseWords.joinToString(" ") + "\"", 20) else emptyList()
         for (hit in phrase) {
             if (found.size >= 20 || found.any { it.first == hit.eventId }) continue
             val event = app.database.events().find(hit.eventId)?.takeIf { it.contentAvailable && !it.securitySensitive && it.source != "owner_skill_use" } ?: continue
-            val at = hit.text.indexOf(words.first(), ignoreCase = true).coerceAtLeast(0)
+            val at = hit.text.indexOf(phraseWords.first(), ignoreCase = true).coerceAtLeast(0)
             found += event.id to "${event.source} · ${TaskTime.display(event.occurredAt)} · ${hit.text.substring((at - 80).coerceAtLeast(0), (at + query.length + 200).coerceAtMost(hit.text.length))}"
         }
         val semantic = semanticMatches(query, found.map { it.first }.toSet())
         val lines = memories.map { "${it.kind} (${it.confidence}%) · ${it.subject}: ${it.text}" } + found.map { it.second } + semantic.map { it.second }
         val result = Answer((if (lines.isEmpty()) "No matching saved evidence found." else lines.joinToString("\n\n")) +
+            (if (person != null || month != null) "\nSearched " + listOfNotNull(person?.let { "messages from or to ${it.word.replaceFirstChar(Char::titlecase)}'s saved numbers and addresses" }, month?.let { "in ${it.label}" }).joinToString(" ") + "." else "") +
             "\nKeyword search covers the saved-source index (${indexed.size} matches). Partial word matches are evidence candidates, not proof. Exact phrases are matched in the same index. " +
             (if (app.semantic.configured) "Meaning matches (≈ score) come from the on-device embedding index (${app.semantic.status()}); scores are uncalibrated similarity, not proof. "
             else "Import a text-embedding model in Local AI for meaning-based matches. ") +

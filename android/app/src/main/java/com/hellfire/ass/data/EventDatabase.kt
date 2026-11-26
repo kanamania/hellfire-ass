@@ -146,6 +146,8 @@ interface EventDao {
     /** Newest matching sources first; [query] must come from SearchText.query. */
     @Query("SELECT s.eventId AS eventId, MIN(s.text) AS text FROM source_search s JOIN source_event e ON e.id = s.eventId WHERE s.text MATCH :query GROUP BY s.eventId ORDER BY MAX(e.receivedAt) DESC LIMIT :limit")
     suspend fun search(query: String, limit: Int): List<SearchHit>
+    @Query("SELECT s.eventId AS eventId, MIN(s.text) AS text FROM source_search s JOIN source_event e ON e.id = s.eventId WHERE s.text MATCH :query AND e.occurredAt >= :from AND e.occurredAt < :to GROUP BY s.eventId ORDER BY MAX(e.receivedAt) DESC LIMIT :limit")
+    suspend fun searchBetween(query: String, from: Long, to: Long, limit: Int): List<SearchHit>
 
     @Query("SELECT * FROM source_event WHERE receivedAt < :before AND (receivedAt > :afterAt OR (receivedAt = :afterAt AND id > :afterId)) ORDER BY receivedAt, id LIMIT :limit")
     suspend fun olderThan(before: Long, afterAt: Long, afterId: String, limit: Int): List<SourceEvent>
