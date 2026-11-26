@@ -437,7 +437,7 @@ blocking remain possible. See the [library's own warning](https://wwebjs.dev/gui
 
 ### Linked WhatsApp Web capture
 
-Required: Docker/Compose on a trusted Linux server, persistent storage, a working
+Required: a trusted Linux server with systemd, Python 3 and Node 22.12+, persistent storage, a working
 HTTPS reverse proxy, and the public key exported from **Messages** in the Android
 app. No Meta credentials are needed. No service has been deployed or account linked
 by this implementation run.
@@ -446,11 +446,15 @@ by this implementation run.
 2. Create private `server/.env` with only `DEVICE_TOKEN` (at least 32 random
    characters) and `STORE_KEY_BASE64` (base64 of 32 random bytes). Generate these
    locally and save them privately; do not paste actual values into commands,
-   documentation or Git. Compose supplies the public-key path and Web mode.
-3. When deploying on your selected server, use this entry point from `server/`:
+   documentation or Git. The systemd units supply the public-key path and Web mode.
+3. When deploying on your selected server, install both services from the repository root
+   (paths and `User` in the units assume this checkout at `/home/dev/Projects/hellfire-ass`):
 
    ```bash
-   docker compose -f compose.yaml -f compose.web.yaml up -d --build
+   python3 -m venv server/.venv && server/.venv/bin/pip install -r server/requirements.txt
+   (cd server/whatsapp-web && npm ci --omit=dev --omit=optional)
+   sudo cp server/systemd/*.service /etc/systemd/system/ && sudo systemctl daemon-reload
+   sudo systemctl enable --now hellfire-relay hellfire-whatsapp-web
    ```
 
 4. On a separate screen, open `https://YOUR-RELAY/pair`, enter the device token,
@@ -477,19 +481,17 @@ npm audit --omit=dev --omit=optional
 The lockfile pins whatsapp-web.js **1.34.8**, qrcode **1.5.4**, and a Puppeteer
 **25.17.0** override to avoid advisories in the upstream-pinned browser dependency.
 Unused RemoteAuth archive dependencies are omitted; the worker uses `LocalAuth`.
-The Docker base pins the matching official Puppeteer image. Live WhatsApp/browser
-compatibility still requires account verification. Outside Docker, install a
-matching browser through Puppeteer or provide `CHROME_BIN`, provide the two private
-environment values above, and run `npm start` under a service manager. Do not run
-two workers against the same browser profile. The Compose worker has no exposed
-port, runs as UID 10001 and keeps Chromium's sandbox enabled. It uses the official
-[Puppeteer Docker setup's `SYS_ADMIN` capability](https://pptr.dev/guides/docker);
-run it only on the trusted host. The relay retains its existing dropped capabilities.
+`npm ci` without `PUPPETEER_SKIP_DOWNLOAD` installs Puppeteer's matching Chrome; to use
+an installed browser instead, set `CHROME_BIN` in `hellfire-whatsapp-web.service`. Live
+WhatsApp/browser compatibility still requires account verification. Do not run two
+workers against the same browser profile. The worker has no listening port, runs as the
+unit's `User` with `NoNewPrivileges` and keeps Chromium's sandbox enabled; run it only on
+the trusted host. The relay listens on `127.0.0.1:8080` only.
 
-Three persistent volumes have distinct purposes: `whatsapp-web-session` holds the
-browser credentials/history; `whatsapp-web-spool` holds encrypted pending capture
-and private QR/status files; `relay-data` holds the phone-encrypted queue and replay
-fingerprints. The browser is a decrypted endpoint, and its profile is **not**
+Three ignored directories under `server/state/` have distinct purposes:
+`whatsapp-web-session/` holds the browser credentials/history; `whatsapp-web/` holds
+encrypted pending capture and private QR/status files; `relay.db` holds the
+phone-encrypted queue and replay fingerprints. The browser is a decrypted endpoint, and its profile is **not**
 encrypted by our spool/envelope code. Protect its host disk and backups. The worker
 gets the spool key but not the device bearer token or Meta credentials. Message
 bodies, raw browser objects, QR tokens and provider errors are not printed by our
@@ -506,15 +508,15 @@ captured in this first slice. No attachment bytes or inferred transcripts are
 fabricated.
 
 **Several WhatsApp accounts:** one relay (and one linked browser session) serves one
-WhatsApp account. For a second account run a second relay with its own Compose
-project, volumes, device token, store key and HTTPS URL, then add it in Android under
+WhatsApp account. For a second account run a second pair of units (copies with
+another name, port and `server/state/` paths) with its own device token, store key and HTTPS URL, then add it in Android under
 Settings › WhatsApp › Add another WhatsApp account. All relays use the same phone
 public key. Never point two relays at the same browser profile or relay database.
 
 To revoke access, log out this session from WhatsApp's **Linked devices**, stop
 the worker, and disconnect the gateway in Android. Disconnecting Android alone
 does not revoke the linked server session. If the linked session disconnects or its
-authentication fails, the worker exits and Compose restarts it with the saved session;
+authentication fails, the worker exits and systemd restarts it with the saved session;
 if WhatsApp no longer accepts that session, the pairing page shows a new QR code.
 Changing the WhatsApp account or transport requires draining the old queue first
 and a separate relay database/profile; old queued evidence must not be relabeled
@@ -525,7 +527,7 @@ Host relay checks:
 ```bash
 cd server
 .venv/bin/python -m pytest -q
-docker compose -f compose.yaml -f compose.web.yaml config --no-env-resolution --no-interpolate
+systemd-analyze verify systemd/*.service
 ```
 
 ### Alternative official Meta transport
@@ -538,7 +540,6 @@ cd server
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 .venv/bin/python -m pytest -q
-docker compose config --no-env-resolution --no-interpolate
 ```
 
 For an owner-authorized deployment, export the device public key in Messages and
@@ -555,12 +556,13 @@ place it at ignored `server/device-public.pem`. Create a private, ignored
 | `META_PHONE_NUMBER_ID` | Connected phone-number ID |
 | `META_ACCESS_TOKEN` | Authorized WhatsApp Business access token |
 | `GRAPH_API_VERSION` | Explicit supported version, such as the version selected in the owner's Meta app; no guessed default |
-| `DEVICE_PUBLIC_KEY_FILE` | Set by Compose to `/app/device-public.pem` |
-| `RELAY_DATABASE` | Optional; default `state/relay.db` in the persistent volume |
+| `DEVICE_PUBLIC_KEY_FILE` | Set by `hellfire-relay.service` to `server/device-public.pem` |
+| `RELAY_DATABASE` | Set by `hellfire-relay.service` to `server/state/relay.db` |
 
-Compose binds only `127.0.0.1:8080`. A real HTTPS reverse proxy is required for Meta
+The relay binds only `127.0.0.1:8080`. A real HTTPS reverse proxy is required for Meta
 and the Android client. After provisioning and explicit deployment authorization,
-`docker compose up -d --build` is the service entry point. This development run did
+`hellfire-relay.service` is the service entry point; for Meta, delete its two
+`WHATSAPP_*` lines and do not install the WhatsApp Web worker. This development run did
 not execute that deployment command. Register `/webhook`, verify signatures and
 actual account eligibility/Coexistence onboarding with Meta; app configuration alone
 cannot prove eligibility. Enter the matching HTTPS URL/device token in Android.
@@ -571,7 +573,7 @@ Endpoints: `GET /health`, `GET/POST /webhook`, `GET /device/events`,
 `POST /drafts/{id}/send`. Device endpoints require bearer auth; webhooks require
 verification/signatures and match configured business/phone IDs. Rate limit is
 120 requests/minute per client address, taken from the reverse proxy's
-`X-Forwarded-For` (Compose trusts it because the port is bound to 127.0.0.1 only).
+`X-Forwarded-For` (trusted only from 127.0.0.1, the local reverse proxy).
 Requests carrying the valid device token have a separate allowance of 1,200/minute. Access logs retain requests while redacting queries.
 No raw webhook contents or credentials are logged.
 
@@ -1159,7 +1161,7 @@ Server-only SMTP configuration:
 | `GUARD_MAIL_FROM`, `GUARD_MAIL_TO` | Sender and owner destination |
 | `GUARD_TIMEOUT_SECONDS` | Missing-heartbeat threshold; default 180, env minimum 120 |
 
-The existing Compose `env_file: .env` passes these values to the relay. Run one
+`hellfire-relay.service` passes these values from `server/.env` to the relay. Run one
 Uvicorn worker per relay database; its lifespan task checks persisted deadlines and
 mail approximately every ten seconds. No scheduler runs unless the app lifespan
 is started. The configured relay refuses remote arming when SMTP settings are

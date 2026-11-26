@@ -1,0 +1,27 @@
+# HellFire linked-device WhatsApp capture worker; no listening port. It writes encrypted events to the
+# spool the relay drains. Install: cd server/whatsapp-web && npm ci --omit=dev --omit=optional
+# (this also downloads Puppeteer's matching Chrome; or set CHROME_BIN below to an installed browser),
+# then copy this unit with hellfire-relay.service. Run only one worker per browser profile.
+[Unit]
+Description=HellFire WhatsApp Web capture
+After=network.target hellfire-relay.service
+Wants=hellfire-relay.service
+
+[Service]
+User=dev
+WorkingDirectory=/home/dev/Projects/hellfire-ass/server/whatsapp-web
+# Same private file as the relay; the worker uses only STORE_KEY_BASE64.
+EnvironmentFile=/home/dev/Projects/hellfire-ass/server/.env
+Environment=NODE_ENV=production
+Environment=WHATSAPP_WEB_STATE_DIR=/home/dev/Projects/hellfire-ass/server/state/whatsapp-web
+# Browser credentials and history (decrypted endpoint: protect this disk and its backups).
+Environment=WHATSAPP_WEB_SESSION_DIR=/home/dev/Projects/hellfire-ass/server/state/whatsapp-web-session
+# Environment=CHROME_BIN=/usr/bin/google-chrome-stable
+ExecStart=/home/dev/.nvm/versions/node/v24.13.0/bin/node src/main.js
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
