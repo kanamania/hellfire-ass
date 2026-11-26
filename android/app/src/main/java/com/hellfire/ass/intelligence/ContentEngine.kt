@@ -42,6 +42,8 @@ import com.hellfire.ass.media.LocalBarcodes
 
 class ContentEngine(private val app: HellFireApp) {
     private val adult = AdultClassifier(app)
+    /** Releases the classifier session kept for this run. */
+    fun close() = adult.close()
     private val dao get() = app.database.library()
 
     suspend fun step(item: MediaItem, checkpoint: AnalysisCheckpoint): Pair<Boolean, AnalysisCheckpoint> = withContext(Dispatchers.IO) {

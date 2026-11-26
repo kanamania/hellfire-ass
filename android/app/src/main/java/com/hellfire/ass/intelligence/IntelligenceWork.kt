@@ -102,6 +102,7 @@ class IntelligenceWorker(context: Context, params: WorkerParameters) : Coroutine
         app.database.jobs().recoverType(ContentEngine.JOB, System.currentTimeMillis() - 30 * 60_000, 3, System.currentTimeMillis())
         IntelligenceWork.enqueueMissing(app, 5)
         val engine = ContentEngine(app)
+        try {
         var ran = 0
         var pending = false
         while (ran < prefs.maxConcurrent) {
@@ -144,5 +145,6 @@ class IntelligenceWorker(context: Context, params: WorkerParameters) : Coroutine
                     .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS).build())
         }
         Result.success()
+        } finally { engine.close() }
     }
 }
