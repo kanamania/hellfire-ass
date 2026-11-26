@@ -60,7 +60,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-024 | P1 | Record release-build failures; alerts for brief failure and cloud key failure | D-30, D-10 | S | PARTLY DONE (88be2d4: brief, search index, recording recovery, restore follow-ups, mail accounts recorded in Needs attention; D-10 fixed with HF-010). Open: cloud-key alert |
 | HF-025 | P1 | Ask search uses the full-text index, not the decrypt scan | A1.20 | S | DONE (c659cd6) |
 | HF-030 | P1 | Ledger: corrected re-post after reversal | D-17 | M | DONE (0ca9f5d) |
-| HF-031 | P1 | Person- and month-aware search | D-22 | L | OPEN |
+| HF-031 | P1 | Person- and month-aware search | D-22 | M | DONE (this branch) without a new table: names expand to saved handles in the existing FTS index; months filter by date. Open: citation check for model answers (moved to HF-051) |
 | HF-032 | P1 | Interruption coordinator: quiet hours, dedup, budget, "not useful" | — | M | OPEN |
 | HF-033 | P1 | Conditional reminders ("remind me Friday if Juma hasn't paid") | — | M | OPEN |
 | HF-034 | P1 | Scenario replay evaluation harness | — | M | OPEN |
