@@ -115,4 +115,18 @@ class AssistantCommandsTest {
         assertEquals("2026-11-13 17:00", TaskTime.display((parse("remind me to pay rent at 17:00") as OwnerCommand.Remind).dueAt))
         assertEquals("2026-11-13 11:00", TaskTime.display((parse("nikumbushe kumpigia Juma baada ya saa moja") as OwnerCommand.Remind).dueAt))
     }
+
+    @Test fun `questions and remarks are not commands`() {
+        assertNull(parse("remember when I paid rent?"))
+        assertNull(parse("kumbuka lini nililipa kodi"))
+        assertNull(parse("i received a message from Asha"))
+        assertNull(parse("nimepokea ujumbe kutoka kwa Juma"))
+        assertNull(parse("finish the report by friday"))
+        assertNull(parse("move 50000 to savings"))
+        fails("log income salary")                      // explicit command still asks for an amount
+        fails("reschedule pay rent to whenever")         // explicit reschedule still asks for a time
+        assertTrue(parse("remember Asha: prefers calls after 17:00") is OwnerCommand.Remember)
+        assertTrue(parse("finish pay rent") is OwnerCommand.TaskAction)
+        assertTrue(parse("move pay rent to tomorrow 11:00") is OwnerCommand.TaskAction)
+    }
 }

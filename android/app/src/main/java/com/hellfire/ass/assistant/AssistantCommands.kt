@@ -78,7 +78,7 @@ object AssistantCommands {
             val title = stripWhen(rest).also { require(it.isNotEmpty() && it.length <= 300) { "Say what to be reminded about (up to 300 characters)." } }
             return OwnerCommand.Remind(input, title, due)
         }
-        remember.find(input)?.let { m ->
+        remember.find(input)?.takeUnless { question(it.groupValues[1]) }?.let { m ->
             val rest = m.groupValues[1].trim()
             val colon = rest.indexOf(':')
             val (subject, note) = if (colon in 1..200) rest.substring(0, colon).trim() to rest.substring(colon + 1).trim() else "Note" to rest
@@ -92,6 +92,8 @@ object AssistantCommands {
         }
         income.find(input)?.let { m ->
             val items = runCatching { CashParser.parseIncome(m.groupValues[1]) }.getOrNull()
+            // "i received a message from Asha" is a question or a remark, not income; only "log income" insists on an amount.
+            if (items == null && !input.trim().lowercase().startsWith("log income")) return null
             requireNotNull(items) { "Say what it was and a whole-shilling amount, e.g. nimepokea 50000 kutoka kwa Juma, or log income salary 500,000." }
             return OwnerCommand.Cash(input, items, now.toEpochMilli(), "INCOME")
         }
@@ -111,15 +113,26 @@ object AssistantCommands {
             val body = m.groupValues[2].trim().also { require(it.isNotEmpty() && it.length <= 12000) { "Message body must be 1–12,000 characters." } }
             return OwnerCommand.Draft(input, "WHATSAPP_BUSINESS", number, "", body)
         }
-        done.find(input)?.let { m -> return taskAction(input, m.groupValues[1].ifEmpty { m.groupValues[2] }, "DONE", null) }
+        done.find(input)?.let { m ->
+            // "finish the report by friday" is an instruction with a deadline, not "mark it done".
+            if (m.groupValues[2].isNotEmpty() && TaskExtractor.extract(m.groupValues[2], now.toEpochMilli(), outgoing = true, requireCommitment = false) != null) return null
+            return taskAction(input, m.groupValues[1].ifEmpty { m.groupValues[2] }, "DONE", null)
+        }
         reschedule.find(input)?.let { m ->
-            val due = requireNotNull(TaskExtractor.extract(m.groupValues[2], now.toEpochMilli(), outgoing = true, requireCommitment = false)) { WHEN_HINT }.dueAt
+            val parsed = TaskExtractor.extract(m.groupValues[2], now.toEpochMilli(), outgoing = true, requireCommitment = false)
+            // "move 50000 to savings" is not a reschedule; only "reschedule"/"hamisha" insist on a time.
+            if (parsed == null && input.trim().lowercase().startsWith("move")) return null
+            val due = requireNotNull(parsed) { WHEN_HINT }.dueAt
             require(due > now.toEpochMilli()) { "The new time must be in the future." }
             return taskAction(input, m.groupValues[1], "RESCHEDULE", due)
         }
         snooze.find(input)?.let { m -> return taskAction(input, m.groupValues[1], "SNOOZE", null) }
         return null
     }
+
+    /** "remember when I paid rent?" asks; "remember Asha: prefers calls" instructs. */
+    private fun question(rest: String): Boolean = rest.trim().endsWith("?") ||
+        Regex("(?i)^(when|what|who|where|why|how|which|did|do|does|was|were|is|are|lini|nini|nani|wapi|vipi|je)\\b").containsMatchIn(rest.trim())
 
     private fun taskAction(input: String, query: String, action: String, due: Long?): OwnerCommand.TaskAction {
         val q = query.trim().removeSurrounding("\"").also { require(it.length in 2..300) { "Name the task with 2–300 characters of its title." } }

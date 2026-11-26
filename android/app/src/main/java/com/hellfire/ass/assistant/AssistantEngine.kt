@@ -23,7 +23,10 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
     data class Answer(val text: String, val sources: List<String> = emptyList(), val command: OwnerCommand? = null,
         val figureLabel: String? = null, val figure: Long? = null, val breakdown: List<Pair<String, Long>> = emptyList(), val category: String? = null, val accountId: String? = null)
     private var lastFinance: FinanceQuestion? = null
+    private var lastFinanceAt = 0L
     fun clearContext() { lastFinance = null }
+    /** Money follow-ups ("na mwezi uliopita?") only continue a recent money question. */
+    private fun financeContext(): FinanceQuestion? = lastFinance?.takeIf { clock.millis() - lastFinanceAt <= AskRouting.CONTEXT_MILLIS }
     suspend fun answer(query: String): Answer = withContext(Dispatchers.IO) {
         require(query.length <= 2000)
         val lower = query.trim().lowercase(Locale.ROOT)
@@ -31,7 +34,7 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
             return@withContext Answer(LocalAssistant(clock).answer(query))
         val command = try { AssistantCommands.parse(query, clock.instant()) } catch (e: IllegalArgumentException) { return@withContext Answer(e.message ?: "Command not understood.") }
         if (command != null) return@withContext propose(command)
-        app.news.ask(query, clock.millis())?.let { news ->
+        if (!AskRouting.skipNews(lower)) app.news.ask(query, clock.millis())?.let { news ->
             return@withContext Answer(news.text, news.eventIds.map { "news:$it" })
         }
         when {
@@ -40,7 +43,7 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
                 "Commands (applied only after you confirm): remind me to <task> <when>; remember <subject>: <note>; mark <task> done; snooze <task>; " +
                 "reschedule <task> to <when>; log cash <item> <amount> (or nimelipa bodaboda elfu tano); log income <item> <amount> (or nimepokea 50000 kutoka kwa Juma); " +
                 "use template <name>; email <address> about <subject>: <body>; whatsapp <number>: <body>.")
-            "brief" in lower || "muhtasari" in lower -> brief(lower.contains("evening") || lower.contains("jioni"))
+            AskRouting.brief(lower) -> brief(lower.contains("evening") || lower.contains("jioni"))
             lower.contains(Regex("\\b(balance|balances|salio)\\b")) -> {
                 val accounts = app.database.finances().allAccounts()
                 Answer(if (accounts.isEmpty()) "No accounts saved." else accounts.map { "${it.label}: ${Money.display(app.database.finances().balance(it.id))}" }.joinToString("\n") + "\nBalances reflect approved ledger entries only; opening balances require evidence and review.")
@@ -53,14 +56,15 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
                     Answer(result.first, result.second)
                 } catch (e: IllegalArgumentException) { Answer(e.message ?: "Try compare spending this month vs last month.") }
             }
-            FinanceQuestion.isQuestion(lower) || (lastFinance != null && FinanceQuestion.followUp(lower)) -> {
+            FinanceQuestion.isQuestion(lower) || (financeContext() != null && AskRouting.financeFollowUp(lower)) -> {
                 val dao = app.database.finances()
                 val all = dao.allEntries()
                 val selection = try { FinanceQuestion.parse(query, clock.instant(), dao.allAccounts(),
-                    (all.map { it.category } + listOf("Food", "Groceries", "Transport", "Fuel", "Utilities", "Rent", "Business", "Family", "Airtime", "Fees", "Other")).distinct(), lastFinance, app.database.contacts().all()) }
+                    (all.map { it.category } + listOf("Food", "Groceries", "Transport", "Fuel", "Utilities", "Rent", "Business", "Family", "Airtime", "Fees", "Other")).distinct(), financeContext(), app.database.contacts().all()) }
                     catch (e: IllegalArgumentException) { return@withContext Answer(e.message ?: "Please clarify the period or filters.") }
                 val totals = app.finances.summary(selection.start, selection.end, selection.category, selection.accountId, selection.merchant, selection.personKey)
                 lastFinance = selection
+                lastFinanceAt = clock.millis()
                 val month = java.time.YearMonth.from(Instant.ofEpochMilli(selection.start).atZone(TaskTime.zone)).toString()
                 val budgetQuestion = Regex("\\b(budget|variance|remaining|bajeti|tofauti|iliyobaki)\\b").containsMatchIn(lower)
                 val budgetMonth = java.time.YearMonth.parse(month)
@@ -79,17 +83,23 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
                     figure = if (selection.income) totals.income else totals.expenses,
                     breakdown = if (selection.income) emptyList() else expenseBreakdown(selection), category = selection.category, accountId = selection.accountId)
             }
+            AskRouting.tasks(lower) -> {
+                val range = QueryDates.range(lower, clock.instant())
+                val now = clock.millis()
+                // A window that includes now also lists what is already overdue, as the brief does.
+                val tasks = app.database.tasks().period(if (range.first <= now) 0 else range.first, range.second)
+                val lines = tasks.map { "${TaskTime.display(it.dueAt)}${if (it.dueAt < now) " · overdue" else ""} · ${it.title}" }
+                val agenda = if (AskRouting.withAgenda(lower) && range.second - range.first <= 32 * 86_400_000L) app.calendar.agenda(range.first, range.second) else null
+                val text = (if (lines.isEmpty()) "No active tasks due in ${rangeLabel(range)}." else "Tasks:\n" + lines.joinToString("\n")) +
+                    (agenda?.let { "\n\n" + it.text() } ?: "")
+                Answer(text, (tasks.map { it.sourceId } + agenda?.events?.mapNotNull { it.sourceId }.orEmpty()).distinct())
+            }
             CalendarAgendaLogic.question.containsMatchIn(lower) -> {
                 val today = clock.instant().atZone(TaskTime.zone).toLocalDate()
                 val window = if ("upcoming" in lower || "next meeting" in lower || "next appointment" in lower) clock.millis() to today.plusDays(8).atStartOfDay(TaskTime.zone).toInstant().toEpochMilli()
                     else QueryDates.range(lower, clock.instant())
                 if (window.second - window.first > 32 * 86_400_000L) Answer("Choose a calendar window of at most 32 days.")
                 else { val agenda = app.calendar.agenda(window.first, window.second); Answer(agenda.text(), agenda.events.mapNotNull { it.sourceId }.distinct()) }
-            }
-            lower.contains(Regex("\\b(tasks|commitments|ahadi)\\b")) -> {
-                val range = QueryDates.range(lower, clock.instant())
-                val tasks = app.database.tasks().period(range.first, range.second)
-                Answer(if (tasks.isEmpty()) "No active commitments in ${rangeLabel(range)}." else tasks.joinToString("\n") { "${TaskTime.display(it.dueAt)} · ${it.party} · ${it.title}" }, tasks.map { it.sourceId }.distinct())
             }
             else -> search(query.replace(Regex("(?i)^(search|find|what do you know about|tafuta)\\s+"), "").trim().trimEnd('?'))
         }
@@ -258,6 +268,8 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
 }
 
 object QueryDates {
+    /** Whole words only: "months" is not "month", and "keshokutwa" is not "kesho". */
+    private fun has(query: String, vararg words: String) = words.any { Regex("\\b" + Regex.escape(it) + "\\b").containsMatchIn(query) }
     fun range(query: String, now: Instant): Pair<Long, Long> {
         val today = now.atZone(TaskTime.zone).toLocalDate()
         val explicit = Regex("\\b20[0-9]{2}-[0-9]{2}-[0-9]{2}\\b").findAll(query).map { LocalDate.parse(it.value) }.toList()
@@ -266,25 +278,26 @@ object QueryDates {
         val start = when {
             explicit.isNotEmpty() -> explicit.first()
             days != null -> today.minusDays(days - 1)
-            "last year" in query || "mwaka uliopita" in query -> today.withDayOfYear(1).minusYears(1)
-            "year" in query || "mwaka" in query -> today.withDayOfYear(1)
-            "yesterday" in query || "jana" in query -> today.minusDays(1)
-            "tomorrow" in query || "kesho" in query -> today.plusDays(1)
-            "next month" in query || "mwezi ujao" in query -> today.withDayOfMonth(1).plusMonths(1)
-            "last month" in query || "mwezi uliopita" in query -> today.withDayOfMonth(1).minusMonths(1)
-            "last week" in query || "wiki iliyopita" in query -> today.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).minusWeeks(1)
-            "next week" in query || "wiki ijayo" in query -> today.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).plusWeeks(1)
-            "month" in query || "mwezi" in query -> today.withDayOfMonth(1)
-            "week" in query || "wiki" in query -> today.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+            has(query, "last year", "mwaka uliopita") -> today.withDayOfYear(1).minusYears(1)
+            has(query, "year", "mwaka") -> today.withDayOfYear(1)
+            has(query, "yesterday", "jana") -> today.minusDays(1)
+            has(query, "day after tomorrow", "keshokutwa", "kesho kutwa") -> today.plusDays(2)
+            has(query, "tomorrow", "kesho") -> today.plusDays(1)
+            has(query, "next month", "mwezi ujao") -> today.withDayOfMonth(1).plusMonths(1)
+            has(query, "last month", "mwezi uliopita") -> today.withDayOfMonth(1).minusMonths(1)
+            has(query, "last week", "wiki iliyopita") -> today.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).minusWeeks(1)
+            has(query, "next week", "wiki ijayo") -> today.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).plusWeeks(1)
+            has(query, "month", "mwezi") -> today.withDayOfMonth(1)
+            has(query, "week", "wiki") -> today.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
             else -> today
         }
         val end = when {
             explicit.size >= 2 -> explicit[1].plusDays(1)
             explicit.size == 1 -> start.plusDays(1)
             days != null -> today.plusDays(1)
-            "year" in query || "mwaka" in query -> start.plusYears(1)
-            "month" in query || "mwezi" in query -> start.plusMonths(1)
-            "week" in query || "wiki" in query -> start.plusWeeks(1)
+            has(query, "year", "mwaka") -> start.plusYears(1)
+            has(query, "month", "mwezi") -> start.plusMonths(1)
+            has(query, "week", "wiki") -> start.plusWeeks(1)
             else -> start.plusDays(1)
         }
         require(end > start && java.time.temporal.ChronoUnit.DAYS.between(start, end) <= 3660)
