@@ -85,7 +85,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-071 | P2 | Emulator backup round trip and process death during recording | — | M | OPEN |
 | HF-072 | P2 | UI coverage and baseline profiles | — | M | OPEN |
 | HF-073 | P2 | Hosted CI run | — | S | OWNER DECISION |
-| HF-074 | P3 | Adult classifier session reuse | D-31 | S | DONE (this branch); no device timing |
+| HF-074 | P3 | Adult classifier session reuse | D-31 | S | DONE (3d36074); no device timing |
 | HF-075 | P3 | Relay TLS proxy config, web CSP/HSTS, async scrypt, systemd hardening | — | M | OPEN |
 
 ## Item details
