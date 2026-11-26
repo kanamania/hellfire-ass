@@ -2023,7 +2023,11 @@ Owner provisioning tooling can assign `com.hellfire.ass/.guard.GuardAdminReceive
 (for example `adb shell dpm set-device-owner com.hellfire.ass/.guard.GuardAdminReceiver`
 when Android permits it). Do not reset the owner's phone for this slice. Arming
 checks actual Device Owner status before applying uninstall/safe-boot restrictions
-and lock-task policy. Disarming restores the previous settings. Power-menu
+and lock-task policy. Disarming restores the previous settings; if that snapshot
+is missing it unblocks uninstall and safe boot instead of leaving them locked.
+While disarmed, **Remove Device Owner with biometric** restores the policies and
+calls `clearDeviceOwnerApp`, so HellFire can be uninstalled without a factory
+reset (NOT TESTED on a device). Power-menu
 suppression only applies if a future explicitly authorized kiosk flow enters
 lock-task mode; this slice does not. Hardware shutdown is always outside userspace
 control. Tier 3 root support is out of scope.

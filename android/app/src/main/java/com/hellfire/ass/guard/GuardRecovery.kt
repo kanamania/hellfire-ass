@@ -91,16 +91,34 @@ object GuardPolicies {
         manager.setLockTaskFeatures(component, manager.getLockTaskFeatures(component) and DevicePolicyManager.LOCK_TASK_FEATURE_GLOBAL_ACTIONS.inv())
         return true
     }
+    /** Policy values to put back on disarm. Without a saved snapshot, fall back to Android's defaults rather than leave guard locks on. */
+    data class Restore(val uninstallBlocked: Boolean, val clearSafeBoot: Boolean, val features: Int, val packages: List<String>)
+    fun restoreValues(previous: JSONObject?, ownPackage: String, currentFeatures: Int, currentPackages: List<String>): Restore =
+        if (previous != null) Restore(previous.getBoolean("uninstall"), !previous.getBoolean("safeBoot"), previous.getInt("features"),
+            previous.getJSONArray("packages").let { array -> List(array.length()) { array.getString(it) } })
+        else Restore(false, true, currentFeatures or DevicePolicyManager.LOCK_TASK_FEATURE_GLOBAL_ACTIONS, currentPackages - ownPackage)
+
     fun restore(app: HellFireApp) {
         if (!isOwner(app)) return
-        val previous = app.secrets.read("guard-policy") ?: return
         val manager = app.getSystemService(DevicePolicyManager::class.java)
         val component = admin(app)
-        manager.setUninstallBlocked(component, app.packageName, previous.getBoolean("uninstall"))
-        if (!previous.getBoolean("safeBoot")) manager.clearUserRestriction(component, UserManager.DISALLOW_SAFE_BOOT)
-        manager.setLockTaskFeatures(component, previous.getInt("features"))
-        val packages = previous.getJSONArray("packages")
-        manager.setLockTaskPackages(component, Array(packages.length()) { packages.getString(it) })
+        val values = restoreValues(app.secrets.read("guard-policy"), app.packageName, manager.getLockTaskFeatures(component),
+            manager.getLockTaskPackages(component).toList())
+        manager.setUninstallBlocked(component, app.packageName, values.uninstallBlocked)
+        if (values.clearSafeBoot) manager.clearUserRestriction(component, UserManager.DISALLOW_SAFE_BOOT)
+        manager.setLockTaskFeatures(component, values.features)
+        manager.setLockTaskPackages(component, values.packages.toTypedArray())
         app.secrets.remove("guard-policy")
+    }
+
+    /**
+     * Gives up Device Owner so TheftGuard can be removed without a factory reset. Only while disarmed; guard policies are
+     * restored first. Android offers no way back except provisioning again from a computer.
+     */
+    @Suppress("DEPRECATION")
+    fun relinquish(app: HellFireApp) {
+        if (!isOwner(app)) return
+        restore(app)
+        app.getSystemService(DevicePolicyManager::class.java).clearDeviceOwnerApp(app.packageName)
     }
 }
