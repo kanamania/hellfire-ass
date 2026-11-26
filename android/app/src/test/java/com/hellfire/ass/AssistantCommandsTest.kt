@@ -97,4 +97,22 @@ class AssistantCommandsTest {
             assertEquals(listOf("b"), db.tasks().activeMatching("pay rent").map { it.id })
         } finally { db.close() }
     }
+
+    @Test fun `reminder titles drop every time phrase`() {
+        fun title(text: String) = (parse(text) as OwnerCommand.Remind).title
+        assertEquals("call Asha", title("remind me to call Asha tomorrow at 5:30pm"))
+        assertEquals("call Asha", title("remind me to call Asha tomorrow 5:30 pm"))
+        assertEquals("kulipa kodi", title("nikumbushe kulipa kodi kesho saa tatu usiku"))
+        assertEquals("pay rent", title("remind me to pay rent on the 1st at 9:00"))
+        assertEquals("check the oven", title("remind me to check the oven in 20 minutes"))
+        assertEquals("kumpigia Juma", title("nikumbushe kumpigia Juma baada ya saa moja"))
+        assertEquals("call mama", title("remind me to call mama tonight"))
+        assertEquals("pay rent", title("remind me to pay rent next friday"))
+        assertEquals("2026-11-14 21:00", TaskTime.display((parse("nikumbushe kulipa kodi kesho saa tatu usiku") as OwnerCommand.Remind).dueAt))
+    }
+    @Test fun `relativeAndTimeOnlyReminders`() {
+        assertEquals("2026-11-13 10:20", TaskTime.display((parse("remind me to check the oven in 20 minutes") as OwnerCommand.Remind).dueAt))
+        assertEquals("2026-11-13 17:00", TaskTime.display((parse("remind me to pay rent at 17:00") as OwnerCommand.Remind).dueAt))
+        assertEquals("2026-11-13 11:00", TaskTime.display((parse("nikumbushe kumpigia Juma baada ya saa moja") as OwnerCommand.Remind).dueAt))
+    }
 }
