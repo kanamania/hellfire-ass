@@ -34,7 +34,7 @@ sealed interface OwnerCommand {
         val taskId: String? = null, val title: String? = null) : OwnerCommand {
         override val summary get() = when (action) {
             "DONE" -> "Mark task done: ${title ?: query}"
-            "SNOOZE" -> "Snooze task 10 minutes: ${title ?: query}"
+            "SNOOZE" -> "Snooze task: ${title ?: query}"
             else -> "Reschedule task: ${title ?: query} → ${dueAt?.let(TaskTime::display) ?: "no time given"} EAT"
         }
     }
@@ -146,10 +146,32 @@ object AssistantCommands {
             .trimEnd(',', '.', ';').trim()
 
     /** Applies a confirmed command. Callers must only invoke this after explicit owner confirmation. */
+    /**
+     * Proposals applied in this process, by identity: a second tap on the same proposal card is a no-op, while asking
+     * again (a new proposal, e.g. a second snooze) still works.
+     */
+    private val applied = ArrayDeque<OwnerCommand>()
+    private fun claim(command: OwnerCommand): Boolean = synchronized(applied) {
+        if (applied.any { it === command }) return false
+        applied.addLast(command)
+        if (applied.size > 200) applied.removeFirst()
+        true
+    }
+
     suspend fun execute(app: HellFireApp, command: OwnerCommand): String {
+        if (!claim(command)) return "Already applied."
+        return try { apply(app, command) } catch (e: Throwable) {
+            synchronized(applied) { applied.removeAll { it === command } }
+            throw e
+        }
+    }
+
+    private suspend fun apply(app: HellFireApp, command: OwnerCommand): String {
         val now = System.currentTimeMillis()
         return when (command) {
             is OwnerCommand.Remind -> {
+                // A proposal confirmed late must not start with an immediate overdue alarm.
+                require(command.dueAt >= now - 60_000) { "That time has already passed (${TaskTime.display(command.dueAt)} EAT). Ask again with a new time." }
                 val sourceId = ownerSource(app, command.utterance, now)
                 val id = NotificationNormalizer.sha256("task:$sourceId")
                 app.database.tasks().insert(AssistantTask(id, sourceId, command.title, command.dueAt, party = "OWNER",
@@ -168,10 +190,15 @@ object AssistantCommands {
                     "RESCHEDULE" -> {
                         val task = requireNotNull(app.database.tasks().task(id))
                         val dueAt = requireNotNull(command.dueAt) { "Reschedule needs a new time" }
+                        require(dueAt > now) { "That time has already passed. Ask again with a new time." }
                         TaskScheduler.activate(app, id, task.title, dueAt, task.party)
                         "Task moved to ${TaskTime.display(dueAt)} EAT."
                     }
-                    else -> { TaskScheduler.action(app, id, command.action); if (command.action == "DONE") "Task marked done." else "Task snoozed for 10 minutes." }
+                    else -> {
+                        TaskScheduler.action(app, id, command.action)
+                        if (command.action == "DONE") "Task marked done."
+                        else "Task snoozed for ${app.database.tasks().task(id)?.snoozeMinutes ?: 10} minutes."
+                    }
                 }
             }
             is OwnerCommand.Draft -> {
@@ -203,6 +230,8 @@ object AssistantCommands {
             }
             is OwnerCommand.UseTemplate -> {
                 val saved = requireNotNull(command.templateId?.let { app.database.templates().find(it) }) { "That template no longer exists." }
+                // Run exactly what the owner was shown; an edit in between needs a fresh look.
+                require(TemplateItems.decode(saved.items).map(TemplateItems::describe) == command.lines) { "Template ${saved.name} changed since you asked. Ask again to see its current lines." }
                 val result = app.templates.run(saved, TemplateItems.decode(saved.items), now)
                 if (result.tasks > 0) TaskScheduler.restore(app)
                 "Template ${saved.name}: ${result.message}."
