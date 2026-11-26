@@ -73,7 +73,7 @@ import com.hellfire.ass.news.NewsSource
 import com.hellfire.ass.templates.ActionTemplate
 import com.hellfire.ass.templates.TemplateDao
 
-@Entity(tableName = "source_event", indices = [Index(value = ["source", "externalId"], unique = true)])
+@Entity(tableName = "source_event", indices = [Index(value = ["source", "externalId"], unique = true), Index(value = ["receivedAt", "id"]), Index(value = ["source", "occurredAt"])])
 data class SourceEvent(
     @PrimaryKey val id: String,
     val source: String = "android_notification",
@@ -238,7 +238,7 @@ data class LabelledEvent(@Embedded val event: SourceEvent, val label: String?, v
     NewsEventVersion::class, NewsBriefing::class, NewsEventState::class,
     NewsProgress::class, NewsPreference::class, NewsFeedback::class,
     NewsRun::class, GuardConfig::class, GuardState::class, GuardEvidence::class, CalendarLink::class, CalendarChange::class],
-    version = 21, exportSchema = true)
+    version = 22, exportSchema = true)
 abstract class EventDatabase : RoomDatabase() {
     abstract fun calendar(): CalendarDao
     abstract fun guard(): GuardDao
@@ -376,7 +376,18 @@ abstract class EventDatabase : RoomDatabase() {
         val MIGRATION_20_21 = object : Migration(20, 21) {
             override fun migrate(db: SupportSQLiteDatabase) { CalendarSchema.migrate(db) }
         }
-        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21)
+        /** Index-only: supports time-ordered event, queue, ledger, review and message queries. No data or backup change. */
+        val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_source_event_receivedAt_id` ON `source_event` (`receivedAt`, `id`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_source_event_source_occurredAt` ON `source_event` (`source`, `occurredAt`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_event_processing_state` ON `event_processing` (`state`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_finance_candidate_state_occurredAt` ON `finance_candidate` (`state`, `occurredAt`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_ledger_entry_occurredAt` ON `ledger_entry` (`occurredAt`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_communication_message_occurredAt` ON `communication_message` (`occurredAt`)")
+            }
+        }
+        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
         fun open(context: Context): EventDatabase = Room.databaseBuilder(
             context.applicationContext, EventDatabase::class.java, "hellfire.db"
         ).openHelperFactory(EncryptedDatabase.factory(context)).addMigrations(*ALL_MIGRATIONS).enableMultiInstanceInvalidation().build()

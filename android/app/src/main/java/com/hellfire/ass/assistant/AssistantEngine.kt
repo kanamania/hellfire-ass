@@ -50,17 +50,17 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
             }
             FinanceComparisons.requested(lower) && FinanceQuestion.isQuestion(lower) -> {
                 try {
-                    val all = app.database.finances().allEntries()
-                    val (current, previous) = FinanceComparisons.questions(query, clock.instant(), app.database.finances().allAccounts(), (all.map { it.category } + listOf("Food", "Transport", "Fuel", "Rent", "Fees", "Other")).distinct(), app.database.contacts().all())
+                    val categories = app.database.finances().categories()
+                    val (current, previous) = FinanceComparisons.questions(query, clock.instant(), app.database.finances().allAccounts(), (categories + listOf("Food", "Transport", "Fuel", "Rent", "Fees", "Other")).distinct(), app.database.contacts().all())
                     val result = FinanceComparisons.report(app.finances, current, previous)
                     Answer(result.first, result.second)
                 } catch (e: IllegalArgumentException) { Answer(e.message ?: "Try compare spending this month vs last month.") }
             }
             FinanceQuestion.isQuestion(lower) || (financeContext() != null && AskRouting.financeFollowUp(lower)) -> {
                 val dao = app.database.finances()
-                val all = dao.allEntries()
+                val categories = dao.categories()
                 val selection = try { FinanceQuestion.parse(query, clock.instant(), dao.allAccounts(),
-                    (all.map { it.category } + listOf("Food", "Groceries", "Transport", "Fuel", "Utilities", "Rent", "Business", "Family", "Airtime", "Fees", "Other")).distinct(), financeContext(), app.database.contacts().all()) }
+                    (categories + listOf("Food", "Groceries", "Transport", "Fuel", "Utilities", "Rent", "Business", "Family", "Airtime", "Fees", "Other")).distinct(), financeContext(), app.database.contacts().all()) }
                     catch (e: IllegalArgumentException) { return@withContext Answer(e.message ?: "Please clarify the period or filters.") }
                 val totals = app.finances.summary(selection.start, selection.end, selection.category, selection.accountId, selection.merchant, selection.personKey)
                 lastFinance = selection
@@ -178,29 +178,19 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
             val at = terms.firstNotNullOfOrNull { hit.text.indexOf(it, ignoreCase = true).takeIf { position -> position >= 0 } } ?: 0
             found += event.id to "${event.source} · ${TaskTime.display(event.occurredAt)} · ${hit.text.substring((at - 80).coerceAtLeast(0), (at + query.length + 200).coerceAtMost(hit.text.length))}"
         }
-        var before = Long.MAX_VALUE
-        var cursorId = "\uffff"
-        var scanned = 0
-        while (scanned < 2000 && found.size < 20) {
-            currentCoroutineContext().ensureActive()
-            val batch = app.database.events().searchBatch(before, cursorId)
-            if (batch.isEmpty()) break
-            for (event in batch) {
-                scanned++
-                if (!event.contentAvailable || event.securitySensitive || event.source == "owner_skill_use") continue
-                val payload = JSONObject(app.cipher.decrypt(event.encryptedPayload).toString(Charsets.UTF_8))
-                val fields = payload.getJSONObject("fields")
-                val text = fields.keys().asSequence().flatMap { key -> fields.optJSONArray(key)?.let { a -> (0 until a.length()).map { a.optString(it) } }.orEmpty().asSequence() }.joinToString("\n")
-                val at = text.indexOf(query, ignoreCase = true)
-                if (at >= 0 && found.none { it.first == event.id }) found += event.id to "${event.source} · ${TaskTime.display(event.occurredAt)} · ${text.substring((at - 80).coerceAtLeast(0), (at + query.length + 200).coerceAtMost(text.length))}"
-                if (found.size == 20) break
-            }
-            before = batch.last().receivedAt; cursorId = batch.last().id
+        // Exact phrase through the full-text index (adjacent words, any punctuation), instead of decrypting recent events.
+        val words = Regex("[\\p{L}\\p{N}]+").findAll(query.lowercase(Locale.ROOT)).map { it.value }.toList()
+        val phrase = if (words.size >= 2 && found.size < 20) indexed("\"" + words.joinToString(" ") + "\"", 20) else emptyList()
+        for (hit in phrase) {
+            if (found.size >= 20 || found.any { it.first == hit.eventId }) continue
+            val event = app.database.events().find(hit.eventId)?.takeIf { it.contentAvailable && !it.securitySensitive && it.source != "owner_skill_use" } ?: continue
+            val at = hit.text.indexOf(words.first(), ignoreCase = true).coerceAtLeast(0)
+            found += event.id to "${event.source} · ${TaskTime.display(event.occurredAt)} · ${hit.text.substring((at - 80).coerceAtLeast(0), (at + query.length + 200).coerceAtMost(hit.text.length))}"
         }
         val semantic = semanticMatches(query, found.map { it.first }.toSet())
         val lines = memories.map { "${it.kind} (${it.confidence}%) · ${it.subject}: ${it.text}" } + found.map { it.second } + semantic.map { it.second }
         val result = Answer((if (lines.isEmpty()) "No matching saved evidence found." else lines.joinToString("\n\n")) +
-            "\nKeyword search covers the saved-source index (${indexed.size} matches). Partial word matches are evidence candidates, not proof. Exact-phrase search also inspected $scanned recent events (limit 2,000; up to 20 matches). " +
+            "\nKeyword search covers the saved-source index (${indexed.size} matches). Partial word matches are evidence candidates, not proof. Exact phrases are matched in the same index. " +
             (if (app.semantic.configured) "Meaning matches (≈ score) come from the on-device embedding index (${app.semantic.status()}); scores are uncalibrated similarity, not proof. "
             else "Import a text-embedding model in Local AI for meaning-based matches. ") +
             "Sources and inferences can be incomplete.",

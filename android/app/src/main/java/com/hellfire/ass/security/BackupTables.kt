@@ -12,7 +12,7 @@ import com.hellfire.ass.news.NewsSchema
 /** Fixed table/column allowlists; archives cannot supply executable SQL. */
 object BackupTables {
     /** Backup schema written by this version. Schema 8 archives (before the v10 database) still restore. Full-text indexes and embeddings are rebuilt, not backed up. */
-    const val SCHEMA = 21
+    const val SCHEMA = 22
     private val schema8 = listOf("source_event", "event_processing", "capture_audit", "notification_policy", "finance_account",
         "finance_candidate", "ledger_entry", "ledger_evidence", "merchant_alias", "communication_message", "outbound_draft",
         "action_audit", "assistant_task", "daily_review", "media_item", "transcript_segment", "speech_span", "memory_item")
@@ -39,7 +39,8 @@ object BackupTables {
         18 -> schema18
         19 -> schema19
         20 -> schema20
-        SCHEMA -> tables
+        // Schema 22 only added indexes, so schema 21 archives hold the same tables.
+        21, SCHEMA -> tables
         else -> throw IllegalArgumentException("Backup schema requires a matching app version")
     }
     /** Columns added after schema 8. Older archives may omit exactly these; they restore as the column default (NULL, NONE, TASK, 0). */
