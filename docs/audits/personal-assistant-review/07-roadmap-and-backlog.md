@@ -65,7 +65,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-033 | P1 | Conditional reminders ("remind me Friday if Juma hasn't paid") | — | M | DONE (c554a4a): schema 23 adds `assistant_task.condition` |
 | HF-034 | P1 | Scenario replay evaluation harness | — | M | PARTLY DONE (d639f8f): `AssistantEvalTest` with bilingual time, finance and routing sets, report in `build/reports/assistant-eval.json`. Open: the 12-week timeline replay and proactive and retrieval metrics |
 | HF-040 | P2 | Opt-in auto-post for trusted provider formats | A1.15 | M | OWNER DECISION |
-| HF-041 | P2 | Budget warnings and 30-day cash-flow in the brief | — | M | OPEN |
+| HF-041 | P2 | Budget warnings and 30-day cash-flow in the brief | — | M | PARTLY DONE (this branch): morning brief lists budgets over or ahead of the month. Open: income-inclusive cash-flow projection |
 | HF-042 | P2 | Waiting-on includes notification-only chats | — | S | OPEN |
 | HF-043 | P2 | Reply through a live notification's reply action | A1.16 | M | OPEN |
 | HF-044 | P2 | Missed-call follow-up from dialer notifications | A1.17 | S | OPEN |
