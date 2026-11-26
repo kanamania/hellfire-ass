@@ -51,7 +51,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-011 | P1 | Open the exact task, `setAlarmClock` for commitments | A1.12 | S | DONE (6e07f8c) |
 | HF-011b | P1 | Done/Snooze buttons on the reminder notification. Locked requirement 9 says the owner chooses Done, Snooze or Reschedule *inside the application* | A1.11 | S | OWNER DECISION |
 | HF-012 | P1 | Configurable evening review time; quiet hours for non-alarm notices | — | S | DONE (6e07f8c): quiet hours cover task heads-ups; news has its own; brief is at an owner-chosen morning hour |
-| HF-013 | P1 | Voice session: listen on open, speak a short answer without source IDs | A1.8, D-08, D-09 | M | OPEN |
+| HF-013 | P1 | Voice session: listen on open, speak a short answer without source IDs | A1.8, D-08, D-09 | M | DONE (this branch); device NOT TESTED. Replies are still English-only (D-09 partly: English voice fallback) |
 | HF-014 | P1 | Owner commands: idempotent execution, re-validation, template snapshot | D-11, D-12, D-13, D-14 | S | DONE (e26816c); per-process guard, not persisted |
 | HF-020 | P1 | Indexes for hot queries (schema v22) | D-25 | S | DONE (c659cd6); host plans only, device timing NOT RUN |
 | HF-021 | P1 | Coalesce ongoing and progress notification re-posts | D-28 | M | OPEN |
