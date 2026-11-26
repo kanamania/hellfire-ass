@@ -122,7 +122,7 @@ object Briefs {
         val totals = if (evening) app.finances.summary(start, Fmt.startOf(day.plusDays(1))) else app.finances.summary(Fmt.startOf(day.minusDays(1)), start)
         val dao = app.database.finances()
         val balance = dao.allAccounts().fold(0L) { sum, a -> Math.addExact(sum, dao.balance(a.id)) }
-        val tasks = app.database.tasks().all()
+        val tasks = app.database.tasks().open()
         val waiting = Waiting.compute(loadInteractions(app, now - Waiting.WINDOW), loadAliases(app), now, WaitingPrefs.dismissed(app), loadIdentities(app))
         return build(BriefInputs(evening, now, tasks, totals.expenses, totals.income, dao.reviewCount(), app.database.tasks().reviewsNow().size,
             waiting, Debts.balances(app.database.debts().all()), Recurring.forecast(tasks, balance, now), CaptureGaps.check(app, now), app.calendar.agenda(start, Fmt.startOf(day.plusDays(8)))))

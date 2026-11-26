@@ -258,7 +258,7 @@ class MarkPromiseDone : ActionCallback {
 }
 
 class PromisesWidget : HfWidget<List<AssistantTask>>("Promises", "hellfire://tasks") {
-    override suspend fun load(app: HellFireApp) = app.database.tasks().all().filter { it.state == "ACTIVE" && it.direction != "NONE" }.sortedBy { it.dueAt }
+    override suspend fun load(app: HellFireApp) = app.database.tasks().active().filter { it.direction != "NONE" }
     @Composable override fun Content(data: List<AssistantTask>, context: Context) {
         val show = WidgetPrefs.visible(context, "promises")
         val now = System.currentTimeMillis()
@@ -420,7 +420,7 @@ data class ReviewCounts(val total: Int, val unknown: Int, val uncertain: Int, va
 
 class ReviewWidget : HfWidget<ReviewCounts>("Nightly review", "hellfire://money/review") {
     override suspend fun load(app: HellFireApp): ReviewCounts {
-        val c = app.database.finances().allCandidates().filter { it.state == "REVIEW" }
+        val c = app.database.finances().reviewCandidates()
         val items = c.take(12).map { x ->
             val alias = x.merchant?.let { app.database.finances().merchant(x.provider, it) }
             ReviewItem(candidateTitle(x, alias), Fmt.relativeDay(x.occurredAt), x.amount, x.kind == "INCOME" || x.kind == "REFUND")

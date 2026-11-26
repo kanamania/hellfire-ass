@@ -122,7 +122,7 @@ fun PrivacyPage() {
         cloud = app.ai.store.read().cloudEnabled
         web = app.secrets.read(WebSync.CONFIG) != null
         drive = app.secrets.read(DriveBackupWork.CONFIG)?.optBoolean("enabled") == true
-        mediaBytes = app.database.media().all().sumOf { it.size }
+        mediaBytes = app.database.media().totalSize()
         databaseBytes = app.getDatabasePath("hellfire.db").length()
         loaded = true; failure = null
     } } catch (e: Exception) { failure = context.getString(R.string.ui_privacy_settings_could_not_be_read) } }

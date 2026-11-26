@@ -44,7 +44,7 @@ fun UniversalInboxPage() {
     var confirmEmpty by rememberSaveable { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    val categories by app.database.library().categories().collectAsStateWithLifecycle(emptyList())
+    val categories by remember { app.database.library().categories() }.collectAsStateWithLifecycle(emptyList())
     val collections by app.database.library().collections(listOf("COLLECTION", "ALBUM")).collectAsStateWithLifecycle(emptyList())
     LaunchedEffect(filter, query, category, collection, refresh) {
         items = withContext(Dispatchers.IO) {
@@ -129,17 +129,17 @@ fun InboxItemPage(id: String) {
     val app = LocalEnv.current.app
     val nav = LocalNav.current
     val scope = rememberCoroutineScope()
-    val item by app.database.inbox().observe(id).collectAsStateWithLifecycle(null)
-    val contents by app.database.inbox().contents(id).collectAsStateWithLifecycle(emptyList())
-    val actions by app.database.inbox().actions(id).collectAsStateWithLifecycle(emptyList())
-    val messages by app.database.inbox().conversation(id).collectAsStateWithLifecycle(emptyList())
+    val item by remember(id) { app.database.inbox().observe(id) }.collectAsStateWithLifecycle(null)
+    val contents by remember(id) { app.database.inbox().contents(id) }.collectAsStateWithLifecycle(emptyList())
+    val actions by remember(id) { app.database.inbox().actions(id) }.collectAsStateWithLifecycle(emptyList())
+    val messages by remember(id) { app.database.inbox().conversation(id) }.collectAsStateWithLifecycle(emptyList())
     var notes by remember(item?.notes) { mutableStateOf(item?.notes.orEmpty()) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var question by rememberSaveable { mutableStateOf("") }
     var asking by remember { mutableStateOf(false) }
     var kept by remember { mutableStateOf<Int?>(null) }
-    val categories by app.database.library().categories().collectAsStateWithLifecycle(emptyList())
+    val categories by remember { app.database.library().categories() }.collectAsStateWithLifecycle(emptyList())
     val collections by app.database.library().collections(listOf("COLLECTION", "ALBUM")).collectAsStateWithLifecycle(emptyList())
     PushedPage(item?.title?.ifBlank { stringResource(R.string.drawer_inbox) } ?: stringResource(R.string.drawer_inbox), breadcrumb = stringResource(R.string.ui_inbox)) {
         message?.let { Banner(it) }
