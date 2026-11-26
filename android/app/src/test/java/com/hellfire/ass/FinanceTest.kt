@@ -210,4 +210,22 @@ class FinanceTest {
         assertEquals("EXPENSE", p("M-PESA", "The TZS 5,000 you received from JOHN DOE has been reversed. Ref ABC12345")!!.kind)
         assertEquals("REFUND", p("M-PESA", "Reversed TZS 5,000 paid to DUKA. Ref ABC12345")!!.kind)
     }
+
+    @Test fun `repostAfterReversal - a reversed posting can be posted again correctly`() = runBlocking {
+        db.finances().addAccount(FinanceAccount("a", "Synthetic wallet", "MPESA"))
+        candidate("wrong", amount = 15000)
+        repo.approve("wrong", "a", "EXPENSE", "Food", "Wrong amount", amount = 51000)
+        val posted = db.finances().byKey(com.hellfire.ass.events.NotificationNormalizer.sha256("a|MPESA|SYNTHETIC-REF"))!!
+        assertTrue(repo.reverse(posted.id).contains("back in To confirm"))
+        assertEquals("REVIEW", db.finances().findCandidate("wrong")!!.state)
+        assertEquals(0, db.finances().balance("a"))
+        // The reversal sits in the original's period, so that period nets to zero.
+        assertTrue(db.finances().allEntries().filter { it.reversesId == posted.id }.all { it.occurredAt == posted.occurredAt })
+        assertEquals("Transaction posted with source evidence.", repo.approve("wrong", "a", "EXPENSE", "Food", "Corrected"))
+        assertEquals(-15000, db.finances().balance("a"))
+        // A later SMS with the same reference still links to the corrected posting instead of adding another.
+        candidate("again", amount = 15000)
+        assertTrue(repo.approve("again", "a", "EXPENSE", "Food", "Again").startsWith("Duplicate reference linked"))
+        assertEquals(-15000, db.finances().balance("a"))
+    }
 }
