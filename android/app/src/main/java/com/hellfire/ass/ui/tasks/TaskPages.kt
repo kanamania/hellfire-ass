@@ -81,6 +81,8 @@ fun RemindersPage() {
     var nightly by remember { mutableStateOf(prefs.getBoolean("nightly_review", true)) }
     var morning by remember { mutableStateOf(prefs.getBoolean("morning_brief", true)) }
     var briefHour by remember { mutableStateOf(prefs.getInt("brief_hour", 7).coerceIn(4, 11)) }
+    var reviewHour by remember { mutableStateOf(TaskScheduler.reviewHour(app)) }
+    var quiet by remember { mutableStateOf(prefs.getBoolean("quiet_hours", true)) }
     var gapAlerts by remember { mutableStateOf(prefs.getBoolean("gap_alerts", true)) }
     var repeat by remember { mutableStateOf(prefs.getInt("overdue_minutes", 10).toString()) }
     var status by remember { mutableStateOf<String?>(null) }
@@ -100,7 +102,19 @@ fun RemindersPage() {
                 nightly = enabled
                 prefs.edit().putBoolean("nightly_review", enabled).apply()
                 scope.launch { runCatching { TaskScheduler.restore(app) } }
-            }, subtitle = "21:00 East Africa Time")
+            }, subtitle = "%02d:00 East Africa Time".format(reviewHour))
+            if (nightly) Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)) {
+                ChipPicker((18..23).map { it.toString() }, reviewHour.toString(), { "%02d:00".format(it.toInt()) }) { picked ->
+                    reviewHour = picked.toInt()
+                    prefs.edit().putInt("review_hour", reviewHour).apply()
+                    scope.launch { runCatching { TaskScheduler.restore(app) } }
+                }
+            }
+            ListDivider(16.dp)
+            SwitchRow("Quiet hours for heads-up", quiet, { enabled ->
+                quiet = enabled
+                prefs.edit().putBoolean("quiet_hours", enabled).apply()
+            }, subtitle = "22:00–06:30: early reminders wait until morning. Due commitments still ring.")
             ListDivider(16.dp)
             SwitchRow(stringResource(R.string.ui_morning_brief), morning, { enabled ->
                 morning = enabled

@@ -17,28 +17,60 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Instant
+import java.time.LocalTime
 import java.util.UUID
 import com.hellfire.ass.Diagnostics
 import com.hellfire.ass.events.NotificationNormalizer
 import com.hellfire.ass.insights.Briefs
 
+/** Notification decisions for reminders, kept pure so they can be tested without Android. */
+object TaskAlerts {
+    /** Due and overdue commitments: alarm sound, escalates until the owner acts in the app. */
+    const val ALARM = "commitment-reminders"
+    /** 24 h and 2 h heads-up: an ordinary notification, not an alarm. */
+    const val HEADS_UP = "task-heads-up"
+    const val REVIEW = "daily-review"
+    const val GROUP = "hellfire-commitments"
+    val QUIET_START: LocalTime = LocalTime.of(22, 0)
+    val QUIET_END: LocalTime = LocalTime.of(6, 30)
+
+    fun channel(dueAt: Long, now: Long): String = if (dueAt <= now) ALARM else HEADS_UP
+    /** When quiet hours (22:00–06:30 EAT) hold back a heads-up, the time they end; null outside quiet hours. Alarms never wait. */
+    fun quietUntil(now: Long, enabled: Boolean): Long? {
+        if (!enabled) return null
+        val local = Instant.ofEpochMilli(now).atZone(TaskTime.zone)
+        val time = local.toLocalTime()
+        if (!(time >= QUIET_START || time < QUIET_END)) return null
+        val endDay = if (time >= QUIET_START) local.toLocalDate().plusDays(1) else local.toLocalDate()
+        return endDay.atTime(QUIET_END).atZone(TaskTime.zone).toInstant().toEpochMilli()
+    }
+}
+
 object TaskScheduler {
-    private const val CHANNEL = "commitment-reminders"
+    private const val CHANNEL = TaskAlerts.ALARM
     private val lock = Mutex()
     private fun pending(app: HellFireApp): PendingIntent = PendingIntent.getBroadcast(app, 70,
         Intent(app, ReminderReceiver::class.java).setAction("com.hellfire.ass.FIRE_REMINDERS"), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     private fun notifications(app: HellFireApp): NotificationManager = app.getSystemService(NotificationManager::class.java).also { manager ->
-        manager.createNotificationChannel(NotificationChannel(CHANNEL, "Commitments and reviews", NotificationManager.IMPORTANCE_HIGH).apply {
+        manager.createNotificationChannel(NotificationChannel(CHANNEL, "Commitments due now", NotificationManager.IMPORTANCE_HIGH).apply {
             setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM), AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build())
         })
+        manager.createNotificationChannel(NotificationChannel(TaskAlerts.HEADS_UP, "Upcoming commitments", NotificationManager.IMPORTANCE_DEFAULT))
+        manager.createNotificationChannel(NotificationChannel(TaskAlerts.REVIEW, "Evening review", NotificationManager.IMPORTANCE_DEFAULT))
     }
+    /** Hour of the evening review, East Africa Time (default 21). */
+    fun reviewHour(app: HellFireApp): Int = app.getSharedPreferences("capture", 0).getInt("review_hour", 21).coerceIn(18, 23)
+    private fun quietHours(app: HellFireApp): Boolean = app.getSharedPreferences("capture", 0).getBoolean("quiet_hours", true)
+    private fun openTask(app: HellFireApp, id: String?): PendingIntent = PendingIntent.getActivity(app, 71, Intent(app, MainActivity::class.java)
+        .setData(Uri.parse(if (id == null) "hellfire://tasks" else "hellfire://task/$id")), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     private suspend fun reviewTime(app: HellFireApp, now: Long): Long? {
         if (!app.getSharedPreferences("capture", 0).getBoolean("nightly_review", true)) return null
         val local = Instant.ofEpochMilli(now).atZone(TaskTime.zone)
         val today = local.toLocalDate().toString()
-        val at = local.toLocalDate().atTime(21, 0).atZone(TaskTime.zone).toInstant().toEpochMilli()
+        val hour = reviewHour(app)
+        val at = local.toLocalDate().atTime(hour, 0).atZone(TaskTime.zone).toInstant().toEpochMilli()
         return if (!app.database.tasks().reviewedOrPrompted(today)) at.coerceAtLeast(now)
-            else local.toLocalDate().plusDays(1).atTime(21, 0).atZone(TaskTime.zone).toInstant().toEpochMilli()
+            else local.toLocalDate().plusDays(1).atTime(hour, 0).atZone(TaskTime.zone).toInstant().toEpochMilli()
     }
     /** Hour of the morning brief notification, East Africa Time, or null when the owner turned it off. */
     fun briefHour(app: HellFireApp): Int? = app.getSharedPreferences("capture", 0).let { p ->
@@ -57,18 +89,25 @@ object TaskScheduler {
         val alarm = app.getSystemService(AlarmManager::class.java)
         val manager = notifications(app)
         alarm.cancel(pending(app))
-        if (!manager.areNotificationsEnabled() || manager.getNotificationChannel(CHANNEL).importance == NotificationManager.IMPORTANCE_NONE) {
+        if (!manager.areNotificationsEnabled()) {
             app.database.communications().integration(IntegrationState("REMINDERS", "PERMISSION_MISSING", System.currentTimeMillis(), "NOTIFICATIONS_BLOCKED"))
             return
         }
+        // A blocked alarm channel must not also stop the brief and review, which have their own channels.
+        val alarmsBlocked = manager.getNotificationChannel(CHANNEL).importance == NotificationManager.IMPORTANCE_NONE
         val now = System.currentTimeMillis()
-        val next = listOfNotNull(app.database.tasks().nextAlert(), reviewTime(app, now),
+        val taskAlert = app.database.tasks().nextAlert()
+        val next = listOfNotNull(taskAlert, reviewTime(app, now),
             briefTime(briefHour(app), app.getSharedPreferences("capture", 0).getString("brief_day", null), now)).minOrNull() ?: return
         val exact = Build.VERSION.SDK_INT < 31 || alarm.canScheduleExactAlarms()
         try {
-            if (exact) alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.coerceAtLeast(now + 1000), pending(app))
+            val at = next.coerceAtLeast(now + 1000)
+            // An owner commitment uses the alarm-clock API: exact through Doze and shown as the next alarm.
+            if (exact && next == taskAlert) alarm.setAlarmClock(AlarmManager.AlarmClockInfo(at, openTask(app, null)), pending(app))
+            else if (exact) alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pending(app))
             else alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.coerceAtLeast(now + 1000), pending(app))
-            app.database.communications().integration(IntegrationState("REMINDERS", if (exact) "EXACT_ALLOWED" else "BEST_EFFORT", now))
+            app.database.communications().integration(if (alarmsBlocked) IntegrationState("REMINDERS", "PERMISSION_MISSING", now, "ALARM_CHANNEL_BLOCKED")
+                else IntegrationState("REMINDERS", if (exact) "EXACT_ALLOWED" else "BEST_EFFORT", now))
         } catch (_: SecurityException) {
             alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.coerceAtLeast(now + 1000), pending(app))
             app.database.communications().integration(IntegrationState("REMINDERS", "BEST_EFFORT", now, "EXACT_ACCESS_REVOKED"))
@@ -178,28 +217,44 @@ object TaskScheduler {
     @SuppressLint("MissingPermission")
     suspend fun fire(app: HellFireApp) = lock.withLock {
         val manager = notifications(app)
-        if (!manager.areNotificationsEnabled() || manager.getNotificationChannel(CHANNEL).importance == NotificationManager.IMPORTANCE_NONE) {
-            arm(app); return@withLock
-        }
+        if (!manager.areNotificationsEnabled()) { arm(app); return@withLock }
         val now = System.currentTimeMillis()
-        val open = PendingIntent.getActivity(app, 71, Intent(app, MainActivity::class.java)
-            .setData(Uri.parse("hellfire://tasks")), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        for (task in app.database.tasks().due(now)) {
-            manager.notify(task.id, 71, Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_hellfire)
-                .setContentTitle(task.title).setContentText(if (task.dueAt <= now) "Overdue · open HellFire Ass to choose Done, Snooze or Reschedule" else "Upcoming commitment · review in HellFire Ass")
-                .setVisibility(Notification.VISIBILITY_PRIVATE).setContentIntent(open).setAutoCancel(false)
-                .setCategory(Notification.CATEGORY_ALARM).build())
-            app.database.tasks().alerted(task.id, now, TaskTime.nextAlert(task.dueAt, now, repeatInterval(task, app.getSharedPreferences("capture", 0).getInt("overdue_minutes", 10))))
+        val open = openTask(app, null)
+        val due = app.database.tasks().due(now)
+        val quietUntil = TaskAlerts.quietUntil(now, quietHours(app))
+        val alarms = due.count { TaskAlerts.channel(it.dueAt, now) == CHANNEL }
+        val overdueMinutes = app.getSharedPreferences("capture", 0).getInt("overdue_minutes", 10)
+        for (task in due) {
+            val channel = TaskAlerts.channel(task.dueAt, now)
+            if (channel == TaskAlerts.HEADS_UP && quietUntil != null) {
+                // Hold an early heads-up until quiet hours end (never past the due time).
+                app.database.tasks().alerted(task.id, now, minOf(quietUntil, task.dueAt))
+                continue
+            }
+            val builder = Notification.Builder(app, channel).setSmallIcon(R.drawable.ic_hellfire)
+                .setContentTitle(task.title).setContentText(if (channel == CHANNEL) "Due · open HellFire Ass to choose Done, Snooze or Reschedule" else "Due ${TaskTime.display(task.dueAt)} EAT · review in HellFire Ass")
+                .setVisibility(Notification.VISIBILITY_PRIVATE).setContentIntent(openTask(app, task.id)).setAutoCancel(false)
+                .setCategory(if (channel == CHANNEL) Notification.CATEGORY_ALARM else Notification.CATEGORY_REMINDER)
+            // Several commitments due together ring once, through the summary below.
+            if (channel == CHANNEL && alarms >= 2) builder.setGroup(TaskAlerts.GROUP).setGroupAlertBehavior(Notification.GROUP_ALERT_SUMMARY)
+            manager.notify(task.id, 71, builder.build())
+            app.database.tasks().alerted(task.id, now, TaskTime.nextAlert(task.dueAt, now, repeatInterval(task, overdueMinutes)))
         }
+        if (alarms >= 2) manager.notify("commitments-summary", 75, Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_hellfire)
+            .setContentTitle("$alarms commitments need you").setContentText("Open HellFire Ass to choose Done, Snooze or Reschedule")
+            .setVisibility(Notification.VISIBILITY_PRIVATE).setContentIntent(open).setGroup(TaskAlerts.GROUP).setGroupSummary(true)
+            .setGroupAlertBehavior(Notification.GROUP_ALERT_SUMMARY).setCategory(Notification.CATEGORY_ALARM).build())
+        else manager.cancel("commitments-summary", 75)
         val local = Instant.ofEpochMilli(now).atZone(TaskTime.zone)
         val day = local.toLocalDate().toString()
-        if (app.getSharedPreferences("capture", 0).getBoolean("nightly_review", true) && local.hour >= 21 && !app.database.tasks().reviewedOrPrompted(day)) {
-            manager.notify("cash-review", 72, Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_hellfire)
+        val reviewHour = reviewHour(app)
+        if (app.getSharedPreferences("capture", 0).getBoolean("nightly_review", true) && local.hour >= reviewHour && !app.database.tasks().reviewedOrPrompted(day)) {
+            manager.notify("cash-review", 72, Notification.Builder(app, TaskAlerts.REVIEW).setSmallIcon(R.drawable.ic_hellfire)
                 .setContentTitle("HellFire Ass · evening review").setContentText("Review today's transactions, unknown merchants and unlogged cash expenses.")
                 .setVisibility(Notification.VISIBILITY_PRIVATE).setContentIntent(open).build())
             app.database.tasks().review(DailyReview(day, createdAt = now))
         }
-        if (local.hour >= 21) app.requestWidgetRefresh()
+        if (local.hour >= reviewHour) app.requestWidgetRefresh()
         val prefs = app.getSharedPreferences("capture", 0)
         val briefHour = briefHour(app)
         if (briefHour != null && local.hour in briefHour until 12 && prefs.getString("brief_day", null) != day) {

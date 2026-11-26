@@ -124,7 +124,7 @@ fun MoneyScreen() {
                 }
             }
 
-            if (reviews.isNotEmpty()) ActionCard(context = "Nightly review · 21:00 reminder", contextIcon = HfIcons.Alarm, contextTone = Tone.Warning,
+            if (reviews.isNotEmpty()) ActionCard(context = "Nightly review · %02d:00 reminder".format(com.hellfire.ass.tasks.TaskScheduler.reviewHour(app)), contextIcon = HfIcons.Alarm, contextTone = Tone.Warning,
                 actions = { PrimaryButton("I reviewed ${reviews.first().day}", { confirmReview = reviews.first().day }) }) {
                 Text("Check ${reviews.joinToString { it.day }}", style = Hf.type.cardTitle.copy(fontSize = 15.sp), color = Hf.colors.onSurface)
                 Text("Look over the payments below, name unknown merchants and add any cash you spent. Skipped days stay here.",

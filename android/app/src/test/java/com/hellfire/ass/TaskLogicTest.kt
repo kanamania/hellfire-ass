@@ -100,4 +100,15 @@ class TaskLogicTest {
         assertNotNull(TaskExtractor.extract("nitakupigia leo", friday10, false))
         assertNotNull(TaskExtractor.extract("tutaonana kesho", friday10, false))
     }
+
+    @Test fun `heads-up alerts are not alarms and wait for quiet hours`() {
+        val at = { iso: String -> Instant.parse(iso).toEpochMilli() }
+        assertEquals(TaskAlerts.HEADS_UP, TaskAlerts.channel(at("2026-11-14T07:00:00Z"), at("2026-11-13T07:00:00Z")))
+        assertEquals(TaskAlerts.ALARM, TaskAlerts.channel(at("2026-11-13T07:00:00Z"), at("2026-11-13T07:00:00Z")))
+        // 23:30 EAT is quiet until 06:30 EAT the next morning; 05:00 EAT until 06:30 the same day; 12:00 is not quiet.
+        assertEquals("2026-11-14 06:30", TaskTime.display(TaskAlerts.quietUntil(at("2026-11-13T20:30:00Z"), true)!!))
+        assertEquals("2026-11-13 06:30", TaskTime.display(TaskAlerts.quietUntil(at("2026-11-13T02:00:00Z"), true)!!))
+        assertNull(TaskAlerts.quietUntil(at("2026-11-13T09:00:00Z"), true))
+        assertNull(TaskAlerts.quietUntil(at("2026-11-13T20:30:00Z"), false))
+    }
 }

@@ -162,7 +162,7 @@ fun HomeScreen() {
                 }
                 if (nightly) {
                     if (upNext.isNotEmpty()) ListDivider(72.dp)
-                    UpNextRow("21:00", "Nightly cash review", "Daily", false, highlight = upNext.isEmpty()) { nav.push(Screen.Reminders) }
+                    UpNextRow("%02d:00".format(com.hellfire.ass.tasks.TaskScheduler.reviewHour(app)), "Nightly cash review", "Daily", false, highlight = upNext.isEmpty()) { nav.push(Screen.Reminders) }
                 }
             }
         }
