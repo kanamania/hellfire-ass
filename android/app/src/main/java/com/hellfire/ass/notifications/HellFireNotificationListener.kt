@@ -21,6 +21,7 @@ class HellFireNotificationListener : NotificationListenerService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val inbox = Channel<NotificationSnapshot>(256)
     private val pendingDrops = AtomicInteger()
+    private val reposts = RepostCoalescer()
 
     override fun onCreate() {
         super.onCreate()
@@ -77,6 +78,7 @@ class HellFireNotificationListener : NotificationListenerService() {
         if (sbn.packageName == packageName) return
         try {
             val snapshot = AndroidNotificationAdapter.snapshot(sbn, kind, reason, ranks)
+            if (!reposts.keep(snapshot, System.currentTimeMillis())) return
             if (!inbox.trySend(snapshot).isSuccess) {
                 pendingDrops.incrementAndGet()
                 NotificationCaptureStatus.dropped.value += 1
