@@ -39,7 +39,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 |---|---|---|---|---|---|
 | HF-001 | P0 | Time understanding: am/pm, relative, time-only, day parts, weekday rollover, Swahili period, title stripping | A1.1, A1.2, N5, N6, N7, D-06, D-07 | M | DONE (9e641ed) |
 | HF-002 | P0 | Commitment detection without noun false positives | N10 | S | DONE (9e641ed) |
-| HF-003 | P0 | Ask routing: news, finance, tasks, follow-ups, word boundaries, generic verbs | A1.3, A1.7, N8, N9, D-01–D-05 | M | OPEN |
+| HF-003 | P0 | Ask routing: news, finance, tasks, follow-ups, word boundaries, generic verbs | A1.3, A1.7, N8, N9, D-01–D-05 | M | DONE (4a43580); per-surface context not split (expiry only) |
 | HF-004 | P0 | Finance direction, fee words, school fees, withdrawals, airtime, reversed income | A1.4, A1.5, N2–N4 | M | DONE (294f81d) |
 | HF-004b | P2 | Amounts with cents: the golden fixture deliberately rejects `TZS 1.25`; rounding would change the whole-shilling ledger contract | N1 | S | OWNER DECISION |
 | HF-005 | P0 | Providers: AzamPesa, Selcom, whole-word aliases | A1.6 | S | DONE (294f81d) |
