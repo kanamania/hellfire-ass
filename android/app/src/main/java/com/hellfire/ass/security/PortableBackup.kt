@@ -285,10 +285,13 @@ class PortableBackup(
                     app.secrets.remove("restore-journal")
                 } }
                 if (format2) applySettings(manifestJson)
-                runCatching { TaskScheduler.restore(app) }.onFailure { Diagnostics.warn(it) }
-                runCatching { MediaWork.recover(app) }.onFailure { Diagnostics.warn(it) }
-                runCatching { SearchBackfill.reset(app) }.onFailure { Diagnostics.warn(it) }
-                runCatching { app.database.library().rebuildSearch() }.onFailure { Diagnostics.warn(it) }
+                // Restored data is committed; follow-up steps that fail are recorded for Needs attention, not hidden.
+                suspend fun followUp(code: String, step: suspend () -> Unit) = runCatching { step() }.onFailure {
+                    Diagnostics.warn(it); runCatching { app.database.events().failure("restore", code) } }
+                followUp("REMINDERS_NOT_REARMED") { TaskScheduler.restore(app) }
+                followUp("MEDIA_RECOVERY_FAILED") { MediaWork.recover(app) }
+                followUp("SEARCH_REBUILD_FAILED") { SearchBackfill.reset(app) }
+                followUp("LIBRARY_SEARCH_REBUILD_FAILED") { app.database.library().rebuildSearch() }
             }
             RestoreReport(moved.size, missing)
         } finally {

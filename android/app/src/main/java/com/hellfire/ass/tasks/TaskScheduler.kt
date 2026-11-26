@@ -262,7 +262,7 @@ object TaskScheduler {
             prefs.edit().putString("brief_day", day).apply()
             try { Briefs.notify(app, Briefs.load(app, now, evening = false)) }
             catch (e: CancellationException) { throw e }
-            catch (caught: Exception) { Diagnostics.warn(caught) }
+            catch (caught: Exception) { Diagnostics.warn(caught); runCatching { app.database.events().failure("morning_brief", "BRIEF_FAILED") } }
         }
         arm(app)
     }

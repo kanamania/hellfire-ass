@@ -42,7 +42,7 @@ class MailIdleService : android.app.Service() {
                 // One bounded IDLE connection per inbox; a failing inbox does not end the others.
                 accounts.map { config -> launch { idle(app, config) } }.joinAll()
             } catch (e: CancellationException) { throw e }
-            catch (caught: Exception) { Diagnostics.warn(caught) }
+            catch (caught: Exception) { Diagnostics.warn(caught); runCatching { app.database.events().failure("email", "ACCOUNTS_UNREADABLE") } }
             finally {
                 timer.cancel()
                 stores.values.forEach { runCatching { it.close() } }; stores.clear()
@@ -79,7 +79,7 @@ class MailIdleService : android.app.Service() {
             Diagnostics.warn(error)
             failed = true
             runCatching { app.database.communications().integration(IntegrationState(state, "UNAVAILABLE", System.currentTimeMillis(),
-                if (error.message == "IDLE_UNSUPPORTED") "SERVER_DOES_NOT_SUPPORT_IDLE" else "CONNECTION_OR_CREDENTIALS_UNAVAILABLE")) }
+                if (error.message == "IDLE_UNSUPPORTED") "SERVER_DOES_NOT_SUPPORT_IDLE" else MailErrors.code(error))) }
         } finally {
             stores.remove(config.id)?.let { runCatching { it.close() } }
             if (!failed) withContext(NonCancellable) { runCatching { app.database.communications().integration(IntegrationState(state, "STOPPED", System.currentTimeMillis())) } }
