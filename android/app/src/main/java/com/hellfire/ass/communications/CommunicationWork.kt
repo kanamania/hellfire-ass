@@ -70,7 +70,7 @@ class CommunicationSyncWorker(context: Context, params: WorkerParameters) : Coro
             catch (caught: Exception) {
                 Diagnostics.warn(caught)
                 retry = true
-                dao.integration(IntegrationState(Accounts.mailState(config.id), "FAILED", System.currentTimeMillis(), "CONNECTION_OR_CREDENTIALS_UNAVAILABLE"))
+                dao.integration(IntegrationState(Accounts.mailState(config.id), "FAILED", System.currentTimeMillis(), MailErrors.code(caught)))
             }
         }
         val gateways = try { Accounts.gateways(app.secrets) } catch (e: CancellationException) { throw e } catch (caught: Exception) { Diagnostics.warn(caught); retry = true; emptyList() }

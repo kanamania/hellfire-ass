@@ -50,7 +50,7 @@ object SearchBackfill {
                     if (!event.contentAvailable || event.securitySensitive || event.source == "owner_skill_use") continue
                     val text = runCatching {
                         SearchText.of(JSONObject(app.cipher.decrypt(event.encryptedPayload).toString(Charsets.UTF_8)).getJSONObject("fields"))
-                    }.onFailure { Diagnostics.warn(it) }.getOrNull() ?: continue
+                    }.onFailure { Diagnostics.warn(it); dao.failure("search_index", "EVENT_UNREADABLE") }.getOrNull() ?: continue
                     dao.insertSearch(SourceSearch(event.id, text))
                 }
             }

@@ -297,7 +297,7 @@ class MediaVault(private val app: HellFireApp) {
                 // A recording with no authenticated audio is an empty orphan; remove it rather than leave ciphertext behind.
                 if (recovered == null) path.delete()
                 else registerRecording(id, recoveredStart(path), true, emptyList(), mime = if (recovered.pcm) "audio/pcm" else "audio/aac")
-            }.onFailure { Diagnostics.warn(it) }
+            }.onFailure { Diagnostics.warn(it); runCatching { app.database.events().failure("recording_recovery", "RECORDING_NOT_RECOVERED") } }
         }
     }
 }
