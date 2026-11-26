@@ -67,6 +67,7 @@ interface MediaDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun segment(value: TranscriptSegment)
     @Query("SELECT * FROM transcript_segment WHERE mediaId=:id ORDER BY startMs") fun segments(id: String): Flow<List<TranscriptSegment>>
     @Query("SELECT * FROM transcript_segment WHERE mediaId=:id ORDER BY startMs") suspend fun transcript(id: String): List<TranscriptSegment>
+    @Query("SELECT DISTINCT sourceId FROM transcript_segment WHERE mediaId=:id") suspend fun derivedSources(id: String): List<String>
     @Query("UPDATE transcript_segment SET speaker=:speaker WHERE id=:id") suspend fun speaker(id: String, speaker: String)
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun span(value: SpeechSpan)
     @Query("SELECT * FROM speech_span WHERE mediaId=:id ORDER BY startMs") suspend fun spans(id: String): List<SpeechSpan>
