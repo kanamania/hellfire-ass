@@ -45,8 +45,11 @@ data class EventSummary(
 
 @Dao
 interface EventDao {
-    @Query("SELECT e.*, p.label, COALESCE(p.state, 'PENDING') AS state FROM source_event e LEFT JOIN event_processing p ON p.eventId = e.id WHERE (e.source = 'android_sms' OR (e.source = 'android_notification' AND p.label IN ('MESSAGE', 'FINANCE_CANDIDATE'))) AND (:query = '' OR EXISTS(SELECT 1 FROM source_search s WHERE s.eventId = e.id AND instr(lower(s.text), lower(:query)) > 0)) ORDER BY e.occurredAt DESC, e.id DESC LIMIT :limit")
-    fun inbox(query: String, limit: Int): Flow<List<LabelledEvent>>
+    @Query("SELECT e.*, p.label, COALESCE(p.state, 'PENDING') AS state FROM source_event e LEFT JOIN event_processing p ON p.eventId = e.id WHERE (e.source = 'android_sms' OR (e.source = 'android_notification' AND p.label IN ('MESSAGE', 'FINANCE_CANDIDATE'))) AND (:fts = '' OR e.id IN (SELECT eventId FROM source_search WHERE text MATCH :fts)) ORDER BY e.occurredAt DESC, e.id DESC LIMIT :limit")
+    fun inboxMatching(fts: String, limit: Int): Flow<List<LabelledEvent>>
+
+    /** Word-prefix search through the full-text index; queries without a two-character word list everything. */
+    fun inbox(query: String, limit: Int): Flow<List<LabelledEvent>> = inboxMatching(SearchText.query(query).orEmpty(), limit)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(event: SourceEvent): Long

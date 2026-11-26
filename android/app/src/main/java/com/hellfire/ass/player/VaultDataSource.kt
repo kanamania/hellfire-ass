@@ -30,6 +30,7 @@ class VaultDataSource(private val app: HellFireApp) : BaseDataSource(false) {
     override fun open(dataSpec: DataSpec): Long {
         transferInitializing(dataSpec)
         val id = dataSpec.uri.lastPathSegment ?: throw FileNotFoundException("Missing library id")
+        // Media3 calls open() on its loader thread, where blocking I/O is the DataSource contract.
         val item = runBlocking(Dispatchers.IO) { app.database.library().item(id) }
             ?: throw FileNotFoundException("Library item is missing")
         if (item.storage != StorageMode.MANAGED.name) throw FileNotFoundException("Not a managed original")

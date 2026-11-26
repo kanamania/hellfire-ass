@@ -143,6 +143,17 @@ class ReviewImprovementsTest {
         assertEquals(130, db.communications().inbox("", 200).first().size)
         assertEquals("m0", db.communications().inbox("needle", 100).first().single().id)
     }
+    @Test fun `event inbox searches through the full-text index by word prefix`() = runBlocking {
+        for ((id, text) in listOf("sms1" to "Umepokea pesa TSh 5,000", "sms2" to "Meeting at noon")) {
+            db.events().insertCaptured(SourceEvent(id, externalId = id, source = "android_sms", packageName = "sms", occurredAt = 1, receivedAt = 1,
+                kind = "POSTED", payloadHash = id, encryptedPayload = byteArrayOf(1), contentAvailable = true, contentRedacted = false, securitySensitive = false), text)
+        }
+        assertEquals(2, db.events().inbox("", 10).first().size)
+        assertEquals(listOf("sms1"), db.events().inbox("PES", 10).first().map { it.event.id })
+        assertEquals(listOf("sms2"), db.events().inbox("meet noon", 10).first().map { it.event.id })
+        assertTrue(db.events().inbox("absent", 10).first().isEmpty())
+        assertEquals(2, db.events().inbox("\"*", 10).first().size)
+    }
     @Test fun `unanswered requests survive later greetings and respect thread snooze`() {
         val at = now.toEpochMilli(); val h = 3_600_000L
         val request = Interaction("mail:j@example.com", "j@example.com", "Email", true, at - 8*h, "Can you send the invoice?", "q", thread = "invoice")
