@@ -171,4 +171,43 @@ class FinanceTest {
             assertTrue(runCatching { CandidateContracts.finance(bad) }.isFailure)
         }
     }
+
+    private fun p(sender: String, text: String) = FinanceParser.parse(sender, text)
+    @Test fun `debitedThenCreditedToIsExpense`() {
+        assertEquals("EXPENSE", p("NMB", "Your account has been debited TZS 50,000.00 and credited to JOHN DOE. Ref ABC12345")!!.kind)
+        assertEquals("INCOME", p("NMB", "Your account has been credited with TZS 50,000.00 from JOHN DOE. Ref ABC12345")!!.kind)
+        assertEquals("INCOME", p("CRDB", "TZS 50,000.00 has been credited to your account. Ref ABC12345")!!.kind)
+        assertEquals("INCOME", p("M-PESA", "JOHN DOE sent you TZS 10,000. Ref ABC12345")!!.kind)
+        assertEquals("EXPENSE", p("M-PESA", "Confirmed. Tsh5,000.00 sent to JOHN DOE. Ref ABC12345")!!.kind)
+    }
+    @Test fun `transactionCostAndSwahiliFees`() {
+        val mpesa = p("M-PESA", "QK12ABC3D4 Confirmed. Tsh5,000.00 sent to JOHN DOE on 26/11/26. Total transaction cost, Tsh 300.00")!!
+        assertEquals(5000, mpesa.amount); assertEquals(300, mpesa.fee); assertEquals("QK12ABC3D4", mpesa.reference)
+        assertEquals(250, p("Airtel", "Umetuma TZS 10,000 kwa JUMA. Makato TZS 250. Ref ABC12345")!!.fee)
+        assertEquals(400, p("NMB", "Umelipa TZS 20,000. Gharama TZS 300, tozo TZS 100. Ref ABC12345")!!.fee)
+        assertEquals(150, p("CRDB", "Paid TZS 20,000. Fees: TZS 100 Levy: TZS 50. Ref ABC12345")!!.fee)
+        assertEquals(500, p("M-PESA", "Umelipa TZS 15,000.00 ref SYNTHETIC-123 ada TZS 500.00")!!.fee)
+    }
+    @Test fun `schoolAdaIsMainAmount`() {
+        val school = p("NMB", "Umelipa ada TZS 500,000 kwa SHULE YA MSINGI. Ref ABC12345")!!
+        assertEquals(500_000, school.amount); assertEquals(0, school.fee)
+    }
+    @Test fun `azamPesaIsNotMpesa`() {
+        assertEquals("AZAMPESA", p("AzamPesa", "Umelipa TZS 3,000. Ref ABC12345")!!.provider)
+        assertEquals("AZAMPESA", FinanceParser.provider("", "Azam Pesa: Umelipa TZS 3,000"))
+        assertEquals("SELCOM", p("SELCOM", "Paid TZS 3,000 to DUKA. Ref ABC12345")!!.provider)
+        assertNull(FinanceParser.provider("", "Read more at nbcnews.com"))
+    }
+    @Test fun `senderIdWinsOverText`() {
+        assertEquals("NMB", FinanceParser.provider("NMB", "Umetuma TZS 10,000 kwenda M-PESA 0712000000"))
+        assertEquals("MPESA", FinanceParser.provider("+255712000000", "M-Pesa: Umepokea TZS 10,000"))
+    }
+    @Test fun `agentWithdrawalAndAirtime`() {
+        assertEquals("EXPENSE", p("M-PESA", "Umetoa Tsh 20,000 kwa wakala JUMA SHOP. Ref ABC12345")!!.kind)
+        assertEquals("EXPENSE", p("Airtel", "Umenunua muda wa maongezi Tsh 1,000. Ref ABC12345")!!.kind)
+    }
+    @Test fun `reversedIncomeIsOutflow`() {
+        assertEquals("EXPENSE", p("M-PESA", "The TZS 5,000 you received from JOHN DOE has been reversed. Ref ABC12345")!!.kind)
+        assertEquals("REFUND", p("M-PESA", "Reversed TZS 5,000 paid to DUKA. Ref ABC12345")!!.kind)
+    }
 }

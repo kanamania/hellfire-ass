@@ -26,7 +26,7 @@ object CandidateContracts {
         require(kind in setOf("INCOME", "EXPENSE", "REFUND"))
         val amount = integer(o, "amount_minor").also { require(it > 0) }
         val fee = integer(o, "fee_minor").also { require(it >= 0); Math.addExact(amount, it) }
-        val provider = o.getString("provider").also { require(it in setOf("MPESA", "AIRTEL", "MIXX", "HALOPESA", "CRDB", "NMB", "NBC")) }
+        val provider = o.getString("provider").also { require(it in setOf("MPESA", "AIRTEL", "MIXX", "HALOPESA", "AZAMPESA", "SELCOM", "CRDB", "NMB", "NBC")) }
         val reference = o.optString("reference").takeIf { it.isNotBlank() && it != "null" }
         require(reference == null || Regex("[A-Za-z0-9-]{5,40}").matches(reference))
         val evidence = o.getString("evidence").also { require(it.isNotBlank() && it.length <= 4000) }
