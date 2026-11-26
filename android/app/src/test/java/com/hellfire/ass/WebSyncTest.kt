@@ -27,6 +27,9 @@ private class FakeServer : WebSync.Call {
     val rows = mutableMapOf<String, MutableMap<String, JSONObject>>()
     var batches = 0
     var resets = 0
+    var resetDevice: String? = null
+    /** Device that owns the copy; a reset from another device is refused like the real server (HTTP 423). */
+    var owner: String? = null
     var finished = 0
     /** Pending web news actions; false makes the news routes answer 404 like a server from before news. */
     val actions = mutableListOf<JSONObject>()
@@ -36,7 +39,11 @@ private class FakeServer : WebSync.Call {
     fun reset() { dataset = UUID.randomUUID().toString(); rows.clear(); actions.clear(); resets++ }
     override fun send(method: String, path: String, body: JSONObject?): JSONObject = news(path, body) ?: when (path) {
         "/api/sync/state" -> JSONObject().put("dataset", dataset)
-        "/api/sync/reset" -> { reset(); JSONObject().put("dataset", dataset) }
+        "/api/sync/reset" -> {
+            resetDevice = body?.optString("device")?.takeIf { it.isNotEmpty() }
+            if (owner != null && resetDevice != null && resetDevice != owner) throw WebSync.Rejected(423)
+            reset(); JSONObject().put("dataset", dataset)
+        }
         "/api/sync/batch" -> {
             if (body!!.getString("dataset") != dataset) throw WebSync.Rejected(409)
             batches++
@@ -86,7 +93,18 @@ class WebSyncTest {
         if (label != null) db.openHelper.writableDatabase.execSQL("UPDATE event_processing SET label = ? WHERE eventId = ?", arrayOf(label, id))
     }
 
-    private fun sync(server: FakeServer) = runBlocking { WebSync.run(db, cipher, state, server, save = { state = JSONObject(it.toString()) }, now = now) }
+    private fun sync(server: FakeServer, device: String? = null) = runBlocking { WebSync.run(db, cipher, state, server, save = { state = JSONObject(it.toString()) }, now = now, device = device) }
+
+    @Test fun `a second phone cannot reset another phone's web copy`() {
+        seed()
+        val server = FakeServer().apply { owner = "phone-aaaa1111" }
+        sync(server, "phone-aaaa1111")
+        assertEquals("phone-aaaa1111", server.resetDevice)
+        state = null
+        val refused = runCatching { sync(server, "phone-bbbb2222") }.exceptionOrNull()
+        assertEquals(423, (refused as WebSync.Rejected).status)
+        assertEquals(1, server.resets)
+    }
 
     private fun seed() = runBlocking {
         event("sms", "android_sms", "Umepokea TSh 5,000")

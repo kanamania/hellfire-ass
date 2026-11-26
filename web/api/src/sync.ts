@@ -1,4 +1,4 @@
-import { BadRequestException, Body, ConflictException, Controller, Get, HttpCode, Injectable, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, ConflictException, Controller, Get, HttpCode, HttpException, Injectable, Post, UseGuards } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { SyncGuard } from './auth.js';
 import { Db } from './db.js';
@@ -36,6 +36,15 @@ function parseBatch(body: unknown): Batch {
   return { dataset: dataset as string, kind: kind as string, upserts: rows as Row[], deletes: removed as string[] };
 }
 
+export const OWNER_HOLD_MS = 30 * 24 * 3600 * 1000;
+
+function parseDevice(body: unknown): string | undefined {
+  const device = (body as { device?: unknown } | null)?.device;
+  if (device === undefined) return undefined;
+  if (typeof device !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(device)) throw new BadRequestException('invalid device');
+  return device;
+}
+
 @Injectable()
 export class SyncService {
   constructor(private readonly db: Db) {}
@@ -46,10 +55,22 @@ export class SyncService {
     return { dataset: meta.dataset, lastSyncAt: meta.last_sync_at ? Number(meta.last_sync_at) : null };
   }
 
-  /** Drops the whole mirror and starts a new dataset; the phone then uploads everything again. */
-  async reset() {
+  /**
+   * Drops the whole mirror and starts a new dataset; the phone then uploads everything again.
+   * The web copy belongs to one phone: another phone may not reset it while the owner phone synced in the last
+   * [OWNER_HOLD_MS] (two installs would otherwise wipe each other's copy on every pass). Requests without a device id
+   * (older apps) keep the previous behaviour.
+   */
+  async reset(body: unknown = {}) {
+    const device = parseDevice(body);
     const dataset = randomUUID();
     await this.db.transaction(async (client) => {
+      const { rows } = await client.query<{ key: string; value: string }>("SELECT key, value FROM meta WHERE key IN ('device', 'last_sync_at') FOR UPDATE");
+      const meta = Object.fromEntries(rows.map((row) => [row.key, row.value]));
+      if (device && meta.device && meta.device !== device && meta.last_sync_at && Date.now() - Number(meta.last_sync_at) < OWNER_HOLD_MS) {
+        throw new HttpException('Another phone syncs to this web copy. Turn web access off there first.', 423);
+      }
+      if (device) await client.query("INSERT INTO meta (key, value) VALUES ('device', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [device]);
       await client.query("UPDATE meta SET value = $1 WHERE key = 'dataset'", [dataset]);
       await client.query("DELETE FROM meta WHERE key = 'last_sync_at'");
       await client.query('DELETE FROM record');
@@ -94,7 +115,7 @@ export class SyncController {
   constructor(private readonly sync: SyncService) {}
 
   @Get('state') state() { return this.sync.state(); }
-  @Post('reset') @HttpCode(200) reset() { return this.sync.reset(); }
+  @Post('reset') @HttpCode(200) reset(@Body() body: unknown) { return this.sync.reset(body); }
   @Post('batch') @HttpCode(200) batch(@Body() body: unknown) { return this.sync.apply(body); }
   @Post('finish') @HttpCode(200) finish(@Body() body: unknown) { return this.sync.finish(body); }
 }
