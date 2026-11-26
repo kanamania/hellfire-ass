@@ -24,4 +24,6 @@
     <string name="widget_review_desc">Payments and days to check</string>
     <string name="widget_budget_label">Budget</string>
     <string name="widget_budget_desc">One category\'s spending against its limit</string>
+    <string name="save_selected_text">Save to HellFire</string>
+    <string name="tile_ask">Ask HellFire</string>
 </resources>

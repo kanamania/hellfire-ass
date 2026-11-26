@@ -26,4 +26,6 @@
     <string name="widget_review_desc">Malipo na matumizi taslimu yanayohitaji mapitio</string>
     <string name="widget_budget_label">Bajeti</string>
     <string name="widget_budget_desc">Matumizi kulingana na bajeti ya mwezi</string>
+    <string name="save_selected_text">Hifadhi kwenye HellFire</string>
+    <string name="tile_ask">Uliza HellFire</string>
 </resources>
