@@ -98,16 +98,25 @@ def test_web_spool_replay_is_encrypted_durable_and_acknowledged_after_commit(web
 
 
 @pytest.mark.parametrize("fault", ["wrong-key", "wrong-transport", "oversized", "malformed"])
-def test_invalid_spool_is_not_deleted_or_accepted(web_gateway, fault):
+def test_invalid_spool_is_quarantined_not_accepted_and_does_not_block_later_events(web_gateway, fault):
     client, settings, _, directory, _ = web_gateway
+    # "0" * 64 sorts before every real SHA-256 identity, so the bad file is always drained first.
+    bad = directory / "outbox" / ("0" * 64 + ".json")
     _, path = spool(directory, b"z" * 32 if fault == "wrong-key" else settings.store_key,
                     **({"transport": "wrong"} if fault == "wrong-transport" else {}))
+    path.replace(bad)
     if fault == "oversized":
-        path.write_bytes(b"x" * (192 * 1024 + 1))
+        bad.write_bytes(b"x" * (192 * 1024 + 1))
     if fault == "malformed":
-        path.write_text("[]")
-    assert client.get("/device/events", headers=auth(settings)).status_code == 503
-    assert path.exists()
+        bad.write_text("[]")
+    good, good_path = spool(directory, settings.store_key, identity="synthetic-after-bad")
+    response = client.get("/device/events", headers=auth(settings))
+    assert response.status_code == 200
+    body = response.json()
+    assert [event["id"] for event in body["events"]] == [good]
+    assert not bad.exists() and (directory / "rejected" / bad.name).exists()
+    assert not good_path.exists()
+    assert body["capture_status"]["rejected"] == 1
 
 
 def test_failed_relay_commit_leaves_spool_for_recovery(web_gateway, monkeypatch):

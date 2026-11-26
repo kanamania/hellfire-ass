@@ -1,11 +1,13 @@
 """Consume the linked-device worker's encrypted spool; no browser control API."""
 import base64
+import binascii
 import hashlib
 import json
 import re
 import time
 from pathlib import Path
 
+from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 MAX_FILE_BYTES = 192 * 1024
@@ -43,7 +45,25 @@ def capture_status(directory: str, pairing: bool = False) -> dict:
                 status["qr"] = qr
     except (OSError, ValueError, KeyError, TypeError):
         pass
+    rejected = rejected_count(directory)
+    if rejected:
+        status["rejected"] = rejected
+        status["error"] = status["error"] or "SPOOL_EVENTS_REJECTED"
     return status
+
+
+def rejected_count(directory: str) -> int:
+    try:
+        return sum(1 for _ in (Path(directory) / "rejected").glob("*.json"))
+    except OSError:
+        return 0
+
+
+def quarantine(path: Path) -> None:
+    """Keep an unreadable event for inspection without letting it block every later event."""
+    target = path.parent.parent / "rejected"
+    target.mkdir(mode=0o700, exist_ok=True)
+    path.replace(target / path.name)
 
 
 def drain_spool(directory: str, store) -> bool:
@@ -64,6 +84,12 @@ def drain_spool(directory: str, store) -> bool:
             data = base64.b64decode(box["data"], validate=True)
             if len(nonce) != 12:
                 raise ValueError("Invalid nonce")
+        except FileNotFoundError:
+            continue
+        except (ValueError, KeyError, TypeError, binascii.Error):
+            quarantine(path)
+            continue
+        try:
             event = json.loads(AESGCM(store.key).decrypt(nonce, data, f"hellfire-web-spool-v1:{identity}".encode()))
             item = event["item"]
             expected = hashlib.sha256(f"whatsapp-web:message:{item['id']}".encode()).hexdigest()
@@ -72,6 +98,10 @@ def drain_spool(directory: str, store) -> bool:
                     or not isinstance(item.get("text", {}).get("body"), str)
                     or not re.fullmatch(r"[0-9]{1,12}", item.get("timestamp", ""))):
                 raise ValueError("Invalid linked-device event")
+        except (ValueError, KeyError, TypeError, AttributeError, InvalidTag):
+            quarantine(path)
+            continue
+        try:
             store.ingest([(identity, event)])
             # Commit the phone-encrypted envelope first. Replay after a crash is harmless.
             path.unlink(missing_ok=True)
