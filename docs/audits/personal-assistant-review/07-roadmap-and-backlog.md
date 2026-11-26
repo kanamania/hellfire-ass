@@ -53,12 +53,12 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-012 | P1 | Configurable evening review time; quiet hours for non-alarm notices | — | S | DONE (6e07f8c): quiet hours cover task heads-ups; news has its own; brief is at an owner-chosen morning hour |
 | HF-013 | P1 | Voice session: listen on open, speak a short answer without source IDs | A1.8, D-08, D-09 | M | OPEN |
 | HF-014 | P1 | Owner commands: idempotent execution, re-validation, template snapshot | D-11, D-12, D-13, D-14 | S | DONE (e26816c); per-process guard, not persisted |
-| HF-020 | P1 | Indexes for hot queries (schema v22) | D-25 | S | OPEN |
+| HF-020 | P1 | Indexes for hot queries (schema v22) | D-25 | S | DONE (this branch); host plans only, device timing NOT RUN |
 | HF-021 | P1 | Coalesce ongoing and progress notification re-posts | D-28 | M | OPEN |
 | HF-022 | P1 | Separate mail authentication failures from network failures | D-29 | S | OPEN |
-| HF-023 | P1 | Bounded queries for widgets, Inbox, Money, Ask categories; remembered Flows | A1.19, A1.21, D-26, D-27 | M | OPEN |
+| HF-023 | P1 | Bounded queries for widgets, Inbox, Money, Ask categories; remembered Flows | A1.19, A1.21, D-26, D-27 | M | PARTLY DONE (this branch: Ask categories via `SELECT DISTINCT`); rest OPEN |
 | HF-024 | P1 | Record release-build failures; alerts for brief failure and cloud key failure | D-30, D-10 | S | OPEN |
-| HF-025 | P1 | Ask search uses the full-text index, not the decrypt scan | A1.20 | S | OPEN |
+| HF-025 | P1 | Ask search uses the full-text index, not the decrypt scan | A1.20 | S | DONE (this branch) |
 | HF-030 | P1 | Ledger: corrected re-post after reversal | D-17 | M | OPEN |
 | HF-031 | P1 | Person- and month-aware search | D-22 | L | OPEN |
 | HF-032 | P1 | Interruption coordinator: quiet hours, dedup, budget, "not useful" | — | M | OPEN |

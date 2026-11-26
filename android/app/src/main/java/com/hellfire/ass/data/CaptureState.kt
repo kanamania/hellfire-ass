@@ -2,9 +2,10 @@ package com.hellfire.ass.data
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "event_processing", foreignKeys = [ForeignKey(
+@Entity(tableName = "event_processing", indices = [Index("state")], foreignKeys = [ForeignKey(
     entity = SourceEvent::class, parentColumns = ["id"], childColumns = ["eventId"], onDelete = ForeignKey.CASCADE,
 )])
 data class EventProcessing(

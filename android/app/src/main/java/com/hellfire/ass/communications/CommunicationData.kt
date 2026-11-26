@@ -4,7 +4,7 @@ import androidx.room.*
 import com.hellfire.ass.data.SourceEvent
 import kotlinx.coroutines.flow.Flow
 
-@Entity(tableName = "communication_message", indices = [Index(value = ["channel", "accountId", "externalId"], unique = true), Index("sourceId")],
+@Entity(tableName = "communication_message", indices = [Index(value = ["channel", "accountId", "externalId"], unique = true), Index("sourceId"), Index("occurredAt")],
     foreignKeys = [ForeignKey(entity = SourceEvent::class, parentColumns = ["id"], childColumns = ["sourceId"], onDelete = ForeignKey.RESTRICT)])
 data class CommunicationMessage(@PrimaryKey val id: String, val channel: String, val accountId: String,
     val externalId: String, val sourceId: String, val threadKey: String, val sender: String,

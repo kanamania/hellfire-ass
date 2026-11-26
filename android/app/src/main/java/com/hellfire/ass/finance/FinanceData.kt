@@ -9,7 +9,7 @@ import java.util.UUID
 data class FinanceAccount(@PrimaryKey val id: String = UUID.randomUUID().toString(), val label: String,
     val provider: String = "MANUAL", val currency: String = "TZS", val createdAt: Long = System.currentTimeMillis())
 
-@Entity(tableName = "finance_candidate", indices = [Index(value = ["sourceId", "position"], unique = true)],
+@Entity(tableName = "finance_candidate", indices = [Index(value = ["sourceId", "position"], unique = true), Index(value = ["state", "occurredAt"])],
     foreignKeys = [ForeignKey(entity = SourceEvent::class, parentColumns = ["id"], childColumns = ["sourceId"], onDelete = ForeignKey.RESTRICT)])
 data class FinanceCandidate(@PrimaryKey val id: String, val sourceId: String, val position: Int = 0,
     val provider: String, val reference: String?, val kind: String, val amount: Long, val fee: Long,
@@ -18,7 +18,7 @@ data class FinanceCandidate(@PrimaryKey val id: String, val sourceId: String, va
     /** v13: the candidate this one repeats (same payment seen in another source); linked as evidence on approval. */
     val duplicateOf: String? = null)
 
-@Entity(tableName = "ledger_entry", indices = [Index(value = ["dedupeKey"], unique = true), Index(value = ["reversesId"], unique = true), Index("accountId")],
+@Entity(tableName = "ledger_entry", indices = [Index(value = ["dedupeKey"], unique = true), Index(value = ["reversesId"], unique = true), Index("accountId"), Index("occurredAt")],
     foreignKeys = [ForeignKey(entity = FinanceAccount::class, parentColumns = ["id"], childColumns = ["accountId"], onDelete = ForeignKey.RESTRICT)])
 data class LedgerEntry(@PrimaryKey val id: String, val accountId: String, val dedupeKey: String,
     val kind: String, val amount: Long, val category: String, val description: String,
@@ -85,6 +85,7 @@ interface FinanceDao {
     @Query("SELECT * FROM finance_candidate WHERE sourceId = :sourceId") suspend fun candidatesFor(sourceId: String): List<FinanceCandidate>
     @Query("SELECT * FROM ledger_entry WHERE id IN (SELECT ledgerId FROM ledger_evidence WHERE sourceId = :sourceId)") suspend fun entriesFor(sourceId: String): List<LedgerEntry>
     @Query("SELECT * FROM finance_candidate ORDER BY occurredAt DESC") suspend fun allCandidates(): List<FinanceCandidate>
+    @Query("SELECT DISTINCT category FROM ledger_entry") suspend fun categories(): List<String>
     @Query("UPDATE ledger_entry SET category = :category WHERE id = :id") suspend fun setCategory(id: String, category: String): Int
     @Query("SELECT COALESCE(SUM(amount), 0) FROM ledger_entry WHERE accountId = :accountId AND occurredAt <= :at") suspend fun balanceAt(accountId: String, at: Long): Long
     @Query("SELECT COUNT(*) FROM ledger_entry WHERE accountId = :accountId") suspend fun entryCount(accountId: String): Int
