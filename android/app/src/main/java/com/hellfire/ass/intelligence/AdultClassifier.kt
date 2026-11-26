@@ -1,5 +1,6 @@
 package com.hellfire.ass.intelligence
 
+import ai.onnxruntime.OrtSession
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.TensorInfo
 import android.graphics.Bitmap
@@ -73,10 +74,21 @@ class AdultClassifier(private val app: HellFireApp) {
         labelsFile.writeText(text.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.take(64).joinToString("\n"))
     }
 
+    /** One session per analysis run instead of one per frame; reopened if the owner imports a new model. */
+    private var cached: OrtSession? = null
+    private var cachedStamp = 0L
+    @Synchronized private fun session(): OrtSession {
+        val stamp = modelFile.lastModified()
+        cached?.takeIf { cachedStamp == stamp }?.let { return it }
+        close()
+        return onnxEnvironment.createSession(modelFile.path).also { cached = it; cachedStamp = stamp }
+    }
+    @Synchronized fun close() { runCatching { cached?.close() }; cached = null }
+
     fun classify(bitmap: Bitmap): AdultVerdict {
         if (!installed) return AdultVerdict(false, false, null, null, message = NOT_INSTALLED)
         return runCatching {
-            onnxEnvironment.createSession(modelFile.path).use { session ->
+            session().let { session ->
                 val name = session.inputNames.firstOrNull() ?: return AdultVerdict(true, false, null, null, message = "classifier installed but it has no input")
                 val shape = (session.inputInfo[name]?.info as? TensorInfo)?.shape
                 if (shape == null || shape.size != 4) return AdultVerdict(true, false, null, null, message = "classifier installed but input shape is unsupported")
