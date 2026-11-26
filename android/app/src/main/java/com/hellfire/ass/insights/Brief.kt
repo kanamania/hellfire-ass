@@ -30,7 +30,11 @@ data class Brief(val evening: Boolean, val day: LocalDate, val headline: String,
 
 /** Everything the brief is built from. [spent] and [received] cover today in the evening and yesterday in the morning. */
 data class BriefInputs(val evening: Boolean, val now: Long, val tasks: List<AssistantTask>, val spent: Long, val received: Long,
-    val toConfirm: Int, val reviewsPending: Int, val waiting: WaitingOn, val debts: List<DebtBalance>, val forecast: BillForecast, val gaps: List<CaptureGap>, val calendar: CalendarAgenda = CalendarAgenda("NOT_CHECKED"))
+    val toConfirm: Int, val reviewsPending: Int, val waiting: WaitingOn, val debts: List<DebtBalance>, val forecast: BillForecast, val gaps: List<CaptureGap>, val calendar: CalendarAgenda = CalendarAgenda("NOT_CHECKED"),
+    val budgets: List<BudgetStatus> = emptyList())
+
+/** This month's spending against one category budget (confirmed payments only). */
+data class BudgetStatus(val category: String, val budget: Long, val spent: Long, val pace: com.hellfire.ass.widgets.Pace)
 
 object Briefs {
     private const val CHANNEL = "daily-brief"
@@ -90,6 +94,10 @@ object Briefs {
                 if (owing.isNotEmpty()) add(BriefLine("You owe: ${Money.display(-owing.sumOf { it.balance })}", owing.take(3).joinToString { it.person }, "hellfire://debts",
                     warn = owing.any { it.overdue(i.now) }))
             })
+            section("Budgets", i.budgets.filter { it.pace == com.hellfire.ass.widgets.Pace.Over || it.pace == com.hellfire.ass.widgets.Pace.Ahead }.take(4).map {
+                BriefLine("${it.category}: ${Money.display(it.spent)} of ${Money.display(it.budget)}",
+                    if (it.pace == com.hellfire.ass.widgets.Pace.Over) "over budget" else "spending faster than the month", "hellfire://money", warn = true)
+            })
             if (proposals > 0) section("To review", listOf(BriefLine(if (proposals == 1) "1 new task found in your messages and documents" else "$proposals new tasks found in your messages and documents", link = "hellfire://tasks")))
         }
         val calendarStart = if (i.evening) end else start
@@ -125,7 +133,18 @@ object Briefs {
         val tasks = app.database.tasks().open()
         val waiting = Waiting.compute(loadInteractions(app, now - Waiting.WINDOW), loadAliases(app), now, WaitingPrefs.dismissed(app), loadIdentities(app))
         return build(BriefInputs(evening, now, tasks, totals.expenses, totals.income, dao.reviewCount(), app.database.tasks().reviewsNow().size,
-            waiting, Debts.balances(app.database.debts().all()), Recurring.forecast(tasks, balance, now), CaptureGaps.check(app, now), app.calendar.agenda(start, Fmt.startOf(day.plusDays(8)))))
+            waiting, Debts.balances(app.database.debts().all()), Recurring.forecast(tasks, balance, now), CaptureGaps.check(app, now), app.calendar.agenda(start, Fmt.startOf(day.plusDays(8))),
+            budgets(app, day)))
+    }
+
+    private suspend fun budgets(app: HellFireApp, day: java.time.LocalDate): List<BudgetStatus> {
+        val month = java.time.YearMonth.from(day)
+        val from = month.atDay(1).atStartOfDay(TaskTime.zone).toInstant().toEpochMilli()
+        val to = month.plusMonths(1).atDay(1).atStartOfDay(TaskTime.zone).toInstant().toEpochMilli()
+        return app.database.widgetData().budgetsFor(month.toString()).map { budget ->
+            val spent = app.finances.summary(from, to, budget.category).expenses
+            BudgetStatus(budget.category, budget.amount, spent, com.hellfire.ass.widgets.budgetPace(spent, budget.amount, day))
+        }
     }
 
     /** Quiet morning notification with counts only; details stay inside the app. */
