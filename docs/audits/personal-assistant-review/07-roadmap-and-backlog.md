@@ -44,7 +44,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-004b | P2 | Amounts with cents: the golden fixture deliberately rejects `TZS 1.25`; rounding would change the whole-shilling ledger contract | N1 | S | OWNER DECISION |
 | HF-005 | P0 | Providers: AzamPesa, Selcom, whole-word aliases | A1.6 | S | DONE (294f81d) |
 | HF-006 | P0 | Sender-ID priority for provider detection | A1.6 | M | DONE (294f81d): sender decides first. Open: flag a personal number that claims to be a provider; exact sender IDs unverified on the phone |
-| HF-007 | P0 | Relay: quarantine unreadable WhatsApp spool files | D-23 | S | DONE (this branch) |
+| HF-007 | P0 | Relay: quarantine unreadable WhatsApp spool files | D-23 | S | DONE (cef9843) |
 | HF-008 | P0 | Deleting a recording purges its transcript events, search rows and vectors | D-19 | S | OPEN |
 | HF-009 | P0 | TheftGuard: owner-gated Device Owner relinquish | D-24 | S | OPEN |
 | HF-010 | P0 | Reminder channels: pre-alerts and review off the alarm channel; one sound for many overdue tasks | A1.10, A1.13 | S | OPEN |
