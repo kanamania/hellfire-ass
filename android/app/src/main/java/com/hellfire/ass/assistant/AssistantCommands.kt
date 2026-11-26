@@ -13,6 +13,7 @@ import com.hellfire.ass.finance.FinanceCandidate
 import com.hellfire.ass.finance.Money
 import com.hellfire.ass.memory.MemoryItem
 import com.hellfire.ass.tasks.AssistantTask
+import com.hellfire.ass.tasks.TaskConditions
 import com.hellfire.ass.tasks.TaskExtractor
 import com.hellfire.ass.tasks.TaskScheduler
 import com.hellfire.ass.tasks.TaskTime
@@ -24,8 +25,9 @@ import com.hellfire.ass.templates.TemplateItems
 sealed interface OwnerCommand {
     val utterance: String
     val summary: String
-    data class Remind(override val utterance: String, val title: String, val dueAt: Long) : OwnerCommand {
-        override val summary get() = "Reminder: $title · due ${TaskTime.display(dueAt)} EAT. Alarms start after you confirm."
+    data class Remind(override val utterance: String, val title: String, val dueAt: Long, val condition: String? = null) : OwnerCommand {
+        override val summary get() = "Reminder: $title · due ${TaskTime.display(dueAt)} EAT" +
+            (condition?.let { ", " + TaskConditions.describe(it) } ?: "") + ". Alarms start after you confirm."
     }
     data class Remember(override val utterance: String, val subject: String, val text: String) : OwnerCommand {
         override val summary get() = "Save memory note · $subject: $text"
@@ -72,11 +74,12 @@ object AssistantCommands {
     fun parse(text: String, now: Instant): OwnerCommand? {
         val input = text.trim().replace(invocation, "")
         remind.find(input)?.let { m ->
-            val rest = m.groupValues[1].trim()
+            val conditional = TaskConditions.parse(m.groupValues[1].trim())
+            val rest = conditional.rest
             val due = requireNotNull(TaskExtractor.extract(rest, now.toEpochMilli(), outgoing = true, requireCommitment = false)) { WHEN_HINT }.dueAt
             require(due >= now.toEpochMilli() - 60_000) { "That time has already passed (${TaskTime.display(due)} EAT)." }
             val title = stripWhen(rest).also { require(it.isNotEmpty() && it.length <= 300) { "Say what to be reminded about (up to 300 characters)." } }
-            return OwnerCommand.Remind(input, title, due)
+            return OwnerCommand.Remind(input, title, due, conditional.condition)
         }
         remember.find(input)?.takeUnless { question(it.groupValues[1]) }?.let { m ->
             val rest = m.groupValues[1].trim()
@@ -175,7 +178,7 @@ object AssistantCommands {
                 val sourceId = ownerSource(app, command.utterance, now)
                 val id = NotificationNormalizer.sha256("task:$sourceId")
                 app.database.tasks().insert(AssistantTask(id, sourceId, command.title, command.dueAt, party = "OWNER",
-                    evidence = command.utterance, createdAt = now, updatedAt = now))
+                    evidence = command.utterance, createdAt = now, updatedAt = now, condition = command.condition))
                 TaskScheduler.activate(app, id, command.title, command.dueAt, "OWNER")
                 "Reminder active for ${TaskTime.display(command.dueAt)} EAT. Manage it in Tasks."
             }

@@ -240,7 +240,7 @@ data class LabelledEvent(@Embedded val event: SourceEvent, val label: String?, v
     NewsEventVersion::class, NewsBriefing::class, NewsEventState::class,
     NewsProgress::class, NewsPreference::class, NewsFeedback::class,
     NewsRun::class, GuardConfig::class, GuardState::class, GuardEvidence::class, CalendarLink::class, CalendarChange::class],
-    version = 22, exportSchema = true)
+    version = 23, exportSchema = true)
 abstract class EventDatabase : RoomDatabase() {
     abstract fun calendar(): CalendarDao
     abstract fun guard(): GuardDao
@@ -389,7 +389,10 @@ abstract class EventDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_communication_message_occurredAt` ON `communication_message` (`occurredAt`)")
             }
         }
-        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
+        val MIGRATION_22_23 = object : Migration(22, 23) {
+            override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE assistant_task ADD COLUMN condition TEXT") }
+        }
+        val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23)
         fun open(context: Context): EventDatabase = Room.databaseBuilder(
             context.applicationContext, EventDatabase::class.java, "hellfire.db"
         ).openHelperFactory(EncryptedDatabase.factory(context)).addMigrations(*ALL_MIGRATIONS).enableMultiInstanceInvalidation().build()

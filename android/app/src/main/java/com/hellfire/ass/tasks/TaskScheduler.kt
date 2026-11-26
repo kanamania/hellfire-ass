@@ -178,6 +178,22 @@ object TaskScheduler {
         if (dao.insert(next) == -1L) dao.reactivateRepeat(next.id, next.nextAlertAt, now)
         return next
     }
+    /** Closes a conditional reminder whose condition already holds, so it never rings. Any error means remind anyway. */
+    private suspend fun closeIfMet(app: HellFireApp, task: AssistantTask, now: Long, manager: NotificationManager): Boolean {
+        val condition = task.condition ?: return false
+        val met = try {
+            TaskConditions.met(condition, com.hellfire.ass.insights.Debts.balances(app.database.debts().all()),
+                if (condition.startsWith("NO_REPLY")) com.hellfire.ass.insights.loadInteractions(app, task.createdAt) else emptyList(),
+                com.hellfire.ass.insights.loadAliases(app), task.createdAt)
+        } catch (e: CancellationException) { throw e } catch (caught: Exception) { Diagnostics.warn(caught); false }
+        if (!met) return false
+        app.database.withTransaction {
+            app.database.tasks().close(task.id, "DONE", now)
+            app.database.communications().audit(ActionAudit(UUID.randomUUID().toString(), task.id, "TASK_CONDITION_MET", condition.substringBefore(':'), now))
+        }
+        manager.cancel(task.id, 71)
+        return true
+    }
     fun repeatInterval(task: AssistantTask, default: Int) = when (task.alertProfile) { "GENTLE" -> 1440; "NORMAL" -> 60; else -> default.coerceIn(5, 1440) }
 
     suspend fun action(app: HellFireApp, id: String, action: String) = lock.withLock {
@@ -220,7 +236,7 @@ object TaskScheduler {
         if (!manager.areNotificationsEnabled()) { arm(app); return@withLock }
         val now = System.currentTimeMillis()
         val open = openTask(app, null)
-        val due = app.database.tasks().due(now)
+        val due = app.database.tasks().due(now).filterNot { it.condition != null && closeIfMet(app, it, now, manager) }
         val quietUntil = TaskAlerts.quietUntil(now, quietHours(app))
         val alarms = due.count { TaskAlerts.channel(it.dueAt, now) == CHANNEL }
         val overdueMinutes = app.getSharedPreferences("capture", 0).getInt("overdue_minutes", 10)
