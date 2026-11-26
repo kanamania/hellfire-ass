@@ -9,7 +9,8 @@ import org.json.JSONObject
 
 /** Private form drafts never enter Android's saved-instance bundle or portable backups. */
 object PrivateDrafts {
-    val error = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    /** String resource of the last draft storage failure, shown as a banner. */
+    val error = kotlinx.coroutines.flow.MutableStateFlow<Int?>(null)
     private val lock = Mutex()
     private val versions = mutableMapOf<String, Long>()
     suspend fun read(app: HellFireApp, key: String): String? = read(app.secrets, key)
@@ -25,7 +26,7 @@ object PrivateDrafts {
                 if (value.isEmpty()) all.remove(key) else all.put(key, value)
                 if (all.length() == 0) store.remove("ui-drafts") else store.save("ui-drafts", all)
                 error.value = null
-            } } catch (e: Exception) { com.hellfire.ass.Diagnostics.warn(e); error.value = "Draft could not be saved. Keep this screen open and check free storage." }
+            } } catch (e: Exception) { com.hellfire.ass.Diagnostics.warn(e); error.value = com.hellfire.ass.R.string.ui_draft_could_not_be_saved_keep_this }
         }
     }
 }
@@ -36,7 +37,7 @@ fun rememberPrivateDraft(key: String, initial: String = ""): MutableState<String
     val state = remember(key) { mutableStateOf(initial) }
     var edited by remember(key) { mutableStateOf(false) }
     LaunchedEffect(key) {
-        val saved = try { withContext(Dispatchers.IO) { PrivateDrafts.read(app, key) } } catch (e: Exception) { PrivateDrafts.error.value = "Draft could not be opened. Check storage and device unlock."; null }
+        val saved = try { withContext(Dispatchers.IO) { PrivateDrafts.read(app, key) } } catch (e: Exception) { PrivateDrafts.error.value = com.hellfire.ass.R.string.ui_draft_could_not_be_opened_check_storage; null }
         if (!edited && saved != null) state.value = saved
     }
     return remember(key) { object : MutableState<String> {
