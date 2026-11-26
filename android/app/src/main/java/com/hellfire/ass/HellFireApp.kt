@@ -14,6 +14,30 @@ import com.hellfire.ass.sms.SmsCaptureSettings
 import com.hellfire.ass.sms.SmsSyncWorker
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.withLock
+import com.hellfire.ass.assistant.AssistantEngine
+import com.hellfire.ass.calendar.CalendarRepository
+import com.hellfire.ass.calendar.PhoneCalendar
+import com.hellfire.ass.communications.CommunicationRepository
+import com.hellfire.ass.data.AiUsage
+import com.hellfire.ass.data.SearchBackfill
+import com.hellfire.ass.finance.FinanceRepository
+import com.hellfire.ass.intelligence.IntelligenceWork
+import com.hellfire.ass.library.LibraryScanWork
+import com.hellfire.ass.media.LocalSpeech
+import com.hellfire.ass.media.MediaVault
+import com.hellfire.ass.media.MediaWork
+import com.hellfire.ass.media.SpeakerModel
+import com.hellfire.ass.memory.AiSkills
+import com.hellfire.ass.memory.SemanticIndex
+import com.hellfire.ass.news.NewsRepository
+import com.hellfire.ass.news.NewsWork
+import com.hellfire.ass.performance.PerfLog
+import com.hellfire.ass.security.DriveBackupWork
+import com.hellfire.ass.security.SecretStore
+import com.hellfire.ass.tasks.TaskScheduler
+import com.hellfire.ass.templates.TemplateRunner
+import com.hellfire.ass.ui.UiLanguage
+import com.hellfire.ass.widgets.Widgets
 
 class HellFireApp : Application() {
     val ai by lazy {
@@ -24,25 +48,25 @@ class HellFireApp : Application() {
             })
     }
     val database by lazy { EventDatabase.open(this) }
-    val secrets by lazy { com.hellfire.ass.security.SecretStore(this) { cipher } }
-    val communications by lazy { com.hellfire.ass.communications.CommunicationRepository(this) }
-    private val localModelInstance = lazy { com.hellfire.ass.ai.LocalModel(this) }
+    val secrets by lazy { SecretStore(this) { cipher } }
+    val communications by lazy { CommunicationRepository(this) }
+    private val localModelInstance = lazy { LocalModel(this) }
     val localModel by localModelInstance
-    private val semanticInstance = lazy { com.hellfire.ass.memory.SemanticIndex(this) }
+    private val semanticInstance = lazy { SemanticIndex(this) }
     val semantic by semanticInstance
-    val media by lazy { com.hellfire.ass.media.MediaVault(this) }
-    private val speechInstance = lazy { com.hellfire.ass.media.LocalSpeech(this) }
+    val media by lazy { MediaVault(this) }
+    private val speechInstance = lazy { LocalSpeech(this) }
     val speech by speechInstance
-    private val speakersInstance = lazy { com.hellfire.ass.media.SpeakerModel(this) }
+    private val speakersInstance = lazy { SpeakerModel(this) }
     val speakers by speakersInstance
-    val skills by lazy { com.hellfire.ass.memory.AiSkills(database) }
-    val assistant by lazy { com.hellfire.ass.assistant.AssistantEngine(this) }
-    val finances by lazy { com.hellfire.ass.finance.FinanceRepository(database) { id, text -> skills.ignoredFor(this, "IGNORE_FINANCE", id, text) } }
-    val templates by lazy { com.hellfire.ass.templates.TemplateRunner(database, finances, packageName) { events.capture(it, packageName) } }
+    val skills by lazy { AiSkills(database) }
+    val assistant by lazy { AssistantEngine(this) }
+    val finances by lazy { FinanceRepository(database) { id, text -> skills.ignoredFor(this, "IGNORE_FINANCE", id, text) } }
+    val templates by lazy { TemplateRunner(database, finances, packageName) { events.capture(it, packageName) } }
     val cipher by lazy { PayloadCipher.deviceCipher() }
-    val calendar by lazy { com.hellfire.ass.calendar.CalendarRepository(database, events, com.hellfire.ass.calendar.PhoneCalendar(this), packageName) }
+    val calendar by lazy { CalendarRepository(database, events, PhoneCalendar(this), packageName) }
     val events by lazy { EventRepository(database.events()) { cipher } }
-    val news by lazy { com.hellfire.ass.news.NewsRepository(this) }
+    val news by lazy { NewsRepository(this) }
     val storageStatus = kotlinx.coroutines.flow.MutableStateFlow("STARTING")
     private var recoveredDrafts = false
     private val storageLock = kotlinx.coroutines.sync.Mutex()
@@ -52,15 +76,15 @@ class HellFireApp : Application() {
     private val syncSms = Runnable {
         if (SmsCaptureSettings.enabled(this) && SmsCaptureSettings.canRead(this)) captureScope.launch {
             try { SmsSyncWorker.schedule(this@HellFireApp) }
-            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); runCatching { database.events().failure("android_sms", "SMS_SCHEDULING_FAILED") } }
+            catch (caught: Exception) { Diagnostics.warn(caught); runCatching { database.events().failure("android_sms", "SMS_SCHEDULING_FAILED") } }
         }
     }
 
     private val processStarted = android.os.SystemClock.elapsedRealtime()
     override fun onCreate() {
         super.onCreate()
-        com.hellfire.ass.performance.PerfLog.record("startup_oncreate_ms", android.os.SystemClock.elapsedRealtime() - processStarted)
-        com.hellfire.ass.ui.UiLanguage.code = getSharedPreferences("ui", 0).getString("language", "en").orEmpty()
+        PerfLog.record("startup_oncreate_ms", android.os.SystemClock.elapsedRealtime() - processStarted)
+        UiLanguage.code = getSharedPreferences("ui", 0).getString("language", "en").orEmpty()
         Diagnostics.init(this)
         if (getProcessName() == "$packageName:guard") return
         initializeStorage()
@@ -95,25 +119,25 @@ class HellFireApp : Application() {
                 database.openHelper.writableDatabase
                 if (!recoveredDrafts) { database.communications().recoverAfterProcessStart(); calendar.recover(); recoveredDrafts = true }
                 storageStatus.value = "READY"
-                com.hellfire.ass.performance.PerfLog.record("startup_ready_ms", android.os.SystemClock.elapsedRealtime() - processStarted)
+                PerfLog.record("startup_ready_ms", android.os.SystemClock.elapsedRealtime() - processStarted)
                 runCatching {
-                    if (secrets.read(com.hellfire.ass.security.DriveBackupWork.CONFIG)?.optBoolean("enabled") == true)
-                        com.hellfire.ass.security.DriveBackupWork.schedule(this@HellFireApp)
+                    if (secrets.read(DriveBackupWork.CONFIG)?.optBoolean("enabled") == true)
+                        DriveBackupWork.schedule(this@HellFireApp)
                 }
                 try {
                     CaptureWork.recover(this@HellFireApp)
-                    com.hellfire.ass.tasks.TaskScheduler.restore(this@HellFireApp)
-                    com.hellfire.ass.media.MediaWork.recover(this@HellFireApp)
-                    com.hellfire.ass.intelligence.IntelligenceWork.recover(this@HellFireApp)
+                    TaskScheduler.restore(this@HellFireApp)
+                    MediaWork.recover(this@HellFireApp)
+                    IntelligenceWork.recover(this@HellFireApp)
                     seedAiUsage()
-                    com.hellfire.ass.data.SearchBackfill.schedule(this@HellFireApp)
-                    com.hellfire.ass.library.LibraryScanWork.schedule(this@HellFireApp)
-                    com.hellfire.ass.library.LibraryScanWork.watch(this@HellFireApp)
-                    runCatching { com.hellfire.ass.news.NewsWork.schedule(this@HellFireApp) }
-                    com.hellfire.ass.ai.ModelUpdates.onStartup(this@HellFireApp)
+                    SearchBackfill.schedule(this@HellFireApp)
+                    LibraryScanWork.schedule(this@HellFireApp)
+                    LibraryScanWork.watch(this@HellFireApp)
+                    runCatching { NewsWork.schedule(this@HellFireApp) }
+                    ModelUpdates.onStartup(this@HellFireApp)
                     watchForWidgets()
-                } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); runCatching { database.events().failure("processing", "WORK_RECOVERY_FAILED") } }
-            } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
+                } catch (caught: Exception) { Diagnostics.warn(caught); runCatching { database.events().failure("processing", "WORK_RECOVERY_FAILED") } }
+            } catch (caught: Exception) { Diagnostics.warn(caught);
                 storageStatus.value = "UNAVAILABLE"
             } finally { storageLock.unlock() }
         }
@@ -127,7 +151,7 @@ class HellFireApp : Application() {
         prefs.edit().putBoolean("ai_usage_seeded", true).apply()
     }
 
-    private val refreshWidgets = Runnable { captureScope.launch { runCatching { com.hellfire.ass.widgets.Widgets.refresh(this@HellFireApp) } } }
+    private val refreshWidgets = Runnable { captureScope.launch { runCatching { Widgets.refresh(this@HellFireApp) } } }
     private var watchingWidgets = false
     /** Widgets update when the ledger, tasks, inbox, media or budgets change (§8 freshness), debounced to one refresh. */
     private fun watchForWidgets() {
@@ -163,5 +187,5 @@ class HellFireApp : Application() {
     }
 }
 
-private fun AiAudit.toUsage() = com.hellfire.ass.data.AiUsage(requestId = requestId, at = at, task = task.label, provider = provider.label,
+private fun AiAudit.toUsage() = AiUsage(requestId = requestId, at = at, task = task.label, provider = provider.label,
     model = model, result = result, inputTokens = input, outputTokens = output, microUsd = estimatedMicroUsd)

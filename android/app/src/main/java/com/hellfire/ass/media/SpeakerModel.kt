@@ -30,6 +30,7 @@ import java.nio.FloatBuffer
 import java.security.MessageDigest
 import java.util.Base64
 import java.util.Locale
+import com.hellfire.ass.ai.onnxEnvironment
 
 /**
  * Owner-imported ONNX speaker-embedding model (input [batch, frames, 80] fbank, e.g. WeSpeaker / 3D-Speaker).
@@ -64,7 +65,7 @@ class SpeakerModel(private val app: HellFireApp) {
         val key = DeviceProbe.fileKey(file)
         if (reuse && cached != null && cachedKey == key) return block(cached!!, cachedInput)
         if (file == modelFile) closeCached()
-        val created = timedStage("speaker_load") { com.hellfire.ass.ai.onnxEnvironment.createSession(file.path) }
+        val created = timedStage("speaker_load") { onnxEnvironment.createSession(file.path) }
         var keep = false
         return try {
             val name = created.inputNames.singleOrNull() ?: error("Speaker model must have exactly one input")
@@ -86,7 +87,7 @@ class SpeakerModel(private val app: HellFireApp) {
         val features = Fbank.compute(samples)
         require(features.size >= 50) { "Segment too short for a speaker embedding" }
         val buffer = FloatBuffer.allocate(features.size * Fbank.BINS).apply { features.forEach { put(it) }; rewind() }
-        return OnnxTensor.createTensor(com.hellfire.ass.ai.onnxEnvironment, buffer, longArrayOf(1, features.size.toLong(), Fbank.BINS.toLong())).use { tensor ->
+        return OnnxTensor.createTensor(onnxEnvironment, buffer, longArrayOf(1, features.size.toLong(), Fbank.BINS.toLong())).use { tensor ->
             session.run(mapOf(input to tensor)).use { result -> VectorMath.normalize(flatten(result.get(0).value)) }
         }
     }

@@ -3,6 +3,7 @@ package com.hellfire.ass.assistant
 import com.hellfire.ass.finance.FinanceAccount
 import java.time.Instant
 import java.util.Locale
+import com.hellfire.ass.contacts.PersonContact
 
 /** A validated read-only query. Unknown filters are clarified rather than silently dropped. */
 data class FinanceQuestion(val start: Long, val end: Long, val income: Boolean, val category: String? = null,
@@ -13,7 +14,7 @@ data class FinanceQuestion(val start: Long, val end: Long, val income: Boolean, 
         fun isQuestion(text: String) = Regex("\\b(spend|spent|spending|expenses|income|earned|earn|matumizi|mapato|budget|bajeti)\\b", RegexOption.IGNORE_CASE).containsMatchIn(text)
         fun followUp(text: String) = Regex("^(and|what about|how about|na|je)\\b", RegexOption.IGNORE_CASE).containsMatchIn(text.trim())
 
-        fun parse(text: String, now: Instant, accounts: List<FinanceAccount>, categories: List<String>, previous: FinanceQuestion? = null, people: List<com.hellfire.ass.contacts.PersonContact> = emptyList()): FinanceQuestion {
+        fun parse(text: String, now: Instant, accounts: List<FinanceAccount>, categories: List<String>, previous: FinanceQuestion? = null, people: List<PersonContact> = emptyList()): FinanceQuestion {
             var rest = text.trim().lowercase(Locale.ROOT).trimEnd('?', '.')
             val follow = followUp(rest)
             require(!follow || previous != null) { "Ask a spending or income question first, then change its period or filters." }

@@ -26,6 +26,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.util.UUID
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.OwnerError
 
 /** Settings › Memory and proposals (not drawn): personal memory with provenance and typed JSON proposals, moved from the old Assistant tab. */
 @Composable
@@ -51,7 +53,7 @@ fun MemoryPage(arg: String) {
     fun run(block: suspend () -> String) { scope.launch {
         busy = true
         result = try { withContext(Dispatchers.IO) { block() } } catch (e: CancellationException) { throw e }
-            catch (e: com.hellfire.ass.OwnerError) { context.getString(e.text) } catch (e: IllegalArgumentException) { e.message ?: "Not saved." } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Not saved. Check the source ID and remove security codes." }
+            catch (e: OwnerError) { context.getString(e.text) } catch (e: IllegalArgumentException) { e.message ?: "Not saved." } catch (caught: Exception) { Diagnostics.warn(caught); "Not saved. Check the source ID and remove security codes." }
         busy = false
     } }
     PushedPage(if (arg == "new") "New note" else "Memory", breadcrumb = "Settings") {

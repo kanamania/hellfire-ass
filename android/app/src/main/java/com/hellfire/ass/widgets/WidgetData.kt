@@ -16,6 +16,8 @@ import com.hellfire.ass.tasks.TaskTime
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
+import com.hellfire.ass.finance.FinanceCandidate
+import com.hellfire.ass.ui.EventText
 
 const val MASK = "•••••"
 
@@ -81,7 +83,7 @@ suspend fun spendFor(app: HellFireApp, from: Long, to: Long): Spend {
 data class BriefingData(
     val evening: Boolean, val today: LocalDate, val schedule: List<AssistantTask>, val bills: List<AssistantTask>, val spend: Spend,
     val replies: Int, val toReview: Int, val promisesDue: Int,
-    val unknownMerchant: com.hellfire.ass.finance.FinanceCandidate?, val moreUnknown: Int, val uncertain: Int, val cashGaps: Int,
+    val unknownMerchant: FinanceCandidate?, val moreUnknown: Int, val uncertain: Int, val cashGaps: Int,
     val stillOpen: List<AssistantTask>, val tomorrow: List<AssistantTask>,
 )
 
@@ -143,10 +145,10 @@ suspend fun repliesWaiting(app: HellFireApp, now: Long = System.currentTimeMilli
                 m.occurredAt, draft?.let { "hellfire://draft/${it.id}" } ?: "hellfire://message/${m.id}")
         }
     val sms = app.database.events().labelledPeriod(since, now + 1).filter { it.event.source == "android_sms" && it.label == "MESSAGE" }
-        .map { it.event }.groupBy { com.hellfire.ass.ui.EventText.fields(app, it)["sender_hint"]?.firstOrNull().orEmpty() }
+        .map { it.event }.groupBy { EventText.fields(app, it)["sender_hint"]?.firstOrNull().orEmpty() }
         .filterKeys { it.isNotBlank() }.map { (sender, list) -> list.maxBy { it.occurredAt }.let { e -> sender to e } }
         .filter { (_, e) -> e.kind != "OUTGOING" }
-        .map { (sender, e) -> Waiting("SMS", sender, com.hellfire.ass.ui.EventText.body(com.hellfire.ass.ui.EventText.fields(app, e)).take(60), e.occurredAt, "hellfire://inbox") }
+        .map { (sender, e) -> Waiting("SMS", sender, EventText.body(EventText.fields(app, e)).take(60), e.occurredAt, "hellfire://inbox") }
     return (threads + sms).sortedByDescending { it.at }
 }
 

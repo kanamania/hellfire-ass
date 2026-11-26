@@ -18,6 +18,7 @@ import com.hellfire.ass.tasks.TaskScheduler
 import com.hellfire.ass.tasks.TaskTime
 import java.time.Instant
 import java.util.UUID
+import com.hellfire.ass.templates.TemplateItems
 
 /** An owner-spoken or typed instruction. Nothing is applied until the owner confirms it; sends still need Messages approval. */
 sealed interface OwnerCommand {
@@ -192,7 +193,7 @@ object AssistantCommands {
             }
             is OwnerCommand.UseTemplate -> {
                 val saved = requireNotNull(command.templateId?.let { app.database.templates().find(it) }) { "That template no longer exists." }
-                val result = app.templates.run(saved, com.hellfire.ass.templates.TemplateItems.decode(saved.items), now)
+                val result = app.templates.run(saved, TemplateItems.decode(saved.items), now)
                 if (result.tasks > 0) TaskScheduler.restore(app)
                 "Template ${saved.name}: ${result.message}."
             }

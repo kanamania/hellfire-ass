@@ -23,6 +23,7 @@ import java.security.MessageDigest
 import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import com.hellfire.ass.Diagnostics
 
 data class PrepareResult(val ok: Boolean, val message: String, val text: String, val files: List<File>, val mime: String, val exportIds: List<String>)
 
@@ -119,7 +120,7 @@ object ShareSession {
             val step = try {
                 app.media.withPlainCopy(item) { plain -> exportOne(context, plain, output, plan, index, approved, rects, mode, muteRangesMs) }
             } catch (error: Exception) {
-                com.hellfire.ass.Diagnostics.warn(error)
+                Diagnostics.warn(error)
                 output.delete()
                 discard(app, exportIds, files)
                 val message = when (error) {

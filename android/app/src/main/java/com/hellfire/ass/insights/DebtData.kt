@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import com.hellfire.ass.tasks.TaskTime
 
 /**
  * One loan or repayment the owner recorded against a person (v14). [amount] is signed: positive means the person owes
@@ -76,7 +77,7 @@ object Debts {
     /** Editable reminder text for money owed to the owner. Nothing is sent until the owner sends it. */
     fun reminderText(person: String, amount: Long, dueAt: Long?, swahili: Boolean): String {
         val first = person.trim().substringBefore(' ')
-        val due = dueAt?.let { date.format(Instant.ofEpochMilli(it).atZone(com.hellfire.ass.tasks.TaskTime.zone)) }
+        val due = dueAt?.let { date.format(Instant.ofEpochMilli(it).atZone(TaskTime.zone)) }
         return if (swahili) "Habari $first, nakukumbusha kuhusu ${Money.display(amount)}" + (due?.let { " tuliyokubaliana kurudishwa $it" } ?: " uliyoahidi kurudisha") + ". Asante."
         else "Hi $first, a gentle reminder about the ${Money.display(amount)}" + (due?.let { " that was due on $it" } ?: " you promised to pay back") + ". Thank you."
     }

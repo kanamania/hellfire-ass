@@ -13,6 +13,7 @@ import com.hellfire.ass.ui.*
 import com.hellfire.ass.ui.components.*
 import com.hellfire.ass.ui.theme.Hf
 import kotlinx.coroutines.*
+import com.hellfire.ass.finance.ProviderBalance
 
 @Composable
 fun ReconcilePage() {
@@ -25,7 +26,7 @@ fun ReconcilePage() {
     var observed by rememberPrivateDraft("reconcile-observed")
     var at by rememberPrivateDraft("reconcile-time", TaskTime.display(System.currentTimeMillis()))
     var ledger by remember { mutableStateOf<Long?>(null) }
-    var receipts by remember { mutableStateOf<List<com.hellfire.ass.finance.ProviderBalance>>(emptyList()) }
+    var receipts by remember { mutableStateOf<List<ProviderBalance>>(emptyList()) }
     var refresh by remember { mutableIntStateOf(0) }
     var message by remember { mutableStateOf<String?>(null) }
     var correcting by remember { mutableStateOf(false) }

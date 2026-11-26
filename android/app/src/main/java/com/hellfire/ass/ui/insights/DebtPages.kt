@@ -27,6 +27,8 @@ import com.hellfire.ass.ui.theme.Hf
 import com.hellfire.ass.ui.theme.HfIcons
 import kotlinx.coroutines.launch
 import java.util.UUID
+import com.hellfire.ass.contacts.ContactChoice
+import com.hellfire.ass.contacts.ContactLinks
 
 /** Starting values for the debt sheet, e.g. from a transaction or a repayment suggestion. */
 data class DebtPrefill(val person: String = "", val kind: String = "LENT", val amount: Long? = null,
@@ -38,7 +40,7 @@ fun DebtSheet(prefill: DebtPrefill, onDone: (String?) -> Unit) {
     val app = LocalEnv.current.app
     val scope = rememberCoroutineScope()
     var person by remember { mutableStateOf(prefill.person) }
-    var picked by remember { mutableStateOf<com.hellfire.ass.contacts.ContactChoice?>(null) }
+    var picked by remember { mutableStateOf<ContactChoice?>(null) }
     var kind by remember { mutableStateOf(prefill.kind) }
     var amount by remember { mutableStateOf(prefill.amount?.toString().orEmpty()) }
     var occurred by remember { mutableStateOf(TaskTime.display(prefill.occurredAt)) }
@@ -54,7 +56,7 @@ fun DebtSheet(prefill: DebtPrefill, onDone: (String?) -> Unit) {
         Text("Loan or repayment", style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
         if (prefill.ledgerId != null) Note("Linked to the payment you opened. Its amount and account stay as they are in Money.")
         ContactPersonField(person, { person = it; picked = null }, stringResource(R.string.ui_person), known, onPick = { picked = it; person = it.displayName })
-        SavedContactStatus(com.hellfire.ass.insights.People.namedKey(person))
+        SavedContactStatus(People.namedKey(person))
         GroupLabel("What happened")
         ChipPicker(Debts.kinds, kind, { Debts.label(it) }) { kind = it }
         HfTextField(amount, { amount = it.filter(Char::isDigit) }, stringResource(R.string.ui_amount_tzs), number = true)
@@ -70,7 +72,7 @@ fun DebtSheet(prefill: DebtPrefill, onDone: (String?) -> Unit) {
                 val saved = io {
                     val now = System.currentTimeMillis()
                     app.database.withTransaction {
-                        val personKey = com.hellfire.ass.contacts.ContactLinks(app.database).save(picked ?: com.hellfire.ass.contacts.ContactChoice(person, personKey = prefill.personKey))
+                        val personKey = ContactLinks(app.database).save(picked ?: ContactChoice(person, personKey = prefill.personKey))
                         app.database.debts().insert(DebtEntry(UUID.randomUUID().toString(), person.trim(), Debts.signed(kind, Money.tzs(amount)), kind, note.trim(),
                             TaskTime.parse(occurred), if (hasDue && (kind == "LENT" || kind == "BORROWED")) TaskTime.parse(due) else null, prefill.ledgerId, now, personKey))
                     }

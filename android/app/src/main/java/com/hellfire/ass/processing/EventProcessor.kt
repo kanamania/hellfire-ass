@@ -6,6 +6,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import org.json.JSONObject
+import com.hellfire.ass.Diagnostics
 
 class EventProcessor(private val dao: EventDao,
     private val collectFinance: suspend (String, Long, String, String) -> Unit = { _, _, _, _ -> },
@@ -47,7 +48,7 @@ class EventProcessor(private val dao: EventDao,
                     }
                     dao.finish(event.id, "DONE", label, null, System.currentTimeMillis())
                 } catch (e: CancellationException) { throw e }
-                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
+                catch (caught: Exception) { Diagnostics.warn(caught);
                     dao.finish(event.id, "FAILED", null, "PAYLOAD_OR_KEY_UNAVAILABLE", System.currentTimeMillis())
                 }
             }

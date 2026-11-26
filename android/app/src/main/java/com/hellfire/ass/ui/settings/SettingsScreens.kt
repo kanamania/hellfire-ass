@@ -33,6 +33,15 @@ import com.hellfire.ass.ui.theme.HfIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.ai.AiState
+import com.hellfire.ass.ai.ModelUpdates
+import com.hellfire.ass.calendar.CalendarPermissionRow
+import com.hellfire.ass.communications.Accounts
+import com.hellfire.ass.library.LibraryRoutes
+import com.hellfire.ass.security.DriveBackupWork
+import com.hellfire.ass.sync.WebSync
+import com.hellfire.ass.widgets.WidgetPrefs
 
 /** One Setup row: plain-language name, what it is for, live state from Android, and how to turn it on. */
 data class SetupStep(@androidx.annotation.StringRes val title: Int, @androidx.annotation.StringRes val detail: Int, val icon: ImageVector, val on: Boolean, val turnOn: () -> Unit)
@@ -112,19 +121,19 @@ fun SettingsHub() {
     val memories by remember { app.database.memory().count() }.collectAsStateWithLifecycle(0)
     val media by remember { app.database.media().count() }.collectAsStateWithLifecycle(0)
     val states by remember { app.database.communications().integrations() }.collectAsStateWithLifecycle(emptyList())
-    var ai by remember { mutableStateOf<com.hellfire.ass.ai.AiState?>(null) }
+    var ai by remember { mutableStateOf<AiState?>(null) }
     var mail by remember { mutableStateOf(0) }
     var gateways by remember { mutableStateOf<List<String>>(emptyList()) }
     var webAccess by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { withContext(Dispatchers.IO) {
         ai = runCatching { app.ai.store.read() }.getOrNull()
-        mail = runCatching { com.hellfire.ass.communications.Accounts.list(app.secrets, com.hellfire.ass.communications.Accounts.MAIL).size }.getOrDefault(0)
-        gateways = runCatching { com.hellfire.ass.communications.Accounts.gateways(app.secrets).map(com.hellfire.ass.communications.Accounts::transport) }.getOrDefault(emptyList())
-        webAccess = runCatching { app.secrets.read(com.hellfire.ass.sync.WebSync.CONFIG) != null }.getOrDefault(false)
+        mail = runCatching { Accounts.list(app.secrets, Accounts.MAIL).size }.getOrDefault(0)
+        gateways = runCatching { Accounts.gateways(app.secrets).map(Accounts::transport) }.getOrDefault(emptyList())
+        webAccess = runCatching { app.secrets.read(WebSync.CONFIG) != null }.getOrDefault(false)
     } }
     val steps = setupSteps(env.permissions, env.actions)
     val lastBackup = maxOf(app.getSharedPreferences("ui", 0).getLong("last_backup_at", 0),
-        app.getSharedPreferences(com.hellfire.ass.security.DriveBackupWork.CONFIG, 0).getLong("last-success", 0))
+        app.getSharedPreferences(DriveBackupWork.CONFIG, 0).getLong("last-success", 0))
     PushedPage(stringResource(R.string.ui_settings)) {
         SectionCard(stringResource(R.string.ui_everyday_help)) {
             ListRow(stringResource(R.string.ui_guided_setup), subtitle = stringResource(R.string.ui_choose_what_you_want_hellfire_to_help), chevron = true, onClick = { nav.push(Screen.GuidedSetup) })
@@ -160,7 +169,7 @@ fun SettingsHub() {
                 "EXACT_ALLOWED" -> "On time"; "BEST_EFFORT" -> "Best effort"; "PERMISSION_MISSING" -> "Notifications blocked"; else -> "Nightly review, overdue repeats" },
                 icon = HfIcons.Alarm, chevron = true, onClick = { nav.push(Screen.Reminders) })
             ListDivider()
-            ListRow(stringResource(R.string.ui_home_screen_widgets), subtitle = if (com.hellfire.ass.widgets.WidgetPrefs.hideAll(app)) "All amounts hidden" else "Amounts hidden unless you allow them",
+            ListRow(stringResource(R.string.ui_home_screen_widgets), subtitle = if (WidgetPrefs.hideAll(app)) "All amounts hidden" else "Amounts hidden unless you allow them",
                 icon = HfIcons.Home, chevron = true, onClick = { nav.push(Screen.Widgets) })
         }
         Group(stringResource(R.string.ui_ai)) {
@@ -170,7 +179,7 @@ fun SettingsHub() {
             ListDivider()
             ListRow(stringResource(R.string.ui_on_device_models), subtitle = listOfNotNull("language".takeIf { app.localModel.configured }, "meaning search".takeIf { app.semantic.configured },
                 "speakers".takeIf { app.speakers.configured }).joinToString(", ").ifEmpty { "None installed" }.replaceFirstChar { it.uppercase() } +
-                    (if (com.hellfire.ass.ai.ModelUpdates.pendingUpdate(com.hellfire.ass.ai.ModelUpdates.state(app)) != null) " · update available" else ""),
+                    (if (ModelUpdates.pendingUpdate(ModelUpdates.state(app)) != null) " · update available" else ""),
                 icon = HfIcons.Chip, tone = Tone.Success, chevron = true, onClick = { nav.push(Screen.LocalModels) })
             ListDivider()
             val spent = ai?.let { s -> s.usage.filterKeys { it.startsWith("${app.ai.month()}/") }.values.sumOf { it.charged } } ?: 0
@@ -199,23 +208,23 @@ fun SettingsHub() {
             ListRow(stringResource(R.string.ui_encrypted_backup), subtitle = if (lastBackup == 0L) "Never backed up" else "Last backup ${Fmt.dayTime(lastBackup)}", icon = HfIcons.Download, tone = Tone.Neutral,
                 chevron = true, onClick = { nav.push(Screen.Backup) })
             ListDivider()
-            val webLast = com.hellfire.ass.sync.WebSync.lastSuccess(app)
+            val webLast = WebSync.lastSuccess(app)
             ListRow(stringResource(R.string.ui_web_access), subtitle = if (!webAccess) "Off · read your data from a browser" else if (webLast == 0L) "On · not synced yet" else "On · synced ${Fmt.dayTime(webLast)}",
                 icon = HfIcons.Cloud, tone = Tone.Neutral, chevron = true, onClick = { nav.push(Screen.WebAccess) })
             ListRow(stringResource(R.string.ui_this_device), subtitle = "Android, assistant role, timezone", icon = HfIcons.Phone, tone = Tone.Neutral, chevron = true, onClick = { nav.push(Screen.Device) })
         }
         Group("Library and status") {
             ListRow(stringResource(R.string.ui_backup_dashboard), subtitle = "Storage, per-item backup state, retention, selective restore", icon = HfIcons.Download, tone = Tone.Neutral,
-                chevron = true, onClick = { nav.push(com.hellfire.ass.library.LibraryRoutes.backupDashboard()) })
+                chevron = true, onClick = { nav.push(LibraryRoutes.backupDashboard()) })
             ListDivider()
             ListRow(stringResource(R.string.ui_status_dashboard), subtitle = "Analysis, sync, backup, models, errors", icon = HfIcons.Reports, tone = Tone.Neutral,
-                chevron = true, onClick = { nav.push(com.hellfire.ass.library.LibraryRoutes.statusDashboard()) })
+                chevron = true, onClick = { nav.push(LibraryRoutes.statusDashboard()) })
             ListDivider()
             ListRow(stringResource(R.string.ui_intel_queue), subtitle = "On-device analysis jobs", icon = HfIcons.Chip, tone = Tone.Neutral,
-                chevron = true, onClick = { nav.push(com.hellfire.ass.library.LibraryRoutes.processingQueue()) })
+                chevron = true, onClick = { nav.push(LibraryRoutes.processingQueue()) })
             ListDivider()
             ListRow("Media settings", subtitle = "Analysis, transcription and categories", icon = HfIcons.Settings, tone = Tone.Neutral,
-                chevron = true, onClick = { nav.push(com.hellfire.ass.library.LibraryRoutes.mediaSettings()) })
+                chevron = true, onClick = { nav.push(LibraryRoutes.mediaSettings()) })
         }
     }
 }
@@ -249,7 +258,7 @@ fun PermissionsPage() {
         message?.let { Banner(it, Tone.Info, null) }
         SetupRows(setupSteps(p, env.actions))
         ContactsPermissionRow()
-        com.hellfire.ass.calendar.CalendarPermissionRow()
+        CalendarPermissionRow()
         if (p.smsEnabled) QuietButton(stringResource(R.string.ui_turn_off_sms_capture), env.actions.onSmsDisable)
         SectionHeader(stringResource(R.string.ui_capture_status))
         KvList(listOfNotNull(
@@ -266,10 +275,10 @@ fun PermissionsPage() {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SecondaryButton(stringResource(R.string.ui_resume_processing), { scope.launch {
                 message = try { withContext(Dispatchers.IO) { dao.retryFailed() }; CaptureWork.process(app); "Pending and failed events scheduled for processing." }
-                    catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Processing could not be scheduled. Saved events stay in the database." }
+                    catch (caught: Exception) { Diagnostics.warn(caught); "Processing could not be scheduled. Saved events stay in the database." }
             } })
             if (p.smsEnabled && p.smsRead) SecondaryButton(stringResource(R.string.ui_sync_sms_history), { scope.launch {
-                message = try { SmsSyncWorker.schedule(app, 0); "Full SMS history check scheduled. Already saved messages are skipped." } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "SMS sync could not be scheduled." }
+                message = try { SmsSyncWorker.schedule(app, 0); "Full SMS history check scheduled. Already saved messages are skipped." } catch (caught: Exception) { Diagnostics.warn(caught); "SMS sync could not be scheduled." }
             } })
         }
         if (policies.isNotEmpty()) {
@@ -281,7 +290,7 @@ fun PermissionsPage() {
                     SwitchRow(policy.packageName, policy.processEnabled, { enabled -> scope.launch {
                         message = try { withContext(Dispatchers.IO) { dao.setPolicy(NotificationPolicy(policy.packageName, enabled)) }
                             if (enabled) "Processing on for ${policy.packageName}." else "Capture only for ${policy.packageName}." }
-                            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Setting could not be saved." }
+                            catch (caught: Exception) { Diagnostics.warn(caught); "Setting could not be saved." }
                     } })
                 }
             }
@@ -294,7 +303,7 @@ fun PermissionsPage() {
                         source = "synthetic_notification", fields = mapOf("title" to listOf("Synthetic Phase 0 fixture"), "text" to listOf("Offline capture test"))), app.packageName) }
                     CaptureWork.process(app)
                     if (inserted) "Synthetic event stored." else "Synthetic event already stored; duplicate ignored."
-                } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Local storage test failed. Check storage and encryption." }
+                } catch (caught: Exception) { Diagnostics.warn(caught); "Local storage test failed. Check storage and encryption." }
             } }, Modifier.fillMaxWidth())
             Note("This tests normalising, encryption and the database. It does not prove Android delivers notifications.")
             QuietButton(stringResource(R.string.ui_delete_captured_events), { confirmClear = true }, Modifier.fillMaxWidth(), enabled = !p.notificationAccess && !p.smsEnabled)
@@ -303,7 +312,7 @@ fun PermissionsPage() {
     }
     if (confirmClear) ConfirmDialog("Delete all captured events?", "This removes stored captured events and their processing jobs from this phone.", "Delete events",
         onConfirm = { confirmClear = false; scope.launch {
-            message = try { withContext(Dispatchers.IO) { dao.deleteAll() }; "Captured events deleted." } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Could not delete: some events are evidence for Money, Tasks or Media." }
+            message = try { withContext(Dispatchers.IO) { dao.deleteAll() }; "Captured events deleted." } catch (caught: Exception) { Diagnostics.warn(caught); "Could not delete: some events are evidence for Money, Tasks or Media." }
         } }, onDismiss = { confirmClear = false }, destructive = true)
 }
 

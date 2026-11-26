@@ -27,10 +27,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.contacts.ContactChoice
+import com.hellfire.ass.contacts.ContactLinks
+import com.hellfire.ass.contacts.PersonContact
+import com.hellfire.ass.finance.LedgerEntry
+import com.hellfire.ass.ui.money.ownerStatement
 
 /** Runs [block] off the main thread; a failure is logged and returns null so the screen can say so. */
 internal suspend fun <T> io(block: suspend () -> T): T? = try { withContext(Dispatchers.IO) { block() } }
-    catch (e: CancellationException) { throw e } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); null }
+    catch (e: CancellationException) { throw e } catch (caught: Exception) { Diagnostics.warn(caught); null }
 
 internal fun channelIcon(channel: String) = when (channel) { "Email" -> HfIcons.Mail; "SMS" -> HfIcons.ChatLines; else -> HfIcons.Chat }
 
@@ -144,7 +150,7 @@ fun PeoplePage() {
 }
 
 private class PersonView(val person: Person, val timeline: List<Interaction>, val tasks: List<AssistantTask>, val debt: DebtBalance?, val media: List<MediaItem>,
-    val payments: List<com.hellfire.ass.finance.LedgerEntry>, val debts: List<DebtEntry>)
+    val payments: List<LedgerEntry>, val debts: List<DebtEntry>)
 
 /** One person: every message across channels, what was promised, money between you, and matching recordings. */
 @Composable
@@ -155,16 +161,16 @@ fun PersonPage(key: String) {
     var view by remember { mutableStateOf<PersonView?>(null) }
     var loaded by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
-    var picked by remember { mutableStateOf<com.hellfire.ass.contacts.ContactChoice?>(null) }
+    var picked by remember { mutableStateOf<ContactChoice?>(null) }
     var managing by remember { mutableStateOf(false) }
-    var mergeTarget by remember { mutableStateOf<com.hellfire.ass.contacts.PersonContact?>(null) }
+    var mergeTarget by remember { mutableStateOf<PersonContact?>(null) }
     var separateHandle by remember { mutableStateOf<String?>(null) }
     var separateName by remember { mutableStateOf("") }
     var moveTasks by remember { mutableStateOf<Set<String>>(emptySet()) }
     var movePayments by remember { mutableStateOf<Set<String>>(emptySet()) }
     var moveDebts by remember { mutableStateOf<Set<String>>(emptySet()) }
     var otherDetails by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
-    var others by remember { mutableStateOf<List<com.hellfire.ass.contacts.PersonContact>>(emptyList()) }
+    var others by remember { mutableStateOf<List<PersonContact>>(emptyList()) }
     LaunchedEffect(managing) { if (managing) {
         others = io { app.database.contacts().all().filter { it.personKey != key } }.orEmpty()
         otherDetails = io { app.database.people().all().groupBy { it.personKey ?: People.namedKey(it.name) }.mapValues { (_, list) -> list.take(2).joinToString { Handles.label(it.handle) } } }.orEmpty()
@@ -209,8 +215,8 @@ fun PersonPage(key: String) {
             PrimaryButton(stringResource(R.string.ui_save_name), {
                 val chosen = name.trim()
                 scope.launch {
-                    val saved = io { com.hellfire.ass.contacts.ContactLinks(app.database).namePerson(key,
-                        picked ?: com.hellfire.ass.contacts.ContactChoice(chosen), p.handles.keys, p.name) }
+                    val saved = io { ContactLinks(app.database).namePerson(key,
+                        picked ?: ContactChoice(chosen), p.handles.keys, p.name) }
                     if (saved == null) message = "The name could not be saved."
                     else { nav.pop(); nav.push(Screen.Person, saved) }
                 }
@@ -268,7 +274,7 @@ fun PersonPage(key: String) {
     }
     mergeTarget?.let { target -> ConfirmDialog("Merge these people?", "Move aliases, tasks, payment associations and debt notes into ${target.displayName}. Ledger amounts stay unchanged. Review the target carefully.", "Merge people", {
         mergeTarget = null
-        scope.launch { val ok = io { com.hellfire.ass.contacts.ContactLinks(app.database).merge(key, target.personKey) }; if (ok != null) { nav.pop(); nav.push(Screen.Person, target.personKey) } else message = "Merge failed; no changes committed." }
+        scope.launch { val ok = io { ContactLinks(app.database).merge(key, target.personKey) }; if (ok != null) { nav.pop(); nav.push(Screen.Person, target.personKey) } else message = "Merge failed; no changes committed." }
     }, { mergeTarget = null }) }
     separateHandle?.let { handle -> HfBottomSheet({ separateHandle = null }) {
         Text("Separate identity", style = Hf.type.cardTitle, color = Hf.colors.onSurface)
@@ -279,7 +285,7 @@ fun PersonPage(key: String) {
         v?.debts?.forEach { d -> CheckRow("Debt · ${Fmt.amount(d.amount)} · ${d.note}", d.id in moveDebts, { checked -> moveDebts = if (checked) moveDebts + d.id else moveDebts - d.id }) }
         PrimaryButton("Separate selected identity and records", {
             scope.launch {
-                val newKey = io { com.hellfire.ass.contacts.ContactLinks(app.database).separate(key, handle, separateName, moveTasks, movePayments, moveDebts) }
+                val newKey = io { ContactLinks(app.database).separate(key, handle, separateName, moveTasks, movePayments, moveDebts) }
                 separateHandle = null
                 if (newKey != null) { nav.pop(); nav.push(Screen.Person, newKey) } else message = "Separation failed; no changes committed."
             }
@@ -296,7 +302,7 @@ private suspend fun trackBill(app: HellFireApp, r: RecurringPayment) {
     val due = day.atTime(9, 0).atZone(TaskTime.zone).toInstant().toEpochMilli().takeIf { it > now }
         ?: Fmt.today().plusDays(1).atTime(9, 0).atZone(TaskTime.zone).toInstant().toEpochMilli()
     val text = "Owner chose to track ${r.label} as a monthly bill of about TZS ${Fmt.amount(r.amount)}, paid ${r.months} months in a row"
-    val sourceId = com.hellfire.ass.ui.money.ownerStatement(app, text, now)
+    val sourceId = ownerStatement(app, text, now)
     val id = java.util.UUID.randomUUID().toString()
     app.database.tasks().insert(AssistantTask(id, sourceId, r.label, due, party = "OWNER", evidence = text, createdAt = now, updatedAt = now))
     TaskScheduler.activate(app, id, r.label, due, "OWNER")

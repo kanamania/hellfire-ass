@@ -16,6 +16,10 @@ import com.hellfire.ass.ui.money.ChipPicker
 import com.hellfire.ass.ui.money.Categories
 import kotlinx.coroutines.*
 import java.util.UUID
+import com.hellfire.ass.OwnerError
+import com.hellfire.ass.events.NotificationNormalizer
+import com.hellfire.ass.events.NotificationSnapshot
+import com.hellfire.ass.finance.ReviewChoices
 
 @Composable
 fun SkillsPage() {
@@ -38,7 +42,7 @@ fun SkillsPage() {
         busy = true
         try { withContext(Dispatchers.IO) { action() }; message = context.getString(R.string.ui_skill_settings_saved) }
         catch (e: CancellationException) { throw e }
-        catch (e: Exception) { message = when (e) { is com.hellfire.ass.OwnerError -> context.getString(e.text); is IllegalArgumentException -> e.message ?: "Check the skill fields."; else -> context.getString(R.string.ui_could_not_save_check_storage_and_try) } }
+        catch (e: Exception) { message = when (e) { is OwnerError -> context.getString(e.text); is IllegalArgumentException -> e.message ?: "Check the skill fields."; else -> context.getString(R.string.ui_could_not_save_check_storage_and_try) } }
         finally { busy = false }
     } }
     PushedPage(stringResource(R.string.ui_ai_skills), breadcrumb = "Settings") {
@@ -122,7 +126,7 @@ fun SkillsPage() {
                 if (kind == "PAYMENT_DEFAULT") {
                     Note(trigger.substringBefore("|") + " · " + trigger.substringAfter(":"))
                     ChoiceField(stringResource(R.string.ui_use_sender_or_merchant_from), candidates.firstOrNull { it.id == pickedCandidate }, candidates, { "${it.provider} · ${it.merchant ?: it.evidence.take(45)}" }, { candidate ->
-                        pickedCandidate = candidate.id; scope.launch { trigger = withContext(Dispatchers.IO) { com.hellfire.ass.finance.ReviewChoices.key(app, candidate) } }
+                        pickedCandidate = candidate.id; scope.launch { trigger = withContext(Dispatchers.IO) { ReviewChoices.key(app, candidate) } }
                     })
                     ChoiceField(stringResource(R.string.ui_account), accounts.firstOrNull { it.id == account }, accounts, { it.label }, { account = it.id })
                     ChipPicker(Categories, category, { categoryLabel(it) }) { category = it }
@@ -133,9 +137,9 @@ fun SkillsPage() {
                     run {
                         val match = if (kind.startsWith("IGNORE_")) AiSkills.exact(matchScope, matchedText) else trigger
                         val instruction = if (kind == "PAYMENT_DEFAULT") org.json.JSONObject().put("account", account).put("category", category).toString() else advice
-                        val raw = com.hellfire.ass.events.NotificationSnapshot("skill", "owner.skill", 0, 0, fields = mapOf("text" to listOf(name, reason, if (kind == "GUIDANCE") advice else "")))
-                        val safe = com.hellfire.ass.events.NotificationNormalizer.normalize(raw, app.packageName)!!
-                        if (safe.securitySensitive || safe.contentRedacted) throw com.hellfire.ass.OwnerError(R.string.ui_remove_authentication_content)
+                        val raw = NotificationSnapshot("skill", "owner.skill", 0, 0, fields = mapOf("text" to listOf(name, reason, if (kind == "GUIDANCE") advice else "")))
+                        val safe = NotificationNormalizer.normalize(raw, app.packageName)!!
+                        if (safe.securitySensitive || safe.contentRedacted) throw OwnerError(R.string.ui_remove_authentication_content)
                         app.skills.save((old ?: AiSkill(UUID.randomUUID().toString(), name, kind, match, instruction, reason, null)).copy(name = name, trigger = match, advice = instruction, reason = reason, state = "ACTIVE"))
                         listOf("name", "trigger", "advice", "reason").forEach { PrivateDrafts.write(app, "skill-$id-$it", "") }
                         editing = null

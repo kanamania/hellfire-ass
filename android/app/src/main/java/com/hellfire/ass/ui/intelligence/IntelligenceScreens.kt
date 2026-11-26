@@ -52,6 +52,9 @@ import com.hellfire.ass.ui.components.SectionCard
 import com.hellfire.ass.ui.components.SwitchRow
 import com.hellfire.ass.ui.theme.Hf
 import kotlinx.coroutines.launch
+import com.hellfire.ass.intelligence.ContentEngine
+import com.hellfire.ass.library.CategoryPolicy
+import com.hellfire.ass.ui.library.SceneThumbnail
 
 @Composable
 fun SearchScreen(route: Route) {
@@ -93,7 +96,7 @@ fun SearchScreen(route: Route) {
                     else -> LibraryRoutes.mediaDetail(hit.itemId)
                 })
             }.padding(vertical = 8.dp)) {
-                com.hellfire.ass.ui.library.SceneThumbnail(hit.thumbnailPath)
+                SceneThumbnail(hit.thumbnailPath)
                 Text(hit.title, style = Hf.type.rowTitle, color = Hf.colors.onSurface)
                 Text("${hit.contentKind} · ${hit.matchSource} · ${"%.2f".format(hit.relevance)}", style = Hf.type.caption, color = Hf.colors.muted)
                 if (hit.startMs != null) Text("At ${hit.startMs} ms", style = Hf.type.caption, color = Hf.colors.muted)
@@ -218,8 +221,8 @@ fun MediaSettingsScreen() {
                 Text("${category.name}: ${category.policy}", style = Hf.type.rowSubtitle, color = Hf.colors.onSurface)
                 SecondaryButton("Next policy", {
                     scope.launch {
-                        val order = com.hellfire.ass.library.CategoryPolicy.entries
-                        val current = runCatching { com.hellfire.ass.library.CategoryPolicy.valueOf(category.policy) }.getOrDefault(com.hellfire.ass.library.CategoryPolicy.DEFAULT)
+                        val order = CategoryPolicy.entries
+                        val current = runCatching { CategoryPolicy.valueOf(category.policy) }.getOrDefault(CategoryPolicy.DEFAULT)
                         val next = order[(order.indexOf(current) + 1) % order.size]
                         app.database.library().updateCategory(category.copy(policy = next.name, updatedAt = System.currentTimeMillis()))
                     }
@@ -236,7 +239,7 @@ fun MediaSettingsScreen() {
         SecondaryButton("Reanalyse with installed models", {
             scope.launch {
                 val ids = app.database.library().analysedWithoutModel(listOf("transcript", "description", "adult"), 5000)
-                ids.forEach { app.database.jobs().enqueue(com.hellfire.ass.intelligence.ContentEngine.newJob(it, System.currentTimeMillis())) }
+                ids.forEach { app.database.jobs().enqueue(ContentEngine.newJob(it, System.currentTimeMillis())) }
                 IntelligenceWork.schedule(app)
                 note = "Queued ${ids.size} items that previously lacked a model. Jobs run sequentially."
             }

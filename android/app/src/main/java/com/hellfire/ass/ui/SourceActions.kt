@@ -16,6 +16,8 @@ import com.hellfire.ass.ui.tasks.*
 import com.hellfire.ass.ui.theme.Hf
 import kotlinx.coroutines.*
 import java.util.UUID
+import com.hellfire.ass.events.NotificationNormalizer
+import com.hellfire.ass.events.NotificationSnapshot
 
 @Composable
 fun SourceActions(sourceId: String, evidence: String) {
@@ -42,7 +44,7 @@ fun SourceActions(sourceId: String, evidence: String) {
                     val source = requireNotNull(app.database.events().find(sourceId))
                     require(source.contentAvailable && !source.securitySensitive)
                     require(quote.isNotBlank() && evidence.contains(quote) && subject.isNotBlank())
-                    val safeSubject = com.hellfire.ass.events.NotificationNormalizer.normalize(com.hellfire.ass.events.NotificationSnapshot("subject", "owner.memory", 0, 0, fields = mapOf("text" to listOf(subject))), app.packageName)!!
+                    val safeSubject = NotificationNormalizer.normalize(NotificationSnapshot("subject", "owner.memory", 0, 0, fields = mapOf("text" to listOf(subject))), app.packageName)!!
                     require(!safeSubject.securitySensitive && !safeSubject.contentRedacted) { "Remove authentication codes from the subject." }
                     val now = System.currentTimeMillis()
                     app.database.withTransaction {

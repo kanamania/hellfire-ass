@@ -4,6 +4,7 @@ import com.hellfire.ass.library.MediaBookmark
 import com.hellfire.ass.library.MediaSegment
 import com.hellfire.ass.library.Origin
 import com.hellfire.ass.library.SegmentKind
+import com.hellfire.ass.R
 
 /** A–B loop range in milliseconds. The original file is never copied. */
 data class AbRange(val startMs: Long, val endMs: Long) {
@@ -177,9 +178,9 @@ object PlaybackLogic {
     @androidx.annotation.StringRes
     fun playbackError(codeName: String): Int? = when {
         codeName.contains("DECODER") || codeName.contains("DECODING") || codeName.contains("PARSING") || codeName.contains("FORMAT") ->
-            com.hellfire.ass.R.string.ui_this_file_cannot_be_played_on_this
+            R.string.ui_this_file_cannot_be_played_on_this
         codeName.contains("IO") || codeName.contains("FILE") || codeName.contains("TIMEOUT") ->
-            com.hellfire.ass.R.string.ui_the_original_could_not_be_read_nothing
+            R.string.ui_the_original_could_not_be_read_nothing
         else -> null
     }
 

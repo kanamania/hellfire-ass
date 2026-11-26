@@ -9,6 +9,7 @@ import com.hellfire.ass.tasks.TaskTime
 import androidx.room.withTransaction
 import org.json.JSONObject
 import java.util.UUID
+import com.hellfire.ass.communications.Accounts
 
 sealed interface ActionProposal {
     val sourceId: String
@@ -55,12 +56,12 @@ object ActionProposals {
             is ActionProposal.Task -> app.database.tasks().insert(AssistantTask(id, proposal.sourceId, proposal.title, proposal.dueAt,
                 party = proposal.party, evidence = proposal.evidence, createdAt = now, updatedAt = now))
             is ActionProposal.Reply -> {
-                val config = requireNotNull(com.hellfire.ass.communications.Accounts.find(app.secrets,
-                    if (proposal.channel == "EMAIL_IMAP") com.hellfire.ass.communications.Accounts.MAIL else com.hellfire.ass.communications.Accounts.GATEWAY,
+                val config = requireNotNull(Accounts.find(app.secrets,
+                    if (proposal.channel == "EMAIL_IMAP") Accounts.MAIL else Accounts.GATEWAY,
                     proposal.account)) { "Proposal names an account that is not connected" }
                 if (proposal.channel == "EMAIL_IMAP") javax.mail.internet.InternetAddress(proposal.recipient, true).validate()
                 else {
-                    require(com.hellfire.ass.communications.Accounts.transport(config) == "meta") { "WhatsApp Web is capture-only" }
+                    require(Accounts.transport(config) == "meta") { "WhatsApp Web is capture-only" }
                     require(proposal.recipient.matches(Regex("[0-9]{6,15}")))
                 }
                 if (app.database.communications().draft(id) == null) app.database.communications().draft(OutboundDraft(id, proposal.channel,

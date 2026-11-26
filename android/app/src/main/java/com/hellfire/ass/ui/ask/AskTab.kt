@@ -36,6 +36,11 @@ import com.hellfire.ass.ui.components.*
 import com.hellfire.ass.ui.theme.Hf
 import com.hellfire.ass.ui.theme.HfIcons
 import kotlinx.coroutines.*
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.HellFireApp
+import com.hellfire.ass.assistant.AskHistory
+import com.hellfire.ass.assistant.runConfirmedCommand
+import com.hellfire.ass.ui.money.ChipPicker
 
 /** One chat entry. Kept in memory for the app session only; never written to disk. */
 sealed interface ChatItem {
@@ -63,14 +68,14 @@ fun AskTab() {
     var input by remember { mutableStateOf("") }
     var running by remember { mutableStateOf<Job?>(null) }
     var historySheet by remember { mutableStateOf(false) }
-    var historyEnabled by remember { mutableStateOf(com.hellfire.ass.assistant.AskHistory.enabled(app)) }
+    var historyEnabled by remember { mutableStateOf(AskHistory.enabled(app)) }
     var sourceNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var picker by remember { mutableStateOf(false) }
     var sources by remember { mutableStateOf<List<String>?>(null) }
     val list = rememberLazyListState()
     val items = AskSession.items
     LaunchedEffect(Unit) {
-        if (items.isEmpty()) withContext(Dispatchers.IO) { runCatching { com.hellfire.ass.assistant.AskHistory.read(app) }.getOrDefault(emptyList()) }.forEach { (q, a) ->
+        if (items.isEmpty()) withContext(Dispatchers.IO) { runCatching { AskHistory.read(app) }.getOrDefault(emptyList()) }.forEach { (q, a) ->
             items += ChatItem.Question(q); items += ChatItem.Reply(AssistantEngine.Answer(a), "Saved history")
         }
     }
@@ -105,7 +110,7 @@ fun AskTab() {
                 }
             } catch (e: CancellationException) { items += ChatItem.Status(AiError.CANCELLED.message); throw e }
             catch (e: AiException) { items += ChatItem.Status(e.error.message) }
-            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); items += ChatItem.Status("That request failed. Offline answers still work. Nothing was changed or sent.") }
+            catch (caught: Exception) { Diagnostics.warn(caught); items += ChatItem.Status("That request failed. Offline answers still work. Nothing was changed or sent.") }
             finally { running = null }
         }
     }
@@ -116,7 +121,7 @@ fun AskTab() {
         try {
             voice.launch(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true).putExtra(RecognizerIntent.EXTRA_LANGUAGE, UiLanguage.locale.toLanguageTag()).putExtra(RecognizerIntent.EXTRA_PROMPT, "Ask HellFire"))
-        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); items += ChatItem.Status("No speech recogniser is available on this phone. Type your question instead.") }
+        } catch (caught: Exception) { Diagnostics.warn(caught); items += ChatItem.Status("No speech recogniser is available on this phone. Type your question instead.") }
     }
     LaunchedEffect(Unit) { if (nav.consume("voice")) listen() }
 
@@ -157,7 +162,7 @@ fun AskTab() {
                     is ChatItem.Proposal -> ProposalCard(item, onConfirm = {
                         items[items.indexOf(item)] = item.copy(state = "APPLYING")
                         app.captureScope.launch {
-                            val outcome = com.hellfire.ass.assistant.runConfirmedCommand { AssistantCommands.execute(app, item.command) }
+                            val outcome = runConfirmedCommand { AssistantCommands.execute(app, item.command) }
                             withContext(Dispatchers.Main) {
                                 val i = items.indexOfFirst { it is ChatItem.Proposal && it.command == item.command }
                                 if (i >= 0) items[i] = item.copy(state = if (outcome.completed) "DONE" else "FAILED")
@@ -188,9 +193,9 @@ fun AskTab() {
     }
     if (historySheet) HfBottomSheet({ historySheet = false }) {
         Text(stringResource(R.string.ui_ask_history), style = Hf.type.cardTitle, color = Hf.colors.onSurface)
-        SwitchRow(stringResource(R.string.ui_keep_encrypted_history), historyEnabled, { value -> historyEnabled = value; app.getSharedPreferences("ui", 0).edit().putBoolean(com.hellfire.ass.assistant.AskHistory.KEY, value).apply() })
+        SwitchRow(stringResource(R.string.ui_keep_encrypted_history), historyEnabled, { value -> historyEnabled = value; app.getSharedPreferences("ui", 0).edit().putBoolean(AskHistory.KEY, value).apply() })
         Note("Keeps the last 40 question/answer pairs on this phone. Commands and approvals are never restored. Turning this off stops new saves; use Clear to delete saved history.")
-        SecondaryButton(stringResource(R.string.ui_clear_history_and_conversation), { scope.launch { withContext(Dispatchers.IO) { app.secrets.remove(com.hellfire.ass.assistant.AskHistory.KEY) }; app.assistant.clearContext(); items.clear(); historySheet = false } })
+        SecondaryButton(stringResource(R.string.ui_clear_history_and_conversation), { scope.launch { withContext(Dispatchers.IO) { app.secrets.remove(AskHistory.KEY) }; app.assistant.clearContext(); items.clear(); historySheet = false } })
     }
     if (picker) RoutePicker { picker = false }
     sources?.let { ids -> HfBottomSheet({ sources = null }) {
@@ -205,10 +210,10 @@ fun AskTab() {
 }
 
 /** The last question and answer feed the Ask widget. Stored encrypted; previews start hidden on the widget. */
-private fun rememberLast(app: com.hellfire.ass.HellFireApp, question: String, answer: String) {
+private fun rememberLast(app: HellFireApp, question: String, answer: String) {
     app.captureScope.launch {
         runCatching { app.secrets.save("ask-last", org.json.JSONObject().put("q", question.take(200)).put("a", answer.take(400)).put("at", System.currentTimeMillis())) }
-        runCatching { com.hellfire.ass.assistant.AskHistory.append(app, question, answer) }
+        runCatching { AskHistory.append(app, question, answer) }
         app.requestWidgetRefresh()
     }
 }
@@ -301,7 +306,7 @@ private fun RoutePicker(onDone: () -> Unit) {
         val s = state
         if (s != null) {
             GroupLabel(stringResource(R.string.ui_ai_task))
-            com.hellfire.ass.ui.money.ChipPicker(AiTask.entries.map { it.name }, task.name, { AiTask.valueOf(it).label }) { task = AiTask.valueOf(it) }
+            ChipPicker(AiTask.entries.map { it.name }, task.name, { AiTask.valueOf(it).label }) { task = AiTask.valueOf(it) }
             OptionCard("Saved route for ${task.label}", s.route(task).joinToString(" → ") { it.label() },
                 AskSession.route?.let { it.task == task && it.model == null } == true, { AskSession.route = AskRoute(task, null); onDone() })
             s.modelChoices().forEach { m ->

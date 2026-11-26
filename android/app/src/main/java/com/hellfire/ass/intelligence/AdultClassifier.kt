@@ -13,6 +13,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.nio.FloatBuffer
+import com.hellfire.ass.ai.onnxEnvironment
 
 internal data class ImageTensorShape(val width: Int, val height: Int, val channelsFirst: Boolean) {
     companion object {
@@ -56,7 +57,7 @@ class AdultClassifier(private val app: HellFireApp) {
             try {
                 copyLimited(uri, temp, 300L * 1024 * 1024)
                 val opened = runCatching {
-                    com.hellfire.ass.ai.onnxEnvironment.createSession(temp.path).use { it.inputNames.isNotEmpty() }
+                    onnxEnvironment.createSession(temp.path).use { it.inputNames.isNotEmpty() }
                 }.getOrDefault(false)
                 require(opened) { "Select an ONNX classifier file. Nothing was installed." }
                 java.nio.file.Files.move(temp.toPath(), modelFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
@@ -74,7 +75,7 @@ class AdultClassifier(private val app: HellFireApp) {
     fun classify(bitmap: Bitmap): AdultVerdict {
         if (!installed) return AdultVerdict(false, false, null, null, message = NOT_INSTALLED)
         return runCatching {
-            com.hellfire.ass.ai.onnxEnvironment.createSession(modelFile.path).use { session ->
+            onnxEnvironment.createSession(modelFile.path).use { session ->
                 val name = session.inputNames.firstOrNull() ?: return AdultVerdict(true, false, null, null, message = "classifier installed but it has no input")
                 val shape = (session.inputInfo[name]?.info as? TensorInfo)?.shape
                 if (shape == null || shape.size != 4) return AdultVerdict(true, false, null, null, message = "classifier installed but input shape is unsupported")
@@ -105,7 +106,7 @@ class AdultClassifier(private val app: HellFireApp) {
                 buffer.put(values)
                 buffer.rewind()
                 val tensorShape = if (channelsFirst) longArrayOf(1, 3, height.toLong(), width.toLong()) else longArrayOf(1, height.toLong(), width.toLong(), 3)
-                OnnxTensor.createTensor(com.hellfire.ass.ai.onnxEnvironment, buffer, tensorShape).use { tensor ->
+                OnnxTensor.createTensor(onnxEnvironment, buffer, tensorShape).use { tensor ->
                     session.run(mapOf(name to tensor)).use { result ->
                         val scores = flatten(result.get(0).value)
                         val index = scores.indices.maxByOrNull { scores[it] } ?: return AdultVerdict(true, false, null, null, message = "classifier returned no scores")

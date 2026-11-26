@@ -27,6 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
+import com.hellfire.ass.Diagnostics
 
 /** The date range every report opens with; set on the hub or from any report's date chip. */
 object ReportRange {
@@ -135,7 +136,7 @@ private fun ExportSheet(spec: ExportSpec, onDone: () -> Unit) {
                     }
                 }
                 "Saved where you chose. Nothing was uploaded."
-            } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Export failed. Check the destination and free space." }
+            } catch (caught: Exception) { Diagnostics.warn(caught); "Export failed. Check the destination and free space." }
         }
     }
     HfBottomSheet(onDone) {

@@ -4,6 +4,8 @@ import androidx.room.withTransaction
 import com.hellfire.ass.data.EventDatabase
 import com.hellfire.ass.events.NotificationNormalizer
 import java.util.UUID
+import com.hellfire.ass.communications.ActionAudit
+import com.hellfire.ass.contacts.ContactLinks
 
 class FinanceRepository(private val db: EventDatabase, private val suppress: suspend (String, String) -> Boolean = { _, _ -> false }) {
     private val dao get() = db.finances()
@@ -19,7 +21,7 @@ class FinanceRepository(private val db: EventDatabase, private val suppress: sus
         val key = NotificationNormalizer.sha256("$accountId|${candidate.provider}|${candidate.reference ?: candidate.id}")
         val existing = dao.byKey(key)
         if (existing != null) {
-            if (personKey != null) com.hellfire.ass.contacts.ContactLinks(db).ledger(existing.id, personKey)
+            if (personKey != null) ContactLinks(db).ledger(existing.id, personKey)
             dao.evidence(LedgerEvidence(existing.id, candidate.sourceId))
             linkReferenceDuplicates(existing.id, candidate)
             linkCrossSourceDuplicates(existing.id, candidate.id)
@@ -36,7 +38,7 @@ class FinanceRepository(private val db: EventDatabase, private val suppress: sus
         } else null
         dao.post(LedgerEntry(id, accountId, key, kind, delta, category, description,
             candidate.occurredAt, now, id))
-        if (personKey != null) com.hellfire.ass.contacts.ContactLinks(db).ledger(id, personKey)
+        if (personKey != null) ContactLinks(db).ledger(id, personKey)
         dao.evidence(LedgerEvidence(id, candidate.sourceId))
         if (destination != null) {
             val credit = "$id:credit"
@@ -51,7 +53,7 @@ class FinanceRepository(private val db: EventDatabase, private val suppress: sus
         linkReferenceDuplicates(id, candidate)
         linkCrossSourceDuplicates(id, candidate.id)
         dao.candidateState(candidateId, "APPROVED")
-        db.communications().audit(com.hellfire.ass.communications.ActionAudit(UUID.randomUUID().toString(), id, "OWNER_LEDGER_APPROVAL", "POSTED", now))
+        db.communications().audit(ActionAudit(UUID.randomUUID().toString(), id, "OWNER_LEDGER_APPROVAL", "POSTED", now))
         "Transaction posted with source evidence."
     }
 
@@ -69,7 +71,7 @@ class FinanceRepository(private val db: EventDatabase, private val suppress: sus
                 occurredAt = System.currentTimeMillis(), createdAt = System.currentTimeMillis(),
                 groupId = "reverse:${original.groupId}", reversesId = entry.id))
             dao.sources(entry.id).forEach { dao.evidence(LedgerEvidence(reversalId, it)) }
-            db.communications().audit(com.hellfire.ass.communications.ActionAudit(UUID.randomUUID().toString(), reversalId, "OWNER_LEDGER_REVERSAL", "POSTED", System.currentTimeMillis()))
+            db.communications().audit(ActionAudit(UUID.randomUUID().toString(), reversalId, "OWNER_LEDGER_REVERSAL", "POSTED", System.currentTimeMillis()))
         }
     }
 
@@ -91,7 +93,7 @@ class FinanceRepository(private val db: EventDatabase, private val suppress: sus
         dao.post(LedgerEntry(id, accountId, "balance:$accountId:$at:$id", "BALANCE", delta, if (opening) "Opening balance" else "Balance correction",
             "${if (opening) "Opening balance" else "Balance set"} · TZS ${String.format(java.util.Locale.ENGLISH, "%,d", target)}", at, now, id))
         dao.evidence(LedgerEvidence(id, sourceId))
-        db.communications().audit(com.hellfire.ass.communications.ActionAudit(UUID.randomUUID().toString(), id, "OWNER_BALANCE_SET", "POSTED", now))
+        db.communications().audit(ActionAudit(UUID.randomUUID().toString(), id, "OWNER_BALANCE_SET", "POSTED", now))
         delta
     }
 
@@ -101,7 +103,7 @@ class FinanceRepository(private val db: EventDatabase, private val suppress: sus
         val entry = requireNotNull(dao.entry(id))
         require(entry.reversesId == null && entry.kind != "FEE") { "Only original payments can be recategorised" }
         require(dao.setCategory(id, category) == 1)
-        db.communications().audit(com.hellfire.ass.communications.ActionAudit(UUID.randomUUID().toString(), id, "OWNER_LEDGER_RECATEGORIZE", category, System.currentTimeMillis()))
+        db.communications().audit(ActionAudit(UUID.randomUUID().toString(), id, "OWNER_LEDGER_RECATEGORIZE", category, System.currentTimeMillis()))
     }
 
     suspend fun selected(start: Long, end: Long, category: String? = null, accountId: String? = null, merchant: String? = null, personKey: String? = null): List<LedgerEntry> {

@@ -45,6 +45,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.contacts.ContactChoice
+import com.hellfire.ass.contacts.ContactLinks
+import com.hellfire.ass.events.NotificationNormalizer
+import com.hellfire.ass.events.NotificationSnapshot
+import com.hellfire.ass.ui.money.ChipPicker
 
 /** A task the sheet should edit: an existing proposal or task, or a new one typed by the owner. */
 data class TaskDraft(val id: String?, val title: String, val dueAt: Long, val party: String, val direction: String = "NONE",
@@ -214,7 +220,7 @@ fun TaskEditSheet(draft: TaskDraft, onDone: (String?) -> Unit) {
     val scope = rememberCoroutineScope()
     var title by rememberSaveable { mutableStateOf(draft.title) }
     var person by rememberSaveable { mutableStateOf("") }
-    var picked by rememberSaveable(saver = ContactChoiceStateSaver) { mutableStateOf<com.hellfire.ass.contacts.ContactChoice?>(null) }
+    var picked by rememberSaveable(saver = ContactChoiceStateSaver) { mutableStateOf<ContactChoice?>(null) }
     var personLoaded by rememberSaveable { mutableStateOf(draft.personKey == null) }
     LaunchedEffect(draft.personKey) {
         if (!personLoaded) {
@@ -244,16 +250,16 @@ fun TaskEditSheet(draft: TaskDraft, onDone: (String?) -> Unit) {
             }
         }
         GroupLabel(stringResource(R.string.ui_who_does_it))
-        com.hellfire.ass.ui.money.ChipPicker(listOf("OWNER", "OTHER", "UNKNOWN"), party, { when (it) { "OWNER" -> stringResource(R.string.ui_me); "OTHER" -> stringResource(R.string.ui_someone_else); else -> stringResource(R.string.ui_not_sure) } }) { party = it }
+        ChipPicker(listOf("OWNER", "OTHER", "UNKNOWN"), party, { when (it) { "OWNER" -> stringResource(R.string.ui_me); "OTHER" -> stringResource(R.string.ui_someone_else); else -> stringResource(R.string.ui_not_sure) } }) { party = it }
         GroupLabel(stringResource(R.string.ui_kind))
-        com.hellfire.ass.ui.money.ChipPicker(listOf("TASK", "BILL"), kind, { if (it == "BILL") stringResource(R.string.ui_bill_to_pay) else stringResource(R.string.ui_task) }) { kind = it }
+        ChipPicker(listOf("TASK", "BILL"), kind, { if (it == "BILL") stringResource(R.string.ui_bill_to_pay) else stringResource(R.string.ui_task) }) { kind = it }
         GroupLabel(stringResource(R.string.ui_promise))
-        com.hellfire.ass.ui.money.ChipPicker(listOf("I_OWE", "OWED_TO_ME", "NONE"), direction, { when (it) { "I_OWE" -> stringResource(R.string.ui_i_owe); "OWED_TO_ME" -> stringResource(R.string.ui_owed_to_me); else -> stringResource(R.string.ui_neither) } }) { direction = it }
+        ChipPicker(listOf("I_OWE", "OWED_TO_ME", "NONE"), direction, { when (it) { "I_OWE" -> stringResource(R.string.ui_i_owe); "OWED_TO_ME" -> stringResource(R.string.ui_owed_to_me); else -> stringResource(R.string.ui_neither) } }) { direction = it }
         if (kind == "BILL" || direction != "NONE") HfTextField(amount, { amount = it.filter(Char::isDigit) }, stringResource(R.string.ui_amount_tzs_optional_not_added_to_money), number = true)
         GroupLabel(stringResource(R.string.ui_repeat))
-        com.hellfire.ass.ui.money.ChipPicker(listOf("NONE", "DAILY", "WEEKLY", "MONTHLY"), repeatRule, { when (it) { "NONE" -> stringResource(R.string.ui_none); "DAILY" -> stringResource(R.string.ui_daily); "WEEKLY" -> stringResource(R.string.ui_weekly); "MONTHLY" -> stringResource(R.string.ui_monthly); else -> it } }) { repeatRule = it }
+        ChipPicker(listOf("NONE", "DAILY", "WEEKLY", "MONTHLY"), repeatRule, { when (it) { "NONE" -> stringResource(R.string.ui_none); "DAILY" -> stringResource(R.string.ui_daily); "WEEKLY" -> stringResource(R.string.ui_weekly); "MONTHLY" -> stringResource(R.string.ui_monthly); else -> it } }) { repeatRule = it }
         GroupLabel(stringResource(R.string.ui_overdue_reminder_intensity))
-        com.hellfire.ass.ui.money.ChipPicker(listOf("GENTLE", "NORMAL", "PERSISTENT"), profile, { when (it) { "GENTLE" -> stringResource(R.string.ui_daily); "NORMAL" -> stringResource(R.string.ui_hourly); else -> stringResource(R.string.ui_keep_reminding) } }) { profile = it }
+        ChipPicker(listOf("GENTLE", "NORMAL", "PERSISTENT"), profile, { when (it) { "GENTLE" -> stringResource(R.string.ui_daily); "NORMAL" -> stringResource(R.string.ui_hourly); else -> stringResource(R.string.ui_keep_reminding) } }) { profile = it }
         HfTextField(snooze, { snooze = it.filter(Char::isDigit) }, stringResource(R.string.ui_snooze_minutes_5_1440), number = true)
         Note(stringResource(R.string.ui_repeating_tasks_schedule_the_next))
         error?.let { Banner(it, Tone.Danger, null) }
@@ -265,9 +271,9 @@ fun TaskEditSheet(draft: TaskDraft, onDone: (String?) -> Unit) {
                     withContext(Dispatchers.IO) {
                         val id = draft.id ?: run {
                             val now = System.currentTimeMillis()
-                            val raw = com.hellfire.ass.events.NotificationSnapshot(java.util.UUID.randomUUID().toString(), "owner.task", now, now, source = "owner_entry",
+                            val raw = NotificationSnapshot(java.util.UUID.randomUUID().toString(), "owner.task", now, now, source = "owner_entry",
                                 fields = mapOf("text" to listOf(title)))
-                            val safe = com.hellfire.ass.events.NotificationNormalizer.normalize(raw, app.packageName)!!
+                            val safe = NotificationNormalizer.normalize(raw, app.packageName)!!
                             require(!safe.securitySensitive) { "Authentication content is not suitable for a reminder" }
                             val sourceId = draft.sourceId ?: safe.id.also { app.events.capture(raw, app.packageName) }
                             require(app.database.events().find(sourceId)?.let { it.contentAvailable && !it.securitySensitive } == true)
@@ -278,13 +284,13 @@ fun TaskEditSheet(draft: TaskDraft, onDone: (String?) -> Unit) {
                         TaskScheduler.activate(app, id, title.trim(), at, party)
                         TaskScheduler.updateDetails(app, id, direction, amount.toLongOrNull()?.takeIf { it > 0 }, kind, repeatRule == "MONTHLY" && kind == "BILL")
                         TaskScheduler.updateReminderOptions(app, id, repeatRule, profile, snoozeMinutes)
-                        val links = com.hellfire.ass.contacts.ContactLinks(app.database)
+                        val links = ContactLinks(app.database)
                         app.database.withTransaction {
-                            links.task(id, if (person.isBlank()) null else links.save(picked ?: com.hellfire.ass.contacts.ContactChoice(person, personKey = draft.personKey?.takeIf { app.database.contacts().find(it)?.displayName == person })))
+                            links.task(id, if (person.isBlank()) null else links.save(picked ?: ContactChoice(person, personKey = draft.personKey?.takeIf { app.database.contacts().find(it)?.displayName == person })))
                         }
                     }
                     onDone("Task scheduled for ${Fmt.weekdayDayTime(at)}.")
-                } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); error = "Not saved. Use yyyy-MM-dd HH:mm and remove any security codes." }
+                } catch (caught: Exception) { Diagnostics.warn(caught); error = "Not saved. Use yyyy-MM-dd HH:mm and remove any security codes." }
             }
         }, Modifier.fillMaxWidth(), enabled = title.isNotBlank() && personLoaded, height = 52.dp)
     }

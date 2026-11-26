@@ -40,6 +40,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import com.hellfire.ass.HellFireApp
+import com.hellfire.ass.intelligence.ContentEngine
+import com.hellfire.ass.intelligence.IntelligenceWork
 
 private val thumbs = object : LruCache<String, Bitmap>(12 * 1024 * 1024) {
     override fun sizeOf(key: String, value: Bitmap) = value.byteCount.coerceAtLeast(1)
@@ -188,7 +191,7 @@ fun LibraryPage(route: Route) {
 
 private fun toggle(selected: Set<String>, id: String) = if (id in selected) selected - id else selected + id
 
-private suspend fun scan(app: com.hellfire.ass.HellFireApp, report: (String) -> Unit) {
+private suspend fun scan(app: HellFireApp, report: (String) -> Unit) {
     val result = runCatching { withContext(Dispatchers.IO) { LibraryIndex.scan(app) } }
     LibraryScanWork.runNow(app)
     report(result.fold(
@@ -270,7 +273,7 @@ private fun BulkAction(action: String, draft: String, onDraft: (String) -> Unit,
     }
 }
 
-private suspend fun runBulk(app: com.hellfire.ass.HellFireApp, action: String, selected: Set<String>, draft: String): String {
+private suspend fun runBulk(app: HellFireApp, action: String, selected: Set<String>, draft: String): String {
     val now = System.currentTimeMillis()
     var ok = 0
     var failed = 0
@@ -280,14 +283,14 @@ private suspend fun runBulk(app: com.hellfire.ass.HellFireApp, action: String, s
                 "favorite" -> app.database.library().setFavorite(id, true)
                 "tag" -> LibraryOrganize.setTag(app.database.library(), id, draft, LinkState.ASSIGNED, now) ?: error("blank")
                 "sync" -> app.media.promote(id, true)
-                "queue" -> app.database.jobs().enqueue(ProcessingJob(UUID.randomUUID().toString(), com.hellfire.ass.intelligence.ContentEngine.JOB, id, priority = JobPriority.USER_REQUESTED, createdAt = now, updatedAt = now))
+                "queue" -> app.database.jobs().enqueue(ProcessingJob(UUID.randomUUID().toString(), ContentEngine.JOB, id, priority = JobPriority.USER_REQUESTED, createdAt = now, updatedAt = now))
             }
         }
         if (result.isSuccess) ok++ else failed++
     }
     return when (action) {
         "sync" -> "Copied $ok into managed storage and marked them for sync. $failed could not be copied. Upload is not confirmed."
-        "queue" -> { com.hellfire.ass.intelligence.IntelligenceWork.schedule(app); "Queued $ok for analysis. $failed were not queued. Nothing was sent." }
+        "queue" -> { IntelligenceWork.schedule(app); "Queued $ok for analysis. $failed were not queued. Nothing was sent." }
         else -> "Updated $ok. $failed failed."
     }
 }

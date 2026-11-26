@@ -10,6 +10,8 @@ import com.hellfire.ass.communications.IntegrationState
 import kotlinx.coroutines.*
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.library.CaptureOrigin
 
 object FolderImport {
     const val MAX_IMPORTS_PER_SCAN = 25
@@ -72,7 +74,7 @@ object FolderImport {
         val batch = entries.sortedByDescending { it.modified }.take(MAX_IMPORTS_PER_SCAN)
         for (entry in batch) {
             currentCoroutineContext().ensureActive()
-            app.media.capture(DocumentsContract.buildDocumentUriUsingTree(tree, entry.id), com.hellfire.ass.library.CaptureOrigin.CALL_FOLDER, syncEnabled = false, kind = "CALL_RECORDING")
+            app.media.capture(DocumentsContract.buildDocumentUriUsingTree(tree, entry.id), CaptureOrigin.CALL_FOLDER, syncEnabled = false, kind = "CALL_RECORDING")
             seen.put(entry.id, entry.signature)
             config.put("seen", seen); app.secrets.save("media-folder", config)
         }
@@ -85,6 +87,6 @@ class FolderImportWorker(context: Context, params: WorkerParameters) : Coroutine
         val app = applicationContext as HellFireApp
         return try { FolderImport.scan(app); Result.success() }
         catch (e: CancellationException) { throw e }
-        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); app.database.communications().integration(IntegrationState("CALL_FOLDER", "FAILED", System.currentTimeMillis(), "FOLDER_ACCESS_OR_STORAGE_UNAVAILABLE")); Result.retry() }
+        catch (caught: Exception) { Diagnostics.warn(caught); app.database.communications().integration(IntegrationState("CALL_FOLDER", "FAILED", System.currentTimeMillis(), "FOLDER_ACCESS_OR_STORAGE_UNAVAILABLE")); Result.retry() }
     }
 }

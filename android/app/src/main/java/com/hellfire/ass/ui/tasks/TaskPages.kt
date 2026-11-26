@@ -19,6 +19,8 @@ import com.hellfire.ass.ui.theme.Hf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.hellfire.ass.calendar.TaskCalendarControls
+import com.hellfire.ass.ui.money.ChipPicker
 
 @Composable
 fun TaskPage(id: String) {
@@ -62,7 +64,7 @@ fun TaskPage(id: String) {
                 "DONE" -> SecondaryButton(stringResource(R.string.ui_not_done_yet), { act("Task is active again.") { TaskScheduler.reopen(app, t.id) } })
             }
         }
-        com.hellfire.ass.calendar.TaskCalendarControls(t)
+        TaskCalendarControls(t)
         QuietButton(stringResource(R.string.ui_show_source), { nav.push(Screen.Source, t.sourceId) })
     }
     if (editing && t != null) TaskEditSheet(TaskDraft.of(t)) { msg -> editing = false; if (msg != null) message = msg }
@@ -106,7 +108,7 @@ fun RemindersPage() {
                 scope.launch { runCatching { TaskScheduler.restore(app) } }
             }, subtitle = "A quiet notification with today's tasks, bills and replies")
             if (morning) Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)) {
-                com.hellfire.ass.ui.money.ChipPicker((5..9).map { it.toString() }, briefHour.toString(), { "%02d:00".format(it.toInt()) }) { picked ->
+                ChipPicker((5..9).map { it.toString() }, briefHour.toString(), { "%02d:00".format(it.toInt()) }) { picked ->
                     briefHour = picked.toInt()
                     prefs.edit().putInt("brief_hour", briefHour).apply()
                     scope.launch { runCatching { TaskScheduler.restore(app) } }

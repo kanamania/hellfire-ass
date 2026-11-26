@@ -20,6 +20,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.YearMonth
+import com.hellfire.ass.reports.DateRange
+import com.hellfire.ass.reports.posted
 
 /** Money › Budgets (not drawn): a monthly limit per category, used by the Budget widget. Limits never change the ledger. */
 @Composable
@@ -32,8 +34,8 @@ fun BudgetsPage() {
     var spent by remember { mutableStateOf<Map<String, Long>>(emptyMap()) }
     val entries by remember { app.database.finances().entries() }.collectAsStateWithLifecycle(emptyList())
     LaunchedEffect(entries) { spent = withContext(Dispatchers.IO) {
-        val range = com.hellfire.ass.reports.DateRange.month(Fmt.today())
-        com.hellfire.ass.reports.posted(app.database.finances().allEntries(), app.database.finances().allAccounts()).filter { it.entry.occurredAt in range }
+        val range = DateRange.month(Fmt.today())
+        posted(app.database.finances().allEntries(), app.database.finances().allAccounts()).filter { it.entry.occurredAt in range }
             .groupBy { it.entry.category }.mapValues { (_, v) -> v.sumOf(::spend) }
     } }
     var message by remember { mutableStateOf<String?>(null) }

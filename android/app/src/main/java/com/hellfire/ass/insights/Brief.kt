@@ -15,6 +15,8 @@ import com.hellfire.ass.tasks.TaskTime
 import com.hellfire.ass.ui.Fmt
 import java.time.Instant
 import java.time.LocalDate
+import com.hellfire.ass.calendar.CalendarAgenda
+import com.hellfire.ass.calendar.CalendarAgendaLogic
 
 /** [link] is a hellfire:// deep link the line opens. [warn] marks overdue, short or broken things. */
 data class BriefLine(val text: String, val detail: String? = null, val link: String? = null, val warn: Boolean = false)
@@ -28,7 +30,7 @@ data class Brief(val evening: Boolean, val day: LocalDate, val headline: String,
 
 /** Everything the brief is built from. [spent] and [received] cover today in the evening and yesterday in the morning. */
 data class BriefInputs(val evening: Boolean, val now: Long, val tasks: List<AssistantTask>, val spent: Long, val received: Long,
-    val toConfirm: Int, val reviewsPending: Int, val waiting: WaitingOn, val debts: List<DebtBalance>, val forecast: BillForecast, val gaps: List<CaptureGap>, val calendar: com.hellfire.ass.calendar.CalendarAgenda = com.hellfire.ass.calendar.CalendarAgenda("NOT_CHECKED"))
+    val toConfirm: Int, val reviewsPending: Int, val waiting: WaitingOn, val debts: List<DebtBalance>, val forecast: BillForecast, val gaps: List<CaptureGap>, val calendar: CalendarAgenda = CalendarAgenda("NOT_CHECKED"))
 
 object Briefs {
     private const val CHANNEL = "daily-brief"
@@ -92,15 +94,15 @@ object Briefs {
         }
         val calendarStart = if (i.evening) end else start
         val calendarEnd = if (i.evening) end2 else end
-        val appointments = i.calendar.events.filter { com.hellfire.ass.calendar.CalendarAgendaLogic.inWindow(it, calendarStart, calendarEnd) }
-        val conflicts = com.hellfire.ass.calendar.CalendarAgendaLogic.conflicts(i.calendar.events)
+        val appointments = i.calendar.events.filter { CalendarAgendaLogic.inWindow(it, calendarStart, calendarEnd) }
+        val conflicts = CalendarAgendaLogic.conflicts(i.calendar.events)
         section(if (i.evening) "Tomorrow's appointments" else "Today's appointments", appointments.map {
-            BriefLine(com.hellfire.ass.calendar.CalendarAgendaLogic.whenText(it) + " · " + it.title,
+            BriefLine(CalendarAgendaLogic.whenText(it) + " · " + it.title,
                 if (it in conflicts) "OVERLAP with another appointment" else null, it.sourceId?.let { id -> "hellfire://source/$id" }, it in conflicts)
         }.ifEmpty { listOf(BriefLine(if (i.calendar.status == "AVAILABLE") "No appointments in this window." else "Calendar: ${i.calendar.statusLabel}", link = "hellfire://settings/permissions")) } +
             if (i.calendar.truncated) listOf(BriefLine("Calendar results limited to 200 occurrences; check the calendar for more.", warn = true)) else emptyList())
         if (i.calendar.status == "AVAILABLE") section("Upcoming appointments", i.calendar.events.filter { it.start >= calendarEnd }.take(8).map {
-            BriefLine(com.hellfire.ass.calendar.CalendarAgendaLogic.whenText(it) + " · " + it.title,
+            BriefLine(CalendarAgendaLogic.whenText(it) + " · " + it.title,
                 if (it in conflicts) "OVERLAP" else null, it.sourceId?.let { id -> "hellfire://source/$id" }, it in conflicts)
         })
         section("Capture", capture)

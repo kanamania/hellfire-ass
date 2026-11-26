@@ -20,6 +20,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.HellFireApp
 
 /** One bounded inference at a time. Each request releases its engine and conversation. */
 class LocalModel(private val context: Context) {
@@ -63,7 +65,7 @@ class LocalModel(private val context: Context) {
             closeCached()
             runCatching {
                 Engine(EngineConfig(modelPath = file.path, backend = Backend.CPU(), cacheDir = context.cacheDir.path, maxNumTokens = 512)).use { it.initialize() }
-            }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }.isSuccess
+            }.onFailure { Diagnostics.warn(it) }.isSuccess
         }
     }
 
@@ -123,7 +125,7 @@ class LocalModel(private val context: Context) {
                     }
                     true
                 } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
-                catch (error: Exception) { com.hellfire.ass.Diagnostics.warn(error); false }
+                catch (error: Exception) { Diagnostics.warn(error); false }
                 results[name] = BackendMeasure(ok, SystemClock.elapsedRealtime() - started)
             }
             DeviceProbe.storeLanguageMeasurement(context, modelFile, results)
@@ -134,9 +136,9 @@ class LocalModel(private val context: Context) {
     private fun releaseOthers(keep: String, profile: OperatingProfile) {
         rolesToEvict(keep, ModelSlots.snapshot(), profile).forEach { role ->
             when (role) {
-                "SPEECH" -> (context.applicationContext as? com.hellfire.ass.HellFireApp)?.speech?.closeCached()
-                "EMBEDDING" -> (context.applicationContext as? com.hellfire.ass.HellFireApp)?.semantic?.closeCached()
-                "SPEAKER" -> (context.applicationContext as? com.hellfire.ass.HellFireApp)?.speakers?.closeCached()
+                "SPEECH" -> (context.applicationContext as? HellFireApp)?.speech?.closeCached()
+                "EMBEDDING" -> (context.applicationContext as? HellFireApp)?.semantic?.closeCached()
+                "SPEAKER" -> (context.applicationContext as? HellFireApp)?.speakers?.closeCached()
             }
         }
     }
@@ -147,7 +149,7 @@ class LocalModel(private val context: Context) {
         val opened = if (reuse && engineKey == key && engine?.isInitialized() == true) engine!! else {
             closeCached()
             val created = Engine(EngineConfig(modelPath = modelFile.path, backend = DeviceProbe.backend(name), cacheDir = context.cacheDir.path, maxNumTokens = 4096))
-            val ready = runCatching { timedStage("language_load") { created.initialize() }; created }.onFailure { runCatching { created.close() }; com.hellfire.ass.Diagnostics.warn(it) }.getOrNull() ?: return null
+            val ready = runCatching { timedStage("language_load") { created.initialize() }; created }.onFailure { runCatching { created.close() }; Diagnostics.warn(it) }.getOrNull() ?: return null
             if (reuse) { engine = ready; engineKey = key; ModelSlots.mark("LANGUAGE") }
             ready
         }
@@ -162,7 +164,7 @@ class LocalModel(private val context: Context) {
             throw cancelled
         } catch (error: Exception) {
             if (engine === opened) closeCached() else runCatching { opened.close() }
-            com.hellfire.ass.Diagnostics.warn(error)
+            Diagnostics.warn(error)
             null
         }
     }

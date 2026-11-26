@@ -27,6 +27,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.contacts.ContactChoice
+import com.hellfire.ass.contacts.ContactLinks
+import com.hellfire.ass.insights.People
 
 /** Chip picker for one value. */
 @Composable
@@ -55,7 +59,7 @@ fun CandidateReviewSheet(c: FinanceCandidate, accounts: List<FinanceAccount>, al
     var category by rememberSaveable(c.id) { mutableStateOf(c.category ?: alias?.category ?: if (c.kind == "INCOME") "Income" else "Other") }
     var description by rememberSaveable(c.id) { mutableStateOf(alias?.name ?: if (c.provider == "MANUAL") c.evidence.take(200) else Fmt.kind(c.kind) + (c.merchant?.let { " · Lipa namba $it" } ?: "")) }
     var merchantName by rememberSaveable(c.id) { mutableStateOf(alias?.name.orEmpty()) }
-    var picked by rememberSaveable(c.id, saver = ContactChoiceStateSaver) { mutableStateOf<com.hellfire.ass.contacts.ContactChoice?>(null) }
+    var picked by rememberSaveable(c.id, saver = ContactChoiceStateSaver) { mutableStateOf<ContactChoice?>(null) }
     var rememberName by rememberSaveable(c.id) { mutableStateOf(false) }
     var rememberChoice by rememberSaveable(c.id) { mutableStateOf(false) }
     var choiceKey by rememberSaveable(c.id) { mutableStateOf<String?>(null) }
@@ -63,11 +67,11 @@ fun CandidateReviewSheet(c: FinanceCandidate, accounts: List<FinanceAccount>, al
     var defaultsLoaded by rememberSaveable(c.id) { mutableStateOf(false) }
     LaunchedEffect(c.id) {
         if (!defaultsLoaded) withContext(Dispatchers.IO) {
-            val key = com.hellfire.ass.finance.ReviewChoices.key(app, c)
+            val key = ReviewChoices.key(app, c)
             choiceKey = key
             (app.skills.payment(key, c.id, c.sourceId, c.accountId == null || c.category == null)?.second ?: runCatching {
-                com.hellfire.ass.finance.ReviewChoices.read(app, key)?.let { legacy ->
-                    com.hellfire.ass.finance.ReviewChoices.save(app, key, legacy.first, legacy.second)
+                ReviewChoices.read(app, key)?.let { legacy ->
+                    ReviewChoices.save(app, key, legacy.first, legacy.second)
                     app.skills.payment(key, c.id, c.sourceId, c.accountId == null || c.category == null)?.second
                 }
             }.getOrNull())?.takeIf { saved -> accounts.any { it.id == saved.first } }?.let { saved ->
@@ -105,7 +109,7 @@ fun CandidateReviewSheet(c: FinanceCandidate, accounts: List<FinanceAccount>, al
                 aliases.firstOrNull { a -> a.name == it }?.let { a -> category = a.category; description = a.name } }, "Name for Lipa namba ${c.merchant}", aliases.map { it.name }, onPick = {
                 picked = it; merchantName = it.displayName; rememberName = true
             })
-            SavedContactStatus(com.hellfire.ass.insights.People.namedKey(merchantName))
+            SavedContactStatus(People.namedKey(merchantName))
             CheckRow(stringResource(R.string.ui_remember_this_name_and_category), rememberName, onChange = { rememberName = it })
         }
         if (suggestion) Note(stringResource(R.string.ui_account_category_suggested_from_your))
@@ -120,8 +124,8 @@ fun CandidateReviewSheet(c: FinanceCandidate, accounts: List<FinanceAccount>, al
                         app.database.withTransaction {
                             val personKey = when {
                                 merchantName.isBlank() -> null
-                                picked != null || rememberName -> com.hellfire.ass.contacts.ContactLinks(app.database).save(picked ?: com.hellfire.ass.contacts.ContactChoice(merchantName))
-                                else -> app.database.contacts().find(com.hellfire.ass.insights.People.namedKey(merchantName))?.personKey
+                                picked != null || rememberName -> ContactLinks(app.database).save(picked ?: ContactChoice(merchantName))
+                                else -> app.database.contacts().find(People.namedKey(merchantName))?.personKey
                             }
                             val result = app.finances.approve(c.id, accountId!!, kind, category, description.trim().ifBlank { Fmt.kind(kind) }, transferId,
                                 Money.tzs(amount), if (fee.trim() == "0") 0 else Money.tzs(fee), TaskTime.parse(occurred), personKey = personKey)
@@ -134,9 +138,9 @@ fun CandidateReviewSheet(c: FinanceCandidate, accounts: List<FinanceAccount>, al
                         if (!rememberChoice && (c.category != category || c.accountId != accountId)) app.skills.suggest("Payment choices for ${c.provider}", "PAYMENT_DEFAULT", requireNotNull(choiceKey),
                             org.json.JSONObject().put("account", accountId).put("category", category).toString(), "You confirmed this account/category while reviewing a payment. Review before applying to later matches.", c.sourceId)
                     }.isSuccess }
-                    val savedDefaults = if (rememberChoice) withContext(Dispatchers.IO) { runCatching { choiceKey?.let { com.hellfire.ass.finance.ReviewChoices.save(app, it, accountId!!, category) } }.isSuccess } else true
+                    val savedDefaults = if (rememberChoice) withContext(Dispatchers.IO) { runCatching { choiceKey?.let { ReviewChoices.save(app, it, accountId!!, category) } }.isSuccess } else true
                     onDone(msg + (if (!learningSaved) " Skill suggestion was not saved." else "") + if (!savedDefaults) " Defaults could not be saved; the payment itself was posted." else "")
-                } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); error = "Not posted. Check the account, amounts (whole shillings), date and duplicate status." }
+                } catch (caught: Exception) { Diagnostics.warn(caught); error = "Not posted. Check the account, amounts (whole shillings), date and duplicate status." }
                 finally { busy = false }
             }
         }, Modifier.fillMaxWidth(), enabled = ready, height = 52.dp)
@@ -156,21 +160,21 @@ fun MerchantSheet(provider: String, number: String, alias: MerchantAlias?, onDon
     val app = LocalEnv.current.app
     val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf(alias?.name.orEmpty()) }
-    var picked by remember { mutableStateOf<com.hellfire.ass.contacts.ContactChoice?>(null) }
+    var picked by remember { mutableStateOf<ContactChoice?>(null) }
     var category by remember { mutableStateOf(alias?.category ?: "Other") }
     val known by remember { app.database.finances().aliases() }.collectAsStateWithLifecycle(emptyList())
     HfBottomSheet(onDismiss = { onDone(null) }) {
         Text(stringResource(R.string.ui_name_this_merchant), style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
         Text("Lipa namba $number", style = Hf.type.rowSubtitle, color = Hf.colors.muted)
         ContactPersonField(name, { name = it; picked = null; known.firstOrNull { alias -> alias.name == it }?.let { category = it.category } }, "Merchant name", known.map { it.name }, onPick = { picked = it; name = it.displayName })
-        SavedContactStatus(com.hellfire.ass.insights.People.namedKey(name))
+        SavedContactStatus(People.namedKey(name))
         GroupLabel(stringResource(R.string.ui_usual_category))
         ChipPicker(Categories, category, { categoryLabel(it) }) { category = it }
         Note("Future payments to this number use this name and category. You still confirm each payment.")
         PrimaryButton(stringResource(R.string.ui_save_name), {
             scope.launch {
                 withContext(Dispatchers.IO) { app.database.withTransaction {
-                    com.hellfire.ass.contacts.ContactLinks(app.database).save(picked ?: com.hellfire.ass.contacts.ContactChoice(name))
+                    ContactLinks(app.database).save(picked ?: ContactChoice(name))
                     app.database.finances().merchant(MerchantAlias(provider, number, name.trim(), category, System.currentTimeMillis()))
                 } }
                 onDone("Saved ${name.trim()} for Lipa namba $number.")
@@ -225,7 +229,7 @@ fun CashSheet(onDone: (String?) -> Unit) {
                         }
                     }
                     onDone("Cash items added to To confirm. They count once you confirm them.")
-                } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); error = "Could not save. Check the account and use a description + amount for each item." }
+                } catch (caught: Exception) { Diagnostics.warn(caught); error = "Could not save. Check the account and use a description + amount for each item." }
                 finally { busy = false }
             }
         }, Modifier.fillMaxWidth(), enabled = preview != null && accounts.any { it.id == accountId } && !busy, height = 52.dp)

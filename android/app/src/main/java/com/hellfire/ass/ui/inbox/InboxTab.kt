@@ -27,6 +27,9 @@ import com.hellfire.ass.ui.theme.HfIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.communications.Accounts
+import com.hellfire.ass.library.LibraryRoutes
 
 enum class Channel(val label: String) { WHATSAPP("WhatsApp"), SMS("SMS"), EMAIL("Email"), CALL("Calls"), OTHER("Other") }
 
@@ -59,7 +62,7 @@ fun InboxTab() {
     var sent by remember { mutableStateOf<String?>(null) }
     var editing by remember { mutableStateOf<ReplyDraft?>(null) }
     var accountLabels by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
-    LaunchedEffect(drafts) { accountLabels = withContext(Dispatchers.IO) { runCatching { com.hellfire.ass.communications.Accounts.labels(app.secrets) }.getOrDefault(emptyMap()) } }
+    LaunchedEffect(drafts) { accountLabels = withContext(Dispatchers.IO) { runCatching { Accounts.labels(app.secrets) }.getOrDefault(emptyMap()) } }
     val focusDraft = remember { nav.consumePrefix("draft:") }
 
     LaunchedEffect(messages, events, media, candidates, tasks, accountLabels) {
@@ -118,7 +121,7 @@ fun InboxTab() {
             IconCircleButton(HfIcons.Plus, "New message", { editing = ReplyDraft() })
         }
         ListRow(stringResource(R.string.drawer_inbox), subtitle = stringResource(R.string.drawer_saved), chevron = true) {
-            nav.push(com.hellfire.ass.library.LibraryRoutes.universalInbox())
+            nav.push(LibraryRoutes.universalInbox())
         }
         if (search != null) HfTextField(search!!, { search = it }, stringResource(R.string.ui_search_all_saved_messages))
         FilterChips(filter) { filter = it }
@@ -180,7 +183,7 @@ fun InboxTab() {
                     val approval = app.communications.approve(d.id)
                     app.communications.sendApproved(d.id, approval)
                     "Reply sent to ${d.recipient} on ${Fmt.channel(d.channel)}. Delivery confirmation is tracked separately."
-                } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Send rejected or delivery unconfirmed. Check the channel; this draft will not retry automatically." }
+                } catch (caught: Exception) { Diagnostics.warn(caught); "Send rejected or delivery unconfirmed. Check the channel; this draft will not retry automatically." }
             }
         }, onDismiss = { sending = null })
     }

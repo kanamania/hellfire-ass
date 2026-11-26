@@ -14,6 +14,9 @@ import kotlinx.coroutines.flow.first
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.intelligence.ContentEngine
+import com.hellfire.ass.intelligence.IntelligenceWork
 
 data class ActionOutcome(val message: String, val route: Route? = null, val intent: Intent? = null, val failed: Boolean = false)
 
@@ -138,8 +141,8 @@ class DrawerActions(
     private suspend fun enqueue(mediaId: String?): ActionOutcome {
         val id = mediaId ?: return ActionOutcome("No saved original to process.", failed = true)
         val at = now()
-        app.database.jobs().enqueue(com.hellfire.ass.intelligence.ContentEngine.newJob(id, at).copy(priority = JobPriority.USER_REQUESTED))
-        runCatching { com.hellfire.ass.intelligence.IntelligenceWork.schedule(app) }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }
+        app.database.jobs().enqueue(ContentEngine.newJob(id, at).copy(priority = JobPriority.USER_REQUESTED))
+        runCatching { IntelligenceWork.schedule(app) }.onFailure { Diagnostics.warn(it) }
         return ActionOutcome("Queued for on-device analysis and transcription. It has not run yet; a speech model must be installed for a transcript.")
     }
 

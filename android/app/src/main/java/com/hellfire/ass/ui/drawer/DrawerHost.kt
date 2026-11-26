@@ -44,6 +44,7 @@ import com.hellfire.ass.ui.theme.HfIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.hellfire.ass.HellFireApp
 
 @Composable
 fun DrawerHost() {
@@ -151,7 +152,7 @@ fun DrawerHost() {
                 item?.let { row ->
                     Text(row.title.ifBlank { stringResource(R.string.ui_saved) }, style = Hf.type.rowTitle, color = Hf.colors.onSurface)
                     Note(row.summary.ifBlank { row.captureError ?: stringResource(R.string.ui_saved) })
-                    if (row.captureState != "COMPLETE") Banner(stringResource(R.string.drawer_incomplete) + ": " + (row.captureError ?: ""), com.hellfire.ass.ui.components.Tone.Warning, HfIcons.Info)
+                    if (row.captureState != "COMPLETE") Banner(stringResource(R.string.drawer_incomplete) + ": " + (row.captureError ?: ""), Tone.Warning, HfIcons.Info)
                     Text(stringResource(R.string.ui_saved) + " · " + row.captureState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
                     Text(stringResource(R.string.ui_processing) + ": " + row.processingState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
                     Text(stringResource(R.string.drawer_sync) + ": " + row.syncState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
@@ -224,7 +225,7 @@ private fun clipPart(item: ClipData.Item, context: android.content.Context): Dro
     return DropPart.Text(text.take(60_000))
 }
 
-private suspend fun ingest(app: com.hellfire.ass.HellFireApp, parts: List<DropPart>, origin: CaptureOrigin, busy: (Boolean) -> Unit) {
+private suspend fun ingest(app: HellFireApp, parts: List<DropPart>, origin: CaptureOrigin, busy: (Boolean) -> Unit) {
     busy(true)
     try {
         val outcome = withContext(Dispatchers.IO) { DrawerPipeline(app).ingest(parts, origin) }

@@ -27,6 +27,8 @@ import com.hellfire.ass.ui.components.*
 import com.hellfire.ass.ui.theme.Hf
 import com.hellfire.ass.ui.theme.HellFireTheme
 import kotlinx.coroutines.launch
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.security.AppLock
 
 /** In-memory consent for widget recording. It ends with the process or after an hour; it is never stored. */
 object RecordSession {
@@ -50,7 +52,7 @@ class RecordActivity : ComponentActivity() {
             Toast.makeText(this, "Recording stopped. Saved encrypted on this phone.", Toast.LENGTH_SHORT).show()
             finish(); return
         }
-        if (com.hellfire.ass.security.AppLock.enabled(this)) {
+        if (AppLock.enabled(this)) {
             startActivity(Intent(this, MainActivity::class.java).setData(Uri.parse("hellfire://settings/recordings")))
             finish(); return
         }
@@ -94,7 +96,7 @@ class RecordActivity : ComponentActivity() {
             val requested = MicrophoneService.requestStart(this, Intent(this, MicrophoneService::class.java).setAction(MicrophoneService.ACTION_START)
                 .putExtra("monitoring", true).putExtra("notice", true).putExtra("participants", people).putExtra("place", place).putExtra("queue", true))
             if (!requested) Toast.makeText(this, MicrophoneStatus.state.value, Toast.LENGTH_LONG).show()
-        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
+        } catch (caught: Exception) { Diagnostics.warn(caught);
             Toast.makeText(this, "Android blocked recording. Open HellFire and try from Settings › Recordings.", Toast.LENGTH_LONG).show()
         }
         app.captureScope.launch { Widgets.refreshRecord(app) }

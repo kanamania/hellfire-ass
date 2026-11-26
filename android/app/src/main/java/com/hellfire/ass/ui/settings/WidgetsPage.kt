@@ -11,15 +11,28 @@ import com.hellfire.ass.ui.components.*
 import com.hellfire.ass.ui.money.Categories
 import com.hellfire.ass.ui.money.ChipPicker
 import com.hellfire.ass.widgets.WidgetPrefs
+import com.hellfire.ass.widgets.AskReceiver
+import com.hellfire.ass.widgets.AskShortcutReceiver
+import com.hellfire.ass.widgets.BriefingReceiver
+import com.hellfire.ass.widgets.BudgetReceiver
+import com.hellfire.ass.widgets.CaptureHealthReceiver
+import com.hellfire.ass.widgets.CashShortcutReceiver
+import com.hellfire.ass.widgets.MoneyTodayReceiver
+import com.hellfire.ass.widgets.NoteShortcutReceiver
+import com.hellfire.ass.widgets.PromisesReceiver
+import com.hellfire.ass.widgets.RecordReceiver
+import com.hellfire.ass.widgets.RepliesReceiver
+import com.hellfire.ass.widgets.ReviewReceiver
+import com.hellfire.ass.widgets.WalletsReceiver
 
 private val pinnable = listOf(
-    "Daily briefing" to com.hellfire.ass.widgets.BriefingReceiver::class.java, "Money today" to com.hellfire.ass.widgets.MoneyTodayReceiver::class.java,
-    "Promises" to com.hellfire.ass.widgets.PromisesReceiver::class.java, "Wallets" to com.hellfire.ass.widgets.WalletsReceiver::class.java,
-    "Replies waiting" to com.hellfire.ass.widgets.RepliesReceiver::class.java, "Ask HellFire" to com.hellfire.ass.widgets.AskReceiver::class.java,
-    "Record" to com.hellfire.ass.widgets.RecordReceiver::class.java, "Nightly review" to com.hellfire.ass.widgets.ReviewReceiver::class.java,
-    "Budget" to com.hellfire.ass.widgets.BudgetReceiver::class.java, "Capture health" to com.hellfire.ass.widgets.CaptureHealthReceiver::class.java,
-    "Ask by voice" to com.hellfire.ass.widgets.AskShortcutReceiver::class.java, "Add cash" to com.hellfire.ass.widgets.CashShortcutReceiver::class.java,
-    "Quick note" to com.hellfire.ass.widgets.NoteShortcutReceiver::class.java,
+    "Daily briefing" to BriefingReceiver::class.java, "Money today" to MoneyTodayReceiver::class.java,
+    "Promises" to PromisesReceiver::class.java, "Wallets" to WalletsReceiver::class.java,
+    "Replies waiting" to RepliesReceiver::class.java, "Ask HellFire" to AskReceiver::class.java,
+    "Record" to RecordReceiver::class.java, "Nightly review" to ReviewReceiver::class.java,
+    "Budget" to BudgetReceiver::class.java, "Capture health" to CaptureHealthReceiver::class.java,
+    "Ask by voice" to AskShortcutReceiver::class.java, "Add cash" to CashShortcutReceiver::class.java,
+    "Quick note" to NoteShortcutReceiver::class.java,
 )
 
 /** Settings › Home screen widgets (not drawn): privacy for amounts and previews, and the Budget widget's category. */

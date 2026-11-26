@@ -23,6 +23,7 @@ import com.hellfire.ass.ui.theme.Hf
 import com.hellfire.ass.ui.theme.HfIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.hellfire.ass.tasks.TaskTime
 
 /** Ledger and accounts loaded once per screen; reports then compute from these in memory. */
 @Composable
@@ -169,7 +170,7 @@ fun MoneyReport(arg: String) {
         }, calendar = { MoneyCalendar(all.filter { filter.accepts(it) }) })
 }
 
-object TaskTimeFmt { fun iso(ms: Long) = com.hellfire.ass.tasks.TaskTime.display(ms) }
+object TaskTimeFmt { fun iso(ms: Long) = TaskTime.display(ms) }
 
 @Composable
 private fun MoneyFilterSheet(initial: MoneyFilter, accounts: List<FinanceAccount>, count: Int, onApply: (MoneyFilter) -> Unit) {

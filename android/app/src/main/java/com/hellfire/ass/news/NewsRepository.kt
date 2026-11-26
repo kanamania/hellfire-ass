@@ -11,12 +11,17 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.UUID
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.data.EventDatabase
+import com.hellfire.ass.events.NotificationNormalizer
+import com.hellfire.ass.events.NotificationSnapshot
+import com.hellfire.ass.memory.VectorMath
 
 class NewsRepository(
     private val app: HellFireApp,
     private val http: NewsHttp = HttpsNewsHttp(),
     private val poster: NewsPoster = AndroidNewsPoster(app),
-    private val database: com.hellfire.ass.data.EventDatabase = app.database,
+    private val database: EventDatabase = app.database,
     private val embedding: suspend (String) -> Pair<String, FloatArray>? = { text ->
         val model = app.semantic.embeddingModel()
         val vector = if (model == null) null else app.semantic.embedText(text)
@@ -324,8 +329,8 @@ class NewsRepository(
     override fun hasXToken(): Boolean = xToken() != null
 
     override suspend fun dropIn(text: String, url: String?): DropResult {
-        val safe = com.hellfire.ass.events.NotificationNormalizer.normalize(
-            com.hellfire.ass.events.NotificationSnapshot("news-share", "owner.news", 0, 0, fields = mapOf("text" to listOf(text))), app.packageName)
+        val safe = NotificationNormalizer.normalize(
+            NotificationSnapshot("news-share", "owner.news", 0, 0, fields = mapOf("text" to listOf(text))), app.packageName)
         require(safe != null && !safe.securitySensitive && !safe.contentRedacted) { "Remove authentication codes before checking against news." }
         ensureDefaults()
         val now = System.currentTimeMillis()
@@ -378,10 +383,10 @@ class NewsRepository(
         val features = NewsText.features(input)
         val encoded = try { embedding("${item.title}\n${item.text.take(1800)}") }
             catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
-            catch (error: Exception) { com.hellfire.ass.Diagnostics.warn(error); null }
+            catch (error: Exception) { Diagnostics.warn(error); null }
         val model = encoded?.first?.takeIf { it.isNotBlank() }
         val vector = encoded?.second?.takeIf { model != null && it.size in 1..4096 && it.all(Float::isFinite) }
-            ?.let(com.hellfire.ass.memory.VectorMath::normalize)?.takeIf { it.isNotEmpty() }
+            ?.let(VectorMath::normalize)?.takeIf { it.isNotEmpty() }
         val since = now - 7L * 86_400_000L
         val candidates = dao.activeEvents(since, 300).mapNotNull { event -> centroidOf(event)?.let { centroid ->
             if (model != null && JSONObject(event.featuresJson).optString("embeddingModel") == model) centroid else centroid.copy(vector = null)
@@ -392,7 +397,7 @@ class NewsRepository(
             features.language, input.publishedAt, now, features.contentType, features.agency, features.fingerprint.toString(16),
             JSONArray(item.media.map { JSONObject().put("type", it.type).put("url", it.url).put("mime", it.mime ?: JSONObject.NULL) }).toString(),
             JSONObject(features.toJson()).put("embeddingModel", if (vector == null) JSONObject.NULL else model).toString(),
-            vector = vector?.let(com.hellfire.ass.memory.VectorMath::encode), eventId = eventId, shared = shared)
+            vector = vector?.let(VectorMath::encode), eventId = eventId, shared = shared)
         if (dao.insertArticle(article) == -1L) return false
         touched += eventId
         // Publish the centroid before the next article in this same refresh is clustered.
@@ -424,7 +429,7 @@ class NewsRepository(
         pairs.forEachIndexed { index, (input, feat) ->
             val article = articles[index]
             val vector = if (embeddingModel != null && JSONObject(article.featuresJson).optString("embeddingModel") == embeddingModel)
-                article.vector?.let { bytes -> runCatching { com.hellfire.ass.memory.VectorMath.decode(bytes) }.getOrNull() }
+                article.vector?.let { bytes -> runCatching { VectorMath.decode(bytes) }.getOrNull() }
                     ?.takeIf { it.size in 1..4096 && it.all(Float::isFinite) } else null
             centroid = NewsClusterer.add(centroid, eventId, input.id, feat, input.publishedAt, vector)
         }

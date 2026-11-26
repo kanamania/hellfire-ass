@@ -6,6 +6,7 @@ import androidx.work.*
 import com.hellfire.ass.HellFireApp
 import kotlinx.coroutines.*
 import org.json.JSONObject
+import com.hellfire.ass.Diagnostics
 
 /**
  * Builds the full-text index for events captured before it existed (or restored from a backup). New captures are
@@ -49,7 +50,7 @@ object SearchBackfill {
                     if (!event.contentAvailable || event.securitySensitive || event.source == "owner_skill_use") continue
                     val text = runCatching {
                         SearchText.of(JSONObject(app.cipher.decrypt(event.encryptedPayload).toString(Charsets.UTF_8)).getJSONObject("fields"))
-                    }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }.getOrNull() ?: continue
+                    }.onFailure { Diagnostics.warn(it) }.getOrNull() ?: continue
                     dao.insertSearch(SourceSearch(event.id, text))
                 }
             }
@@ -64,5 +65,5 @@ class SearchBackfillWorker(context: Context, params: WorkerParameters) : Corouti
     override suspend fun doWork(): Result = try {
         SearchBackfill.run(applicationContext as HellFireApp); Result.success()
     } catch (e: CancellationException) { throw e }
-    catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); Result.retry() }
+    catch (caught: Exception) { Diagnostics.warn(caught); Result.retry() }
 }

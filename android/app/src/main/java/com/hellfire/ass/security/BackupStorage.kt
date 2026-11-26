@@ -4,6 +4,7 @@ import android.content.Context
 import com.hellfire.ass.HellFireApp
 import kotlinx.coroutines.sync.withLock
 import java.io.File
+import com.hellfire.ass.player.FrameScrubber
 
 data class StorageUsage(
     val managedBytes: Long,
@@ -55,7 +56,7 @@ object BackupStorage {
         }
         val players = File(app.noBackupFilesDir, "player-thumbs")
         val before = bytesOf(players)
-        com.hellfire.ass.player.FrameScrubber.purgeOrphans(app)
+        FrameScrubber.purgeOrphans(app)
         return freed + (before - bytesOf(players)).coerceAtLeast(0)
     }
 

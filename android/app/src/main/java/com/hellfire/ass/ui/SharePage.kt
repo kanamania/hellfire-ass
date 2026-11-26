@@ -24,6 +24,14 @@ import com.hellfire.ass.ui.tasks.*
 import com.hellfire.ass.ui.theme.Hf
 import kotlinx.coroutines.*
 import java.util.UUID
+import com.hellfire.ass.OwnerError
+import com.hellfire.ass.library.CaptureOrigin
+import com.hellfire.ass.memory.AiSkills
+import com.hellfire.ass.news.DropResult
+import com.hellfire.ass.ui.news.NewsUi
+import com.hellfire.ass.ui.news.failText
+import com.hellfire.ass.ui.news.newsCall
+import com.hellfire.ass.ui.theme.HfIcons
 
 object SharedContent {
     var intent by mutableStateOf<Intent?>(null)
@@ -44,7 +52,7 @@ fun SharePage() {
     val app = LocalEnv.current.app
     val scope = rememberCoroutineScope()
     val incoming = SharedContent.intent
-    val requestId = incoming?.getStringExtra("hellfire-share-id") ?: incoming?.let { com.hellfire.ass.memory.AiSkills.key(SharedContent.text(it)) }.orEmpty()
+    val requestId = incoming?.getStringExtra("hellfire-share-id") ?: incoming?.let { AiSkills.key(SharedContent.text(it)) }.orEmpty()
     var text by rememberPrivateDraft("share-$requestId-text", incoming?.let(SharedContent::text)?.take(60000).orEmpty())
     var subject by rememberPrivateDraft("share-$requestId-subject")
     var action by rememberPrivateDraft("share-$requestId-action", "Save note")
@@ -73,7 +81,7 @@ fun SharePage() {
                         if (text.isNotBlank()) add(DropPart.Text(text, name = subject.ifBlank { "Shared text" }))
                         files.forEach { add(DropPart.UriPart(it)) }
                     }
-                    val outcome = withContext(Dispatchers.IO) { DrawerPipeline(app).ingest(parts, com.hellfire.ass.library.CaptureOrigin.SHARE, incoming.getPackage().orEmpty()) }
+                    val outcome = withContext(Dispatchers.IO) { DrawerPipeline(app).ingest(parts, CaptureOrigin.SHARE, incoming.getPackage().orEmpty()) }
                     DrawerController.show(outcome.inboxId)
                     message = if (outcome.captureState == "COMPLETE") "Saved to the drawer." else "Incomplete capture. ${outcome.captureError.orEmpty()}"
                 } catch (e: CancellationException) { throw e }
@@ -93,7 +101,7 @@ fun SharePage() {
                     SharedContent.intent = null
                 } catch (e: CancellationException) { throw e }
                 catch (e: Exception) { message = context.getString(R.string.ui_could_not_save_the_complete_share) + " " + when (e) {
-                    is com.hellfire.ass.OwnerError -> context.getString(e.text)
+                    is OwnerError -> context.getString(e.text)
                     is IllegalArgumentException -> e.message.orEmpty()
                     else -> context.getString(R.string.ui_check_file_access_and_storage)
                 } }
@@ -111,20 +119,20 @@ private fun NewsCheck(text: String, busy: Boolean) {
     val nav = LocalNav.current
     val scope = rememberCoroutineScope()
     var checking by remember { mutableStateOf(false) }
-    var result by remember { mutableStateOf<com.hellfire.ass.news.DropResult?>(null) }
+    var result by remember { mutableStateOf<DropResult?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     SecondaryButton(if (checking) "Checking…" else "Check against news", {
         checking = true; error = null
         scope.launch {
-            val r = com.hellfire.ass.ui.news.newsCall { app.news.dropIn(text.take(4000), com.hellfire.ass.ui.news.NewsUi.firstUrl(text)) }
+            val r = newsCall { app.news.dropIn(text.take(4000), NewsUi.firstUrl(text)) }
             checking = false
             result = r.getOrNull()
-            error = r.exceptionOrNull()?.let { com.hellfire.ass.ui.news.failText(it, "Could not check against news") }
+            error = r.exceptionOrNull()?.let { failText(it, "Could not check against news") }
         }
     }, Modifier.fillMaxWidth(), enabled = !busy && !checking && text.isNotBlank())
     error?.let { Banner(it, Tone.Danger, null) }
     result?.let { r ->
-        Banner(r.message, Tone.Info, com.hellfire.ass.ui.theme.HfIcons.Info)
+        Banner(r.message, Tone.Info, HfIcons.Info)
         r.eventId?.let { id -> QuietButton("Open story", { nav.push(Screen.NewsStory, id) }) }
     }
 }

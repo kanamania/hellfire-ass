@@ -47,6 +47,11 @@ import com.hellfire.ass.sms.SmsSyncWorker
 import androidx.work.WorkManager
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import com.hellfire.ass.calendar.CalendarLinks
+import com.hellfire.ass.tasks.TaskScheduler
+import com.hellfire.ass.ui.SharedContent
+import com.hellfire.ass.ui.components.PrimaryButton
+import com.hellfire.ass.ui.theme.HellFireTheme
 
 class MainActivity : ComponentActivity() {
     private val lockSession = AppLockSession()
@@ -124,7 +129,7 @@ class MainActivity : ComponentActivity() {
                         onSession = {
                             if (permissions.voiceServiceActive) {
                                 try { startLocalVoiceInteraction(Bundle()) }
-                                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); message = "Assistant session unavailable. Try the system assistant gesture and record the device result." }
+                                catch (caught: Exception) { Diagnostics.warn(caught); message = "Assistant session unavailable. Try the system assistant gesture and record the device result." }
                             } else message = "Select HellFire Ass as the digital assistant, then try again."
                         },
                     ),
@@ -135,12 +140,12 @@ class MainActivity : ComponentActivity() {
                     onMessageShown = { message = null },
                 )
             } else {
-                com.hellfire.ass.ui.theme.HellFireTheme {
+                HellFireTheme {
                     Surface(Modifier.fillMaxSize()) {
                         Column(Modifier.safeDrawingPadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             Text("HellFire Ass is locked", style = MaterialTheme.typography.headlineMedium)
                             Text("Use your enrolled fingerprint or device PIN, pattern or password to open your private data.")
-                            com.hellfire.ass.ui.components.PrimaryButton("Unlock HellFire Ass", { authenticate() })
+                            PrimaryButton("Unlock HellFire Ass", { authenticate() })
                             Text(lockMessage)
                         }
                     }
@@ -161,10 +166,10 @@ class MainActivity : ComponentActivity() {
      */
     private fun linkFor(intent: Intent?): Uri? = when {
         intent?.component?.className == MainActivity::class.java.name && intent.action in setOf(Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE) -> {
-            com.hellfire.ass.ui.SharedContent.intent = Intent(intent)
+            SharedContent.intent = Intent(intent)
             Uri.parse("hellfire://share")
         }
-        com.hellfire.ass.calendar.CalendarLinks.external(intent) != null -> com.hellfire.ass.calendar.CalendarLinks.external(intent)
+        CalendarLinks.external(intent) != null -> CalendarLinks.external(intent)
         intent?.action == Intent.ACTION_ASSIST -> Uri.parse("hellfire://ask")
         intent?.data?.scheme == "hellfire" && intent.component?.className == MainActivity::class.java.name -> intent.data
         else -> null
@@ -174,7 +179,7 @@ class MainActivity : ComponentActivity() {
         super.onResume(); refreshStatus()
         val app = application as HellFireApp
         app.refreshSmsCapture()
-        app.captureScope.launch { runCatching { com.hellfire.ass.tasks.TaskScheduler.restore(app) } }
+        app.captureScope.launch { runCatching { TaskScheduler.restore(app) } }
     }
     @Suppress("DEPRECATION")
     private fun authenticate(enable: Boolean? = null) {
@@ -205,7 +210,7 @@ class MainActivity : ComponentActivity() {
                         locked = lockSession.requiresUnlock(lockEnabled)
                         lockMessage = ""
                         message = if (lockEnabled) "App lock enabled. HellFire locks when it leaves the foreground." else "App lock disabled."
-                    } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); lockMessage = "Could not save app lock. Try again."; message = lockMessage }
+                    } catch (caught: Exception) { Diagnostics.warn(caught); lockMessage = "Could not save app lock. Try again."; message = lockMessage }
                 }
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                     if (authentication !== signal) return
@@ -214,7 +219,7 @@ class MainActivity : ComponentActivity() {
                     message = lockMessage
                 }
             })
-        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
+        } catch (caught: Exception) { Diagnostics.warn(caught);
             authentication = null
             lockMessage = "Authentication could not start. Check your device screen lock and fingerprint enrollment."
             message = lockMessage
@@ -279,7 +284,7 @@ class MainActivity : ComponentActivity() {
         val roles = getSystemService(RoleManager::class.java)
         if (roles.isRoleAvailable(RoleManager.ROLE_ASSISTANT) && !roles.isRoleHeld(RoleManager.ROLE_ASSISTANT)) {
             try { requestRole.launch(roles.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT)); return }
-            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); message = "Role chooser unavailable. Use digital assistant settings." }
+            catch (caught: Exception) { Diagnostics.warn(caught); message = "Role chooser unavailable. Use digital assistant settings." }
         }
         openSettings(Settings.ACTION_VOICE_INPUT_SETTINGS)
     }
@@ -290,7 +295,7 @@ class MainActivity : ComponentActivity() {
                 if (action == Settings.ACTION_APPLICATION_DETAILS_SETTINGS || action == Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM) data = Uri.parse("package:$packageName")
                 if (action == Settings.ACTION_APP_NOTIFICATION_SETTINGS) putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
             })
-        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
+        } catch (caught: Exception) { Diagnostics.warn(caught);
             message = "This settings page is unavailable on this device. Open Android Settings manually."
         }
     }

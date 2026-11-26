@@ -69,7 +69,7 @@ fun SyncDashboardPage() {
             "Passphrase" to if (hasPass) "Saved on this phone" else "Not set",
             "Network" to if (wifi) "Wi-Fi only" else "Any connection",
         ) + counts.map { it.state to it.count.toString() })
-        if (server == null) SecondaryButton(stringResource(R.string.ui_web_access), { nav.push(com.hellfire.ass.ui.Screen.WebAccess) }, Modifier.fillMaxWidth())
+        if (server == null) SecondaryButton(stringResource(R.string.ui_web_access), { nav.push(Screen.WebAccess) }, Modifier.fillMaxWidth())
         SectionCard("Passphrase") {
             HfTextField(passphrase, { passphrase = it }, "Library passphrase", password = true, supporting = "At least 12 characters. It never leaves this phone. The website asks for the same passphrase to decrypt.")
             PrimaryButton("Save passphrase", {

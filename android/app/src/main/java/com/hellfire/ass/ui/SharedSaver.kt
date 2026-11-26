@@ -13,6 +13,11 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import java.util.UUID
+import com.hellfire.ass.OwnerError
+import com.hellfire.ass.data.EventDatabase
+import com.hellfire.ass.data.EventRepository
+import com.hellfire.ass.finance.FinanceRepository
+import com.hellfire.ass.media.MediaWork
 
 /** One explicitly approved share, with durable per-file checkpoints. MediaVault also deduplicates by content hash. */
 object SharedSaver {
@@ -34,18 +39,18 @@ object SharedSaver {
             val mime = app.contentResolver.getType(uri).orEmpty()
             val kind = when { mime.startsWith("image/") -> "IMAGE"; mime.startsWith("audio/") -> "VOICE_NOTE"; mime.startsWith("video/") -> "VIDEO"; mime == "application/pdf" -> "DOCUMENT"; else -> throw IllegalArgumentException("Unsupported file. Share an image, PDF, audio or video.") }
             val item = app.media.import(uri, kind)
-            com.hellfire.ass.media.MediaWork.queue(app, item.id)
+            MediaWork.queue(app, item.id)
             done.put(uri.toString(), item.id); app.secrets.save("share-progress", all)
         }
         progress.put("complete", true); app.secrets.save("share-progress", all)
         Result(sourceId, taskId, done.length())
     }
-    suspend fun saveText(db: com.hellfire.ass.data.EventDatabase, events: com.hellfire.ass.data.EventRepository, packageName: String,
+    suspend fun saveText(db: EventDatabase, events: EventRepository, packageName: String,
         key: String, now: Long, action: String, text: String, subject: String): Pair<String, String?> {
         require(action in setOf("Save note", "Create reminder", "Review expense") && text.length <= 60000 && subject.length <= 200)
         val raw = NotificationSnapshot("share:$key", "owner.share", now, now, source = "owner_share", fields = mapOf("text" to listOf(text), "title" to listOf(subject)))
         val safe = requireNotNull(NotificationNormalizer.normalize(raw, packageName))
-        if (safe.securitySensitive) throw com.hellfire.ass.OwnerError(R.string.ui_remove_authentication_content_before)
+        if (safe.securitySensitive) throw OwnerError(R.string.ui_remove_authentication_content_before)
         val sanitized = safe.snapshot.fields["text"].orEmpty().joinToString("\n")
         val recordId = UUID.nameUUIDFromBytes(key.toByteArray()).toString()
         db.withTransaction {
@@ -53,7 +58,7 @@ object SharedSaver {
                 events.capture(raw, packageName)
                 if (sanitized.isNotBlank()) when (action) {
                     "Save note" -> db.memory().insert(MemoryItem(recordId, safe.id, safe.snapshot.fields["title"]?.firstOrNull()?.ifBlank { "Shared note" } ?: "Shared note", sanitized.take(4000), "OWNER_NOTE", 100, now, now))
-                    "Review expense" -> com.hellfire.ass.finance.FinanceRepository(db).collect(safe.id, now, "owner.share", sanitized)
+                    "Review expense" -> FinanceRepository(db).collect(safe.id, now, "owner.share", sanitized)
                     "Create reminder" -> db.tasks().insert(AssistantTask(recordId, safe.id, sanitized.take(300), now + 3_600_000, party = "OWNER", evidence = sanitized.take(1000), createdAt = now, updatedAt = now))
                 }
             }

@@ -20,6 +20,11 @@ import com.hellfire.ass.security.PortableBackup
 import com.hellfire.ass.ui.components.*
 import com.hellfire.ass.ui.theme.Hf
 import kotlinx.coroutines.*
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.security.BackupBlocked
+import com.hellfire.ass.security.BackupReadiness
+import com.hellfire.ass.security.BackupSelection
+import com.hellfire.ass.security.RestoreReport
 
 /** Keeps a selected archive passphrase in memory while Android's document picker is open. */
 class BackupPassphraseState : ViewModel() {
@@ -51,18 +56,18 @@ fun BackupScreen(app: HellFireApp) {
                     result = (if (outcome.blocked.isEmpty()) "" else "Partial backup: ${outcome.blocked.size} originals were unavailable and are not backed up. Other records and originals can be restored. ") + "Encrypted portable backup saved. Keep its passphrase separately; there is no recovery without it. Test restore on an empty installation before relying on this backup."
                 }
                 catch (e: CancellationException) { result = "Backup interrupted; the selected destination may contain an incomplete encrypted file."; throw e }
-                catch (blocked: com.hellfire.ass.security.BackupBlocked) { result = blocked.message ?: "Backup blocked." }
-                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); result = "Backup failed. Check free storage, destination, passphrase length and encrypted staging space and the 1 GiB database limit. Partial output is incomplete." }
+                catch (blocked: BackupBlocked) { result = blocked.message ?: "Backup blocked." }
+                catch (caught: Exception) { Diagnostics.warn(caught); result = "Backup failed. Check free storage, destination, passphrase length and encrypted staging space and the 1 GiB database limit. Partial output is incomplete." }
                 finally { secret.fill('\u0000'); busy = false }
             }
         } else pending.clear()
     }
-    var inspected by remember { mutableStateOf<com.hellfire.ass.security.RestoreReport?>(null) }
+    var inspected by remember { mutableStateOf<RestoreReport?>(null) }
     var inspectedUris by remember { mutableStateOf<List<android.net.Uri>>(emptyList()) }
     var pickKinds by remember { mutableStateOf(setOf<String>()) }
     var pickCollections by remember { mutableStateOf(setOf<String>()) }
     var pickItems by remember { mutableStateOf(setOf<String>()) }
-    fun missingNote(report: com.hellfire.ass.security.RestoreReport) = if (report.missing.isEmpty()) "" else
+    fun missingNote(report: RestoreReport) = if (report.missing.isEmpty()) "" else
         " ${report.missing.size} item(s) had no original in the archive and were restored as records only (marked missing): ${report.missing.take(5).joinToString(", ")}${if (report.missing.size > 5) "…" else ""}."
     val verifier = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
@@ -71,7 +76,7 @@ fun BackupScreen(app: HellFireApp) {
                 busy = true
                 try { backup.verify(uri, secret); result = "Backup authenticated: all tables and the originals stored in this archive were hash-checked. Originals an incremental archive omitted live in its older archives. Current data was unchanged. A replacement-phone restore still needs its own device test." }
                 catch (e: CancellationException) { throw e }
-                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); result = "Verification failed: wrong passphrase or an invalid or incomplete archive. Nothing was changed." }
+                catch (caught: Exception) { Diagnostics.warn(caught); result = "Verification failed: wrong passphrase or an invalid or incomplete archive. Nothing was changed." }
                 finally { secret.fill('\u0000'); busy = false }
             }
         } else pending.clear()
@@ -87,7 +92,7 @@ fun BackupScreen(app: HellFireApp) {
                     result = "Archive verified. Choose what to restore below, then enter the passphrase again."
                 }
                 catch (e: CancellationException) { throw e }
-                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); inspected = null; result = "Could not open the archive: wrong passphrase or an invalid or incomplete backup." }
+                catch (caught: Exception) { Diagnostics.warn(caught); inspected = null; result = "Could not open the archive: wrong passphrase or an invalid or incomplete backup." }
                 finally { secret.fill('\u0000'); busy = false }
             }
         } else pending.clear()
@@ -99,7 +104,7 @@ fun BackupScreen(app: HellFireApp) {
                 busy = true
                 try { val report = backup.restore(uris, secret); result = "Backup authenticated and restored (${report.restoredOriginals} originals).${missingNote(report)} Reconnect accounts, regrant Android permissions and reimport model files as needed. No message was sent." }
                 catch (e: CancellationException) { result = "Restore interrupted. Reopen the app to recover any pending import."; throw e }
-                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); result = "Restore failed: wrong passphrase, invalid/incomplete backup, missing older archives for an incremental backup, unavailable storage, or local data/access still present. Existing data is retained. Restore needs an empty database with SMS, notifications and account integrations disconnected." + (caught.message?.takeIf { it.contains("older archives") }?.let { " $it." } ?: "") }
+                catch (caught: Exception) { Diagnostics.warn(caught); result = "Restore failed: wrong passphrase, invalid/incomplete backup, missing older archives for an incremental backup, unavailable storage, or local data/access still present. Existing data is retained. Restore needs an empty database with SMS, notifications and account integrations disconnected." + (caught.message?.takeIf { it.contains("older archives") }?.let { " $it." } ?: "") }
                 finally { secret.fill('\u0000'); busy = false }
             }
         } else pending.clear()
@@ -109,7 +114,7 @@ fun BackupScreen(app: HellFireApp) {
         if (!busy) readiness = withContext(Dispatchers.IO) {
             val originals = app.database.media().all().fold(0L) { n, m -> Math.addExact(n, m.size) }
             val bytes = app.getDatabasePath("hellfire.db").length()
-            val required = runCatching { com.hellfire.ass.security.BackupReadiness.stagingBytes(originals, bytes) }.getOrNull()
+            val required = runCatching { BackupReadiness.stagingBytes(originals, bytes) }.getOrNull()
             val verified = app.getSharedPreferences("ui", 0).getLong("last_backup_verified_at", 0)
             listOf("Originals" to "${originals / (1024 * 1024)} MiB", "Free space" to "${app.noBackupFilesDir.usableSpace / (1024 * 1024)} MiB",
                 "Estimated staging space" to (required?.let { "${it / (1024 * 1024)} MiB" } ?: "Exceeds archive limits"),
@@ -142,12 +147,12 @@ fun BackupScreen(app: HellFireApp) {
             val chosen = pickKinds.isNotEmpty() || pickCollections.isNotEmpty() || pickItems.isNotEmpty()
             PrimaryButton("Restore selected", {
                 val secret = password.toCharArray(); password = ""
-                val selection = com.hellfire.ass.security.BackupSelection(pickItems, pickKinds, pickCollections)
+                val selection = BackupSelection(pickItems, pickKinds, pickCollections)
                 scope.launch {
                     busy = true
                     try { val done = backup.restore(inspectedUris, secret, selection); inspected = null; result = "Restored ${done.restoredOriginals} originals with their records. Search was rebuilt." }
                     catch (e: CancellationException) { throw e }
-                    catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); result = "Selective restore failed. Nothing was changed. Check the passphrase, free space and that older archives were selected for an incremental backup." }
+                    catch (caught: Exception) { Diagnostics.warn(caught); result = "Selective restore failed. Nothing was changed. Check the passphrase, free space and that older archives were selected for an incremental backup." }
                     finally { secret.fill('\u0000'); busy = false }
                 }
             }, Modifier.fillMaxWidth(), enabled = !busy && chosen && password.length >= 12)

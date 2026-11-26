@@ -34,6 +34,7 @@ import com.hellfire.ass.ui.theme.Hf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.hellfire.ass.HellFireApp
 
 
 @Composable
@@ -62,7 +63,7 @@ internal fun VolumeBrightness(activity: Activity?) {
 }
 
 @Composable
-internal fun TrackRow(controller: MediaController?, tracks: Tracks, scope: kotlinx.coroutines.CoroutineScope, app: com.hellfire.ass.HellFireApp, itemId: String) {
+internal fun TrackRow(controller: MediaController?, tracks: Tracks, scope: kotlinx.coroutines.CoroutineScope, app: HellFireApp, itemId: String) {
     val player = controller
     val audio = tracks.groups.withIndex().filter { it.value.type == C.TRACK_TYPE_AUDIO }
     val text = tracks.groups.withIndex().filter { it.value.type == C.TRACK_TYPE_TEXT }
@@ -112,7 +113,7 @@ internal fun TrackRow(controller: MediaController?, tracks: Tracks, scope: kotli
 }
 
 @Composable
-internal fun BookmarkThumb(app: com.hellfire.ass.HellFireApp, relative: String?) {
+internal fun BookmarkThumb(app: HellFireApp, relative: String?) {
     val image by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, relative) {
         value = withContext(Dispatchers.IO) {
             FrameScrubber.thumbFile(app, relative)?.let { file ->

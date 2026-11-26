@@ -20,6 +20,12 @@ import com.hellfire.ass.ui.theme.Hf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.hellfire.ass.ai.AiState
+import com.hellfire.ass.communications.CommunicationMessage
+import com.hellfire.ass.communications.OutboundDraft
+import com.hellfire.ass.data.SourceEvent
+import com.hellfire.ass.media.MediaItem
+import com.hellfire.ass.tasks.AssistantTask
 
 // ---------------- Capture ----------------
 
@@ -109,7 +115,7 @@ fun FixSmsPage(id: String) {
     val app = LocalEnv.current.app
     val nav = LocalNav.current
     val scope = rememberCoroutineScope()
-    var event by remember { mutableStateOf<com.hellfire.ass.data.SourceEvent?>(null) }
+    var event by remember { mutableStateOf<SourceEvent?>(null) }
     var text by remember { mutableStateOf("") }
     var sender by remember { mutableStateOf("") }
     var state by remember { mutableStateOf("") }
@@ -161,7 +167,7 @@ fun TasksReport() {
     val nav = LocalNav.current
     val range = ReportRange.range
     val tick by remember { app.database.tasks().tasks() }.collectAsStateWithLifecycle(emptyList())
-    var data by remember { mutableStateOf<Pair<List<com.hellfire.ass.tasks.AssistantTask>, Int>?>(null) }
+    var data by remember { mutableStateOf<Pair<List<AssistantTask>, Int>?>(null) }
     LaunchedEffect(range, tick) { data = withContext(Dispatchers.IO) {
         app.database.tasks().all().filter { it.dueAt in range } to app.database.communications().audits("OWNER_TASK_SNOOZE").count { it.occurredAt in range }
     } }
@@ -173,7 +179,7 @@ fun TasksReport() {
     val count = rows.groupingBy { it.second }.eachCount()
     val due = rows.count { it.second in setOf(TaskOutcome.OnTime, TaskOutcome.Late, TaskOutcome.DoneUnknown, TaskOutcome.Overdue) }
     val shown = rows.filter { outcomes.isEmpty() || it.second.label in outcomes }
-    fun label(t: com.hellfire.ass.tasks.AssistantTask, o: TaskOutcome) = if (o == TaskOutcome.Late) lateness(t.dueAt, t.completedAtOrNull()!!) else o.label
+    fun label(t: AssistantTask, o: TaskOutcome) = if (o == TaskOutcome.Late) lateness(t.dueAt, t.completedAtOrNull()!!) else o.label
     val spec = ExportSpec("Tasks", range.label, listOf("On time" to "${count[TaskOutcome.OnTime] ?: 0}", "Late" to "${count[TaskOutcome.Late] ?: 0}",
         "Overdue" to "${count[TaskOutcome.Overdue] ?: 0}", "Waiting" to "${count[TaskOutcome.Waiting] ?: 0}"),
         listOf("Task", "Due", "Outcome", "Alerts"), shown.map { (t, o) -> listOf(t.title, Fmt.dayTime(t.dueAt), label(t, o), t.alertCount.toString()) }, null,
@@ -210,7 +216,7 @@ fun TasksReport() {
 fun MessagesReport() {
     val app = LocalEnv.current.app
     val range = ReportRange.range
-    var data by remember { mutableStateOf<Pair<List<com.hellfire.ass.communications.CommunicationMessage>, List<com.hellfire.ass.communications.OutboundDraft>>?>(null) }
+    var data by remember { mutableStateOf<Pair<List<CommunicationMessage>, List<OutboundDraft>>?>(null) }
     LaunchedEffect(range) { data = withContext(Dispatchers.IO) {
         app.database.communications().messagesIn(range.start, range.end) to app.database.communications().allDrafts().filter { it.createdAt in range }
     } }
@@ -220,7 +226,7 @@ fun MessagesReport() {
     val incoming = messages.filter { it.direction == "INCOMING" }
     val sent = drafts.filter { it.state in SENT_STATES }
     val email = incoming.count { it.channel == "EMAIL_IMAP" }
-    val keyOf: (com.hellfire.ass.communications.CommunicationMessage) -> String = { if (group == "Contact") (if (it.direction == "INCOMING") it.sender else it.recipient) else Fmt.channel(it.channel) }
+    val keyOf: (CommunicationMessage) -> String = { if (group == "Contact") (if (it.direction == "INCOMING") it.sender else it.recipient) else Fmt.channel(it.channel) }
     val groups = messages.groupBy(keyOf).map { (k, list) -> listOf(k, Fmt.channel(list.first().channel), list.count { it.direction == "INCOMING" }, list.count { it.direction == "OUTGOING" }) }
     val spec = ExportSpec("Messages", range.label, listOf("Received" to incoming.size.toString(), "Sent by you" to sent.size.toString()),
         listOf(group, "Channel", "In", "Out"), groups.map { it.map(Any::toString) },
@@ -259,7 +265,7 @@ fun MediaReport() {
     val app = LocalEnv.current.app
     val nav = LocalNav.current
     val range = ReportRange.range
-    var items by remember { mutableStateOf<List<Pair<com.hellfire.ass.media.MediaItem, Long?>>?>(null) }
+    var items by remember { mutableStateOf<List<Pair<MediaItem, Long?>>?>(null) }
     LaunchedEffect(range) { items = withContext(Dispatchers.IO) {
         app.database.media().all().filter { (it.recordedAt ?: it.importedAt) in range }.map { m ->
             m to (m.lengthMs() ?: app.database.media().transcript(m.id).maxOfOrNull { it.endMs }?.takeIf { it > 0 })
@@ -305,7 +311,7 @@ fun MediaReport() {
 fun AiReport() {
     val app = LocalEnv.current.app
     val range = ReportRange.range
-    var data by remember { mutableStateOf<Pair<List<UsageRow>, com.hellfire.ass.ai.AiState?>?>(null) }
+    var data by remember { mutableStateOf<Pair<List<UsageRow>, AiState?>?>(null) }
     LaunchedEffect(range) { data = withContext(Dispatchers.IO) { aiUsage(app, range) to runCatching { app.ai.store.read() }.getOrNull() } }
     var group by remember { mutableStateOf("Provider") }
     var sort by remember { mutableStateOf<Pair<Int, Boolean>?>(5 to false) }

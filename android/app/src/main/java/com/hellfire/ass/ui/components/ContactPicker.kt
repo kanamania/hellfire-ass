@@ -27,6 +27,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.hellfire.ass.HellFireApp
+import com.hellfire.ass.insights.Handles
+import com.hellfire.ass.insights.People
 
 private fun contactsSettings(context: android.content.Context) {
     context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
@@ -57,9 +60,9 @@ private fun ContactPicker(initial: String, onDismiss: () -> Unit, onPick: (Conta
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { granted = provider.granted() }
     LaunchedEffect(query, granted) {
         matches = emptyList(); error = null
-        savedDetails = withContext(Dispatchers.IO) { (context.applicationContext as com.hellfire.ass.HellFireApp).database.people().all().groupBy { it.personKey ?: com.hellfire.ass.insights.People.namedKey(it.name) }
-            .mapValues { (_, aliases) -> aliases.take(2).joinToString { com.hellfire.ass.insights.Handles.label(it.handle) } } }
-        savedPeople = withContext(Dispatchers.IO) { (context.applicationContext as com.hellfire.ass.HellFireApp).database.contacts().all().filter { query.isNotBlank() && it.displayName.contains(query.trim(), true) }.take(30) }
+        savedDetails = withContext(Dispatchers.IO) { (context.applicationContext as HellFireApp).database.people().all().groupBy { it.personKey ?: People.namedKey(it.name) }
+            .mapValues { (_, aliases) -> aliases.take(2).joinToString { Handles.label(it.handle) } } }
+        savedPeople = withContext(Dispatchers.IO) { (context.applicationContext as HellFireApp).database.contacts().all().filter { query.isNotBlank() && it.displayName.contains(query.trim(), true) }.take(30) }
         if (!granted || query.isBlank()) { loading = false; return@LaunchedEffect }
         loading = true
         delay(250)

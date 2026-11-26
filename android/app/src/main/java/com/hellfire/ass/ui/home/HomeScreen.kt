@@ -30,6 +30,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import com.hellfire.ass.insights.Brief
+import com.hellfire.ass.insights.Briefs
+import com.hellfire.ass.library.ContentKind
+import com.hellfire.ass.library.LibraryRoutes
+import com.hellfire.ass.tasks.TaskTime
 
 @Composable
 fun HomeScreen() {
@@ -52,9 +57,9 @@ fun HomeScreen() {
         runCatching { withContext(Dispatchers.IO) { app.finances.summary(start, end) } }.getOrNull()?.let { spent = it.expenses; received = it.income }
     }
     LaunchedEffect(Unit) { cloudOn = runCatching { withContext(Dispatchers.IO) { app.ai.store.read().cloudEnabled } }.getOrDefault(false) }
-    var brief by remember { mutableStateOf<com.hellfire.ass.insights.Brief?>(null) }
-    LaunchedEffect(Unit) { brief = com.hellfire.ass.ui.insights.io { com.hellfire.ass.insights.Briefs.load(app) } }
-    val now = remember { java.time.ZonedDateTime.now(com.hellfire.ass.tasks.TaskTime.zone) }
+    var brief by remember { mutableStateOf<Brief?>(null) }
+    LaunchedEffect(Unit) { brief = com.hellfire.ass.ui.insights.io { Briefs.load(app) } }
+    val now = remember { java.time.ZonedDateTime.now(TaskTime.zone) }
     val greeting = stringResource(when (now.hour) { in 5..11 -> R.string.ui_good_morning; in 12..16 -> R.string.ui_good_afternoon; else -> R.string.ui_good_evening })
 
     ScrollPage(gap = 18.dp) {
@@ -76,17 +81,17 @@ fun HomeScreen() {
         if (gaps.isNotEmpty()) Banner(gaps.first().text + (if (gaps.size > 1) " · and ${gaps.size - 1} more" else "") + ". Tap to fix.", Tone.Warning, HfIcons.Info,
             Modifier.clickableRow { nav.push(Screen.Recovery) })
         ListCard {
-            ListRow(if (brief?.evening ?: com.hellfire.ass.insights.Briefs.isEvening(System.currentTimeMillis())) "Evening wrap-up" else "Morning brief",
+            ListRow(if (brief?.evening ?: Briefs.isEvening(System.currentTimeMillis())) "Evening wrap-up" else "Morning brief",
                 subtitle = brief?.headline ?: "Tasks, bills, replies and money in one place", icon = HfIcons.Bell, tone = Tone.Primary, chevron = true,
                 onClick = { nav.push(Screen.Brief) })
         }
         FlowRow(Modifier.offset(y = (-6).dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            HfChip(stringResource(R.string.ui_intel_search), { nav.push(com.hellfire.ass.library.LibraryRoutes.search()) })
-            HfChip(stringResource(R.string.ui_library), { nav.push(com.hellfire.ass.library.LibraryRoutes.library()) })
-            HfChip(stringResource(R.string.ui_pictures), { nav.push(com.hellfire.ass.library.LibraryRoutes.library(com.hellfire.ass.library.ContentKind.IMAGE)) })
-            HfChip(stringResource(R.string.ui_videos), { nav.push(com.hellfire.ass.library.LibraryRoutes.library(com.hellfire.ass.library.ContentKind.VIDEO)) })
-            HfChip(stringResource(R.string.ui_audio), { nav.push(com.hellfire.ass.library.LibraryRoutes.library(com.hellfire.ass.library.ContentKind.AUDIO)) })
-            HfChip(stringResource(R.string.ui_collections), { nav.push(com.hellfire.ass.library.LibraryRoutes.library()); nav.action = "collections" })
+            HfChip(stringResource(R.string.ui_intel_search), { nav.push(LibraryRoutes.search()) })
+            HfChip(stringResource(R.string.ui_library), { nav.push(LibraryRoutes.library()) })
+            HfChip(stringResource(R.string.ui_pictures), { nav.push(LibraryRoutes.library(ContentKind.IMAGE)) })
+            HfChip(stringResource(R.string.ui_videos), { nav.push(LibraryRoutes.library(ContentKind.VIDEO)) })
+            HfChip(stringResource(R.string.ui_audio), { nav.push(LibraryRoutes.library(ContentKind.AUDIO)) })
+            HfChip(stringResource(R.string.ui_collections), { nav.push(LibraryRoutes.library()); nav.action = "collections" })
             HfChip(stringResource(R.string.ui_record), { nav.push(Screen.Recordings) })
             HfChip(stringResource(R.string.ui_review), { nav.push(Screen.Review) })
             HfChip(stringResource(R.string.ui_templates), { nav.push(Screen.Templates) })

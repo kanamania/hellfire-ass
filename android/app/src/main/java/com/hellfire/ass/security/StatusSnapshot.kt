@@ -10,6 +10,8 @@ import com.hellfire.ass.library.JobState
 import com.hellfire.ass.media.MediaWork
 import androidx.room.withTransaction
 import java.util.UUID
+import com.hellfire.ass.intelligence.IntelligenceWork
+import com.hellfire.ass.sync.LibrarySync
 
 data class StatusSnapshot(
     val libraryItems: Int,
@@ -72,7 +74,7 @@ object StatusReport {
             thermal = thermal(app),
             errors = errors,
             analysisPaused = app.getSharedPreferences("media", 0).getBoolean("analysis_paused", false),
-            syncPaused = com.hellfire.ass.sync.LibrarySync.isPaused(app),
+            syncPaused = LibrarySync.isPaused(app),
             driveFailure = driveFailure,
             unindexed = unindexed(app).size,
         )
@@ -82,20 +84,20 @@ object StatusReport {
         app.getSharedPreferences("media", 0).edit().putBoolean("analysis_paused", true).apply()
         app.database.jobs().pause(null, System.currentTimeMillis())
         WorkManager.getInstance(app).cancelAllWorkByTag(MediaWork.ANALYSIS).result.get()
-        WorkManager.getInstance(app).cancelUniqueWork(com.hellfire.ass.intelligence.IntelligenceWork.NAME).result.get()
+        WorkManager.getInstance(app).cancelUniqueWork(IntelligenceWork.NAME).result.get()
     }
 
     suspend fun resumeAnalysis(app: HellFireApp) {
         app.getSharedPreferences("media", 0).edit().putBoolean("analysis_paused", false).apply()
         app.database.jobs().resume(null, System.currentTimeMillis())
         MediaWork.recover(app)
-        com.hellfire.ass.intelligence.IntelligenceWork.schedule(app)
+        IntelligenceWork.schedule(app)
     }
 
     suspend fun retryFailures(app: HellFireApp) {
         app.database.jobs().retryFailed(null, System.currentTimeMillis())
         MediaWork.pump(app)
-        com.hellfire.ass.intelligence.IntelligenceWork.schedule(app)
+        IntelligenceWork.schedule(app)
     }
 
     /** Items with segments, bookmarks or analysis text that have no search entry (for example after an interrupted rebuild). */
@@ -125,12 +127,12 @@ object StatusReport {
     }
 
     /** Uses library sync's persistent pause flag (checked by the worker; cancels queued work). */
-    fun pauseSync(app: HellFireApp) { com.hellfire.ass.sync.LibrarySync.setPaused(app, true) }
+    fun pauseSync(app: HellFireApp) { LibrarySync.setPaused(app, true) }
 
     suspend fun resumeSync(app: HellFireApp) {
         // Rows paused by an older version of this button.
         app.database.sync().resumeAll()
-        com.hellfire.ass.sync.LibrarySync.setPaused(app, false)
+        LibrarySync.setPaused(app, false)
     }
 
     fun requestBackup(context: Context): String {

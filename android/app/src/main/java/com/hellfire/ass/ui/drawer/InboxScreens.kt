@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.hellfire.ass.library.ItemCategory
 
 @Composable
 fun UniversalInboxPage() {
@@ -173,7 +174,7 @@ fun InboxItemPage(id: String) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 categories.take(30).forEach { cat -> SecondaryButton(cat.name, {
                     scope.launch {
-                        withContext(Dispatchers.IO) { contents.forEach { media -> app.database.library().setCategory(com.hellfire.ass.library.ItemCategory(media.id, cat.id, "USER", updatedAt = System.currentTimeMillis())) } }
+                        withContext(Dispatchers.IO) { contents.forEach { media -> app.database.library().setCategory(ItemCategory(media.id, cat.id, "USER", updatedAt = System.currentTimeMillis())) } }
                         message = "Assigned to ${cat.name}."
                     }
                 }) }

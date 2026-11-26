@@ -10,6 +10,7 @@ import com.hellfire.ass.media.TranscriptSegment
 import kotlinx.coroutines.flow.first
 import org.json.JSONObject
 import java.util.UUID
+import com.hellfire.ass.library.MediaAnalysis
 
 object PlayerStore {
     private const val EDIT_ANALYZER = "transcript_user_edit"
@@ -71,7 +72,7 @@ object PlayerStore {
         edits[segment.id] = text
         val json = JSONObject().apply { edits.forEach { (key, value) -> put(key, value) } }.toString()
         if (existing == null) {
-            library.saveAnalysis(com.hellfire.ass.library.MediaAnalysis(
+            library.saveAnalysis(MediaAnalysis(
                 UUID.randomUUID().toString(), itemId, EDIT_ANALYZER, "user", "1", 1, "COMPLETED", "{}",
                 editedJson = json, createdAt = now, editedAt = now,
             ))

@@ -19,6 +19,9 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.TimeUnit
+import com.hellfire.ass.insights.ExpiryFinder
+import com.hellfire.ass.intelligence.ContentEngine
+import com.hellfire.ass.intelligence.IntelligenceWork
 
 object MediaWork {
     const val ANALYSIS = "analyze-media"
@@ -78,7 +81,7 @@ object MediaWork {
         val sanitized = safe.snapshot.fields["text"].orEmpty().joinToString("\n")
         app.database.media().segment(TranscriptSegment("${item.id}:$suffix:$start", item.id, safe.id, start, end, text = sanitized))
         // Scanned pages may carry an expiry date (passport, licence, insurance): propose a renewal task for the owner to accept.
-        if (suffix == "image" || suffix == "pdf_page_zero_based") com.hellfire.ass.insights.ExpiryFinder.collect(app.database, safe.id, item.id, item.name, text, now)
+        if (suffix == "image" || suffix == "pdf_page_zero_based") ExpiryFinder.collect(app.database, safe.id, item.id, item.name, text, now)
     }
 }
 
@@ -114,8 +117,8 @@ class MediaWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
                 }
                 item.mime.startsWith("audio/") || item.mime.startsWith("video/") -> {
                     // Audio/video transcription and video scenes have one owner, including legacy queued work.
-                    app.database.jobs().enqueue(com.hellfire.ass.intelligence.ContentEngine.newJob(item.id, System.currentTimeMillis()))
-                    com.hellfire.ass.intelligence.IntelligenceWork.schedule(app)
+                    app.database.jobs().enqueue(ContentEngine.newJob(item.id, System.currentTimeMillis()))
+                    IntelligenceWork.schedule(app)
                 }
                 else -> error("UNSUPPORTED_MEDIA_FORMAT")
             }

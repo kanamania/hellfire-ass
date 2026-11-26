@@ -5,6 +5,7 @@ import com.hellfire.ass.library.LibraryDao
 import com.hellfire.ass.library.MediaCategory
 import com.hellfire.ass.library.Origin
 import java.util.UUID
+import com.hellfire.ass.library.LibraryOrganize
 
 data class CategorySuggestion(val parent: String?, val name: String, val confidence: Double)
 
@@ -47,7 +48,7 @@ object CategoryApply {
     }
 
     private suspend fun ensure(dao: LibraryDao, parentId: String?, name: String, now: Long): MediaCategory {
-        if (parentId == null && name in setOf("Adult", "Adult content")) return com.hellfire.ass.library.LibraryOrganize.adultRoot(dao, now)
+        if (parentId == null && name in setOf("Adult", "Adult content")) return LibraryOrganize.adultRoot(dao, now)
         dao.findCategory(parentId, name)?.let { return it }
         val created = MediaCategory(UUID.randomUUID().toString(), parentId, name, Origin.AI.name, isPrivate = parentId?.let { dao.category(it)?.isPrivate } == true || name == "Adult", policy = if (parentId?.let { dao.category(it)?.isPrivate } == true) "LOCAL_ONLY" else "DEFAULT", createdAt = now, updatedAt = now)
         dao.insertCategory(created)

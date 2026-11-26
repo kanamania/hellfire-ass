@@ -15,6 +15,7 @@ import com.hellfire.ass.ui.components.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.hellfire.ass.Diagnostics
 
 @Composable
 fun BackupDashboardScreen(app: HellFireApp) {
@@ -101,7 +102,7 @@ fun StatusDashboardScreen(app: HellFireApp) {
                 withContext(Dispatchers.IO) { PortableBackup(app).verify(uri, secret) }
                 message = "Archive verified. Current data was not changed."
             } catch (caught: Exception) {
-                com.hellfire.ass.Diagnostics.warn(caught)
+                Diagnostics.warn(caught)
                 message = "Verification failed. Nothing was marked backed up."
             } finally { secret.fill('\u0000'); busy = false; reload() }
         }

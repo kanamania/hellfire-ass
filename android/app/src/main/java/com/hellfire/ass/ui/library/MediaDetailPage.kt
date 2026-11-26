@@ -35,6 +35,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.util.UUID
+import com.hellfire.ass.intelligence.ContentEngine
+import com.hellfire.ass.intelligence.IntelligenceWork
 
 @Composable
 fun MediaDetailPage(route: Route) {
@@ -197,9 +199,9 @@ fun MediaDetailPage(route: Route) {
                     scope.launch {
                         val job = withContext(Dispatchers.IO) {
                             val now = System.currentTimeMillis()
-                            app.database.jobs().enqueue(ProcessingJob(UUID.randomUUID().toString(), com.hellfire.ass.intelligence.ContentEngine.JOB, id, priority = JobPriority.USER_REQUESTED, createdAt = now, updatedAt = now))
+                            app.database.jobs().enqueue(ProcessingJob(UUID.randomUUID().toString(), ContentEngine.JOB, id, priority = JobPriority.USER_REQUESTED, createdAt = now, updatedAt = now))
                         }
-                        com.hellfire.ass.intelligence.IntelligenceWork.schedule(app)
+                        IntelligenceWork.schedule(app)
                         note = "Analysis job ${job.state}. This does not mean a model ran."
                         load()
                     }
@@ -312,7 +314,7 @@ internal fun SceneThumbnail(path: String?) {
 private fun SceneThumbnails(id: String) {
     val app = LocalEnv.current.app
     val nav = LocalNav.current
-    var scenes by remember(id) { mutableStateOf<List<com.hellfire.ass.library.MediaSegment>>(emptyList()) }
+    var scenes by remember(id) { mutableStateOf<List<MediaSegment>>(emptyList()) }
     LaunchedEffect(id) { scenes = withContext(Dispatchers.IO) { app.database.library().segmentsNow(id).filter { it.kind == "SCENE" } } }
     scenes.take(60).forEach { scene ->
         SceneThumbnail(scene.thumbnailPath)

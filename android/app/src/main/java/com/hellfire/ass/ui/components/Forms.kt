@@ -154,7 +154,7 @@ fun <T> ChoiceField(label: String, value: T?, options: List<T>, display: (T) -> 
         ) {
             Text(label, style = Hf.type.caption.copy(fontWeight = FontWeight.Normal), color = Hf.colors.muted)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(value?.let(display) ?: (placeholder ?: androidx.compose.ui.res.stringResource(com.hellfire.ass.R.string.ui_choose)), Modifier.weight(1f), style = Hf.type.body,
+                Text(value?.let(display) ?: (placeholder ?: androidx.compose.ui.res.stringResource(R.string.ui_choose)), Modifier.weight(1f), style = Hf.type.body,
                     color = if (value == null) Hf.colors.muted else Hf.colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Icon(HfIcons.ChevronDown, null, Modifier.size(16.dp), tint = Hf.colors.muted)
             }
@@ -347,7 +347,7 @@ fun DateTimeField(value: String, onValueChange: (String) -> Unit, label: String?
     val current = Fmt.zoned(TaskTime.parse(value))
     val onChange by rememberUpdatedState(onValueChange)
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        GroupLabel(label ?: androidx.compose.ui.res.stringResource(com.hellfire.ass.R.string.ui_date_and_time_east_africa_time))
+        GroupLabel(label ?: androidx.compose.ui.res.stringResource(R.string.ui_date_and_time_east_africa_time))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { picking = 1 }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
                 Text(current.toLocalDate().toString(), Modifier.semantics { contentDescription = "Choose date: ${current.toLocalDate()}" })

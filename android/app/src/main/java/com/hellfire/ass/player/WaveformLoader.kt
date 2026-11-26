@@ -13,6 +13,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import com.hellfire.ass.R
 
 sealed class WaveformResult {
     data class Ready(val peaks: FloatArray) : WaveformResult()
@@ -20,7 +21,7 @@ sealed class WaveformResult {
 }
 
 object WaveformLoader {
-    private val REASON = com.hellfire.ass.R.string.ui_waveform_not_available_for_this_file
+    private val REASON = R.string.ui_waveform_not_available_for_this_file
 
     suspend fun load(app: HellFireApp, item: MediaItem): WaveformResult = withContext(Dispatchers.IO) {
         val cache = cacheFile(app, item)

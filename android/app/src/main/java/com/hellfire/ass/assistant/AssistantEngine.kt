@@ -8,6 +8,14 @@ import kotlinx.coroutines.*
 import org.json.JSONObject
 import java.time.*
 import java.util.Locale
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.calendar.CalendarAgendaLogic
+import com.hellfire.ass.events.NotificationNormalizer
+import com.hellfire.ass.events.NotificationSnapshot
+import com.hellfire.ass.insights.Briefs
+import com.hellfire.ass.performance.QueryTrace
+import com.hellfire.ass.templates.TemplateItems
+import com.hellfire.ass.ui.EventText
 
 /** Queries are read-only. Owner commands only return a proposal; untrusted source text never selects an executable action. */
 class AssistantEngine(private val app: HellFireApp, private val clock: Clock = Clock.systemUTC()) {
@@ -71,7 +79,7 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
                     figure = if (selection.income) totals.income else totals.expenses,
                     breakdown = if (selection.income) emptyList() else expenseBreakdown(selection), category = selection.category, accountId = selection.accountId)
             }
-            com.hellfire.ass.calendar.CalendarAgendaLogic.question.containsMatchIn(lower) -> {
+            CalendarAgendaLogic.question.containsMatchIn(lower) -> {
                 val today = clock.instant().atZone(TaskTime.zone).toLocalDate()
                 val window = if ("upcoming" in lower || "next meeting" in lower || "next appointment" in lower) clock.millis() to today.plusDays(8).atStartOfDay(TaskTime.zone).toInstant().toEpochMilli()
                     else QueryDates.range(lower, clock.instant())
@@ -88,7 +96,7 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
     }
     suspend fun grounded(query: String): Answer {
         val exact = answer(query)
-        if (com.hellfire.ass.calendar.CalendarAgendaLogic.question.containsMatchIn(query) || exact.command != null || FinanceQuestion.isQuestion(query) || FinanceQuestion.followUp(query) || exact.sources.isEmpty()) return exact
+        if (CalendarAgendaLogic.question.containsMatchIn(query) || exact.command != null || FinanceQuestion.isQuestion(query) || FinanceQuestion.followUp(query) || exact.sources.isEmpty()) return exact
         if (!app.localModel.configured) return exact.copy(text = exact.text + "\nInstall the on-device language model for an evidence-based explanation.")
         val searchTerm = query.replace(Regex("(?i)^(search|find|what do you know about|tafuta)\\s+"), "").trim().trimEnd('?')
         val notes = (listOf(searchTerm) + SearchText.keywords(searchTerm)).flatMap { app.database.memory().search(it) }.distinctBy { it.id }.take(8).joinToString("\n") { memory ->
@@ -96,7 +104,7 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
         }
         val originals = exact.sources.take(8).mapNotNull { id ->
             app.database.events().find(id)?.takeIf { it.contentAvailable && !it.securitySensitive && it.source != "owner_skill_use" }?.let { event ->
-                "[$id] " + com.hellfire.ass.ui.EventText.raw(app, event).take(450)
+                "[$id] " + EventText.raw(app, event).take(450)
             }
         }.joinToString("\n")
         val learned = app.skills.guidance(query).joinToString("\n") { "Owner-approved preference: ${it.advice.take(300)}" }
@@ -124,10 +132,10 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
                 when (matches.size) {
                     0 -> return Answer(if (all.isEmpty()) "You have no templates yet. Create one in Home › Templates." else "No template is called \"${command.query}\". Yours: ${all.joinToString { it.name }}.")
                     1 -> {
-                        val items = com.hellfire.ass.templates.TemplateItems.decode(matches[0].items)
+                        val items = TemplateItems.decode(matches[0].items)
                         if (items.any { it.type != "TASK" && it.amount == null })
                             return Answer("Template ${matches[0].name} has lines without an amount. Open Home › Templates to fill them in and use it.")
-                        command.copy(templateId = matches[0].id, name = matches[0].name, lines = items.map(com.hellfire.ass.templates.TemplateItems::describe))
+                        command.copy(templateId = matches[0].id, name = matches[0].name, lines = items.map(TemplateItems::describe))
                     }
                     else -> return Answer("Several templates match; say the full name: ${matches.joinToString { it.name }}.")
                 }
@@ -149,9 +157,9 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
         suspend fun indexed(q: String?, limit: Int) = q?.let { try {
                 val started = android.os.SystemClock.elapsedRealtime()
                 val hits = app.database.events().search(it, limit)
-                com.hellfire.ass.performance.QueryTrace.record("source_search", android.os.SystemClock.elapsedRealtime() - started, hits.size)
+                QueryTrace.record("source_search", android.os.SystemClock.elapsedRealtime() - started, hits.size)
                 hits
-            } catch (e: CancellationException) { throw e } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); emptyList() } }.orEmpty()
+            } catch (e: CancellationException) { throw e } catch (caught: Exception) { Diagnostics.warn(caught); emptyList() } }.orEmpty()
         val strict = indexed(SearchText.query(terms.joinToString(" ").ifBlank { query }), 20)
         val loose = if (strict.size < 5 && terms.size > 1) indexed(SearchText.anyQuery(terms), 100) else emptyList()
         val indexed = (strict + loose).distinctBy { it.eventId }.sortedByDescending { hit -> terms.count { hit.text.contains(it, true) } }.take(20)
@@ -192,8 +200,8 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
         val advice = skills.joinToString("\n") { "${it.name}: ${it.advice}" }
         val combined = result.copy(text = result.text + "\nActive personal guidance (preferences, not verified source facts):\n" + advice)
         val now = System.currentTimeMillis()
-        val snapshot = com.hellfire.ass.events.NotificationSnapshot(java.util.UUID.randomUUID().toString(), "owner.skill", now, now, source = "owner_skill_use", fields = mapOf("text" to listOf("Question: $query", combined.text.take(12000))))
-        val safe = com.hellfire.ass.events.NotificationNormalizer.normalize(snapshot, app.packageName)!!
+        val snapshot = NotificationSnapshot(java.util.UUID.randomUUID().toString(), "owner.skill", now, now, source = "owner_skill_use", fields = mapOf("text" to listOf("Question: $query", combined.text.take(12000))))
+        val safe = NotificationNormalizer.normalize(snapshot, app.packageName)!!
         if (!safe.securitySensitive) {
             app.events.capture(snapshot, app.packageName)
             skills.forEach { app.skills.record(it, "Ask local answer", safe.id, safe.id, "Guidance included in this answer. It remains a preference, not proof or approval.") }
@@ -201,7 +209,7 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
         return combined
     }
     private suspend fun semanticMatches(query: String, exclude: Set<String>): List<Pair<String, String>> {
-        val hits = try { app.semantic.search(query) } catch (e: CancellationException) { throw e } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); return emptyList() }
+        val hits = try { app.semantic.search(query) } catch (e: CancellationException) { throw e } catch (caught: Exception) { Diagnostics.warn(caught); return emptyList() }
         return hits.filter { it.first !in exclude }.mapNotNull { (id, score) ->
             val event = app.database.events().find(id)?.takeIf { it.contentAvailable && !it.securitySensitive && it.source != "owner_skill_use" } ?: return@mapNotNull null
             id to "≈ ${String.format(Locale.ROOT, "%.2f", score)} · ${event.source} · ${TaskTime.display(event.occurredAt)} · ${app.semantic.sourceText(event).take(280)}"
@@ -227,9 +235,9 @@ class AssistantEngine(private val app: HellFireApp, private val clock: Clock = C
     }
     /** Replies, bills, debts and capture problems from the in-app brief; left out if they cannot be read. */
     private suspend fun extras(evening: Boolean): String = try {
-        com.hellfire.ass.insights.Briefs.load(app, clock.millis(), evening).sections.filter { it.title in setOf("Replies", "Bills", "Debts", "Capture", "Today's appointments", "Tomorrow's appointments", "Upcoming appointments") }
+        Briefs.load(app, clock.millis(), evening).sections.filter { it.title in setOf("Replies", "Bills", "Debts", "Capture", "Today's appointments", "Tomorrow's appointments", "Upcoming appointments") }
             .joinToString("") { s -> "\n${s.title}: " + s.lines.joinToString("; ") { it.text + (it.detail?.let { d -> " ($d)" } ?: "") } }
-    } catch (e: CancellationException) { throw e } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "" }
+    } catch (e: CancellationException) { throw e } catch (caught: Exception) { Diagnostics.warn(caught); "" }
 
     /** Net expenses per category; reversals count under the kind of the entry they reverse, as in FinanceRepository.summary. */
     private suspend fun expenseBreakdown(selection: FinanceQuestion): List<Pair<String, Long>> {

@@ -8,6 +8,8 @@ import com.hellfire.ass.memory.VectorMath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import com.hellfire.ass.library.ContentKind
+import com.hellfire.ass.library.LibraryOrganize
 
 data class SearchHit(
     val itemId: String,
@@ -48,14 +50,14 @@ class IntelligenceSearch(private val app: HellFireApp) {
         val required = mutableListOf<Set<String>>()
         constraints.categories.filter { it != "adult" }.forEach { word ->
             val roots = categories.filter { it.name.contains(word, ignoreCase = true) }.map { it.id }
-            val ids = dao.itemsInCategories(com.hellfire.ass.library.LibraryOrganize.subtree(categories, roots).toList(), 100_000).toSet() +
+            val ids = dao.itemsInCategories(LibraryOrganize.subtree(categories, roots).toList(), 100_000).toSet() +
                 dao.itemsTagged(word.lowercase(), 100_000)
             required += ids
             ids.forEach { raw += Triple("$it:-1", "CATEGORY", 1.0) }
         }
         if (queryText.isBlank()) {
             dao.inDateRange(
-                constraints.kinds.ifEmpty { com.hellfire.ass.library.ContentKind.entries.toSet() }.map { it.name },
+                constraints.kinds.ifEmpty { ContentKind.entries.toSet() }.map { it.name },
                 constraints.fromMs ?: Long.MIN_VALUE, constraints.toMs ?: Long.MAX_VALUE, 100_000,
             ).forEach { item -> raw += Triple("${item.id}:-1", "DATE", 1.0) }
         }
@@ -74,7 +76,7 @@ class IntelligenceSearch(private val app: HellFireApp) {
             if (constraints.adultOnly && item != null) {
                 val links = dao.itemCategories(item.id).first()
                 val adult = links.any { link ->
-                    link.linkState == "ASSIGNED" && link.category.id in com.hellfire.ass.library.LibraryOrganize.subtree(categories, categories.filter { it.name in setOf("Adult", "Adult content") }.map { it.id })
+                    link.linkState == "ASSIGNED" && link.category.id in LibraryOrganize.subtree(categories, categories.filter { it.name in setOf("Adult", "Adult content") }.map { it.id })
                 }
                 if (!adult) return@mapNotNull null
             }

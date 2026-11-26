@@ -25,6 +25,7 @@ import com.hellfire.ass.ui.theme.Hf
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.hellfire.ass.ui.theme.HfIcons
 
 /** Sequential immersive reader for one briefing: one story per page, resumable, with spoken playback. */
 @Composable
@@ -106,7 +107,7 @@ private fun ColumnScope.Reader(briefingId: String, list: List<StoryView>, progre
             Spacer(Modifier.weight(1f))
             HfChip("${audio.rate}×", { NewsAudio.setRate(NewsUi.nextSpeed(audio.rate, NewsAudio.speedSteps)) })
         }
-    } else PrimaryButton("Listen to briefing", { listen(page, continuous = true) }, Modifier.fillMaxWidth(), icon = com.hellfire.ass.ui.theme.HfIcons.Waveform)
+    } else PrimaryButton("Listen to briefing", { listen(page, continuous = true) }, Modifier.fillMaxWidth(), icon = HfIcons.Waveform)
     audio.note?.let { Note(it) }
 
     HorizontalPager(pager, Modifier.weight(1f).fillMaxWidth(), pageSpacing = 16.dp, key = { list[it].event.id }) { i ->

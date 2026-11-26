@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
+import com.hellfire.ass.Diagnostics
 
 /** Developer counters. Labels and numbers only — never prompts, transcripts, amounts or message text. */
 @Composable
@@ -68,7 +69,7 @@ fun PerfScreen() {
                         } + ". Selected $chosen. This is one probe, not a quality or battery result."
                     } catch (e: kotlinx.coroutines.CancellationException) { throw e }
                     catch (caught: Exception) {
-                        com.hellfire.ass.Diagnostics.warn(caught)
+                        Diagnostics.warn(caught)
                         "Benchmark did not finish. CPU remains the fallback. ${caught.message ?: "Check the model and temperature."}"
                     }
                     tick++

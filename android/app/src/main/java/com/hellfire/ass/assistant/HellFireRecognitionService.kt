@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognitionService
 import android.speech.SpeechRecognizer
+import com.hellfire.ass.Diagnostics
 
 /** Delegates only to an installed on-device recognizer; never starts a model download. */
 class HellFireRecognitionService : RecognitionService() {
@@ -32,7 +33,7 @@ class HellFireRecognitionService : RecognitionService() {
                 })
                 startListening(recognizerIntent)
             }
-        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); listener.error(SpeechRecognizer.ERROR_CLIENT) }
+        } catch (caught: Exception) { Diagnostics.warn(caught); listener.error(SpeechRecognizer.ERROR_CLIENT) }
     }
     override fun onStopListening(listener: Callback) { recognizer?.stopListening() }
     override fun onCancel(listener: Callback) { recognizer?.cancel(); recognizer?.destroy(); recognizer = null }

@@ -11,6 +11,67 @@ import com.hellfire.ass.tasks.*
 import com.hellfire.ass.media.*
 import com.hellfire.ass.memory.*
 import com.hellfire.ass.security.EncryptedDatabase
+import com.hellfire.ass.calendar.CalendarChange
+import com.hellfire.ass.calendar.CalendarDao
+import com.hellfire.ass.calendar.CalendarLink
+import com.hellfire.ass.calendar.CalendarSchema
+import com.hellfire.ass.contacts.ContactDao
+import com.hellfire.ass.contacts.ContactSchema
+import com.hellfire.ass.contacts.PersonContact
+import com.hellfire.ass.guard.GuardConfig
+import com.hellfire.ass.guard.GuardDao
+import com.hellfire.ass.guard.GuardEvidence
+import com.hellfire.ass.guard.GuardSchema
+import com.hellfire.ass.guard.GuardState
+import com.hellfire.ass.insights.DebtDao
+import com.hellfire.ass.insights.DebtEntry
+import com.hellfire.ass.insights.PeopleDao
+import com.hellfire.ass.insights.PersonAlias
+import com.hellfire.ass.library.ActionRecord
+import com.hellfire.ass.library.BackupItemRecord
+import com.hellfire.ass.library.BackupManifest
+import com.hellfire.ass.library.CollectionMember
+import com.hellfire.ass.library.DrawerMessage
+import com.hellfire.ass.library.InboxDao
+import com.hellfire.ass.library.InboxItem
+import com.hellfire.ass.library.InboxMember
+import com.hellfire.ass.library.ItemCategory
+import com.hellfire.ass.library.ItemTag
+import com.hellfire.ass.library.JobDao
+import com.hellfire.ass.library.LibraryDao
+import com.hellfire.ass.library.LibrarySchema
+import com.hellfire.ass.library.LibrarySearch
+import com.hellfire.ass.library.MediaAnalysis
+import com.hellfire.ass.library.MediaBookmark
+import com.hellfire.ass.library.MediaCategory
+import com.hellfire.ass.library.MediaCollection
+import com.hellfire.ass.library.MediaEmbedding
+import com.hellfire.ass.library.MediaSegment
+import com.hellfire.ass.library.PlayHistory
+import com.hellfire.ass.library.PlaybackDao
+import com.hellfire.ass.library.PlaybackState
+import com.hellfire.ass.library.PrivacyFinding
+import com.hellfire.ass.library.ProcessingJob
+import com.hellfire.ass.library.SavedLocation
+import com.hellfire.ass.library.ShareDao
+import com.hellfire.ass.library.ShareExport
+import com.hellfire.ass.library.SyncConflict
+import com.hellfire.ass.library.SyncDao
+import com.hellfire.ass.library.SyncRecord
+import com.hellfire.ass.news.NewsArticle
+import com.hellfire.ass.news.NewsBriefing
+import com.hellfire.ass.news.NewsDao
+import com.hellfire.ass.news.NewsEvent
+import com.hellfire.ass.news.NewsEventState
+import com.hellfire.ass.news.NewsEventVersion
+import com.hellfire.ass.news.NewsFeedback
+import com.hellfire.ass.news.NewsPreference
+import com.hellfire.ass.news.NewsProgress
+import com.hellfire.ass.news.NewsRun
+import com.hellfire.ass.news.NewsSchema
+import com.hellfire.ass.news.NewsSource
+import com.hellfire.ass.templates.ActionTemplate
+import com.hellfire.ass.templates.TemplateDao
 
 @Entity(tableName = "source_event", indices = [Index(value = ["source", "externalId"], unique = true)])
 data class SourceEvent(
@@ -159,45 +220,45 @@ interface EventDao {
 
 data class LabelledEvent(@Embedded val event: SourceEvent, val label: String?, val state: String)
 
-@Database(entities = [SourceEvent::class, EventProcessing::class, CaptureAudit::class, NotificationPolicy::class, FinanceAccount::class, FinanceCandidate::class, LedgerEntry::class, LedgerEvidence::class, MerchantAlias::class, CommunicationMessage::class, MailCursor::class, OutboundDraft::class, ActionAudit::class, IntegrationState::class, AssistantTask::class, DailyReview::class, MediaItem::class, TranscriptSegment::class, SpeechSpan::class, MemoryItem::class, com.hellfire.ass.memory.SemanticVector::class, AiUsage::class, CategoryBudget::class, ProviderBalance::class, SourceSearch::class,
-    com.hellfire.ass.templates.ActionTemplate::class, com.hellfire.ass.insights.DebtEntry::class, com.hellfire.ass.insights.PersonAlias::class, com.hellfire.ass.contacts.PersonContact::class, com.hellfire.ass.memory.AiSkill::class, com.hellfire.ass.memory.SkillUse::class, com.hellfire.ass.memory.MemoryRevision::class,
-    com.hellfire.ass.library.MediaAnalysis::class, com.hellfire.ass.library.MediaSegment::class, com.hellfire.ass.library.MediaEmbedding::class,
-    com.hellfire.ass.library.MediaCategory::class, com.hellfire.ass.library.ItemCategory::class, com.hellfire.ass.library.ItemTag::class,
-    com.hellfire.ass.library.MediaCollection::class, com.hellfire.ass.library.CollectionMember::class, com.hellfire.ass.library.MediaBookmark::class,
-    com.hellfire.ass.library.PlaybackState::class, com.hellfire.ass.library.PlayHistory::class, com.hellfire.ass.library.ProcessingJob::class,
-    com.hellfire.ass.library.InboxItem::class, com.hellfire.ass.library.InboxMember::class, com.hellfire.ass.library.DrawerMessage::class,
-    com.hellfire.ass.library.ActionRecord::class, com.hellfire.ass.library.SavedLocation::class, com.hellfire.ass.library.ShareExport::class,
-    com.hellfire.ass.library.PrivacyFinding::class, com.hellfire.ass.library.SyncRecord::class, com.hellfire.ass.library.SyncConflict::class,
-    com.hellfire.ass.library.BackupManifest::class, com.hellfire.ass.library.BackupItemRecord::class, com.hellfire.ass.library.LibrarySearch::class,
-    com.hellfire.ass.news.NewsSource::class, com.hellfire.ass.news.NewsArticle::class, com.hellfire.ass.news.NewsEvent::class,
-    com.hellfire.ass.news.NewsEventVersion::class, com.hellfire.ass.news.NewsBriefing::class, com.hellfire.ass.news.NewsEventState::class,
-    com.hellfire.ass.news.NewsProgress::class, com.hellfire.ass.news.NewsPreference::class, com.hellfire.ass.news.NewsFeedback::class,
-    com.hellfire.ass.news.NewsRun::class, com.hellfire.ass.guard.GuardConfig::class, com.hellfire.ass.guard.GuardState::class, com.hellfire.ass.guard.GuardEvidence::class, com.hellfire.ass.calendar.CalendarLink::class, com.hellfire.ass.calendar.CalendarChange::class],
+@Database(entities = [SourceEvent::class, EventProcessing::class, CaptureAudit::class, NotificationPolicy::class, FinanceAccount::class, FinanceCandidate::class, LedgerEntry::class, LedgerEvidence::class, MerchantAlias::class, CommunicationMessage::class, MailCursor::class, OutboundDraft::class, ActionAudit::class, IntegrationState::class, AssistantTask::class, DailyReview::class, MediaItem::class, TranscriptSegment::class, SpeechSpan::class, MemoryItem::class, SemanticVector::class, AiUsage::class, CategoryBudget::class, ProviderBalance::class, SourceSearch::class,
+    ActionTemplate::class, DebtEntry::class, PersonAlias::class, PersonContact::class, AiSkill::class, SkillUse::class, MemoryRevision::class,
+    MediaAnalysis::class, MediaSegment::class, MediaEmbedding::class,
+    MediaCategory::class, ItemCategory::class, ItemTag::class,
+    MediaCollection::class, CollectionMember::class, MediaBookmark::class,
+    PlaybackState::class, PlayHistory::class, ProcessingJob::class,
+    InboxItem::class, InboxMember::class, DrawerMessage::class,
+    ActionRecord::class, SavedLocation::class, ShareExport::class,
+    PrivacyFinding::class, SyncRecord::class, SyncConflict::class,
+    BackupManifest::class, BackupItemRecord::class, LibrarySearch::class,
+    NewsSource::class, NewsArticle::class, NewsEvent::class,
+    NewsEventVersion::class, NewsBriefing::class, NewsEventState::class,
+    NewsProgress::class, NewsPreference::class, NewsFeedback::class,
+    NewsRun::class, GuardConfig::class, GuardState::class, GuardEvidence::class, CalendarLink::class, CalendarChange::class],
     version = 21, exportSchema = true)
 abstract class EventDatabase : RoomDatabase() {
-    abstract fun calendar(): com.hellfire.ass.calendar.CalendarDao
-    abstract fun guard(): com.hellfire.ass.guard.GuardDao
+    abstract fun calendar(): CalendarDao
+    abstract fun guard(): GuardDao
     abstract fun events(): EventDao
     abstract fun finances(): FinanceDao
     abstract fun communications(): CommunicationDao
     abstract fun tasks(): TaskDao
     abstract fun media(): MediaDao
-    abstract fun skills(): com.hellfire.ass.memory.SkillDao
+    abstract fun skills(): SkillDao
     abstract fun memory(): MemoryDao
-    abstract fun semantic(): com.hellfire.ass.memory.SemanticDao
+    abstract fun semantic(): SemanticDao
     abstract fun aiUsage(): AiUsageDao
-    abstract fun news(): com.hellfire.ass.news.NewsDao
+    abstract fun news(): NewsDao
     abstract fun widgetData(): WidgetDataDao
-    abstract fun templates(): com.hellfire.ass.templates.TemplateDao
-    abstract fun debts(): com.hellfire.ass.insights.DebtDao
-    abstract fun people(): com.hellfire.ass.insights.PeopleDao
-    abstract fun contacts(): com.hellfire.ass.contacts.ContactDao
-    abstract fun library(): com.hellfire.ass.library.LibraryDao
-    abstract fun playback(): com.hellfire.ass.library.PlaybackDao
-    abstract fun jobs(): com.hellfire.ass.library.JobDao
-    abstract fun inbox(): com.hellfire.ass.library.InboxDao
-    abstract fun shares(): com.hellfire.ass.library.ShareDao
-    abstract fun sync(): com.hellfire.ass.library.SyncDao
+    abstract fun templates(): TemplateDao
+    abstract fun debts(): DebtDao
+    abstract fun people(): PeopleDao
+    abstract fun contacts(): ContactDao
+    abstract fun library(): LibraryDao
+    abstract fun playback(): PlaybackDao
+    abstract fun jobs(): JobDao
+    abstract fun inbox(): InboxDao
+    abstract fun shares(): ShareDao
+    abstract fun sync(): SyncDao
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -227,7 +288,7 @@ abstract class EventDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) { db.execSQL("ALTER TABLE outbound_draft ADD COLUMN replyToMessageId TEXT") }
         }
         val MIGRATION_8_9 = object : Migration(8, 9) {
-            override fun migrate(db: SupportSQLiteDatabase) { com.hellfire.ass.memory.SemanticSchema.migrate(db) }
+            override fun migrate(db: SupportSQLiteDatabase) { SemanticSchema.migrate(db) }
         }
         /** v10 (UI redesign §6): task completion time, media length, AI usage log. */
         val MIGRATION_9_10 = object : Migration(9, 10) {
@@ -288,28 +349,28 @@ abstract class EventDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE person_alias ADD COLUMN personKey TEXT")
                 db.execSQL("ALTER TABLE debt_entry ADD COLUMN personKey TEXT")
-                com.hellfire.ass.contacts.ContactSchema.backfill(db)
+                ContactSchema.backfill(db)
                 db.execSQL("ALTER TABLE assistant_task ADD COLUMN repeatRule TEXT NOT NULL DEFAULT 'NONE'")
                 db.execSQL("ALTER TABLE assistant_task ADD COLUMN alertProfile TEXT NOT NULL DEFAULT 'PERSISTENT'")
                 db.execSQL("ALTER TABLE assistant_task ADD COLUMN snoozeMinutes INTEGER NOT NULL DEFAULT 10")
             }
         }
         val MIGRATION_16_17 = object : Migration(16, 17) {
-            override fun migrate(db: SupportSQLiteDatabase) { com.hellfire.ass.memory.SkillSchema.migrate(db) }
+            override fun migrate(db: SupportSQLiteDatabase) { SkillSchema.migrate(db) }
         }
         /** v18: universal media library, inbox, processing, sharing, sync and backup records (library/LibrarySchema.kt). */
         val MIGRATION_17_18 = object : Migration(17, 18) {
-            override fun migrate(db: SupportSQLiteDatabase) { com.hellfire.ass.library.LibrarySchema.migrate(db) }
+            override fun migrate(db: SupportSQLiteDatabase) { LibrarySchema.migrate(db) }
         }
         val MIGRATION_18_19 = object : Migration(18, 19) {
-            override fun migrate(db: SupportSQLiteDatabase) { com.hellfire.ass.news.NewsSchema.migrate(db) }
+            override fun migrate(db: SupportSQLiteDatabase) { NewsSchema.migrate(db) }
         }
         val MIGRATION_19_20 = object : Migration(19, 20) {
-            override fun migrate(db: SupportSQLiteDatabase) { com.hellfire.ass.guard.GuardSchema.migrate(db) }
+            override fun migrate(db: SupportSQLiteDatabase) { GuardSchema.migrate(db) }
         }
         const val SOURCE_SEARCH_SQL = "CREATE VIRTUAL TABLE IF NOT EXISTS `source_search` USING FTS4(`eventId` TEXT NOT NULL, `text` TEXT NOT NULL, tokenize=unicode61, notindexed=`eventId`)"
         val MIGRATION_20_21 = object : Migration(20, 21) {
-            override fun migrate(db: SupportSQLiteDatabase) { com.hellfire.ass.calendar.CalendarSchema.migrate(db) }
+            override fun migrate(db: SupportSQLiteDatabase) { CalendarSchema.migrate(db) }
         }
         val ALL_MIGRATIONS get() = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21)
         fun open(context: Context): EventDatabase = Room.databaseBuilder(

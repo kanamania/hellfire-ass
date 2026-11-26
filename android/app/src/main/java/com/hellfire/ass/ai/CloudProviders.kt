@@ -10,6 +10,7 @@ import java.net.URLEncoder
 import javax.net.ssl.HttpsURLConnection
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import com.hellfire.ass.Diagnostics
 
 class HttpRequest(val url: String, val headers: Map<String, String>, val body: String? = null) {
     override fun toString() = "HttpRequest([REDACTED])"
@@ -71,7 +72,7 @@ abstract class CloudProvider(
         catch (e: CancellationException) { throw e }
         catch (e: AiException) { throw e }
         catch (_: IOException) { throw AiException(AiError.NETWORK) }
-        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); throw AiException(AiError.INVALID_RESPONSE) }
+        catch (caught: Exception) { Diagnostics.warn(caught); throw AiException(AiError.INVALID_RESPONSE) }
         val json = runCatching { JSONObject(response.body) }.getOrNull()
         if (response.status !in 200..299) {
             val error = json?.optJSONObject("error")
@@ -115,7 +116,7 @@ abstract class CloudProvider(
         return try { generateText(apiKey, request) }
         catch (e: CancellationException) { throw e }
         catch (e: AiException) { throw e }
-        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); throw AiException(AiError.INVALID_RESPONSE) }
+        catch (caught: Exception) { Diagnostics.warn(caught); throw AiException(AiError.INVALID_RESPONSE) }
     }
     protected abstract suspend fun generateText(key: String, request: GenerationRequest): Generation
     protected fun usage(json: JSONObject?, input: String, output: String): TokenUsage? {

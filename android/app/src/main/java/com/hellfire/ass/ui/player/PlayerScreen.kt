@@ -53,6 +53,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import com.hellfire.ass.HellFireApp
+import com.hellfire.ass.media.TranscriptSegment
 
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -91,7 +93,7 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
     var searchNote by remember { mutableStateOf<String?>(null) }
     var pointA by remember { mutableStateOf<Long?>(null) }
     var editor by remember { mutableStateOf<MediaBookmark?>(null) }
-    var correct by remember { mutableStateOf<com.hellfire.ass.media.TranscriptSegment?>(null) }
+    var correct by remember { mutableStateOf<TranscriptSegment?>(null) }
     var correctText by remember { mutableStateOf("") }
     var title by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
@@ -485,16 +487,16 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
     }
 }
 
-private suspend fun open(app: com.hellfire.ass.HellFireApp, controller: MediaController?, item: MediaItem, startMs: Long?, started: () -> Unit) {
+private suspend fun open(app: HellFireApp, controller: MediaController?, item: MediaItem, startMs: Long?, started: () -> Unit) {
     val player = controller ?: return
     PlaybackHub.open(app, player, item.id, startMs)
     started()
 }
 
-internal suspend fun persistChoice(app: com.hellfire.ass.HellFireApp, itemId: String, edit: (com.hellfire.ass.library.PlaybackState) -> com.hellfire.ass.library.PlaybackState) {
+internal suspend fun persistChoice(app: HellFireApp, itemId: String, edit: (PlaybackState) -> PlaybackState) {
     withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
-        val existing = app.database.playback().playback(itemId) ?: com.hellfire.ass.library.PlaybackState(itemId, lastPlayedAt = now)
+        val existing = app.database.playback().playback(itemId) ?: PlaybackState(itemId, lastPlayedAt = now)
         app.database.playback().savePlayback(edit(existing.copy(lastPlayedAt = now)))
     }
 }

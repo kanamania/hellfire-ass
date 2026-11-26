@@ -7,6 +7,14 @@ import com.hellfire.ass.data.SourceEvent
 import kotlinx.coroutines.flow.Flow
 import org.json.JSONObject
 import java.security.MessageDigest
+import com.hellfire.ass.HellFireApp
+import com.hellfire.ass.OwnerError
+import com.hellfire.ass.R
+import com.hellfire.ass.data.EventDatabase
+import com.hellfire.ass.data.SearchText
+import com.hellfire.ass.events.NotificationNormalizer
+import com.hellfire.ass.events.NotificationSnapshot
+import com.hellfire.ass.ui.EventText
 
 @Entity(tableName = "ai_skill", indices = [Index("sourceId")], foreignKeys = [ForeignKey(entity = SourceEvent::class, parentColumns = ["id"], childColumns = ["sourceId"], onDelete = ForeignKey.RESTRICT)])
 data class AiSkill(@PrimaryKey val id: String, val name: String, val kind: String, val trigger: String, val advice: String,
@@ -37,7 +45,7 @@ interface SkillDao {
 }
 
 /** Skills are typed suggestions, never executable tools or authority to bypass approvals. */
-class AiSkills(private val db: com.hellfire.ass.data.EventDatabase) {
+class AiSkills(private val db: EventDatabase) {
     companion object {
         val kinds = listOf("GUIDANCE", "PAYMENT_DEFAULT", "IGNORE_TASK", "IGNORE_FINANCE")
         fun key(text: String) = MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
@@ -46,9 +54,9 @@ class AiSkills(private val db: com.hellfire.ass.data.EventDatabase) {
             require(skill.name.trim().length in 1..120 && skill.trigger.trim().length in 2..300 && skill.advice.trim().length in 1..2000 && skill.reason.trim().length in 1..1000)
             require(skill.kind in kinds && skill.state in setOf("ACTIVE", "PENDING", "DISABLED"))
             if (skill.kind == "GUIDANCE") {
-                if (com.hellfire.ass.data.SearchText.keywords(skill.trigger).isEmpty()) throw com.hellfire.ass.OwnerError(com.hellfire.ass.R.string.ui_choose_meaningful_topic_words)
-                val safe = com.hellfire.ass.events.NotificationNormalizer.normalize(com.hellfire.ass.events.NotificationSnapshot("skill", "owner.skill", 0, 0, fields = mapOf("text" to listOf(skill.name, skill.trigger, skill.advice, skill.reason))), "com.hellfire.ass")!!
-                if (safe.securitySensitive || safe.contentRedacted) throw com.hellfire.ass.OwnerError(com.hellfire.ass.R.string.ui_remove_authentication_content_from_this)
+                if (SearchText.keywords(skill.trigger).isEmpty()) throw OwnerError(R.string.ui_choose_meaningful_topic_words)
+                val safe = NotificationNormalizer.normalize(NotificationSnapshot("skill", "owner.skill", 0, 0, fields = mapOf("text" to listOf(skill.name, skill.trigger, skill.advice, skill.reason))), "com.hellfire.ass")!!
+                if (safe.securitySensitive || safe.contentRedacted) throw OwnerError(R.string.ui_remove_authentication_content_from_this)
             }
             if (skill.kind == "PAYMENT_DEFAULT") { val j = JSONObject(skill.advice); require(j.getString("account").isNotBlank() && j.getString("category").isNotBlank()) }
         }
@@ -62,7 +70,7 @@ class AiSkills(private val db: com.hellfire.ass.data.EventDatabase) {
     }
     suspend fun save(skill: AiSkill) = db.withTransaction {
         validate(skill)
-        if (skill.kind == "PAYMENT_DEFAULT" && db.finances().account(JSONObject(skill.advice).getString("account")) == null) throw com.hellfire.ass.OwnerError(com.hellfire.ass.R.string.ui_choose_an_existing_account)
+        if (skill.kind == "PAYMENT_DEFAULT" && db.finances().account(JSONObject(skill.advice).getString("account")) == null) throw OwnerError(R.string.ui_choose_an_existing_account)
         val old = db.skills().find(skill.id)
         if (skill.state == "ACTIVE") db.skills().replaceActive(skill.kind, skill.trigger, skill.id, System.currentTimeMillis())
         db.skills().save(skill.copy(revision = (old?.revision ?: 0) + 1, updatedAt = System.currentTimeMillis()))
@@ -79,7 +87,7 @@ class AiSkills(private val db: com.hellfire.ass.data.EventDatabase) {
         if (applied) record(skill, "Payment suggestion", candidateId, sourceId, "Suggested ${account.label} / ${value.second} for review; no payment posted")
         return skill to value
     }
-    suspend fun ignoredFor(app: com.hellfire.ass.HellFireApp, kind: String, sourceId: String, text: String): Boolean {
+    suspend fun ignoredFor(app: HellFireApp, kind: String, sourceId: String, text: String): Boolean {
         if (db.skills().active().none { it.kind == kind }) return false
         val event = db.events().find(sourceId) ?: return false
         if (event.source.startsWith("owner_")) return false
@@ -92,16 +100,16 @@ class AiSkills(private val db: com.hellfire.ass.data.EventDatabase) {
         record(skill, "Capture processing", sourceId, sourceId, "Repeated false suggestion suppressed; original source retained")
         return true
     }
-    suspend fun scopeFor(app: com.hellfire.ass.HellFireApp, sourceId: String): String {
+    suspend fun scopeFor(app: HellFireApp, sourceId: String): String {
         val event = requireNotNull(db.events().find(sourceId))
-        val fields = com.hellfire.ass.ui.EventText.fields(app, event)
+        val fields = EventText.fields(app, event)
         val payload = JSONObject(app.cipher.decrypt(event.encryptedPayload).toString(Charsets.UTF_8))
         return listOf(event.packageName, event.source, payload.optJSONObject("provenance")?.optString("account_id").orEmpty(),
             listOf("sender_hint", "recipient", "recipient_hint", "title").joinToString("|") { fields[it].orEmpty().joinToString() }).joinToString("|")
     }
-    suspend fun feedbackFor(app: com.hellfire.ass.HellFireApp, kind: String, sourceId: String, reason: String) {
+    suspend fun feedbackFor(app: HellFireApp, kind: String, sourceId: String, reason: String) {
         val event = db.events().find(sourceId) ?: return
-        val fields = com.hellfire.ass.ui.EventText.fields(app, event)
+        val fields = EventText.fields(app, event)
         var text = listOf("title", "text", "big_text", "text_lines", "sub_text", "messages").flatMap { fields[it].orEmpty() }.joinToString("\n")
         if (kind == "IGNORE_FINANCE") text = text.replace("\"", "")
         feedback(kind, sourceId, text, reason, scopeFor(app, sourceId))
@@ -113,8 +121,8 @@ class AiSkills(private val db: com.hellfire.ass.data.EventDatabase) {
             "Do not suggest this exact normalized text from ${event.packageName} again.", reason, sourceId)
     }
     suspend fun guidance(query: String): List<AiSkill> {
-        val terms = com.hellfire.ass.data.SearchText.keywords(query)
-        return db.skills().active().filter { it.kind == "GUIDANCE" && com.hellfire.ass.data.SearchText.keywords(it.trigger).let { words -> words.isNotEmpty() && words.all { word -> word in terms } } }.take(5)
+        val terms = SearchText.keywords(query)
+        return db.skills().active().filter { it.kind == "GUIDANCE" && SearchText.keywords(it.trigger).let { words -> words.isNotEmpty() && words.all { word -> word in terms } } }.take(5)
     }
 }
 

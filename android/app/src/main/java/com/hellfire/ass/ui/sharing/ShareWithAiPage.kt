@@ -60,6 +60,11 @@ import com.hellfire.ass.ui.theme.Hf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.hellfire.ass.sharing.ImageOrientation
+import com.hellfire.ass.sharing.MediaReadAccess
+import com.hellfire.ass.sharing.MetadataExport
+import com.hellfire.ass.sharing.SensitiveText
+import com.hellfire.ass.sharing.TimestampNote
 
 @Composable
 fun ShareWithAiPage(route: Route) {
@@ -82,7 +87,7 @@ fun ShareWithAiPage(route: Route) {
     var hashtags by remember { mutableStateOf("") }
     var timestamps by remember { mutableStateOf("") }
     var excerpts by remember { mutableStateOf("") }
-    var timestampNotes by remember { mutableStateOf(listOf<com.hellfire.ass.sharing.TimestampNote>()) }
+    var timestampNotes by remember { mutableStateOf(listOf<TimestampNote>()) }
     var includeTranscript by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf(ShareTemplates.STORED_NOTICE) }
     var suggestion by remember { mutableStateOf("") }
@@ -92,7 +97,7 @@ fun ShareWithAiPage(route: Route) {
     var preview by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var mode by remember { mutableStateOf(RedactMode.COVER) }
     var rects by remember { mutableStateOf(listOf<RedactRect>()) }
-    var suggestions by remember { mutableStateOf(listOf<com.hellfire.ass.sharing.SensitiveText.Suggestion>()) }
+    var suggestions by remember { mutableStateOf(listOf<SensitiveText.Suggestion>()) }
     var left by remember { mutableStateOf("0") }
     var top by remember { mutableStateOf("0") }
     var right by remember { mutableStateOf("1000") }
@@ -135,7 +140,7 @@ fun ShareWithAiPage(route: Route) {
     }
 
     val askPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
-        status = if (com.hellfire.ass.sharing.MediaReadAccess.granted(granted)) "Media read permission granted. Prepare the copy again." else "Media read permission is not granted. Nothing was shared."
+        status = if (MediaReadAccess.granted(granted)) "Media read permission granted. Prepare the copy again." else "Media read permission is not granted. Nothing was shared."
     }
 
     fun approved(): ApprovedShare? {
@@ -153,9 +158,9 @@ fun ShareWithAiPage(route: Route) {
             busy = true
             status = ""
             val item = withContext(Dispatchers.IO) { app.database.library().item(itemId) }
-            if (item?.storage == StorageMode.EXTERNAL.name && com.hellfire.ass.sharing.MediaReadAccess.requiresMediaPermission(item.externalUri) && !com.hellfire.ass.sharing.MediaReadAccess.canRead(context, com.hellfire.ass.sharing.MediaReadAccess.kindOf(item.contentKind, item.mime))) {
+            if (item?.storage == StorageMode.EXTERNAL.name && MediaReadAccess.requiresMediaPermission(item.externalUri) && !MediaReadAccess.canRead(context, MediaReadAccess.kindOf(item.contentKind, item.mime))) {
                 busy = false
-                askPermission.launch(com.hellfire.ass.sharing.MediaReadAccess.request(com.hellfire.ass.sharing.MediaReadAccess.kindOf(item.contentKind, item.mime)))
+                askPermission.launch(MediaReadAccess.request(MediaReadAccess.kindOf(item.contentKind, item.mime)))
                 return@launch
             }
             val result = ShareSession.prepare(app, context, itemId, extraIds.toList(), current, rects, mode, muteRanges)
@@ -234,7 +239,7 @@ fun ShareWithAiPage(route: Route) {
             ChipPicker(ShareProfile.entries.map { it.name }, profile.name) { profile = ShareProfile.valueOf(it); prepared = null }
             Note(profileLabel(profile))
             Note("Some apps ignore captions or reject a JSON sidecar. That is not a published post.")
-            approved()?.let { Note(com.hellfire.ass.sharing.MetadataExport.assemble(it).text.ifBlank { "No text will be attached." }) }
+            approved()?.let { Note(MetadataExport.assemble(it).text.ifBlank { "No text will be attached." }) }
         }
         SectionCard("Redaction") {
             Note(ShareSession.DETECTORS)
@@ -249,7 +254,7 @@ fun ShareWithAiPage(route: Route) {
                             app.media.withPlainCopy(item) { file ->
                                 val bitmap = BitmapFactory.decodeFile(file.absolutePath) ?: return@withPlainCopy emptyList()
                                 val orientation = runCatching { androidx.exifinterface.media.ExifInterface(file.path).getAttributeInt(androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION, 1) }.getOrDefault(1)
-                                val oriented = com.hellfire.ass.sharing.ImageOrientation.bake(bitmap, orientation)
+                                val oriented = ImageOrientation.bake(bitmap, orientation)
                                 try { ShareSession.textBoxes(oriented) } finally { if (oriented !== bitmap) oriented.recycle(); bitmap.recycle() }
                             }
                         }
@@ -309,7 +314,7 @@ fun ShareWithAiPage(route: Route) {
         SecondaryButton(stringResource(R.string.share_copy_caption), { copy(context, caption); status = "Copied. Nothing was shared." }, enabled = caption.isNotBlank())
         SecondaryButton(stringResource(R.string.share_copy_summary), { copy(context, shortSummary); status = "Copied. Nothing was shared." }, enabled = shortSummary.isNotBlank())
         SecondaryButton(stringResource(R.string.share_export_json), {
-            val json = approved()?.let { com.hellfire.ass.sharing.MetadataExport.assemble(it.copy(profile = ShareProfile.MEDIA_JSON_SIDECAR)).sidecarJson }.orEmpty()
+            val json = approved()?.let { MetadataExport.assemble(it.copy(profile = ShareProfile.MEDIA_JSON_SIDECAR)).sidecarJson }.orEmpty()
             copy(context, json)
             status = "JSON copied. Nothing was published."
         })

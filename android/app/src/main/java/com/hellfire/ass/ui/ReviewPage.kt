@@ -15,6 +15,7 @@ import com.hellfire.ass.ui.money.*
 import com.hellfire.ass.ui.tasks.*
 import com.hellfire.ass.ui.theme.Hf
 import kotlinx.coroutines.*
+import com.hellfire.ass.tasks.TaskScheduler
 
 /** One queue; each payment and reminder still uses its existing explicit approval sheet. */
 @Composable
@@ -59,7 +60,7 @@ fun ReviewPage() {
                 Text(next.title, color = Hf.colors.onSurface)
                 Note("Suggested: ${Fmt.full(next.dueAt)}")
                 PrimaryButton(stringResource(R.string.ui_review_task), { task = TaskDraft.of(next) })
-                QuietButton(stringResource(R.string.ui_not_a_task), { scope.launch { withContext(Dispatchers.IO) { com.hellfire.ass.tasks.TaskScheduler.action(app, next.id, "REJECTED"); app.skills.feedbackFor(app, "IGNORE_TASK", next.sourceId, "You rejected this task in Daily review. Review this rule before using it.") }; reviewed++ } })
+                QuietButton(stringResource(R.string.ui_not_a_task), { scope.launch { withContext(Dispatchers.IO) { TaskScheduler.action(app, next.id, "REJECTED"); app.skills.feedbackFor(app, "IGNORE_TASK", next.sourceId, "You rejected this task in Daily review. Review this rule before using it.") }; reviewed++ } })
             }
             pendingDrafts.isNotEmpty() -> SectionCard(stringResource(R.string.ui_next_reply)) {
                 val next = pendingDrafts.minBy { it.createdAt }

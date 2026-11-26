@@ -15,6 +15,15 @@ import java.io.*
 import java.security.*
 import java.util.*
 import java.util.zip.*
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.audio.MicrophoneStatus
+import com.hellfire.ass.communications.Accounts
+import com.hellfire.ass.contacts.ContactSchema
+import com.hellfire.ass.data.SearchBackfill
+import com.hellfire.ass.drawer.DrawerInbox
+import com.hellfire.ass.library.LibrarySchema
+import com.hellfire.ass.sms.SmsCaptureSettings
+import com.hellfire.ass.tasks.TaskScheduler
 
 
 class PortableBackup(
@@ -42,14 +51,14 @@ class PortableBackup(
     }
     private suspend fun export(password: CharArray, incremental: Boolean, destinationRef: String, commit: Boolean,
         readBack: () -> InputStream, destination: () -> OutputStream): BackupOutcome = withContext(Dispatchers.IO) {
-        require(!com.hellfire.ass.audio.MicrophoneStatus.busy.value) { "Stop microphone recording first" }
+        require(!MicrophoneStatus.busy.value) { "Stop microphone recording first" }
         val archiveId = UUID.randomUUID().toString()
         val salt = SecureRandom().generateSeed(16)
         val encrypted = File(app.noBackupFilesDir, "backup-${UUID.randomUUID()}.hfm")
         var portable: PayloadCipher? = null
         try {
             // Rows of permanently deleted drawer items must not be carried into a new archive.
-            com.hellfire.ass.drawer.DrawerInbox.purgeDeletedRows(app)
+            DrawerInbox.purgeDeletedRows(app)
             var planned: BackupPlan? = null
             var previous = emptySet<String>()
             var baseId: String? = null
@@ -147,7 +156,7 @@ class PortableBackup(
         restore(password, verifyOnly = true) { app.contentResolver.openInputStream(uri) ?: error("Backup unavailable") }
     private suspend fun restore(password: CharArray, verifyOnly: Boolean = false, parents: List<() -> InputStream> = emptyList(), selection: BackupSelection? = null, source: () -> InputStream): RestoreReport = withContext(Dispatchers.IO) {
         if (!verifyOnly && selection == null) checkRestoreAllowed()
-        else if (!verifyOnly) require(!com.hellfire.ass.audio.MicrophoneStatus.busy.value) { "Stop microphone recording first" }
+        else if (!verifyOnly) require(!MicrophoneStatus.busy.value) { "Stop microphone recording first" }
         val parentPassword = if (parents.isNotEmpty()) password.copyOf() else null
         val stageId = "restore-${UUID.randomUUID()}"
         val folder = File(app.noBackupFilesDir, stageId).apply { mkdirs() }
@@ -217,8 +226,8 @@ class PortableBackup(
                     require(zip.nextEntry == null) { "Unexpected backup data" }
                 }
             }
-            com.hellfire.ass.contacts.ContactSchema.backfill(db.openHelper.writableDatabase)
-            com.hellfire.ass.library.LibrarySchema.backfill(db.openHelper.writableDatabase)
+            ContactSchema.backfill(db.openHelper.writableDatabase)
+            LibrarySchema.backfill(db.openHelper.writableDatabase)
             val missing = db.media().all().filter { it.id in unavailable }.map { it.name }
             if (verifyOnly) {
                 app.getSharedPreferences("ui", 0).edit().putLong("last_backup_verified_at", System.currentTimeMillis()).apply()
@@ -276,10 +285,10 @@ class PortableBackup(
                     app.secrets.remove("restore-journal")
                 } }
                 if (format2) applySettings(manifestJson)
-                runCatching { com.hellfire.ass.tasks.TaskScheduler.restore(app) }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }
-                runCatching { MediaWork.recover(app) }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }
-                runCatching { com.hellfire.ass.data.SearchBackfill.reset(app) }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }
-                runCatching { app.database.library().rebuildSearch() }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }
+                runCatching { TaskScheduler.restore(app) }.onFailure { Diagnostics.warn(it) }
+                runCatching { MediaWork.recover(app) }.onFailure { Diagnostics.warn(it) }
+                runCatching { SearchBackfill.reset(app) }.onFailure { Diagnostics.warn(it) }
+                runCatching { app.database.library().rebuildSearch() }.onFailure { Diagnostics.warn(it) }
             }
             RestoreReport(moved.size, missing)
         } finally {
@@ -292,10 +301,10 @@ class PortableBackup(
         }
     }
     suspend fun checkRestoreAllowed() = withContext(Dispatchers.IO) {
-        require(!com.hellfire.ass.audio.MicrophoneStatus.busy.value)
-        require(!com.hellfire.ass.sms.SmsCaptureSettings.enabled(app)) { "Disable SMS capture before restore" }
+        require(!MicrophoneStatus.busy.value)
+        require(!SmsCaptureSettings.enabled(app)) { "Disable SMS capture before restore" }
         require(!androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(app).contains(app.packageName)) { "Disable notification access before restore" }
-        require(!com.hellfire.ass.communications.Accounts.any(app.secrets)) { "Disconnect email and WhatsApp accounts before restore" }
+        require(!Accounts.any(app.secrets)) { "Disconnect email and WhatsApp accounts before restore" }
         requireEmpty()
     }
     private suspend fun requireEmpty() {

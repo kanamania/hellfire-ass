@@ -8,6 +8,7 @@ import com.hellfire.ass.processing.CaptureWork
 import kotlinx.coroutines.*
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import com.hellfire.ass.Diagnostics
 
 class CommunicationRepository(private val app: HellFireApp) {
     suspend fun approve(id: String): String = app.database.withTransaction {
@@ -36,7 +37,7 @@ class CommunicationRepository(private val app: HellFireApp) {
         } catch (e: CancellationException) {
             withContext(NonCancellable) { dao.delivery(id, "UNKNOWN", null, "DELIVERY_UNCONFIRMED") }
             throw e
-        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
+        } catch (caught: Exception) { Diagnostics.warn(caught);
             dao.delivery(id, "UNKNOWN", null, "DELIVERY_UNCONFIRMED")
             dao.audit(ActionAudit(UUID.randomUUID().toString(), id, "SEND", "UNKNOWN", System.currentTimeMillis(), "DELIVERY_UNCONFIRMED"))
             error("Delivery unconfirmed. Check the source channel before creating another send.")
@@ -62,22 +63,22 @@ class CommunicationSyncWorker(context: Context, params: WorkerParameters) : Coro
         var more = false
         val dao = app.database.communications()
         // Each inbox and each WhatsApp relay syncs independently; one failing account does not stop the others.
-        val mail = try { Accounts.mail(app.secrets) } catch (e: CancellationException) { throw e } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); retry = true; emptyList() }
+        val mail = try { Accounts.mail(app.secrets) } catch (e: CancellationException) { throw e } catch (caught: Exception) { Diagnostics.warn(caught); retry = true; emptyList() }
         for (config in mail) {
             try { more = MailAdapter(app).sync(config) || more }
             catch (e: CancellationException) { throw e }
             catch (caught: Exception) {
-                com.hellfire.ass.Diagnostics.warn(caught)
+                Diagnostics.warn(caught)
                 retry = true
                 dao.integration(IntegrationState(Accounts.mailState(config.id), "FAILED", System.currentTimeMillis(), "CONNECTION_OR_CREDENTIALS_UNAVAILABLE"))
             }
         }
-        val gateways = try { Accounts.gateways(app.secrets) } catch (e: CancellationException) { throw e } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); retry = true; emptyList() }
+        val gateways = try { Accounts.gateways(app.secrets) } catch (e: CancellationException) { throw e } catch (caught: Exception) { Diagnostics.warn(caught); retry = true; emptyList() }
         for (config in gateways) {
             try { more = GatewayAdapter(app).sync(config) || more }
             catch (e: CancellationException) { throw e }
             catch (caught: Exception) {
-                com.hellfire.ass.Diagnostics.warn(caught)
+                Diagnostics.warn(caught)
                 retry = true
                 dao.integration(IntegrationState(Accounts.gatewayState(config.getString("id")), "FAILED", System.currentTimeMillis(), "CONNECTION_OR_CREDENTIALS_UNAVAILABLE"))
             }

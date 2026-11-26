@@ -38,6 +38,10 @@ import com.hellfire.ass.ui.components.*
 import com.hellfire.ass.ui.theme.HellFireTheme
 import com.hellfire.ass.ui.theme.Hf
 import com.hellfire.ass.ui.theme.HfIcons
+import com.hellfire.ass.library.ContentKind
+import com.hellfire.ass.library.LibraryRoutes
+import com.hellfire.ass.ui.drawer.DrawerHost
+import com.hellfire.ass.ui.player.MiniPlayerOverlay
 
 enum class MainTab(@androidx.annotation.StringRes val label: Int, val icon: ImageVector) {
     Home(R.string.ui_home, HfIcons.Home), Money(R.string.ui_money, HfIcons.Money), Ask(R.string.ui_ask, HfIcons.Spark),
@@ -112,12 +116,12 @@ class Nav(private val stack: SnapshotStateList<Route>, private val tabState: Mut
             "library" -> {
                 tab(MainTab.Home)
                 val kind = when (parts.firstOrNull()) {
-                    "pictures" -> com.hellfire.ass.library.ContentKind.IMAGE
-                    "videos" -> com.hellfire.ass.library.ContentKind.VIDEO
-                    "audio" -> com.hellfire.ass.library.ContentKind.AUDIO
+                    "pictures" -> ContentKind.IMAGE
+                    "videos" -> ContentKind.VIDEO
+                    "audio" -> ContentKind.AUDIO
                     else -> null
                 }
-                push(com.hellfire.ass.library.LibraryRoutes.library(kind))
+                push(LibraryRoutes.library(kind))
                 when (parts.firstOrNull()) {
                     "collections" -> action = "collections"
                     "categories" -> action = "categories"
@@ -186,11 +190,11 @@ fun HellFireRoot(app: HellFireApp, permissions: PermissionStatus, actions: Permi
                     key(tabState.value, route, stack.size) {
                         if (route == null) TabContent(tabState.value) else RouteContent(route)
                     }
-                    com.hellfire.ass.ui.player.MiniPlayerOverlay(Modifier.align(Alignment.BottomCenter))
+                    MiniPlayerOverlay(Modifier.align(Alignment.BottomCenter))
                     draftError?.let { Banner(stringResource(it), Tone.Danger, HfIcons.Info, Modifier.align(Alignment.TopCenter).padding(16.dp)) }
                     if (message != null) Banner(message, Tone.Info, HfIcons.Info,
                         Modifier.align(Alignment.TopCenter).padding(horizontal = ScreenPadding, vertical = 8.dp).clickableRow(onMessageShown))
-                    com.hellfire.ass.ui.drawer.DrawerHost()
+                    DrawerHost()
                 }
             }
         }

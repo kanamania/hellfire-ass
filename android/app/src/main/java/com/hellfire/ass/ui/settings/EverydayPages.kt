@@ -11,6 +11,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hellfire.ass.ui.*
 import com.hellfire.ass.ui.components.*
 import kotlinx.coroutines.*
+import com.hellfire.ass.ai.ModelUpdates
+import com.hellfire.ass.processing.CaptureWork
+import com.hellfire.ass.security.DriveBackupWork
+import com.hellfire.ass.sync.WebSync
 
 @Composable
 fun GuidedSetupPage() {
@@ -60,7 +64,7 @@ fun RecoveryPage() {
     val connections by remember { app.database.communications().integrations() }.collectAsStateWithLifecycle(emptyList())
     val media by remember { app.database.media().items() }.collectAsStateWithLifecycle(emptyList())
     var refresh by remember { mutableIntStateOf(0) }
-    val snapshot = remember(refresh) { Triple(com.hellfire.ass.ai.ModelUpdates.state(app).status, com.hellfire.ass.sync.WebSync.readStatus(app), com.hellfire.ass.security.DriveBackupWork.readStatus(app)) }
+    val snapshot = remember(refresh) { Triple(ModelUpdates.state(app).status, WebSync.readStatus(app), DriveBackupWork.readStatus(app)) }
     var message by remember { mutableStateOf<String?>(null) }
     PushedPage(stringResource(R.string.ui_needs_attention), breadcrumb = "Settings") {
         message?.let { Banner(it) }
@@ -72,7 +76,7 @@ fun RecoveryPage() {
             Note(queues.joinToString { "${it.state}: ${it.count}" }.ifEmpty { stringResource(R.string.ui_no_queued_events) })
             SecondaryButton(stringResource(R.string.ui_open_permissions_and_capture), { nav.push(Screen.Permissions) })
             SecondaryButton(stringResource(R.string.ui_retry_failed_processing), { scope.launch {
-                message = try { withContext(Dispatchers.IO) { app.database.events().retryFailed(); com.hellfire.ass.processing.CaptureWork.process(app) }; context.getString(R.string.ui_processing_scheduled_check_the_updated) }
+                message = try { withContext(Dispatchers.IO) { app.database.events().retryFailed(); CaptureWork.process(app) }; context.getString(R.string.ui_processing_scheduled_check_the_updated) }
                 catch (e: Exception) { context.getString(R.string.ui_could_not_schedule_processing_saved) }
             } })
         }
@@ -116,8 +120,8 @@ fun PrivacyPage() {
     var databaseBytes by remember { mutableLongStateOf(0) }
     LaunchedEffect(refresh) { try { withContext(Dispatchers.IO) {
         cloud = app.ai.store.read().cloudEnabled
-        web = app.secrets.read(com.hellfire.ass.sync.WebSync.CONFIG) != null
-        drive = app.secrets.read(com.hellfire.ass.security.DriveBackupWork.CONFIG)?.optBoolean("enabled") == true
+        web = app.secrets.read(WebSync.CONFIG) != null
+        drive = app.secrets.read(DriveBackupWork.CONFIG)?.optBoolean("enabled") == true
         mediaBytes = app.database.media().all().sumOf { it.size }
         databaseBytes = app.getDatabasePath("hellfire.db").length()
         loaded = true; failure = null

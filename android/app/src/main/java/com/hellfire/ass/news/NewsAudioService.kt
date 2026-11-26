@@ -17,6 +17,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import com.hellfire.ass.Diagnostics
 
 /** Keeps a spoken news briefing playing in the background with a visible media notification (Pause/Resume, Next, Stop). */
 class NewsAudioService : Service() {
@@ -37,7 +38,7 @@ class NewsAudioService : Service() {
                 .createNotificationChannel(NotificationChannel(CHANNEL, "News briefing playback", NotificationManager.IMPORTANCE_LOW))
             startForeground(NOTIFICATION_ID, notification(NewsAudio.state.value), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
         } catch (caught: Exception) {
-            com.hellfire.ass.Diagnostics.warn(caught)
+            Diagnostics.warn(caught)
             stopSelf(); return START_NOT_STICKY
         }
         if (watcher == null) watcher = scope.launch {
