@@ -1,0 +1,27 @@
+# Owner reminder text<TAB>expected due (EAT, yyyy-MM-dd HH:mm). Clock: Friday 2026-11-13 10:00 EAT. Synthetic.
+remind me to call Asha tomorrow at 15:30	2026-11-14 15:30
+remind me to call Asha tomorrow 5:30pm	2026-11-14 17:30
+remind me to call Asha tomorrow 5:30 pm	2026-11-14 17:30
+remind me to call Asha tomorrow at 3pm	2026-11-14 15:00
+remind me to pay rent at 17:00	2026-11-13 17:00
+remind me to pay rent at 08:00	2026-11-14 08:00
+remind me to check the oven in 20 minutes	2026-11-13 10:20
+remind me to call Juma in two hours	2026-11-13 12:00
+remind me to stretch in half an hour	2026-11-13 10:30
+remind me to call mama tonight	2026-11-13 20:00
+remind me to pay rent on the 1st at 9:00	2026-12-01 09:00
+remind me to pay rent next friday	2026-11-20 09:00
+remind me to pay rent on friday 15:00	2026-11-13 15:00
+remind me to submit report on Monday 08:00	2026-11-16 08:00
+remind me to call the bank tomorrow in the morning	2026-11-14 08:00
+nikumbushe kulipa kodi kesho	2026-11-14 09:00
+nikumbushe kulipa kodi keshokutwa	2026-11-15 09:00
+nikumbushe kulipa kodi kesho saa tatu usiku	2026-11-14 21:00
+nikumbushe kumpigia Juma baada ya saa moja	2026-11-13 11:00
+nikumbushe kuzima jiko baada ya dakika kumi na tano	2026-11-13 10:15
+nikumbushe kumpigia mama leo usiku	2026-11-13 20:00
+nikumbushe kikao kesho jioni	2026-11-14 18:00
+nikumbushe kikao kesho saa 2:30 usiku	2026-11-14 20:30
+nikumbushe kulipa ada tarehe 15	2026-11-15 09:00
+nikumbushe kikao kesho saa nne asubuhi	2026-11-14 10:00
+nikumbushe kikao jumatatu saa saba mchana	2026-11-16 13:00

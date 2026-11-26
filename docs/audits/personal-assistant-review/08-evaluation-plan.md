@@ -63,6 +63,20 @@ These reuse the existing benchmark module and protocol in `docs/DEVICE_FEASIBILI
 - The intent-routing and time sets run as a parameterised JVM test on every build. A drop below target fails the build once the targets are met for the first time; until then the test reports the score.
 - The timeline replay runs as a host test, with Room in-memory, and reports every metric above to `build/reports/assistant-eval.json`. Scores are recorded in `docs/DEVICE_FEASIBILITY.md` checkpoints, never in code.
 
+## Implemented so far
+
+`AssistantEvalTest` reads three synthetic sets from `android/app/src/test/resources/eval/`:
+
+| Set | Rows | Contents |
+|---|---|---|
+| `time.tsv` | 26 | Owner reminders in English and Kiswahili |
+| `finance.tsv` | 19 | Provider message shapes written for the test |
+| `routing.tsv` | 20 | Questions and commands |
+
+The test runs them through the real `AssistantCommands`, `TaskExtractor`, `FinanceParser`, `AskRouting` and `NewsAsk`. It writes per-set accuracy and misses to `android/app/build/reports/assistant-eval.json`, and fails on any miss. Add a row for every new defect.
+
+These are parser and routing checks, not model accuracy or real-message accuracy. The timeline replay and the retrieval, proactive and recovery metrics above are not built yet.
+
 ## Existing tests (inventory)
 
 

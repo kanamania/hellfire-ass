@@ -1,0 +1,21 @@
+# question<TAB>expected route: NEWS (may be news), FINANCE, TASKS, BRIEF, COMMAND, NOT_COMMAND. Synthetic.
+nipe taarifa ya matumizi wiki hii	FINANCE
+spending today	FINANCE
+matumizi ya mwezi huu	FINANCE
+muhtasari wa matumizi mwezi huu	FINANCE
+morning brief	BRIEF
+nipe muhtasari	BRIEF
+tasks today	TASKS
+what do i have today?	TASKS
+nina nini kesho	TASKS
+kazi zangu leo	TASKS
+reminders tomorrow	TASKS
+news about the budget	NEWS
+habari za dar es salaam leo	NEWS
+remind me to pay rent tomorrow	COMMAND
+nikumbushe kulipa kodi kesho	COMMAND
+log cash bodaboda 3000	COMMAND
+remember when I paid rent?	NOT_COMMAND
+i received a message from Asha	NOT_COMMAND
+finish the report by friday	NOT_COMMAND
+move 50000 to savings	NOT_COMMAND
