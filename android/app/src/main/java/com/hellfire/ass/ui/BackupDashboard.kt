@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -12,6 +15,7 @@ import com.hellfire.ass.ui.components.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.hellfire.ass.Diagnostics
 
 @Composable
 fun BackupDashboardScreen(app: HellFireApp) {
@@ -34,7 +38,7 @@ fun BackupDashboardScreen(app: HellFireApp) {
     }
     LaunchedEffect(Unit) { reload() }
     val usageNow = usage
-    SectionCard(tr("Storage usage")) {
+    SectionCard(stringResource(R.string.ui_storage_usage)) {
         if (usageNow == null) Note("Loading storage…") else KvList(listOf(
             "Managed originals" to "${usageNow.managedCount} · ${usageNow.managedBytes / (1024 * 1024)} MiB",
             "External index" to usageNow.externalCount.toString(),
@@ -44,10 +48,10 @@ fun BackupDashboardScreen(app: HellFireApp) {
             "Database" to "${usageNow.databaseBytes / (1024 * 1024)} MiB",
             "Free space" to "${usageNow.freeBytes / (1024 * 1024)} MiB",
             "Verified backups" to "${usageNow.backedUp}",
-            tr("Not backed up") to usageNow.notBackedUp.toString(),
+            stringResource(R.string.ui_not_backed_up) to usageNow.notBackedUp.toString(),
         ))
         Note("Local originals stay on this phone. Remote availability is the last confirmed Drive upload, not a live quota from Google. Thumbnails are referenced by scenes and bookmarks and are not cleared.")
-        SecondaryButton(tr("Clear unused thumbnails"), {
+        SecondaryButton("Clear unused thumbnails", {
             scope.launch {
                 busy = true
                 val freed = withContext(Dispatchers.IO) { BackupStorage.evictCache(app) }
@@ -57,11 +61,11 @@ fun BackupDashboardScreen(app: HellFireApp) {
             }
         }, Modifier.fillMaxWidth(), enabled = !busy)
     }
-    SectionCard(tr("Google Drive backup")) {
+    SectionCard("Google Drive backup") {
         Note(drive.ifBlank { "Not configured" })
         driveFailure?.let { Banner("Last Drive backup problem: $it", Tone.Warning, null) }
     }
-    SectionCard(tr("Backup records kept")) {
+    SectionCard("Backup records kept") {
         Note("Backup history on this phone keeps the newest $keep archive records${if (keep == 0) " (all)" else ""}. Older records are forgotten, so the next incremental export includes those originals again.")
         Note("Archives you exported to a folder or drive are your files: HellFire cannot delete them. Google Drive archives this app created are pruned by the Drive setting below.")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -98,14 +102,14 @@ fun StatusDashboardScreen(app: HellFireApp) {
                 withContext(Dispatchers.IO) { PortableBackup(app).verify(uri, secret) }
                 message = "Archive verified. Current data was not changed."
             } catch (caught: Exception) {
-                com.hellfire.ass.Diagnostics.warn(caught)
+                Diagnostics.warn(caught)
                 message = "Verification failed. Nothing was marked backed up."
             } finally { secret.fill('\u0000'); busy = false; reload() }
         }
     }
     val current = snap
     if (current == null) Note("Loading status…") else {
-        SectionCard(tr("Status dashboard")) {
+        SectionCard(stringResource(R.string.ui_status_dashboard)) {
             KvList(listOf(
                 "Library items" to current.libraryItems.toString(),
                 "Drawer captures" to current.drawerCaptures.toString(),
@@ -118,16 +122,16 @@ fun StatusDashboardScreen(app: HellFireApp) {
                 "Pending uploads" to current.pendingUploads.toString(),
                 "Pending bytes" to current.pendingBytes.toString(),
                 "Backup" to current.backupState,
-                tr("Not backed up") to current.notBackedUp.toString(),
+                stringResource(R.string.ui_not_backed_up) to current.notBackedUp.toString(),
                 "Storage free" to "${current.storage.freeBytes / (1024 * 1024)} MiB",
-                tr("Thermal state") to current.thermal,
+                stringResource(R.string.ui_thermal_state) to current.thermal,
                 "Inference" to current.inference,
                 "Analysis" to if (current.analysisPaused) "paused" else "running",
                 "Library sync" to if (current.syncPaused) "paused" else "on",
                 "Not in search index" to current.unindexed.toString(),
             ))
         }
-        SectionCard(tr("Model availability")) {
+        SectionCard(stringResource(R.string.ui_model_availability)) {
             current.models.forEach { (name, state) -> Note("$name: $state") }
             Note("File present means the model file is on disk. It does not mean the model was loaded or timed on this device.")
         }
@@ -136,17 +140,17 @@ fun StatusDashboardScreen(app: HellFireApp) {
         }
         message?.let { Banner(it, Tone.Info, null) }
         SectionCard("Actions") {
-            SecondaryButton(if (current.analysisPaused) tr("Resume analysis") else tr("Pause analysis"), {
+            SecondaryButton(if (current.analysisPaused) stringResource(R.string.ui_resume_analysis) else stringResource(R.string.ui_pause_analysis), {
                 scope.launch {
                     busy = true
                     withContext(Dispatchers.IO) { if (current.analysisPaused) StatusReport.resumeAnalysis(app) else StatusReport.pauseAnalysis(app) }
                     busy = false; reload()
                 }
             }, Modifier.fillMaxWidth(), enabled = !busy)
-            SecondaryButton(tr("Retry failures"), {
+            SecondaryButton(stringResource(R.string.ui_retry_failures), {
                 scope.launch { busy = true; withContext(Dispatchers.IO) { StatusReport.retryFailures(app) }; busy = false; reload() }
             }, Modifier.fillMaxWidth(), enabled = !busy)
-            SecondaryButton(tr("Reindex"), {
+            SecondaryButton(stringResource(R.string.ui_reindex), {
                 scope.launch { busy = true; withContext(Dispatchers.IO) { StatusReport.reindex(app, emptyList()) }; message = "Search index rebuilt from saved records."; busy = false; reload() }
             }, Modifier.fillMaxWidth(), enabled = !busy)
             if (current.unindexed > 0) SecondaryButton("Reindex ${current.unindexed} unindexed items", {
@@ -156,21 +160,21 @@ fun StatusDashboardScreen(app: HellFireApp) {
                     message = "Reindexed ${ids.size} items from saved records."; busy = false; reload()
                 }
             }, Modifier.fillMaxWidth(), enabled = !busy)
-            if (!current.syncPaused) SecondaryButton(tr("Pause sync"), {
+            if (!current.syncPaused) SecondaryButton(stringResource(R.string.ui_pause_sync), {
                 scope.launch { busy = true; withContext(Dispatchers.IO) { StatusReport.pauseSync(app) }; message = "Library sync paused; running uploads were stopped."; busy = false; reload() }
             }, Modifier.fillMaxWidth(), enabled = !busy)
-            else SecondaryButton(tr("Resume sync"), {
+            else SecondaryButton(stringResource(R.string.ui_resume_sync), {
                 scope.launch { busy = true; withContext(Dispatchers.IO) { StatusReport.resumeSync(app) }; message = "Library sync resumed."; busy = false; reload() }
             }, Modifier.fillMaxWidth(), enabled = !busy)
-            SecondaryButton(tr("Request backup"), {
+            SecondaryButton(stringResource(R.string.ui_request_backup), {
                 scope.launch {
                     busy = true
                     message = withContext(Dispatchers.IO) { StatusReport.requestBackup(app) }
                     busy = false
                 }
             }, Modifier.fillMaxWidth(), enabled = !busy)
-            HfTextField(password, { password = it }, "Backup passphrase · at least 12 characters", password = true)
-            SecondaryButton(tr("Verify backups"), { importer.launch(arrayOf("*/*")) }, Modifier.fillMaxWidth(), enabled = !busy && password.length >= 12)
+            HfTextField(password, { password = it }, stringResource(R.string.ui_backup_passphrase_at_least_12_characters), password = true)
+            SecondaryButton(stringResource(R.string.ui_verify_backups), { importer.launch(arrayOf("*/*")) }, Modifier.fillMaxWidth(), enabled = !busy && password.length >= 12)
         }
     }
 }

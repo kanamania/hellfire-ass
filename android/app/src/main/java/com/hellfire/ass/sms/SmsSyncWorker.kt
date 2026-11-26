@@ -6,6 +6,7 @@ import com.hellfire.ass.HellFireApp
 import com.hellfire.ass.processing.CaptureWork
 import kotlinx.coroutines.*
 import java.util.concurrent.TimeUnit
+import com.hellfire.ass.Diagnostics
 
 class SmsSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
@@ -34,7 +35,7 @@ class SmsSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorke
         catch (_: SecurityException) {
             app.database.events().failure("android_sms", "SMS_PROVIDER_ACCESS_DENIED")
             Result.success()
-        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
+        } catch (caught: Exception) { Diagnostics.warn(caught);
             runCatching { app.database.events().failure("android_sms", "SMS_IMPORT_FAILED") }
             Result.retry()
         }

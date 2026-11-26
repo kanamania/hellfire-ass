@@ -6,6 +6,7 @@ import android.content.Intent
 import android.provider.Telephony
 import com.hellfire.ass.HellFireApp
 import kotlinx.coroutines.launch
+import com.hellfire.ass.Diagnostics
 
 /** The SMS provider holds the content; no private PDU/body goes into WorkManager Data. */
 class SmsReceivedReceiver : BroadcastReceiver() {
@@ -15,7 +16,7 @@ class SmsReceivedReceiver : BroadcastReceiver() {
         val app = context.applicationContext as HellFireApp
         app.captureScope.launch {
             try { SmsSyncWorker.schedule(app) }
-            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); runCatching { app.database.events().failure("android_sms", "SMS_SCHEDULING_FAILED") } }
+            catch (caught: Exception) { Diagnostics.warn(caught); runCatching { app.database.events().failure("android_sms", "SMS_SCHEDULING_FAILED") } }
             finally { result.finish() }
         }
     }

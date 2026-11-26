@@ -26,6 +26,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
 import java.nio.ByteBuffer
 import kotlin.coroutines.resume
+import com.hellfire.ass.BuildConfig
+import com.hellfire.ass.Diagnostics
 
 data class ContainerResult(val ok: Boolean, val message: String, val findings: List<MarkerHit>)
 
@@ -102,7 +104,7 @@ object ContainerExport {
                 val effects = if (audioOnly) Effects(processors, emptyList()) else Effects(processors, listOf(coverEffect(covers)))
                 val edited = EditedMediaItem.Builder(item).setRemoveVideo(audioOnly).setEffects(effects).build()
                 val transformer = Transformer.Builder(context).setAudioMimeType(MimeTypes.AUDIO_AAC).apply {
-                    if (com.hellfire.ass.BuildConfig.EMULATOR_BUILD) {
+                    if (BuildConfig.EMULATOR_BUILD) {
                         val decoder = androidx.media3.transformer.DefaultDecoderFactory.Builder(context)
                             .setMediaCodecSelector { mime, secure, tunneling ->
                                 androidx.media3.exoplayer.mediacodec.MediaCodecSelector.DEFAULT.getDecoderInfos(mime, secure, tunneling)
@@ -118,7 +120,7 @@ object ContainerExport {
                         if (continuation.isActive) continuation.resume(null)
                     }
                     override fun onError(composition: androidx.media3.transformer.Composition, exportResult: ExportResult, exportException: ExportException) {
-                        com.hellfire.ass.Diagnostics.warn(exportException)
+                        Diagnostics.warn(exportException)
                         output.delete()
                         if (continuation.isActive) continuation.resume("Transcode failed: ${exportException.errorCodeName}")
                     }

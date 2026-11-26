@@ -19,6 +19,9 @@ import com.hellfire.ass.MainActivity
 import java.util.Locale
 import kotlinx.coroutines.*
 import com.hellfire.ass.HellFireApp
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.security.AppLock
+import com.hellfire.ass.ui.UiLanguage
 
 class HellFireSession(private val sessionContext: Context) : VoiceInteractionSession(sessionContext) {
     private val assistant = LocalAssistant()
@@ -39,7 +42,7 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
 
     override fun onShow(args: Bundle?, showFlags: Int) {
         super.onShow(args, showFlags)
-        if (com.hellfire.ass.security.AppLock.enabled(sessionContext)) {
+        if (AppLock.enabled(sessionContext)) {
             queryJob?.cancel()
             recognizer?.cancel()
             speech?.stop()
@@ -63,7 +66,7 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
     }
 
     override fun onCreateContentView(): View {
-        if (com.hellfire.ass.security.AppLock.enabled(sessionContext)) return lockedView()
+        if (AppLock.enabled(sessionContext)) return lockedView()
         val padding = (20 * sessionContext.resources.displayMetrics.density).toInt()
         val layout = LinearLayout(sessionContext).apply {
             orientation = LinearLayout.VERTICAL
@@ -102,7 +105,7 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
                     pending = result.command
                     if (pending != null) confirm.visibility = View.VISIBLE
                 } catch (e: CancellationException) { throw e }
-                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); answer.text = "Local evidence unavailable. Open HellFire Ass to check storage, dates and source access." }
+                catch (caught: Exception) { Diagnostics.warn(caught); answer.text = "Local evidence unavailable. Open HellFire Ass to check storage, dates and source access." }
             }
         }
         confirm.setOnClickListener {
@@ -114,7 +117,7 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
                     withContext(Dispatchers.IO) { AssistantCommands.execute(sessionContext.applicationContext as HellFireApp, command) }
                 } catch (e: CancellationException) { throw e }
                 catch (e: IllegalArgumentException) { e.message ?: "Command could not be applied." }
-                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Command could not be fully applied. Open HellFire Ass to check; nothing was sent." }
+                catch (caught: Exception) { Diagnostics.warn(caught); "Command could not be fully applied. Open HellFire Ass to check; nothing was sent." }
                 answer.text = lastAnswer
             }
         }
@@ -126,7 +129,7 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
         voiceStatus = label("Offline voice output is optional; text input works without microphone access.")
         speech = TextToSpeech(sessionContext) { status ->
             val engine = speech
-            val voice = engine?.voices?.firstOrNull { !it.isNetworkConnectionRequired && it.locale.language == com.hellfire.ass.ui.UiLanguage.locale.language }
+            val voice = engine?.voices?.firstOrNull { !it.isNetworkConnectionRequired && it.locale.language == UiLanguage.locale.language }
             speechReady = status == TextToSpeech.SUCCESS && voice != null
             if (speechReady) engine?.voice = voice
             voiceStatus?.text = if (speechReady) "Offline voice ready" else "Offline voice unavailable. Install an offline system voice; text remains available."
@@ -163,10 +166,10 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
                             })
                             startListening(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
                                 .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                                .putExtra(RecognizerIntent.EXTRA_LANGUAGE, com.hellfire.ass.ui.UiLanguage.locale.toLanguageTag())
+                                .putExtra(RecognizerIntent.EXTRA_LANGUAGE, UiLanguage.locale.toLanguageTag())
                                 .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true))
                         }
-                    } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); voiceStatus?.text = "Offline speech could not start. Type your question instead." }
+                    } catch (caught: Exception) { Diagnostics.warn(caught); voiceStatus?.text = "Offline speech could not start. Type your question instead." }
                 }
             }
         })

@@ -1,5 +1,7 @@
 package com.hellfire.ass.player
 
+import com.hellfire.ass.R
+
 /**
  * System-overlay player was evaluated and not implemented.
  * A TYPE_APPLICATION_OVERLAY window cannot host the single ExoPlayer surface while the activity
@@ -9,5 +11,5 @@ package com.hellfire.ass.player
  */
 object OverlayEvaluation {
     const val IMPLEMENTED = false
-    const val SUMMARY = "System overlay is not available. Picture-in-picture is the supported floating player."
+    val SUMMARY = R.string.ui_system_overlay_is_not_available_picture
 }

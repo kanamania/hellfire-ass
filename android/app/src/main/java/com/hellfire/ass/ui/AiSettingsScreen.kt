@@ -18,6 +18,7 @@ import com.hellfire.ass.HellFireApp
 import com.hellfire.ass.ai.*
 import kotlinx.coroutines.*
 import java.math.BigDecimal
+import com.hellfire.ass.Diagnostics
 
 internal fun usd(micro: Long): String = BigDecimal.valueOf(micro, 6).stripTrailingZeros().toPlainString()
 private fun microUsd(text: String): Long = text.toBigDecimal().movePointRight(6).longValueExact().also { require(it >= 0) }
@@ -67,7 +68,7 @@ fun AiSettingsScreen(app: HellFireApp, budgetOnly: Boolean = false) {
             state = withContext(Dispatchers.IO) { app.ai.store.read() }
             cap = usd(state!!.monthlyCap)
             message = "Cloud is off by default. Keys stay encrypted on this device."
-        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); message = AiError.STORAGE.message }
+        } catch (caught: Exception) { Diagnostics.warn(caught); message = AiError.STORAGE.message }
     }
     val current = state
     if (current == null) { Text(message, Modifier.semantics { liveRegion = LiveRegionMode.Polite }); return }
@@ -184,7 +185,7 @@ private fun ProviderEditor(
             val price = if (inputPrice.isBlank() && outputPrice.isBlank()) null else ModelPrice(microUsd(inputPrice), microUsd(outputPrice))
             onSave(enabled, credential.trim(), model.trim(), price, clear)
             credential = ""; clear = false; error = ""
-        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); error = "Enter nonnegative USD prices with at most six decimal places." }
+        } catch (caught: Exception) { Diagnostics.warn(caught); error = "Enter nonnegative USD prices with at most six decimal places." }
     }) { Text("Save provider") }
     TextButton(enabled = !busy, onClick = onTest) { Text("Test saved connection and discover models") }
     if (error.isNotEmpty()) Text(error, Modifier.semantics { liveRegion = LiveRegionMode.Polite })

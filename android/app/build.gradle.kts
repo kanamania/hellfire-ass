@@ -21,8 +21,8 @@ android {
         minSdk = 29
         targetSdk = 36
         externalNativeBuild { cmake { cppFlags += "-std=c++17" } }
-        versionCode = 9
-        versionName = "0.9.0"
+        versionCode = 10
+        versionName = "0.10.0"
         testInstrumentationRunner = "com.hellfire.ass.PredeviceRunner"
         buildConfigField("boolean", "EMULATOR_BUILD", "false")
     }
@@ -81,6 +81,17 @@ android {
     sourceSets.getByName("profile").manifest.srcFile("src/benchmark/AndroidManifest.xml")
     lint { abortOnError = true }
     packaging { resources { excludes += setOf("META-INF/NOTICE.md", "META-INF/LICENSE.md", "META-INF/LICENSE.txt", "META-INF/NOTICE.txt") } }
+}
+// Handover builds carry their version and variant (owner naming rule); test-only variants keep Gradle's names for tools/.
+@Suppress("DEPRECATION")
+android.applicationVariants.all {
+    val variant = this
+    val type = variant.buildType.name
+    if (type == "debug" || type == "release") variant.outputs.all {
+        val unsigned = if (type == "release" && variant.signingConfig == null) "-unsigned" else ""
+        (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
+            "HellFire-Ass-${variant.versionName}-code${variant.versionCode}-$type$unsigned.apk"
+    }
 }
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }

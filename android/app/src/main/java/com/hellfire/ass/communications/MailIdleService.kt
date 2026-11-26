@@ -11,6 +11,7 @@ import com.sun.mail.imap.*
 import kotlinx.coroutines.*
 import java.util.Properties
 import javax.mail.*
+import com.hellfire.ass.Diagnostics
 
 /** Explicit, bounded foreground IDLE session; ordinary durable sync remains available. */
 class MailIdleService : android.app.Service() {
@@ -32,7 +33,7 @@ class MailIdleService : android.app.Service() {
                 .setContentTitle("HellFire Ass · IMAP IDLE active").setContentText("Owner-started connection to every inbox · ten-minute limit")
                 .setContentIntent(open).setOngoing(true).addAction(Notification.Action.Builder(null, "Stop", stop).build()).build()
             if (Build.VERSION.SDK_INT >= 29) startForeground(83, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC) else startForeground(83, notification)
-        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); stopSelf(); return START_NOT_STICKY }
+        } catch (caught: Exception) { Diagnostics.warn(caught); stopSelf(); return START_NOT_STICKY }
         job = scope.launch {
             val app = application as HellFireApp
             val timer = launch { delay(10 * 60_000L); stopSelf() }
@@ -41,7 +42,7 @@ class MailIdleService : android.app.Service() {
                 // One bounded IDLE connection per inbox; a failing inbox does not end the others.
                 accounts.map { config -> launch { idle(app, config) } }.joinAll()
             } catch (e: CancellationException) { throw e }
-            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught) }
+            catch (caught: Exception) { Diagnostics.warn(caught) }
             finally {
                 timer.cancel()
                 stores.values.forEach { runCatching { it.close() } }; stores.clear()
@@ -75,7 +76,7 @@ class MailIdleService : android.app.Service() {
             }
         } catch (e: CancellationException) { throw e }
         catch (error: Exception) {
-            com.hellfire.ass.Diagnostics.warn(error)
+            Diagnostics.warn(error)
             failed = true
             runCatching { app.database.communications().integration(IntegrationState(state, "UNAVAILABLE", System.currentTimeMillis(),
                 if (error.message == "IDLE_UNSUPPORTED") "SERVER_DOES_NOT_SUPPORT_IDLE" else "CONNECTION_OR_CREDENTIALS_UNAVAILABLE")) }

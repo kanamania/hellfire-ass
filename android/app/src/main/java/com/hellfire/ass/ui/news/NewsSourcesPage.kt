@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.news
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -19,7 +22,6 @@ fun NewsSourcesPage() {
     val app = LocalEnv.current.app
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
-    fun t(text: String) = UiLanguage.text(context, text)
     var failed by remember { mutableStateOf<Throwable?>(null) }
     val sources by remember { safeFlow(emptyList(), { failed = it }) { app.news.sources() } }.collectAsStateWithLifecycle(null)
     var input by remember { mutableStateOf("") }
@@ -35,52 +37,52 @@ fun NewsSourcesPage() {
         message = r.exceptionOrNull()?.let { failText(it, what) to Tone.Danger } ?: done?.let { it to Tone.Success }
     }
 
-    PushedPage(tr("Sources"), breadcrumb = tr("News settings")) {
+    PushedPage(stringResource(R.string.ui_sources), breadcrumb = "News settings") {
         message?.let { (text, tone) -> Banner(text, tone, HfIcons.Info, Modifier.clickableRow { message = null }) }
         failed?.let { Banner(failText(it, "Could not read sources"), Tone.Danger, null) }
 
-        SectionCard(tr("Add source")) {
+        SectionCard("Add source") {
             HfTextField(input, { input = it.take(500) }, "Feed URL, website, @handle or x:query",
-                supporting = tr("RSS, Atom or JSON feed; a website (its feed is found); an X account (@name) or X search (x:query)"))
-            Dropdown("Category", category, NewsUi.categories, { t(NewsUi.categoryLabel(it)) }, { category = it })
-            PrimaryButton(tr(if (adding) "Adding…" else "Add source"), {
+                supporting = "RSS, Atom or JSON feed; a website (its feed is found); an X account (@name) or X search (x:query)")
+            Dropdown(stringResource(R.string.ui_category), category, NewsUi.categories, { NewsUi.categoryLabel(it) }, { category = it })
+            PrimaryButton(if (adding) "Adding…" else "Add source", {
                 adding = true
                 scope.launch {
                     val r = newsCall { app.news.addSource(input.trim(), category) }
                     adding = false
-                    message = r.getOrNull()?.let { s -> "${t("Added")} ${s.name} · ${t(NewsUi.sourceStateLabel(s.state))}" + (s.note.takeIf { it.isNotBlank() }?.let { " · $it" } ?: "") to
+                    message = r.getOrNull()?.let { s -> "Added ${s.name} · ${NewsUi.sourceStateLabel(s.state)}" + (s.note.takeIf { it.isNotBlank() }?.let { " · $it" } ?: "") to
                         (if (s.state == "ACTIVE") Tone.Success else Tone.Warning) } ?: (failText(r.exceptionOrNull(), "Could not add this source") to Tone.Danger)
                     if (r.isSuccess) input = ""
                 }
             }, Modifier.fillMaxWidth(), enabled = input.isNotBlank() && !adding)
         }
 
-        SectionCard(tr("X (Twitter) API")) {
-            Note(tr("X API access is paid and tiered. Add your own bearer token to follow X accounts or searches. Posts are shown as unverified social posts and are never treated as proof."))
-            Text(tr(if (hasToken) "A bearer token is saved (encrypted on this phone)." else "No bearer token saved."), style = Hf.type.body, color = Hf.colors.onSurface)
+        SectionCard("X (Twitter) API") {
+            Note("X API access is paid and tiered. Add your own bearer token to follow X accounts or searches. Posts are shown as unverified social posts and are never treated as proof.")
+            Text(if (hasToken) "A bearer token is saved (encrypted on this phone)." else "No bearer token saved.", style = Hf.type.body, color = Hf.colors.onSurface)
             HfTextField(token, { token = it.take(400) }, "Bearer token", password = true)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PrimaryButton(tr("Save token"), {
+                PrimaryButton("Save token", {
                     val t = token.trim(); token = ""
                     act("Could not save the token", "X token saved.") { app.news.setXToken(t); hasToken = true }
                 }, enabled = token.isNotBlank())
-                if (hasToken) SecondaryButton(tr("Remove token"), { act("Could not remove the token", "X token removed.") { app.news.setXToken(""); hasToken = false } })
+                if (hasToken) SecondaryButton("Remove token", { act("Could not remove the token", "X token removed.") { app.news.setXToken(""); hasToken = false } })
             }
         }
 
         val all = sources
         when {
-            all == null -> Note(tr("Loading…"))
-            all.isEmpty() -> Note(tr("No sources yet. Built-in sources are added the first time news refreshes."))
+            all == null -> Note("Loading…")
+            all.isEmpty() -> Note("No sources yet. Built-in sources are added the first time news refreshes.")
             else -> all.groupBy { it.category }.toSortedMap(compareBy { NewsUi.categories.indexOf(it).let { i -> if (i < 0) 99 else i } }).forEach { (cat, list) ->
-                SectionHeader(tr(NewsUi.categoryLabel(cat)), trailing = list.size.toString())
+                SectionHeader(NewsUi.categoryLabel(cat), trailing = list.size.toString())
                 list.forEach { s -> SourceCard(s, onRemove = { removing = s }, act = ::act) }
             }
         }
-        Note(tr("Reliability is your own estimate of reporting quality; it affects ranking, never what counts as confirmed. Licensed sources are listed but never fetched without a licence."))
+        Note("Reliability is your own estimate of reporting quality; it affects ranking, never what counts as confirmed. Licensed sources are listed but never fetched without a licence.")
     }
     removing?.let { s ->
-        ConfirmDialog(tr("Remove source?"), "${s.name} " + tr("will no longer be fetched. Stories already saved stay."), tr("Remove"),
+        ConfirmDialog("Remove source?", "${s.name} " + "will no longer be fetched. Stories already saved stay.", stringResource(R.string.ui_remove),
             { removing = null; act("Could not remove ${s.name}", "${s.name} removed.") { app.news.setSourceState(s.id, "REMOVED") } }, { removing = null }, destructive = true)
     }
 }
@@ -92,12 +94,12 @@ private fun SourceCard(s: NewsSource, onRemove: () -> Unit, act: (String, String
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(s.name, Modifier.weight(1f), style = Hf.type.rowTitle, color = Hf.colors.onSurface)
-                StatusPill(tr(NewsUi.sourceStateLabel(s.state)), NewsUi.sourceStateTone(s.state))
+                StatusPill(NewsUi.sourceStateLabel(s.state), NewsUi.sourceStateTone(s.state))
             }
-            Text(listOfNotNull(s.kind, s.language, if (s.official) tr("Official") else null, s.agency).joinToString(" · "), style = Hf.type.rowSubtitle, color = Hf.colors.muted)
-            Text(listOf(tr("Last success") + ": " + (s.lastSuccessAt?.let { Fmt.dayTime(it) } ?: tr("never")),
-                "${s.failures} " + tr("failures")).joinToString(" · "), style = Hf.type.rowSubtitle, color = Hf.colors.muted)
-            s.lastError?.let { Text(tr("Last error") + ": " + it, style = Hf.type.rowSubtitle, color = Hf.colors.danger, maxLines = 3) }
+            Text(listOfNotNull(s.kind, s.language, if (s.official) "Official" else null, s.agency).joinToString(" · "), style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+            Text(listOf("Last success" + ": " + (s.lastSuccessAt?.let { Fmt.dayTime(it) } ?: "never"),
+                "${s.failures} " + "failures").joinToString(" · "), style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+            s.lastError?.let { Text("Last error" + ": " + it, style = Hf.type.rowSubtitle, color = Hf.colors.danger, maxLines = 3) }
             if (s.note.isNotBlank()) Note(s.note)
             Stepper("Reliability", s.reliability.toString(),
                 { act("Could not update ${s.name}", null) { app.news.setSourceReliability(s.id, (s.reliability - 5).coerceAtLeast(0)) } },
@@ -109,10 +111,10 @@ private fun SourceCard(s: NewsSource, onRemove: () -> Unit, act: (String, String
                 minusEnabled = s.priority > -2, plusEnabled = s.priority < 2)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 when (s.state) {
-                    "ACTIVE" -> SecondaryButton(tr("Mute"), { act("Could not mute ${s.name}", null) { app.news.setSourceState(s.id, "MUTED") } })
-                    "MUTED" -> SecondaryButton(tr("Unmute"), { act("Could not unmute ${s.name}", null) { app.news.setSourceState(s.id, "ACTIVE") } })
+                    "ACTIVE" -> SecondaryButton("Mute", { act("Could not mute ${s.name}", null) { app.news.setSourceState(s.id, "MUTED") } })
+                    "MUTED" -> SecondaryButton("Unmute", { act("Could not unmute ${s.name}", null) { app.news.setSourceState(s.id, "ACTIVE") } })
                 }
-                QuietButton(tr("Remove"), onRemove)
+                QuietButton(stringResource(R.string.ui_remove), onRemove)
             }
         }
     }

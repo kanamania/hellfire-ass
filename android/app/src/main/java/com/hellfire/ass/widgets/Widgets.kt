@@ -31,6 +31,7 @@ import kotlinx.coroutines.withContext
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import com.hellfire.ass.ui.money.candidateTitle
 
 /** Base for HellFire widgets: loads data off the main thread, then renders in the token theme. Never sends or posts anything. */
 abstract class HfWidget<T : Any>(private val title: String, private val fallback: String) : GlanceAppWidget() {
@@ -422,7 +423,7 @@ class ReviewWidget : HfWidget<ReviewCounts>("Nightly review", "hellfire://money/
         val c = app.database.finances().allCandidates().filter { it.state == "REVIEW" }
         val items = c.take(12).map { x ->
             val alias = x.merchant?.let { app.database.finances().merchant(x.provider, it) }
-            ReviewItem(com.hellfire.ass.ui.money.candidateTitle(x, alias), Fmt.relativeDay(x.occurredAt), x.amount, x.kind == "INCOME" || x.kind == "REFUND")
+            ReviewItem(candidateTitle(x, alias), Fmt.relativeDay(x.occurredAt), x.amount, x.kind == "INCOME" || x.kind == "REFUND")
         }
         return ReviewCounts(c.size, c.count { x -> x.merchant != null && app.database.finances().merchant(x.provider, x.merchant) == null },
             c.count { it.reference == null && it.provider != "MANUAL" }, app.database.tasks().reviewsNow().size, items)

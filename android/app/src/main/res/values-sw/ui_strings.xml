@@ -1,589 +1,589 @@
 <resources>
-    <string name="ui_3a78695388" formatted="false">Mwanzo</string>
-    <string name="ui_5ccc2e8715" formatted="false">Fedha</string>
-    <string name="ui_b8c209cdea" formatted="false">Uliza</string>
-    <string name="ui_b3a60e61a5" formatted="false">Majukumu</string>
-    <string name="ui_4bc74b2135" formatted="false">Jukumu</string>
-    <string name="ui_94835ea2fc" formatted="false">Kikasha</string>
-    <string name="ui_74a883a037" formatted="false">Mipangilio</string>
-    <string name="ui_aff0766a52" formatted="false">Pitia</string>
-    <string name="ui_8c64fa44d7" formatted="false">Mapitio ya siku</string>
-    <string name="ui_65e3a57008" formatted="false">Pitia inayofuata</string>
-    <string name="ui_80712e2f2d" formatted="false">Pitia malipo</string>
-    <string name="ui_170da5e1b5" formatted="false">Pitia jukumu</string>
-    <string name="ui_09a08c5602" formatted="false">Pitia jibu kwenye Kikasha</string>
-    <string name="ui_40a3b25c20" formatted="false">Pitia malipo yanayosubiri</string>
-    <string name="ui_bb3969ce41" formatted="false">Malipo, majukumu na majibu sehemu moja. Kila hatua inahitaji idhini yako.</string>
-    <string name="ui_4ed36bd325" formatted="false">Inayofuata · malipo</string>
-    <string name="ui_09f873ccaa" formatted="false">Inayofuata · jukumu</string>
-    <string name="ui_cba2fe493c" formatted="false">Inayofuata · jibu</string>
-    <string name="ui_e68cbfcf62" formatted="false">Umemaliza mapitio</string>
-    <string name="ui_a9e82cdb53" formatted="false">Hakuna malipo, mapendekezo ya majukumu au rasimu zinazosubiri mapitio.</string>
-    <string name="ui_aa025bdd64" formatted="false">Hakiki matumizi ya pesa taslimu</string>
-    <string name="ui_b1d36a4a1f" formatted="false">Nimemaliza kuhakiki matumizi haya</string>
-    <string name="ui_06268fd2da" formatted="false">Chagua akaunti/aina ya malipo yanayosubiri…</string>
-    <string name="ui_1e96751ace" formatted="false">Pendekeza akaunti na aina</string>
-    <string name="ui_f7d5b1abad" formatted="false">Chagua malipo mengine</string>
-    <string name="ui_bc994a88a0" formatted="false">Weka matumizi taslimu</string>
-    <string name="ui_3e1baf33e3" formatted="false">Weka matumizi ya pesa taslimu</string>
-    <string name="ui_ba423a4640" formatted="false">Ongeza jukumu</string>
-    <string name="ui_3e992276b2" formatted="false">Jukumu jipya</string>
-    <string name="ui_cf1368a3d1" formatted="false">Hariri jukumu</string>
-    <string name="ui_2b065c7c9c" formatted="false">Leo</string>
-    <string name="ui_5f1a2542e4" formatted="false">Yajayo</string>
-    <string name="ui_11a6767d56" formatted="false">Imekamilika</string>
-    <string name="ui_2cb1983a1e" formatted="false">Bado haijakamilika</string>
-    <string name="ui_a8283ade31" formatted="false">Tengua</string>
-    <string name="ui_a6a80431b0" formatted="false">Badili muda</string>
-    <string name="ui_b6b7a00658" formatted="false">Rudia</string>
-    <string name="ui_b36c2611dc" formatted="false">Kila siku</string>
-    <string name="ui_2975132481" formatted="false">Kila wiki</string>
-    <string name="ui_9b11f6b707" formatted="false">Kila mwezi</string>
-    <string name="ui_dc937b5989" formatted="false">Hakuna</string>
-    <string name="ui_f481a73cda" formatted="false">Endelea kunikumbusha</string>
-    <string name="ui_eab0cd8fdf" formatted="false">Kila saa</string>
-    <string name="ui_b41cc8f2fd" formatted="false">Marudio baada ya muda kupita</string>
-    <string name="ui_5867e278dc" formatted="false">Inajirudia kila mwezi</string>
-    <string name="ui_85b2286585" formatted="false">Ukimaliza jukumu linalojirudia, linalofuata hupangwa. Endelea kunikumbusha hutumia muda uliochagua kwenye Mipangilio.</string>
-    <string name="ui_7971dd7526" formatted="false">Vikumbusho</string>
-    <string name="ui_31757bbfa1" formatted="false">Kikumbusho</string>
-    <string name="ui_d660945bc2" formatted="false">Muda umepita</string>
-    <string name="ui_051cc2b13b" formatted="false">Vikumbusho vilivyochelewa</string>
-    <string name="ui_cf8e642432" formatted="false">Ruhusu arifa za vikumbusho</string>
-    <string name="ui_451cd39654" formatted="false">Dhibiti ruhusa ya kengele sahihi</string>
-    <string name="ui_3fac58d0c7" formatted="false">Mapitio ya matumizi taslimu ya usiku</string>
-    <string name="ui_c6aa9cd74d" formatted="false">Muhtasari wa asubuhi</string>
-    <string name="ui_f296e45acc" formatted="false">Muhtasari wa jioni</string>
-    <string name="ui_509d03586b" formatted="false">Arifa za matatizo ya ukusanyaji</string>
-    <string name="ui_d0a300f3a4" formatted="false">Hifadhi muda</string>
-    <string name="ui_ec5ba0abb7" formatted="false">Ruhusa</string>
-    <string name="ui_f5387f9bb6" formatted="false">Aina</string>
-    <string name="ui_baaddf70fb" formatted="false">Aina</string>
-    <string name="ui_1eec97a07f" formatted="false">Ahadi</string>
-    <string name="ui_86ebc563f5" formatted="false">Nani atafanya</string>
-    <string name="ui_d30af076b0" formatted="false">Mimi</string>
-    <string name="ui_3233cb049a" formatted="false">Mtu mwingine</string>
-    <string name="ui_dca5fa430c" formatted="false">Sina uhakika</string>
-    <string name="ui_9c10e38867" formatted="false">Bili ya kulipa</string>
-    <string name="ui_87dbf39d87" formatted="false">Ninadaiwa</string>
-    <string name="ui_49aa2eb928" formatted="false">Ninamdai</string>
-    <string name="ui_9957d09c21" formatted="false">Hakuna</string>
-    <string name="ui_90a90a48e2" formatted="false">Habari za asubuhi</string>
-    <string name="ui_d325e1bbfd" formatted="false">Habari za mchana</string>
-    <string name="ui_15a421e4cf" formatted="false">Habari za jioni</string>
-    <string name="ui_74b6abdf59" formatted="false">Inahitaji hatua yako</string>
-    <string name="ui_baddce6d8b" formatted="false">Matumizi ya leo</string>
-    <string name="ui_7c9f7617b7" formatted="false">Mapato ya leo</string>
-    <string name="ui_e31da5b25f" formatted="false">Yanayofuata</string>
-    <string name="ui_cb66482383" formatted="false">Majukumu yote</string>
-    <string name="ui_7f6c052da7" formatted="false">Hapa yanahesabiwa malipo uliyothibitisha tu.</string>
-    <string name="ui_56b564b75c" formatted="false">Violezo</string>
-    <string name="ui_d7942d2821" formatted="false">Tumia kiolezo</string>
-    <string name="ui_7ab15c8cd5" formatted="false">Nasubiri majibu</string>
-    <string name="ui_7db2089705" formatted="false">Watu</string>
-    <string name="ui_3b387c6547" formatted="false">Madeni</string>
-    <string name="ui_245ad028f7" formatted="false">Bili</string>
-    <string name="ui_bfdd510698" formatted="false">Rekodi</string>
-    <string name="ui_60c56d66a1" formatted="false">Rekodi za sauti</string>
-    <string name="ui_dacca3cba3" formatted="false">Ripoti</string>
-    <string name="ui_b6ce788d97" formatted="false">Ripoti</string>
-    <string name="ui_f3e23734b2" formatted="false">Ripoti kamili</string>
-    <string name="ui_d5d0a30b51" formatted="false">Kalenda</string>
-    <string name="ui_c4e7ea5310" formatted="false">Ongeza kwenye kalenda…</string>
-    <string name="ui_0e570ca6fa" formatted="false">Chanzo</string>
-    <string name="ui_caf85b0888" formatted="false">Vyanzo</string>
-    <string name="ui_95a84d695e" formatted="false">Onyesha chanzo</string>
-    <string name="ui_11cbee289f" formatted="false">Kumbuka hili</string>
-    <string name="ui_26ddf55db7" formatted="false">Hifadhi kumbukumbu</string>
-    <string name="ui_6f541e1b25" formatted="false">Unda jukumu</string>
-    <string name="ui_c78a983b05" formatted="false">Chagua maneno halisi kutoka chanzo. Yataendelea kuunganishwa na rekodi ya asili.</string>
-    <string name="ui_b6b19ae750" formatted="false">Mtu au mada</string>
-    <string name="ui_fc537eec08" formatted="false">Maneno kutoka chanzo</string>
-    <string name="ui_fbaa34ca38" formatted="false">Uliza kuhusu fedha, majukumu na ujumbe wako</string>
-    <string name="ui_ee7227ce35" formatted="false">Historia ya maswali</string>
-    <string name="ui_0e76960093" formatted="false">Historia</string>
-    <string name="ui_0e15ae8690" formatted="false">Hifadhi historia iliyosimbwa</string>
-    <string name="ui_28c7029cdb" formatted="false">Futa historia na mazungumzo</string>
-    <string name="ui_202610b579" formatted="false">Nani anajibu</string>
-    <string name="ui_f97da48734" formatted="false">Kwenye simu hii</string>
-    <string name="ui_b321be0264" formatted="false">AI ya simu na vyanzo vilivyohifadhiwa</string>
-    <string name="ui_57f3f6c9f3" formatted="false">Kazi ya AI</string>
-    <string name="ui_457588a8c6" formatted="false">AI ya mtandaoni</string>
-    <string name="ui_2c7e25e017" formatted="false">Modeli za AI kwenye simu</string>
-    <string name="ui_ac6c80d635" formatted="false">Bajeti ya AI ya mwezi</string>
-    <string name="ui_eebdd24a77" formatted="false">Thibitisha</string>
-    <string name="ui_22a970d2e5" formatted="false">Imekamilika</string>
-    <string name="ui_3329a9bb48" formatted="false">Inatekeleza…</string>
-    <string name="ui_61a99938eb" formatted="false">Haikukamilika. Angalia matokeo hapa chini kabla ya kujaribu tena.</string>
-    <string name="ui_eb1a70e392" formatted="false">Ondoa pendekezo</string>
-    <string name="ui_7fb156411a" formatted="false">Imeondolewa</string>
-    <string name="ui_dd73221dc2" formatted="false">Kuthibitisha huhifadhi rasimu. Kutuma kunahitaji Idhinisha na tuma kwenye Kikasha.</string>
-    <string name="ui_5e533b4731" formatted="false">Malipo yaliyothibitishwa tu yanahesabiwa. Kuhamisha kati ya akaunti zako hakuhesabiwi kama matumizi.</string>
-    <string name="ui_aa257cd947" formatted="false">Rekodi zilizotumika kujibu. Gusa rekodi kuona asili yake.</string>
-    <string name="ui_5474eef8d0" formatted="false">Inafanya kazi…</string>
-    <string name="ui_19766ed6cc" formatted="false">Ghairi</string>
-    <string name="ui_464c4ffd01" formatted="false">Hariri</string>
-    <string name="ui_1509f561f2" formatted="false">Hifadhi</string>
-    <string name="ui_31fbef1625" formatted="false">Endelea</string>
-    <string name="ui_b58eb52c88" formatted="false">Ruka kwa sasa</string>
-    <string name="ui_76900f1bfd" formatted="false">Rudi</string>
-    <string name="ui_5a1f096a0d" formatted="false">Washa</string>
-    <string name="ui_06f0e210b2" formatted="false">Zima</string>
-    <string name="ui_1300117561" formatted="false">Imewashwa</string>
-    <string name="ui_ca7981b46e" formatted="false">Imezimwa</string>
-    <string name="ui_969ccbd3cf" formatted="false">Barua pepe</string>
-    <string name="ui_6a40edf1fc" formatted="false">WhatsApp</string>
-    <string name="ui_a52ace420f" formatted="false">Zote</string>
-    <string name="ui_b73a5e2ca6" formatted="false">Simu</string>
-    <string name="ui_40b601a10c" formatted="false">SMS</string>
-    <string name="ui_1d432f5869" formatted="false">Mazungumzo</string>
-    <string name="ui_5110768675" formatted="false">Rekodi zote</string>
-    <string name="ui_5894fff79e" formatted="false">Onyesha historia ya zamani</string>
-    <string name="ui_5ffa922919" formatted="false">Tafuta ujumbe wote uliohifadhiwa</string>
-    <string name="ui_ece2a57619" formatted="false">Utafutaji unajumuisha maandishi ya ujumbe na vyanzo vya zamani vilivyohifadhiwa.</string>
-    <string name="ui_8a997164d2" formatted="false">Idhinisha na tuma</string>
-    <string name="ui_56259e319e" formatted="false">RASIMU IKO TAYARI</string>
-    <string name="ui_222753ee56" formatted="false">Rasimu zilizotumwa na zilizoshindwa</string>
-    <string name="ui_ca48e69a9c" formatted="false">Akaunti za barua pepe na WhatsApp huwekwa kwenye Mipangilio. Hakuna kinachotumwa bila idhini yako.</string>
-    <string name="ui_12e62269e9" formatted="false">Jibu halihitajiki</string>
-    <string name="ui_456a73bbce" formatted="false">Kesho</string>
-    <string name="ui_292c06f004" formatted="false">Aina ya matumizi</string>
-    <string name="ui_7e1b0d5641" formatted="false">Akaunti</string>
-    <string name="ui_8a7c8b67fe" formatted="false">Akaunti</string>
-    <string name="ui_aa9b4b5f1b" formatted="false">Kiasi TZS</string>
-    <string name="ui_cb88202b9f" formatted="false">Ada TZS</string>
-    <string name="ui_526e0087cc" formatted="false">Maelezo</string>
-    <string name="ui_1da9a04272" formatted="false">Mfanyabiashara</string>
-    <string name="ui_6675fa6b7f" formatted="false">Taja mfanyabiashara huyu</string>
-    <string name="ui_66e97ac375" formatted="false">Aina ya kawaida</string>
-    <string name="ui_2b31046ef3" formatted="false">Badili aina</string>
-    <string name="ui_091fd6e985" formatted="false">Yanayosubiri uthibitisho</string>
-    <string name="ui_690dbe9dc0" formatted="false">Ya karibuni</string>
-    <string name="ui_9c823cdc78" formatted="false">Salio lote · TZS</string>
-    <string name="ui_dcd1d5223f" formatted="false">Jina</string>
-    <string name="ui_e4eb18069d" formatted="false">Chakula</string>
-    <string name="ui_2742b7b24a" formatted="false">Mahitaji ya nyumbani</string>
-    <string name="ui_aaead4abf5" formatted="false">Usafiri</string>
-    <string name="ui_a80f942f41" formatted="false">Mafuta</string>
-    <string name="ui_0a035c2b85" formatted="false">Huduma za nyumbani</string>
-    <string name="ui_f0268cb910" formatted="false">Kodi</string>
-    <string name="ui_76f68a75f0" formatted="false">Biashara</string>
-    <string name="ui_bd2d677b2e" formatted="false">Familia</string>
-    <string name="ui_27b54406ac" formatted="false">Muda wa maongezi</string>
-    <string name="ui_51595db919" formatted="false">Mapato</string>
-    <string name="ui_6d80486cc3" formatted="false">Ada</string>
-    <string name="ui_f97e9da0e3" formatted="false">Nyingine</string>
-    <string name="ui_a0417ba801" formatted="false">Matumizi</string>
-    <string name="ui_6b37bd3508" formatted="false">Fedha zilizorudishwa</string>
-    <string name="ui_dde8bef78c" formatted="false">Uhamisho</string>
-    <string name="ui_12030ceac0" formatted="false">Uhamisho kati ya akaunti zako</string>
-    <string name="ui_94a26c5abe" formatted="false">Malipo uliyothibitisha tu yanaongezwa kwenye jumla.</string>
-    <string name="ui_50f18d4f05" formatted="false">Si malipo</string>
-    <string name="ui_bc9eb8587a" formatted="false">Si jukumu</string>
-    <string name="ui_4d77119a6f" formatted="false">Kumbuka jina hili na aina hii</string>
-    <string name="ui_2ec5445000" formatted="false">Kumbuka akaunti na aina kwa mtumaji au mfanyabiashara huyu</string>
-    <string name="ui_64e48f1350" formatted="false">Akaunti na aina zimependekezwa kutokana na chaguo lako la awali. Zihakiki kabla ya kuthibitisha.</string>
-    <string name="ui_56df739b40" formatted="false">Ongeza akaunti kwenye Fedha › Akaunti kwanza.</string>
-    <string name="ui_80e5be7c48" formatted="false">Ongeza akaunti kwenye Fedha › Akaunti ili kurekodi matumizi.</string>
-    <string name="ui_162aeba2fa" formatted="false">Ongeza akaunti zako za M-Pesa, benki na pesa taslimu kufuatilia salio.</string>
-    <string name="ui_8725a78f26" formatted="false">Hakiki salio la akaunti</string>
-    <string name="ui_82624c4437" formatted="false">Kabla ya kurekebisha salio</string>
-    <string name="ui_ee6ea96032" formatted="false">Salio la mwisho lililoonekana kwenye SMS</string>
-    <string name="ui_54b97c06ac" formatted="false">Salio zote mbili zinafanana kwa muda huu.</string>
-    <string name="ui_79f2ed6f2a" formatted="false">Chagua ujumbe wa malipo wa akaunti hii pekee. Jina la mtoa huduma halitoshi kutambua akaunti.</string>
-    <string name="ui_44c32f7da6" formatted="false">Hifadhi marekebisho ya salio yaliyohakikiwa…</string>
-    <string name="ui_105fff40c9" formatted="false">Marekebisho huhifadhi tofauti kwa idhini na ushahidi wako. Hayatengenezi malipo ya kubuni na hayahesabiwi kama mapato au matumizi.</string>
-    <string name="ui_bf59ac9cc3" formatted="false">Imeshirikiwa na HellFire</string>
-    <string name="ui_38fd328d04" formatted="false">Shiriki maandishi, picha ya skrini, hati au sauti na HellFire kutoka programu nyingine.</string>
-    <string name="ui_0279d4ac56" formatted="false">Pitia taarifa hizi kabla ya kuhifadhi. Hakuna kinachotumwa au kuongezwa kwenye daftari la fedha.</string>
-    <string name="ui_3d9b693b09" formatted="false">Maandishi yaliyoshirikiwa</string>
-    <string name="ui_6501e1ced8" formatted="false">Hifadhi dokezo</string>
-    <string name="ui_919e271a39" formatted="false">Unda kikumbusho</string>
-    <string name="ui_74c3f616fa" formatted="false">Pitia matumizi</string>
-    <string name="ui_ea7df3b344" formatted="false">Hifadhi taarifa zilizoshirikiwa</string>
-    <string name="ui_23e39291d6" formatted="false">Inahifadhi…</string>
-    <string name="ui_285556b919" formatted="false">Herufi 60,000 za kwanza tu zinaonyeshwa na kuhifadhiwa.</string>
-    <string name="ui_f52e06762e" formatted="false">Faragha kwa chaguo-msingi</string>
-    <string name="ui_97de5a90ae" formatted="false">Ruhusa na ukusanyaji</string>
-    <string name="ui_c6f448a169" formatted="false">Hali ya ukusanyaji</string>
-    <string name="ui_788011833a" formatted="false">Arifa</string>
-    <string name="ui_186352a881" formatted="false">Maikrofoni</string>
-    <string name="ui_889eda1fc5" formatted="false">Vikumbusho kwa wakati</string>
-    <string name="ui_14f7901e72" formatted="false">Msaidizi wa simu</string>
-    <string name="ui_c7b156d319" formatted="false">Endelea kufanya kazi nyuma</string>
-    <string name="ui_85330cea66" formatted="false">Funga programu kwa alama ya kidole</string>
-    <string name="ui_0e6b09c31f" formatted="false">Nakala rudufu iliyosimbwa</string>
-    <string name="ui_4d2e102158" formatted="false">Kumbukumbu na mapendekezo</string>
-    <string name="ui_4dbd32bfaf" formatted="false">Wijeti za skrini ya mwanzo</string>
-    <string name="ui_6890ecb87b" formatted="false">Ufikiaji wa wavuti</string>
-    <string name="ui_d052579c6a" formatted="false">Simu hii</string>
-    <string name="ui_391e405152" formatted="false">Msaidizi</string>
-    <string name="ui_e52ac334c1" formatted="false">Tuweke mipangilio ya HellFire</string>
-    <string name="ui_1c0fe2d047" formatted="false">takriban dakika 1</string>
-    <string name="ui_0be16ca9f4" formatted="false">Malizia mapitio ya usiku</string>
-    <string name="ui_6fddf5bf12" formatted="false">Uchakataji wa arifa</string>
-    <string name="ui_2c4517af49" formatted="false">Endelea kuchakata</string>
-    <string name="ui_e8647e37c8" formatted="false">Leta historia ya SMS</string>
-    <string name="ui_b1bbbbd540" formatted="false">Zima ukusanyaji wa SMS</string>
-    <string name="ui_2678e27d0d" formatted="false">Kila arifa inayopatikana huhifadhiwa. Ukizima uchakataji wa programu, arifa zake huhifadhiwa bila kuchakatwa.</string>
-    <string name="ui_5cc57b8088" formatted="false">Majaribio na usafishaji</string>
-    <string name="ui_1f7a6ec5ca" formatted="false">Jaribu msaidizi</string>
-    <string name="ui_854337d439" formatted="false">Weka rekodi ya majaribio</string>
-    <string name="ui_092d731328" formatted="false">Futa rekodi zilizokusanywa…</string>
-    <string name="ui_b7297226fd" formatted="false">Hifadhi jina</string>
-    <string name="ui_44fda95629" formatted="false">Fungua mipangilio ya msaidizi</string>
-    <string name="ui_eec735c5d7" formatted="false">Chagua HellFire kuwa msaidizi wa kidijitali</string>
-    <string name="ui_a4fe65264e" formatted="false">Lugha</string>
-    <string name="ui_b3dda1bbc2" formatted="false">Lugha ya programu na sauti</string>
-    <string name="ui_ba118bf7fc" formatted="false">English</string>
-    <string name="ui_a7a38d4353" formatted="false">Kiswahili</string>
-    <string name="ui_e970151b49" formatted="false">Unachotaka kukumbuka</string>
-    <string name="ui_71988c4d8e" formatted="false">Maandishi</string>
-    <string name="ui_6897128384" formatted="false">Mada</string>
-    <string name="ui_2f77668a9d" formatted="false">Ujumbe</string>
-    <string name="ui_337a0c347e" formatted="false">Kwa · anwani ya barua pepe</string>
-    <string name="ui_40770c3719" formatted="false">Kwa · namba ya WhatsApp yenye msimbo wa nchi</string>
-    <string name="ui_cee28d2048" formatted="false">Mtu (si lazima)</string>
-    <string name="ui_6007db63e1" formatted="false">Mtu</string>
-    <string name="ui_e1ef9979ed" formatted="false">Muda wa mwisho · Afrika Mashariki</string>
-    <string name="ui_42d044abea" formatted="false">Tarehe na muda · Afrika Mashariki</string>
-    <string name="ui_3c63a1af11" formatted="false">Salio la tarehe na muda · Afrika Mashariki</string>
-    <string name="ui_954a073087" formatted="false">Salio linaloonyeshwa na mtoa huduma · TZS</string>
-    <string name="ui_9f75e749b4" formatted="false">Kiasi TZS (si lazima, hakiongezwi kwenye Fedha)</string>
-    <string name="ui_ea0a75c1b1" formatted="false">Dakika za kuahirisha · 5–1440</string>
-    <string name="ui_ec90df3eb4" formatted="false">Ujumbe wa chanzo</string>
-    <string name="ui_b3802b51c0" formatted="false">Matumizi taslimu uliyoweka</string>
-    <string name="ui_e7e3f27048" formatted="false">Salio la sasa TZS (si lazima)</string>
-    <string name="ui_fd5ad0b496" formatted="false">Jina la akaunti, mfano M-Pesa au CRDB Current</string>
-    <string name="ui_f2488fd4ef" formatted="false">Anwani ya barua pepe</string>
-    <string name="ui_32bd9cb2ce" formatted="false">Nenosiri la programu / IMAP</string>
-    <string name="ui_fe0534116f" formatted="false">Nenosiri jipya (acha wazi kuhifadhi la sasa)</string>
-    <string name="ui_4014732450" formatted="false">Soma arifa za malipo na ujumbe. Misimbo ya usalama hufichwa.</string>
-    <string name="ui_6a9e548360" formatted="false">Fuatilia ujumbe wa M-Pesa na benki. Haitumi SMS.</string>
-    <string name="ui_1f5053a8b8" formatted="false">Uliza kwa sauti na rekodi unapochagua. Arifa huonyeshwa kila wakati.</string>
-    <string name="ui_cae0aa5360" formatted="false">Piga kengele kwa dakika uliyochagua</string>
-    <string name="ui_5ba9cb1ad9" formatted="false">Fungua HellFire kwa ishara ya msaidizi</string>
-    <string name="ui_2fc385cd20" formatted="false">Akaunti zilizounganishwa</string>
-    <string name="ui_ee5ef73aae" formatted="false">Taarifa zako</string>
-    <string name="ui_11fb682be0" formatted="false">AI</string>
-    <string name="ui_a55c4ed2db" formatted="false">Thibitisha malipo</string>
-    <string name="ui_86b862b544" formatted="false">Hifadhi na panga</string>
-    <string name="ui_3de100106d" formatted="false">Hifadhi rasimu</string>
-    <string name="ui_78f5975a5d" formatted="false">Ujumbe mpya</string>
-    <string name="ui_16d626ca5f" formatted="false">Hifadhi marekebisho</string>
-    <string name="ui_a6bd489d95" formatted="false">Ondoa kwenye kumbukumbu</string>
-    <string name="ui_a68cace66e" formatted="false">Ongeza kwenye kumbukumbu</string>
-    <string name="ui_b5c120b316" formatted="false">Zilizohifadhiwa</string>
-    <string name="ui_c3963aedaa" formatted="false">Kumbukumbu</string>
-    <string name="ui_76ea482f84" formatted="false">Dokezo jipya</string>
-    <string name="ui_db0d68b465" formatted="false">Dokezo langu</string>
-    <string name="ui_d2095df584" formatted="false">Maneno kutoka rekodi</string>
-    <string name="ui_e7f30ce124" formatted="false">Dhana ya kuhakiki</string>
-    <string name="ui_f9aee0e222" formatted="false">Chagua mtu kwenye anwani</string>
-    <string name="ui_333d798fbf" formatted="false">Chagua mtu</string>
-    <string name="ui_3b7a8a380e" formatted="false">Jina, namba au barua pepe</string>
-    <string name="ui_fc457b8bc2" formatted="false">Tumia jina lililoandikwa</string>
-    <string name="ui_54a03bcd4e" formatted="false">Ruhusu anwani</string>
-    <string name="ui_d43fb8a961" formatted="false">Mipangilio ya programu</string>
-    <string name="ui_b16ecfd57f" formatted="false">Utayari wa kurejesha taarifa</string>
-    <string name="ui_327ff2e45d" formatted="false">Hifadhi nakala au rejesha</string>
-    <string name="ui_06cec1523c" formatted="false">Vilivyojumuishwa</string>
-    <string name="ui_27d770b30f" formatted="false">Hakiki nakala bila kurejesha…</string>
-    <string name="ui_658cf7209a" formatted="false">Hifadhi nakala iliyosimbwa…</string>
-    <string name="ui_0a13083b8c" formatted="false">Rejesha kwenye hifadhi tupu ya programu…</string>
-    <string name="ui_9eb1939d74" formatted="false">Nenosiri la nakala · angalau herufi 12</string>
-    <string name="ui_bfe65c4dfd" formatted="false">Nakala za kila siku za Google Drive na kurejesha</string>
-    <string name="ui_310a3445e7" formatted="false">Leta faili na uchambuzi</string>
-    <string name="ui_3724061d8e" formatted="false">Ufuatiliaji wa mazungumzo</string>
-    <string name="ui_cfe34edd38" formatted="false">Faili asili</string>
-    <string name="ui_0f4d8a4a00" formatted="false">Anza kurekodi mazungumzo</string>
-    <string name="ui_42608b8d42" formatted="false">Simamisha kurekodi</string>
-    <string name="ui_1bd255624a" formatted="false">Leta faili asili</string>
-    <string name="ui_18f2619c41" formatted="false">Changanua kwenye simu</string>
-    <string name="ui_79b6a7c60a" formatted="false">Cheza kuanzia muda huu</string>
-    <string name="ui_19b81a94ee" formatted="false">Simamisha kucheza</string>
-    <string name="ui_fb85598359" formatted="false">Andaa muhtasari na madokezo kwenye simu</string>
-    <string name="ui_7e8cc3dece" formatted="false">Weka alama kuwa muhtasari umehakikiwa</string>
-    <string name="ui_64e3a65805" formatted="false">Jina la mzungumzaji unaloweka</string>
-    <string name="ui_888a6a9cae" formatted="false">Hifadhi jina la mzungumzaji</string>
-    <string name="ui_8ce17446ec" formatted="false">Hamisha faili asili bila usimbaji…</string>
-    <string name="ui_6538629498" formatted="false">Futa faili asili na maandishi…</string>
-    <string name="ui_4131792896" formatted="false">Ujuzi wa AI</string>
-    <string name="ui_bc4db5d337" formatted="false">Ongeza ujuzi</string>
-    <string name="ui_20da5974bc" formatted="false">Hariri ujuzi</string>
-    <string name="ui_a8597db6f2" formatted="false">Ondoa ujuzi</string>
-    <string name="ui_c07faeaa90" formatted="false">Ondoa ujuzi huu?</string>
-    <string name="ui_d59b5e97bf" formatted="false">Sababu ya kuundwa</string>
-    <string name="ui_d18ee16647" formatted="false">Wakati wa kutumia</string>
-    <string name="ui_af537a5b7c" formatted="false">Ushahidi wa asili</string>
-    <string name="ui_1e5f0e76e7" formatted="false">Idhinisha na washa</string>
-    <string name="ui_b7e3e4aa42" formatted="false">Zima</string>
-    <string name="ui_460d21da0f" formatted="false">Historia ya matumizi</string>
-    <string name="ui_65df5e8dd2" formatted="false">Ujuzi huu bado haujatumika.</string>
-    <string name="ui_4ec96d2f03" formatted="false">Fungua ulipotumiwa</string>
-    <string name="ui_9b5fbc2474" formatted="false">Pakia matumizi ya zamani</string>
-    <string name="ui_45d1a34591" formatted="false">Pakia ujuzi zaidi</string>
-    <string name="ui_76c02b7edd" formatted="false">Tafuta ujuzi</string>
-    <string name="ui_0fbb6f49b8" formatted="false">Jina la ujuzi</string>
-    <string name="ui_bbdc102cf9" formatted="false">Aina ya ujuzi</string>
-    <string name="ui_73dca86695" formatted="false">Maneno au mada zinazohusiana</string>
-    <string name="ui_5519d0b203" formatted="false">AI ijifunze nini</string>
-    <string name="ui_f81ab834de" formatted="false">Sababu</string>
-    <string name="ui_a6f9121ea2" formatted="false">Hifadhi na washa</string>
-    <string name="ui_e633f7da3f" formatted="false">Maandishi halisi ya kutambua</string>
-    <string name="ui_4803a67097" formatted="false">Tumia mtumaji au mfanyabiashara kutoka</string>
-    <string name="ui_2fc06a820b" formatted="false">Msaada wa kila siku</string>
-    <string name="ui_8ef7823ca8" formatted="false">Mpangilio wa hatua kwa hatua</string>
-    <string name="ui_c1ebc78178" formatted="false">Vinavyohitaji kushughulikiwa</string>
-    <string name="ui_ad8428d836" formatted="false">Faragha na hifadhi</string>
-    <string name="ui_dfca12ea3c" formatted="false">Chagua unachotaka HellFire ikusaidie</string>
-    <string name="ui_927bffdac1" formatted="false">Unasaji, miunganisho, modeli na nakala rudufu</string>
-    <string name="ui_ffaec44b07" formatted="false">Kanuni zilizojifunzwa, sababu na historia ya matumizi</string>
-    <string name="ui_594b837d22" formatted="false">Mahali taarifa zako zilipo</string>
-    <string name="ui_938c65250f" formatted="false">Fuatilia matumizi ya fedha</string>
-    <string name="ui_534f1fbf20" formatted="false">Kumbuka mazungumzo</string>
-    <string name="ui_fabb14f177" formatted="false">Simamia ahadi</string>
-    <string name="ui_2e59be2356" formatted="false">Chagua lengo la kuanzia. Unaweza kuongeza vipengele vingine baadaye.</string>
-    <string name="ui_0f62f89379" formatted="false">ruhusa zimewashwa</string>
-    <string name="ui_92c1cdfdf4" formatted="false">Imewashwa</string>
-    <string name="ui_2b0e804836" formatted="false">Haijawashwa</string>
-    <string name="ui_e92292cdda" formatted="false">Inahitaji ruhusa yako</string>
-    <string name="ui_06f1795b3e" formatted="false">Fungua mpangilio</string>
-    <string name="ui_e9cd49a1ea" formatted="false">Ongeza akaunti</string>
-    <string name="ui_afff2826a8" formatted="false">Chagua modeli za sauti na lugha</string>
-    <string name="ui_2249f06fd3" formatted="false">Hakiki kama inafanya kazi</string>
-    <string name="ui_453769ff02" formatted="false">Fungua ukaguzi wa unasaji</string>
-    <string name="ui_fae2176e6d" formatted="false">Miunganisho na urejeshaji</string>
-    <string name="ui_27cb7a4bbd" formatted="false">Endelea kwenye HellFire</string>
-    <string name="ui_cb75f40522" formatted="false">Malizia mpangilio baadaye</string>
-    <string name="ui_7930f26852" formatted="false">Lengo lako limehifadhiwa. Endelea kutoka Mipangilio › Mpangilio wa hatua kwa hatua.</string>
-    <string name="ui_04ac3ae673" formatted="false">Unasaji na ruhusa</string>
-    <string name="ui_3d0c373340" formatted="false">Hakuna taarifa iliyopokelewa bado</string>
-    <string name="ui_61ad4c6b4a" formatted="false">Hakuna matukio yanayosubiri</string>
-    <string name="ui_53b18f56c1" formatted="false">Fungua ruhusa na unasaji</string>
-    <string name="ui_de2167ec77" formatted="false">Jaribu tena uchakataji ulioshindwa</string>
-    <string name="ui_dc27311748" formatted="false">Miunganisho</string>
-    <string name="ui_982891b385" formatted="false">Hakuna matokeo ya muunganisho yaliyorekodiwa. Akaunti za hiari zinaweza kusanidiwa hapa chini.</string>
-    <string name="ui_188947216a" formatted="false">Modeli na rekodi</string>
-    <string name="ui_f1d7b951c4" formatted="false">Hakuna hali ya upakuaji wa modeli iliyorekodiwa</string>
-    <string name="ui_151dfa41b4" formatted="false">rekodi zinahitaji kushughulikiwa</string>
-    <string name="ui_4cded1a3ac" formatted="false">Chagua modeli</string>
-    <string name="ui_63c55b3a22" formatted="false">Nakala rudufu na hifadhi</string>
-    <string name="ui_539c7230a9" formatted="false">nafasi ya bure kwenye kifaa hiki</string>
-    <string name="ui_353a35bf2f" formatted="false">Fungua nakala rudufu na uhakiki</string>
-    <string name="ui_c02afc1705" formatted="false">Faili asili za media</string>
-    <string name="ui_fa7fe67124" formatted="false">Hifadhi ya taarifa</string>
-    <string name="ui_64cd989efc" formatted="false">Nafasi ya bure</string>
-    <string name="ui_e17e251762" formatted="false">Simamia rekodi</string>
-    <string name="ui_0e62689615" formatted="false">Simamia kumbukumbu</string>
-    <string name="ui_231a352f9c" formatted="false">Simamia ujuzi wa AI</string>
-    <string name="ui_cd5990faeb" formatted="false">Nje ya simu hii</string>
-    <string name="ui_b88f1c1c7d" formatted="false">Nakala ya tovuti</string>
-    <string name="ui_ef300be237" formatted="false">Imewashwa. Rekodi zilizochaguliwa zinasomeka kwenye seva yako.</string>
-    <string name="ui_92b543463e" formatted="false">Usawazishaji umezimwa. Nakala ya zamani kwenye seva inaweza kubaki hadi uifute.</string>
-    <string name="ui_3fe71c22cd" formatted="false">Hakiki au futa nakala ya tovuti</string>
-    <string name="ui_e2f9f063d4" formatted="false">Nakala rudufu ya Drive</string>
-    <string name="ui_54d40cbf32" formatted="false">Imewashwa. Nakala zilizosimbwa kwa nenosiri zinapakiwa kwenye Google Drive yako.</string>
-    <string name="ui_57a5446077" formatted="false">Nakala za kiotomatiki za Drive zimezimwa. Nakala zilizohamishwa au kupakiwa awali zinaweza kubaki.</string>
-    <string name="ui_663a4d4795" formatted="false">Simamia nakala rudufu</string>
-    <string name="ui_fa7053a6ea" formatted="false">Imewashwa kwa maandishi unayowasilisha wazi kwa modeli ya mtandaoni. Hakiki maandishi kabla ya kutuma.</string>
-    <string name="ui_d6d46ab953" formatted="false">Imezimwa. Majibu ya kwenye simu hayahamii kwenye modeli ya mtandaoni.</string>
-    <string name="ui_55b3c01f53" formatted="false">Simamia AI ya mtandaoni</string>
-    <string name="ui_1b43e2d030" formatted="false">Orodha ya modeli</string>
-    <string name="ui_5e2c614c23" formatted="false">Modeli</string>
-    <string name="ui_4d342fc3e4" formatted="false">Chagua fomati inayofaa kutoka kwa mchapishaji anayeaminika. Huhitaji kuandika jina la modeli au anwani ya upakuaji.</string>
-    <string name="ui_21822f8003" formatted="false">Mchapishaji na maelezo ya modeli</string>
-    <string name="ui_8904d029a9" formatted="false">Pakua na tumia modeli iliyochaguliwa</string>
-    <string name="ui_13bbdede66" formatted="false">Sitisha upakuaji</string>
-    <string name="ui_4be2334779" formatted="false">Sitisha upakuaji wa Gemma</string>
-    <string name="ui_89d9aa25f5" formatted="false">Sakinisha sasisho la Gemma lililochapishwa</string>
-    <string name="ui_14ea131735" formatted="false">Angalia masasisho ya Gemma</string>
-    <string name="ui_d177cdc09a" formatted="false">Haijasakinishwa</string>
-    <string name="ui_79532e47d2" formatted="false">Modeli iliyoletwa</string>
-    <string name="ui_2ef51f84fc" formatted="false">Tafuta kumbukumbu</string>
-    <string name="ui_e153865a35" formatted="false">Pakia kumbukumbu za zamani</string>
-    <string name="ui_bf01a79e61" formatted="false">Hifadhi pamoja na chanzo</string>
-    <string name="ui_5207b583f0" formatted="false">Haikuweza kuhifadhiwa. Kagua hifadhi kisha jaribu tena.</string>
-    <string name="ui_abfdc338b7" formatted="false">Mipangilio ya ujuzi imehifadhiwa.</string>
-    <string name="ui_fc755767f6" formatted="false">Rasimu haikuhifadhiwa. Acha ukurasa huu wazi na ukague nafasi ya bure.</string>
-    <string name="ui_5cd2821676" formatted="false">Rasimu haikufunguliwa. Kagua hifadhi na ufunguzi wa kifaa.</string>
-    <string name="ui_a386fb65bc" formatted="false">Ondoa taarifa za uthibitishaji.</string>
-    <string name="ui_20f3482084" formatted="false">Ondoa taarifa za uthibitishaji kutoka kwenye ujuzi huu.</string>
-    <string name="ui_f140542e3c" formatted="false">Ondoa taarifa za uthibitishaji kabla ya kuhifadhi.</string>
-    <string name="ui_b6d7a77f54" formatted="false">Marekebisho yamehifadhiwa; chanzo cha asili kinabaki kupatikana.</string>
-    <string name="ui_9e70db9e4f" formatted="false">Taarifa zilizoshirikiwa zimehifadhiwa kwenye simu.</string>
-    <string name="ui_3c4bf29b19" formatted="false">Ujuzi huongoza mapendekezo na majibu ya kwenye simu. Hauwezi kutuma ujumbe, kurekodi malipo au kutoa ruhusa.</string>
-    <string name="ui_2bf9445a71" formatted="false">Marekebisho ya kila siku huunda mapendekezo ya kuhakikiwa. Ujuzi uliowashwa pekee huathiri maamuzi yajayo.</string>
-    <string name="ui_e63bdb19a9" formatted="false">Hakuna ujuzi bado. Ongeza mmoja, au hakiki mapendekezo baada ya kurekebisha malipo, jukumu au kumbukumbu.</string>
-    <string name="ui_d8a8ef7420" formatted="false">Hii huondoa ujuzi na historia yake ya matumizi. Ushahidi wa asili unabaki umehifadhiwa.</string>
-    <string name="ui_32db5b80cb" formatted="false">Rekodi zilizohifadhiwa hubaki kwenye simu. Jaribu tena unasaji au uchambuzi hapa; kutuma kunahitaji idhini yake tofauti.</string>
-    <string name="ui_185ae26f81" formatted="false">Ruhusa iliyowashwa si ushahidi wa kupokea taarifa. Pokea arifa au SMS halisi, kisha ukague hali ya unasaji na chanzo kilichohifadhiwa. Jaribu kurekodi na kupokea vikumbusho kwenye simu hii.</string>
-    <string name="ui_e24a009c9b" formatted="false">Vyanzo vilivyonaswa, kumbukumbu, ujuzi na historia ya matumizi huhifadhiwa kwenye hifadhi iliyosimbwa. Faili asili na rasimu za binafsi zimesimbwa kwenye simu.</string>
-    <string name="ui_845737ba44" formatted="false">Faili za modeli na msimbo wa programu ni tofauti na rekodi za binafsi. Rekodi za asili hubaki hadi uzifute wazi.</string>
-    <string name="ui_289403e4a5" formatted="false">Kuzima muunganisho hakufuti nakala zilizokwisha kuhamishwa. Lazima uombe kufuta kwenye mahali husika.</string>
-    <string name="ui_69aecf26c6" formatted="false">Upakuaji husubiri Wi-Fi, betri na hifadhi ya kutosha. Ukubwa na SHA-256 huhakikiwa, kisha modeli hufunguliwa kabla ya kusakinishwa. Modeli zilizopo hubaki hadi uingizwaji ufaulu.</string>
-    <string name="ui_b843ba2b33" formatted="false">Miunganisho, modeli, nakala rudufu na urejeshaji</string>
-    <string name="ui_07297fa94a" formatted="false">Inahitaji kuhakikiwa</string>
-    <string name="ui_75081b593d" formatted="false">Imezimwa</string>
-    <string name="ui_4e64d26458" formatted="false">Mwongozo wa binafsi</string>
-    <string name="ui_baaf7cc51f" formatted="false">Machaguo ya malipo</string>
-    <string name="ui_c2c5eeaa19" formatted="false">Jukumu lisilo sahihi linalojirudia</string>
-    <string name="ui_949ef2618f" formatted="false">Malipo yasiyo sahihi yanayojirudia</string>
-    <string name="ui_920e413c7d" formatted="false">Hali</string>
-    <string name="ui_2e516d68f4" formatted="false">Toleo</string>
-    <string name="ui_9e6151acb0" formatted="false">Mara ilipotumiwa</string>
-    <string name="ui_3a5ecca188" formatted="false">Imesasishwa</string>
-    <string name="ui_fd1c91bdd0" formatted="false">Modeli ya lugha</string>
-    <string name="ui_b2f052de67" formatted="false">Modeli ya sauti</string>
-    <string name="ui_352d069b82" formatted="false">Utafutaji wa maana</string>
-    <string name="ui_c7f937836f" formatted="false">Chagua</string>
-    <string name="ui_e08cbb5672" formatted="false">Maneno yote muhimu ya mada lazima yalingane. Ujuzi hauwezi kubatilisha ukweli wa chanzo.</string>
-    <string name="ui_3e15db6f20" formatted="false">Maandishi halisi yanayojirudia kutoka programu ya chanzo cha asili</string>
-    <string name="ui_fdcda827b6" formatted="false">Maandishi haya halisi hayataunda tena pendekezo lilelile la jukumu au malipo.</string>
-    <string name="ui_03eadbed8c" formatted="false">Chagua malipo halisi yaliyohakikiwa au yanayosubiri ili kutambua mtumaji au mfanyabiashara. Ujuzi hupendekeza machaguo; bado unathibitisha kila malipo.</string>
-    <string name="ui_29970408cb" formatted="false">Ulichagua kukumbuka akaunti na kundi baada ya kuhakiki malipo.</string>
-    <string name="ui_6ae97e82c4" formatted="false">Ulithibitisha akaunti na kundi hili wakati wa kuhakiki malipo. Hakiki kabla ya kutumia kwa malipo mengine yanayolingana.</string>
-    <string name="ui_e92877010a" formatted="false">Uliweka alama kuwa taarifa hii si malipo. Kanuni ya maneno halisi inaweza kuzuia pendekezo hili lisijirudie.</string>
-    <string name="ui_efcb92495a" formatted="false">Uliweka alama kuwa pendekezo hili si jukumu. Hakiki kanuni hii ya maneno halisi kabla ya kuitumia.</string>
-    <string name="ui_2d591076f6" formatted="false">Ulikataa jukumu hili kwenye ukaguzi wa kila siku. Hakiki kanuni hii kabla ya kuitumia.</string>
-    <string name="ui_17152bd73e" formatted="false">Ulirekebisha kumbukumbu hii. Hakiki kama marekebisho yaongoze majibu yajayo yanayohusiana.</string>
-    <string name="ui_ecdea8e09e" formatted="false">Ulihifadhi sehemu hii ya chanzo kwa marejeo yajayo. Hakiki kama iongoze majibu yanayohusiana.</string>
-    <string name="ui_71e88d68b5" formatted="false">Hakiki ujuzi wa AI</string>
-    <string name="ui_2e15a130e9" formatted="false">Umejifunzwa kutokana na marekebisho yako</string>
-    <string name="ui_442c4b8939" formatted="false">Onyesha hali ya sasa</string>
-    <string name="ui_7283040535" formatted="false">Akaunti haipatikani</string>
-    <string name="ui_401dc1a55c" formatted="false">Matoleo ya awali</string>
-    <string name="ui_b7c60e8681" formatted="false">Chagua maneno yenye maana ya mada.</string>
-    <string name="ui_4aae80751d" formatted="false">Chagua akaunti iliyopo.</string>
-    <string name="ui_a4861b29ef" formatted="false">Taarifa zote hazikuhifadhiwa. Zilizohifadhiwa zinabaki; kujaribu tena huendeleza kazi na kuruka faili zilizokamilika. Shiriki faili tena ikiwa ruhusa ya Android imeisha.</string>
-    <string name="ui_bbace8ab59" formatted="false">Kagua ruhusa ya faili na nafasi ya hifadhi.</string>
-    <string name="ui_3c7092c624" formatted="false">Uchakataji umepangwa; kagua foleni iliyosasishwa. Hakuna ujumbe uliotumwa.</string>
-    <string name="ui_24b595f85f" formatted="false">Uchakataji haukuweza kupangwa. Rekodi zilizohifadhiwa zinabaki.</string>
-    <string name="ui_eb5bb0e600" formatted="false">Mipangilio ya faragha haikusomeka. Hakuna kilichobadilishwa.</string>
-    <string name="ui_9f2467da31" formatted="false">Inapakia mipangilio ya faragha…</string>
-    <string name="ui_942087cc2d" formatted="false">Jaribu tena</string>
-    <string name="ui_dc20b3d5d2" formatted="false">Maktaba</string>
-    <string name="ui_1e6245009d" formatted="false">Picha</string>
-    <string name="ui_c9a9639463" formatted="false">Video</string>
-    <string name="ui_bc1b88907d" formatted="false">Sauti</string>
-    <string name="ui_9f9feade76" formatted="false">Makusanyo</string>
-    <string name="ui_7a1f2a83ac" formatted="false">Vipendwa</string>
-    <string name="ui_b8b1d894c6" formatted="false">Makundi</string>
-    <string name="ui_93c28c3925" formatted="false">Nakala</string>
-    <string name="ui_ea1c510d1d" formatted="false">Chunguza</string>
-    <string name="ui_5bbfc5a69b" formatted="false">Ongeza folda</string>
-    <string name="ui_0d7d12ac62" formatted="false">Gridi</string>
-    <string name="ui_6f202f54a7" formatted="false">Orodha</string>
-    <string name="ui_d15efa178c" formatted="false">Mpya</string>
-    <string name="ui_1af8519073" formatted="false">Ukubwa</string>
-    <string name="ui_452ec9f553" formatted="false">Zilizochezwa karibuni</string>
-    <string name="ui_66115948b1" formatted="false">Usawazishaji unaosimamiwa</string>
-    <string name="ui_d11d1aca95" formatted="false">Haijachaguliwa kusawazishwa</string>
-    <string name="ui_0d41d27eca" formatted="false">Haijachambuliwa bado</string>
-    <string name="ui_436e61016e" formatted="false">Cheza</string>
-    <string name="ui_5b9aadad3f" formatted="false">Shiriki na AI</string>
-    <string name="ui_55ecdf8652" formatted="false">Chakata tena</string>
-    <string name="ui_d120fc6535" formatted="false">Data asili</string>
-    <string name="ui_a7ed4b7a2e" formatted="false">Data ya AI</string>
-    <string name="ui_bf3a2be349" formatted="false">Maelezo yako</string>
-    <string name="ui_3f63a3abbc" formatted="false">Zinazofanana</string>
-    <string name="ui_50a206ca76" formatted="false">Ruhusa ya sehemu</string>
-    <string name="ui_1b4c03a1d1" formatted="false">Ruhusa ya media inahitajika</string>
-    <string name="ui_1d0c5be737" formatted="false">Onyesho</string>
-    <string name="ui_57bca6e1c6" formatted="false">Albamu</string>
-    <string name="ui_dcd0a4d2c6" formatted="false">Orodha za kucheza</string>
-    <string name="ui_c63eb6720c" formatted="false">Faragha</string>
-    <string name="ui_6e69959866" formatted="false">Unganisha na</string>
-    <string name="ui_5b76f62e1b" formatted="false">Ondoa</string>
-    <string name="ui_8ece895c9b" formatted="false">Weka</string>
-    <string name="ui_1331275bc5" formatted="false">Lebo</string>
-    <string name="ui_2a78025de6" formatted="false">Chagua</string>
-    <string name="ui_a74c5b7741" formatted="false">Imeorodheshwa tu</string>
-    <string name="ui_0f793aaea4" formatted="false">Haijahifadhiwa</string>
-    <string name="ui_2f2ccea17e" formatted="false">Imehifadhiwa</string>
-    <string name="ui_7e52b62ffb" formatted="false">Haijawekwa foleni</string>
-    <string name="ui_44671d1d1a" formatted="false">Imechaguliwa kusawazishwa</string>
-    <string name="ui_9bbe98c2ab" formatted="false">Linganisha picha</string>
-    <string name="ui_1ab1e121c0" formatted="false">Kundi jipya</string>
-    <string name="ui_3064d79a29" formatted="false">Badilisha jina</string>
-    <string name="ui_488464ba45" formatted="false">Ondoa lebo</string>
-    <string name="ui_52a8f32fd2" formatted="false">Weka kwenye foleni</string>
-    <string name="ui_d0baec111c" formatted="false">Ongeza kwenye mkusanyiko</string>
-    <string name="ui_5bf24037c6" formatted="false">Weka kipendwa</string>
-    <string name="ui_83b12c2216" formatted="false">Futa</string>
-    <string name="ui_ac8991ef01" formatted="false">Pakia zaidi</string>
-    <string name="ui_6be36ca49e" formatted="false">Haipatikani</string>
-    <string name="ui_d101686dfb" formatted="false">Ruhusa imeondolewa</string>
-    <string name="ui_2a6141e43b" formatted="false">Imebadilika</string>
-    <string name="ui_e674447337" formatted="false">Inapatikana</string>
-    <string name="ui_326bbeaa91" formatted="false">Usawazishaji umewashwa</string>
-    <string name="ui_c8e3e92a62" formatted="false">Inachakata</string>
-    <string name="ui_838557924a" formatted="false">Hifadhi</string>
-    <string name="ui_bec69036aa" formatted="false">Panga</string>
-    <string name="ui_638e249f4a" formatted="false">Chuja</string>
-    <string name="ui_64aee8c6cb" formatted="false">Kicheza</string>
-    <string name="ui_4ac709aa58" formatted="false">Fungua</string>
-    <string name="ui_f59d9abe42" formatted="false">Funga skrini</string>
-    <string name="ui_d47f85a04c" formatted="false">Asili haipatikani.</string>
-    <string name="ui_77d99701fc" formatted="false">Arifa zimezimwa, hivyo vidhibiti vya skrini iliyofungwa vinaweza kufichwa na Android.</string>
-    <string name="ui_7f7739d908" formatted="false">Picha ndogo haipatikani</string>
-    <string name="ui_858e4ba7a2" formatted="false">Sitisha</string>
-    <string name="ui_2876c1f5c3" formatted="false">Rudi nyuma</string>
-    <string name="ui_3284049794" formatted="false">Ruka mbele</string>
-    <string name="ui_a57b08a480" formatted="false">Iliyotangulia</string>
-    <string name="ui_1ff57a29d7" formatted="false">Inayofuata</string>
-    <string name="ui_897e0cf78b" formatted="false">Toka kwenye skrini nzima</string>
-    <string name="ui_674fe2acd0" formatted="false">Skrini nzima</string>
-    <string name="ui_3baa2d6ed4" formatted="false">Picha ndani ya picha</string>
-    <string name="ui_c372fee9b4" formatted="false">Kasi</string>
-    <string name="ui_317cb3a7ef" formatted="false">Changanya</string>
-    <string name="ui_5e87a7bd5a" formatted="false">Ondoa kipendwa</string>
-    <string name="ui_ea713ecd85" formatted="false">Kipendwa</string>
-    <string name="ui_336c84d8da" formatted="false">Kipima muda wa kulala</string>
-    <string name="ui_bfb99f7ddb" formatted="false">Mwisho wa kipengee</string>
-    <string name="ui_7781d909b9" formatted="false">Weka A</string>
-    <string name="ui_bf8f310bda" formatted="false">Weka B</string>
-    <string name="ui_9d10c311ca" formatted="false">Futa mzunguko</string>
-    <string name="ui_67eaebc39f" formatted="false">Hifadhi kipindi</string>
-    <string name="ui_2bebdca31f" formatted="false">Sura iliyotangulia</string>
-    <string name="ui_4344dde797" formatted="false">Sura inayofuata</string>
-    <string name="ui_b318882ba8" formatted="false">Tafuta katika kipengee hiki</string>
-    <string name="ui_bf1b7b8a4c" formatted="false">Tafuta kwenye faharasa</string>
-    <string name="ui_1bac400788" formatted="false">Alamisho</string>
-    <string name="ui_67ae3405bc" formatted="false">Nenda</string>
-    <string name="ui_ac20a57bfd" formatted="false">Ficha</string>
-    <string name="ui_e2d0a54968" formatted="false">Futa</string>
-    <string name="ui_8bb41c4164" formatted="false">Geuza kuwa ya mkono</string>
-    <string name="ui_c3812fc4ac" formatted="false">Ondoa</string>
-    <string name="ui_721164f0dc" formatted="false">Nakala</string>
-    <string name="ui_e21f935f11" formatted="false">Nakili</string>
-    <string name="ui_aca01a1a3a" formatted="false">Sahihisha</string>
-    <string name="ui_d34349bbcc" formatted="false">Historia ya kucheza</string>
-    <string name="ui_5484a3a7f5" formatted="false">Bado hakuna historia ya kucheza.</string>
-    <string name="ui_7e8cd2056d" formatted="false">Kichwa</string>
-    <string name="ui_8a7525b149" formatted="false">Maelezo</string>
-    <string name="ui_b63ed49a38" formatted="false">Hifadhi alamisho</string>
-    <string name="ui_7d9eb7acb1" formatted="false">Funga</string>
-    <string name="ui_b10fb966d7" formatted="false">Sauti</string>
-    <string name="ui_ec811d30a8" formatted="false">Mwangaza</string>
-    <string name="ui_eeed1164fe" formatted="false">Hakuna njia za ziada za sauti au manukuu zilizoripotiwa.</string>
-    <string name="ui_e4a8479838" formatted="false">Njia ya sauti</string>
-    <string name="ui_6a5216300c" formatted="false">Zima manukuu</string>
-    <string name="ui_b284a23c3c" formatted="false">Bado hakuna alamisho au sura.</string>
-    <string name="ui_ed077f3d81" formatted="false">Fungua</string>
-    <string name="ui_afd6047384" formatted="false">Dirisha la juu la mfumo halipatikani. Picha ndani ya picha ndiyo kicheza kinachoelea kinachotumika.</string>
-    <string name="ui_db9061fce2" formatted="false">Kipindi cha kucheza hakikuweza kuanza.</string>
-    <string name="ui_fa1d54ecfb" formatted="false">Ruhusa ya hifadhi haikutolewa. Faili ya nje haikufunguliwa.</string>
-    <string name="ui_09da75e9c7" formatted="false">Picha ndani ya picha haipatikani kwenye kifaa hiki.</string>
-    <string name="ui_1198f84a2f" formatted="false">Kifaa kimekataa picha ndani ya picha. Uchezaji unaendelea ndani ya programu.</string>
-    <string name="ui_e14509c412" formatted="false">Kifaa kimekataa udhibiti wa sauti.</string>
-    <string name="ui_554d3009ce" formatted="false">Umbo la wimbi halipatikani kwa faili hii. Uchezaji unaweza kuendelea.</string>
-    <string name="ui_ca416eb41e" formatted="false">Hakuna mechi kwenye faharasa. Uchambuzi haukuanzishwa.</string>
-    <string name="ui_c730e1984e" formatted="false">Faili hii haiwezi kuchezwa kwenye kifaa hiki. Kodeki au mfuko haukubaliwi. Asili haikubadilishwa.</string>
-    <string name="ui_b84bfebce5" formatted="false">Asili haikusomeka. Hakuna faili iliyofafanuliwa iliandikwa.</string>
-    <string name="ui_2cb0daa2e0" formatted="false">Uchezaji umeshindwa. Asili haikubadilishwa.</string>
-    <string name="ui_1a00dd5a8a" formatted="false">Kipengee hiki si sauti wala video.</string>
-    <string name="ui_f0828a29ee" formatted="false">Kipengee hiki cha nje hakina anwani ya maudhui.</string>
+    <string name="ui_home" formatted="false">Mwanzo</string>
+    <string name="ui_money" formatted="false">Fedha</string>
+    <string name="ui_ask" formatted="false">Uliza</string>
+    <string name="ui_tasks" formatted="false">Majukumu</string>
+    <string name="ui_task" formatted="false">Jukumu</string>
+    <string name="ui_inbox" formatted="false">Kikasha</string>
+    <string name="ui_settings" formatted="false">Mipangilio</string>
+    <string name="ui_review" formatted="false">Pitia</string>
+    <string name="ui_daily_review" formatted="false">Mapitio ya siku</string>
+    <string name="ui_review_next" formatted="false">Pitia inayofuata</string>
+    <string name="ui_review_payment" formatted="false">Pitia malipo</string>
+    <string name="ui_review_task" formatted="false">Pitia jukumu</string>
+    <string name="ui_review_reply_in_inbox" formatted="false">Pitia jibu kwenye Kikasha</string>
+    <string name="ui_review_pending_payments" formatted="false">Pitia malipo yanayosubiri</string>
+    <string name="ui_payments_tasks_and_replies_in_one_place" formatted="false">Malipo, majukumu na majibu sehemu moja. Kila hatua inahitaji idhini yako.</string>
+    <string name="ui_next_payment" formatted="false">Inayofuata · malipo</string>
+    <string name="ui_next_task" formatted="false">Inayofuata · jukumu</string>
+    <string name="ui_next_reply" formatted="false">Inayofuata · jibu</string>
+    <string name="ui_youre_caught_up" formatted="false">Umemaliza mapitio</string>
+    <string name="ui_there_are_no_payments_task_proposals_or" formatted="false">Hakuna malipo, mapendekezo ya majukumu au rasimu zinazosubiri mapitio.</string>
+    <string name="ui_cash_check_in" formatted="false">Hakiki matumizi ya pesa taslimu</string>
+    <string name="ui_i_have_finished_these_cash_check_ins" formatted="false">Nimemaliza kuhakiki matumizi haya</string>
+    <string name="ui_set_account_category_for_pending" formatted="false">Chagua akaunti/aina ya malipo yanayosubiri…</string>
+    <string name="ui_suggest_account_and_category" formatted="false">Pendekeza akaunti na aina</string>
+    <string name="ui_choose_another_payment" formatted="false">Chagua malipo mengine</string>
+    <string name="ui_add_cash" formatted="false">Weka matumizi taslimu</string>
+    <string name="ui_add_cash_spending" formatted="false">Weka matumizi ya pesa taslimu</string>
+    <string name="ui_add_task" formatted="false">Ongeza jukumu</string>
+    <string name="ui_new_task" formatted="false">Jukumu jipya</string>
+    <string name="ui_edit_task" formatted="false">Hariri jukumu</string>
+    <string name="ui_today" formatted="false">Leo</string>
+    <string name="ui_upcoming" formatted="false">Yajayo</string>
+    <string name="ui_done" formatted="false">Imekamilika</string>
+    <string name="ui_not_done_yet" formatted="false">Bado haijakamilika</string>
+    <string name="ui_undo" formatted="false">Tengua</string>
+    <string name="ui_reschedule" formatted="false">Badili muda</string>
+    <string name="ui_repeat" formatted="false">Rudia</string>
+    <string name="ui_daily" formatted="false">Kila siku</string>
+    <string name="ui_weekly" formatted="false">Kila wiki</string>
+    <string name="ui_monthly" formatted="false">Kila mwezi</string>
+    <string name="ui_none" formatted="false">Hakuna</string>
+    <string name="ui_keep_reminding" formatted="false">Endelea kunikumbusha</string>
+    <string name="ui_hourly" formatted="false">Kila saa</string>
+    <string name="ui_overdue_reminder_intensity" formatted="false">Marudio baada ya muda kupita</string>
+    <string name="ui_repeats_every_month" formatted="false">Inajirudia kila mwezi</string>
+    <string name="ui_repeating_tasks_schedule_the_next" formatted="false">Ukimaliza jukumu linalojirudia, linalofuata hupangwa. Endelea kunikumbusha hutumia muda uliochagua kwenye Mipangilio.</string>
+    <string name="ui_reminders" formatted="false">Vikumbusho</string>
+    <string name="ui_reminder" formatted="false">Kikumbusho</string>
+    <string name="ui_overdue" formatted="false">Muda umepita</string>
+    <string name="ui_overdue_reminders" formatted="false">Vikumbusho vilivyochelewa</string>
+    <string name="ui_allow_reminder_notifications" formatted="false">Ruhusu arifa za vikumbusho</string>
+    <string name="ui_manage_exact_alarm_access" formatted="false">Dhibiti ruhusa ya kengele sahihi</string>
+    <string name="ui_nightly_cash_review" formatted="false">Mapitio ya matumizi taslimu ya usiku</string>
+    <string name="ui_morning_brief" formatted="false">Muhtasari wa asubuhi</string>
+    <string name="ui_evening_wrap_up" formatted="false">Muhtasari wa jioni</string>
+    <string name="ui_capture_problem_alerts" formatted="false">Arifa za matatizo ya ukusanyaji</string>
+    <string name="ui_save_interval" formatted="false">Hifadhi muda</string>
+    <string name="ui_access" formatted="false">Ruhusa</string>
+    <string name="ui_kind" formatted="false">Aina</string>
+    <string name="ui_type" formatted="false">Aina</string>
+    <string name="ui_promise" formatted="false">Ahadi</string>
+    <string name="ui_who_does_it" formatted="false">Nani atafanya</string>
+    <string name="ui_me" formatted="false">Mimi</string>
+    <string name="ui_someone_else" formatted="false">Mtu mwingine</string>
+    <string name="ui_not_sure" formatted="false">Sina uhakika</string>
+    <string name="ui_bill_to_pay" formatted="false">Bili ya kulipa</string>
+    <string name="ui_i_owe" formatted="false">Ninadaiwa</string>
+    <string name="ui_owed_to_me" formatted="false">Ninamdai</string>
+    <string name="ui_neither" formatted="false">Hakuna</string>
+    <string name="ui_good_morning" formatted="false">Habari za asubuhi</string>
+    <string name="ui_good_afternoon" formatted="false">Habari za mchana</string>
+    <string name="ui_good_evening" formatted="false">Habari za jioni</string>
+    <string name="ui_needs_you" formatted="false">Inahitaji hatua yako</string>
+    <string name="ui_spent_today" formatted="false">Matumizi ya leo</string>
+    <string name="ui_received_today" formatted="false">Mapato ya leo</string>
+    <string name="ui_up_next" formatted="false">Yanayofuata</string>
+    <string name="ui_all_tasks" formatted="false">Majukumu yote</string>
+    <string name="ui_only_payments_you_confirmed_count_here" formatted="false">Hapa yanahesabiwa malipo uliyothibitisha tu.</string>
+    <string name="ui_templates" formatted="false">Violezo</string>
+    <string name="ui_use_a_template" formatted="false">Tumia kiolezo</string>
+    <string name="ui_waiting_on" formatted="false">Nasubiri majibu</string>
+    <string name="ui_people" formatted="false">Watu</string>
+    <string name="ui_debts" formatted="false">Madeni</string>
+    <string name="ui_bills" formatted="false">Bili</string>
+    <string name="ui_record" formatted="false">Rekodi</string>
+    <string name="ui_recordings" formatted="false">Rekodi za sauti</string>
+    <string name="ui_reports" formatted="false">Ripoti</string>
+    <string name="ui_report" formatted="false">Ripoti</string>
+    <string name="ui_full_report" formatted="false">Ripoti kamili</string>
+    <string name="ui_calendar" formatted="false">Kalenda</string>
+    <string name="ui_add_to_calendar" formatted="false">Ongeza kwenye kalenda…</string>
+    <string name="ui_source" formatted="false">Chanzo</string>
+    <string name="ui_sources" formatted="false">Vyanzo</string>
+    <string name="ui_show_source" formatted="false">Onyesha chanzo</string>
+    <string name="ui_remember_this" formatted="false">Kumbuka hili</string>
+    <string name="ui_save_memory" formatted="false">Hifadhi kumbukumbu</string>
+    <string name="ui_create_task" formatted="false">Unda jukumu</string>
+    <string name="ui_choose_an_exact_passage_from_the_source" formatted="false">Chagua maneno halisi kutoka chanzo. Yataendelea kuunganishwa na rekodi ya asili.</string>
+    <string name="ui_person_or_subject" formatted="false">Mtu au mada</string>
+    <string name="ui_source_excerpt" formatted="false">Maneno kutoka chanzo</string>
+    <string name="ui_ask_about_your_money_tasks_and_messages" formatted="false">Uliza kuhusu fedha, majukumu na ujumbe wako</string>
+    <string name="ui_ask_history" formatted="false">Historia ya maswali</string>
+    <string name="ui_history" formatted="false">Historia</string>
+    <string name="ui_keep_encrypted_history" formatted="false">Hifadhi historia iliyosimbwa</string>
+    <string name="ui_clear_history_and_conversation" formatted="false">Futa historia na mazungumzo</string>
+    <string name="ui_who_answers" formatted="false">Nani anajibu</string>
+    <string name="ui_on_this_phone" formatted="false">Kwenye simu hii</string>
+    <string name="ui_local_model_saved_sources" formatted="false">AI ya simu na vyanzo vilivyohifadhiwa</string>
+    <string name="ui_ai_task" formatted="false">Kazi ya AI</string>
+    <string name="ui_cloud_ai" formatted="false">AI ya mtandaoni</string>
+    <string name="ui_on_device_models" formatted="false">Modeli za AI kwenye simu</string>
+    <string name="ui_monthly_ai_budget" formatted="false">Bajeti ya AI ya mwezi</string>
+    <string name="ui_confirm" formatted="false">Thibitisha</string>
+    <string name="ui_completed" formatted="false">Imekamilika</string>
+    <string name="ui_applying" formatted="false">Inatekeleza…</string>
+    <string name="ui_could_not_complete_check_the_result" formatted="false">Haikukamilika. Angalia matokeo hapa chini kabla ya kujaribu tena.</string>
+    <string name="ui_discard" formatted="false">Ondoa pendekezo</string>
+    <string name="ui_discarded" formatted="false">Imeondolewa</string>
+    <string name="ui_confirming_saves_a_draft_sending_still" formatted="false">Kuthibitisha huhifadhi rasimu. Kutuma kunahitaji Idhinisha na tuma kwenye Kikasha.</string>
+    <string name="ui_only_confirmed_payments_are_counted_own" formatted="false">Malipo yaliyothibitishwa tu yanahesabiwa. Kuhamisha kati ya akaunti zako hakuhesabiwi kama matumizi.</string>
+    <string name="ui_the_saved_records_this_answer_used_tap" formatted="false">Rekodi zilizotumika kujibu. Gusa rekodi kuona asili yake.</string>
+    <string name="ui_working" formatted="false">Inafanya kazi…</string>
+    <string name="ui_cancel" formatted="false">Ghairi</string>
+    <string name="ui_edit" formatted="false">Hariri</string>
+    <string name="ui_save" formatted="false">Hifadhi</string>
+    <string name="ui_continue" formatted="false">Endelea</string>
+    <string name="ui_skip_for_now" formatted="false">Ruka kwa sasa</string>
+    <string name="ui_back" formatted="false">Rudi</string>
+    <string name="ui_turn_on" formatted="false">Washa</string>
+    <string name="ui_turn_off" formatted="false">Zima</string>
+    <string name="ui_on" formatted="false">Imewashwa</string>
+    <string name="ui_off" formatted="false">Imezimwa</string>
+    <string name="ui_email" formatted="false">Barua pepe</string>
+    <string name="ui_whatsapp" formatted="false">WhatsApp</string>
+    <string name="ui_all" formatted="false">Zote</string>
+    <string name="ui_calls" formatted="false">Simu</string>
+    <string name="ui_sms" formatted="false">SMS</string>
+    <string name="ui_conversations" formatted="false">Mazungumzo</string>
+    <string name="ui_all_items" formatted="false">Rekodi zote</string>
+    <string name="ui_load_older_history" formatted="false">Onyesha historia ya zamani</string>
+    <string name="ui_search_all_saved_messages" formatted="false">Tafuta ujumbe wote uliohifadhiwa</string>
+    <string name="ui_search_checks_saved_message_bodies_and" formatted="false">Utafutaji unajumuisha maandishi ya ujumbe na vyanzo vya zamani vilivyohifadhiwa.</string>
+    <string name="ui_approve_and_send" formatted="false">Idhinisha na tuma</string>
+    <string name="ui_draft_ready" formatted="false">RASIMU IKO TAYARI</string>
+    <string name="ui_sent_and_failed_drafts" formatted="false">Rasimu zilizotumwa na zilizoshindwa</string>
+    <string name="ui_email_and_whatsapp_accounts_are_set_up" formatted="false">Akaunti za barua pepe na WhatsApp huwekwa kwenye Mipangilio. Hakuna kinachotumwa bila idhini yako.</string>
+    <string name="ui_no_reply_needed" formatted="false">Jibu halihitajiki</string>
+    <string name="ui_tomorrow" formatted="false">Kesho</string>
+    <string name="ui_category" formatted="false">Aina ya matumizi</string>
+    <string name="ui_account" formatted="false">Akaunti</string>
+    <string name="ui_accounts" formatted="false">Akaunti</string>
+    <string name="ui_amount_tzs" formatted="false">Kiasi TZS</string>
+    <string name="ui_fee_tzs" formatted="false">Ada TZS</string>
+    <string name="ui_description" formatted="false">Maelezo</string>
+    <string name="ui_merchant" formatted="false">Mfanyabiashara</string>
+    <string name="ui_name_this_merchant" formatted="false">Taja mfanyabiashara huyu</string>
+    <string name="ui_usual_category" formatted="false">Aina ya kawaida</string>
+    <string name="ui_change_category" formatted="false">Badili aina</string>
+    <string name="ui_to_confirm" formatted="false">Yanayosubiri uthibitisho</string>
+    <string name="ui_recent" formatted="false">Ya karibuni</string>
+    <string name="ui_total_balance_tzs" formatted="false">Salio lote · TZS</string>
+    <string name="ui_name" formatted="false">Jina</string>
+    <string name="ui_food" formatted="false">Chakula</string>
+    <string name="ui_groceries" formatted="false">Mahitaji ya nyumbani</string>
+    <string name="ui_transport" formatted="false">Usafiri</string>
+    <string name="ui_fuel" formatted="false">Mafuta</string>
+    <string name="ui_utilities" formatted="false">Huduma za nyumbani</string>
+    <string name="ui_rent" formatted="false">Kodi</string>
+    <string name="ui_business" formatted="false">Biashara</string>
+    <string name="ui_family" formatted="false">Familia</string>
+    <string name="ui_airtime" formatted="false">Muda wa maongezi</string>
+    <string name="ui_income" formatted="false">Mapato</string>
+    <string name="ui_fees" formatted="false">Ada</string>
+    <string name="ui_other" formatted="false">Nyingine</string>
+    <string name="ui_expense" formatted="false">Matumizi</string>
+    <string name="ui_refund" formatted="false">Fedha zilizorudishwa</string>
+    <string name="ui_transfer" formatted="false">Uhamisho</string>
+    <string name="ui_own_transfer" formatted="false">Uhamisho kati ya akaunti zako</string>
+    <string name="ui_only_confirmed_payments_count_toward" formatted="false">Malipo uliyothibitisha tu yanaongezwa kwenye jumla.</string>
+    <string name="ui_not_a_payment" formatted="false">Si malipo</string>
+    <string name="ui_not_a_task" formatted="false">Si jukumu</string>
+    <string name="ui_remember_this_name_and_category" formatted="false">Kumbuka jina hili na aina hii</string>
+    <string name="ui_remember_my_account_and_category_for" formatted="false">Kumbuka akaunti na aina kwa mtumaji au mfanyabiashara huyu</string>
+    <string name="ui_account_category_suggested_from_your" formatted="false">Akaunti na aina zimependekezwa kutokana na chaguo lako la awali. Zihakiki kabla ya kuthibitisha.</string>
+    <string name="ui_add_an_account_in_money_accounts_first" formatted="false">Ongeza akaunti kwenye Fedha › Akaunti kwanza.</string>
+    <string name="ui_add_an_account_in_money_accounts_to" formatted="false">Ongeza akaunti kwenye Fedha › Akaunti ili kurekodi matumizi.</string>
+    <string name="ui_add_your_m_pesa_bank_and_cash_accounts" formatted="false">Ongeza akaunti zako za M-Pesa, benki na pesa taslimu kufuatilia salio.</string>
+    <string name="ui_check_account_balance" formatted="false">Hakiki salio la akaunti</string>
+    <string name="ui_before_making_an_adjustment" formatted="false">Kabla ya kurekebisha salio</string>
+    <string name="ui_latest_observed_sms_balances" formatted="false">Salio la mwisho lililoonekana kwenye SMS</string>
+    <string name="ui_the_two_balances_agree_at_this_time" formatted="false">Salio zote mbili zinafanana kwa muda huu.</string>
+    <string name="ui_pick_a_receipt_only_if_it_belongs_to" formatted="false">Chagua ujumbe wa malipo wa akaunti hii pekee. Jina la mtoa huduma halitoshi kutambua akaunti.</string>
+    <string name="ui_record_a_reviewed_balance_adjustment" formatted="false">Hifadhi marekebisho ya salio yaliyohakikiwa…</string>
+    <string name="ui_an_adjustment_records_the_difference" formatted="false">Marekebisho huhifadhi tofauti kwa idhini na ushahidi wako. Hayatengenezi malipo ya kubuni na hayahesabiwi kama mapato au matumizi.</string>
+    <string name="ui_shared_with_hellfire" formatted="false">Imeshirikiwa na HellFire</string>
+    <string name="ui_share_text_a_screenshot_document_or" formatted="false">Shiriki maandishi, picha ya skrini, hati au sauti na HellFire kutoka programu nyingine.</string>
+    <string name="ui_review_this_share_before_saving_nothing" formatted="false">Pitia taarifa hizi kabla ya kuhifadhi. Hakuna kinachotumwa au kuongezwa kwenye daftari la fedha.</string>
+    <string name="ui_shared_text" formatted="false">Maandishi yaliyoshirikiwa</string>
+    <string name="ui_save_note" formatted="false">Hifadhi dokezo</string>
+    <string name="ui_create_reminder" formatted="false">Unda kikumbusho</string>
+    <string name="ui_review_expense" formatted="false">Pitia matumizi</string>
+    <string name="ui_save_shared_content" formatted="false">Hifadhi taarifa zilizoshirikiwa</string>
+    <string name="ui_saving" formatted="false">Inahifadhi…</string>
+    <string name="ui_only_the_first_60_000_characters_are" formatted="false">Herufi 60,000 za kwanza tu zinaonyeshwa na kuhifadhiwa.</string>
+    <string name="ui_private_by_default" formatted="false">Faragha kwa chaguo-msingi</string>
+    <string name="ui_permissions_and_capture" formatted="false">Ruhusa na ukusanyaji</string>
+    <string name="ui_capture_status" formatted="false">Hali ya ukusanyaji</string>
+    <string name="ui_notifications" formatted="false">Arifa</string>
+    <string name="ui_microphone" formatted="false">Maikrofoni</string>
+    <string name="ui_on_time_reminders" formatted="false">Vikumbusho kwa wakati</string>
+    <string name="ui_phone_assistant" formatted="false">Msaidizi wa simu</string>
+    <string name="ui_run_in_background" formatted="false">Endelea kufanya kazi nyuma</string>
+    <string name="ui_fingerprint_app_lock" formatted="false">Funga programu kwa alama ya kidole</string>
+    <string name="ui_encrypted_backup" formatted="false">Nakala rudufu iliyosimbwa</string>
+    <string name="ui_memory_and_proposals" formatted="false">Kumbukumbu na mapendekezo</string>
+    <string name="ui_home_screen_widgets" formatted="false">Wijeti za skrini ya mwanzo</string>
+    <string name="ui_web_access" formatted="false">Ufikiaji wa wavuti</string>
+    <string name="ui_this_device" formatted="false">Simu hii</string>
+    <string name="ui_assistant" formatted="false">Msaidizi</string>
+    <string name="ui_lets_set_up_hellfire" formatted="false">Tuweke mipangilio ya HellFire</string>
+    <string name="ui_about_1_minute" formatted="false">takriban dakika 1</string>
+    <string name="ui_finish_the_nightly_review" formatted="false">Malizia mapitio ya usiku</string>
+    <string name="ui_notification_processing" formatted="false">Uchakataji wa arifa</string>
+    <string name="ui_resume_processing" formatted="false">Endelea kuchakata</string>
+    <string name="ui_sync_sms_history" formatted="false">Leta historia ya SMS</string>
+    <string name="ui_turn_off_sms_capture" formatted="false">Zima ukusanyaji wa SMS</string>
+    <string name="ui_every_accessible_notification_is_kept" formatted="false">Kila arifa inayopatikana huhifadhiwa. Ukizima uchakataji wa programu, arifa zake huhifadhiwa bila kuchakatwa.</string>
+    <string name="ui_testing_and_cleanup" formatted="false">Majaribio na usafishaji</string>
+    <string name="ui_test_the_assistant_session" formatted="false">Jaribu msaidizi</string>
+    <string name="ui_insert_a_synthetic_test_event" formatted="false">Weka rekodi ya majaribio</string>
+    <string name="ui_delete_captured_events" formatted="false">Futa rekodi zilizokusanywa…</string>
+    <string name="ui_save_name" formatted="false">Hifadhi jina</string>
+    <string name="ui_open_assistant_settings" formatted="false">Fungua mipangilio ya msaidizi</string>
+    <string name="ui_choose_hellfire_as_the_digital_assistant" formatted="false">Chagua HellFire kuwa msaidizi wa kidijitali</string>
+    <string name="ui_language" formatted="false">Lugha</string>
+    <string name="ui_interface_and_voice_language" formatted="false">Lugha ya programu na sauti</string>
+    <string name="ui_english" formatted="false">English</string>
+    <string name="ui_kiswahili" formatted="false">Kiswahili</string>
+    <string name="ui_what_to_remember" formatted="false">Unachotaka kukumbuka</string>
+    <string name="ui_text" formatted="false">Maandishi</string>
+    <string name="ui_subject" formatted="false">Mada</string>
+    <string name="ui_message" formatted="false">Ujumbe</string>
+    <string name="ui_to_email_address" formatted="false">Kwa · anwani ya barua pepe</string>
+    <string name="ui_to_whatsapp_number_with_country_code" formatted="false">Kwa · namba ya WhatsApp yenye msimbo wa nchi</string>
+    <string name="ui_person_optional" formatted="false">Mtu (si lazima)</string>
+    <string name="ui_person" formatted="false">Mtu</string>
+    <string name="ui_due_east_africa_time" formatted="false">Muda wa mwisho · Afrika Mashariki</string>
+    <string name="ui_date_and_time_east_africa_time" formatted="false">Tarehe na muda · Afrika Mashariki</string>
+    <string name="ui_balance_as_of_east_africa_time" formatted="false">Salio la tarehe na muda · Afrika Mashariki</string>
+    <string name="ui_balance_shown_by_your_provider_tzs" formatted="false">Salio linaloonyeshwa na mtoa huduma · TZS</string>
+    <string name="ui_amount_tzs_optional_not_added_to_money" formatted="false">Kiasi TZS (si lazima, hakiongezwi kwenye Fedha)</string>
+    <string name="ui_snooze_minutes_5_1440" formatted="false">Dakika za kuahirisha · 5–1440</string>
+    <string name="ui_source_message" formatted="false">Ujumbe wa chanzo</string>
+    <string name="ui_your_cash_entry" formatted="false">Matumizi taslimu uliyoweka</string>
+    <string name="ui_current_balance_tzs_optional" formatted="false">Salio la sasa TZS (si lazima)</string>
+    <string name="ui_account_name_e_g_m_pesa_or_crdb_current" formatted="false">Jina la akaunti, mfano M-Pesa au CRDB Current</string>
+    <string name="ui_email_address" formatted="false">Anwani ya barua pepe</string>
+    <string name="ui_app_password_imap_password" formatted="false">Nenosiri la programu / IMAP</string>
+    <string name="ui_new_password_leave_blank_to_keep" formatted="false">Nenosiri jipya (acha wazi kuhifadhi la sasa)</string>
+    <string name="ui_read_payment_and_message_alerts_security" formatted="false">Soma arifa za malipo na ujumbe. Misimbo ya usalama hufichwa.</string>
+    <string name="ui_track_m_pesa_and_bank_messages_never" formatted="false">Fuatilia ujumbe wa M-Pesa na benki. Haitumi SMS.</string>
+    <string name="ui_ask_by_voice_and_record_when_you_choose" formatted="false">Uliza kwa sauti na rekodi unapochagua. Arifa huonyeshwa kila wakati.</string>
+    <string name="ui_ring_at_the_exact_minute_you_set" formatted="false">Piga kengele kwa dakika uliyochagua</string>
+    <string name="ui_open_hellfire_with_your_assistant" formatted="false">Fungua HellFire kwa ishara ya msaidizi</string>
+    <string name="ui_connected_accounts" formatted="false">Akaunti zilizounganishwa</string>
+    <string name="ui_your_data" formatted="false">Taarifa zako</string>
+    <string name="ui_ai" formatted="false">AI</string>
+    <string name="ui_confirm_payment" formatted="false">Thibitisha malipo</string>
+    <string name="ui_save_and_schedule" formatted="false">Hifadhi na panga</string>
+    <string name="ui_save_draft" formatted="false">Hifadhi rasimu</string>
+    <string name="ui_new_message" formatted="false">Ujumbe mpya</string>
+    <string name="ui_save_correction" formatted="false">Hifadhi marekebisho</string>
+    <string name="ui_forget" formatted="false">Ondoa kwenye kumbukumbu</string>
+    <string name="ui_add_to_memory" formatted="false">Ongeza kwenye kumbukumbu</string>
+    <string name="ui_saved" formatted="false">Zilizohifadhiwa</string>
+    <string name="ui_memory" formatted="false">Kumbukumbu</string>
+    <string name="ui_new_note" formatted="false">Dokezo jipya</string>
+    <string name="ui_my_note" formatted="false">Dokezo langu</string>
+    <string name="ui_quote_from_a_record" formatted="false">Maneno kutoka rekodi</string>
+    <string name="ui_guess_to_check" formatted="false">Dhana ya kuhakiki</string>
+    <string name="ui_choose_contact" formatted="false">Chagua mtu kwenye anwani</string>
+    <string name="ui_choose_a_person" formatted="false">Chagua mtu</string>
+    <string name="ui_name_number_or_email" formatted="false">Jina, namba au barua pepe</string>
+    <string name="ui_use_typed_name" formatted="false">Tumia jina lililoandikwa</string>
+    <string name="ui_allow_contacts" formatted="false">Ruhusu anwani</string>
+    <string name="ui_app_settings" formatted="false">Mipangilio ya programu</string>
+    <string name="ui_recovery_readiness" formatted="false">Utayari wa kurejesha taarifa</string>
+    <string name="ui_back_up_or_restore" formatted="false">Hifadhi nakala au rejesha</string>
+    <string name="ui_what_is_included" formatted="false">Vilivyojumuishwa</string>
+    <string name="ui_verify_an_archive_without_restoring" formatted="false">Hakiki nakala bila kurejesha…</string>
+    <string name="ui_export_encrypted_backup" formatted="false">Hifadhi nakala iliyosimbwa…</string>
+    <string name="ui_restore_into_empty_local_database" formatted="false">Rejesha kwenye hifadhi tupu ya programu…</string>
+    <string name="ui_backup_passphrase_at_least_12_characters" formatted="false">Nenosiri la nakala · angalau herufi 12</string>
+    <string name="ui_daily_google_drive_backup_and_restore" formatted="false">Nakala za kila siku za Google Drive na kurejesha</string>
+    <string name="ui_import_and_analysis" formatted="false">Leta faili na uchambuzi</string>
+    <string name="ui_conversation_monitoring" formatted="false">Ufuatiliaji wa mazungumzo</string>
+    <string name="ui_originals" formatted="false">Faili asili</string>
+    <string name="ui_start_monitoring" formatted="false">Anza kurekodi mazungumzo</string>
+    <string name="ui_stop_monitoring" formatted="false">Simamisha kurekodi</string>
+    <string name="ui_import_original" formatted="false">Leta faili asili</string>
+    <string name="ui_analyze_locally" formatted="false">Changanua kwenye simu</string>
+    <string name="ui_play_from_timestamp" formatted="false">Cheza kuanzia muda huu</string>
+    <string name="ui_stop_playback" formatted="false">Simamisha kucheza</string>
+    <string name="ui_draft_local_summary_and_structured_notes" formatted="false">Andaa muhtasari na madokezo kwenye simu</string>
+    <string name="ui_mark_summary_reviewed" formatted="false">Weka alama kuwa muhtasari umehakikiwa</string>
+    <string name="ui_manual_speaker_label" formatted="false">Jina la mzungumzaji unaloweka</string>
+    <string name="ui_save_speaker_label" formatted="false">Hifadhi jina la mzungumzaji</string>
+    <string name="ui_export_decrypted_original" formatted="false">Hamisha faili asili bila usimbaji…</string>
+    <string name="ui_delete_original_and_transcript" formatted="false">Futa faili asili na maandishi…</string>
+    <string name="ui_ai_skills" formatted="false">Ujuzi wa AI</string>
+    <string name="ui_add_skill" formatted="false">Ongeza ujuzi</string>
+    <string name="ui_edit_skill" formatted="false">Hariri ujuzi</string>
+    <string name="ui_remove_skill" formatted="false">Ondoa ujuzi</string>
+    <string name="ui_remove_skill_2" formatted="false">Ondoa ujuzi huu?</string>
+    <string name="ui_why_created" formatted="false">Sababu ya kuundwa</string>
+    <string name="ui_when_it_applies" formatted="false">Wakati wa kutumia</string>
+    <string name="ui_original_evidence" formatted="false">Ushahidi wa asili</string>
+    <string name="ui_approve_and_enable" formatted="false">Idhinisha na washa</string>
+    <string name="ui_disable" formatted="false">Zima</string>
+    <string name="ui_usage_history" formatted="false">Historia ya matumizi</string>
+    <string name="ui_this_skill_has_not_been_used" formatted="false">Ujuzi huu bado haujatumika.</string>
+    <string name="ui_open_where_used" formatted="false">Fungua ulipotumiwa</string>
+    <string name="ui_load_older_uses" formatted="false">Pakia matumizi ya zamani</string>
+    <string name="ui_load_more_skills" formatted="false">Pakia ujuzi zaidi</string>
+    <string name="ui_search_skills" formatted="false">Tafuta ujuzi</string>
+    <string name="ui_skill_name" formatted="false">Jina la ujuzi</string>
+    <string name="ui_skill_type" formatted="false">Aina ya ujuzi</string>
+    <string name="ui_related_words_or_topic" formatted="false">Maneno au mada zinazohusiana</string>
+    <string name="ui_what_ai_should_learn" formatted="false">AI ijifunze nini</string>
+    <string name="ui_reason" formatted="false">Sababu</string>
+    <string name="ui_save_and_enable" formatted="false">Hifadhi na washa</string>
+    <string name="ui_exact_text_to_recognize" formatted="false">Maandishi halisi ya kutambua</string>
+    <string name="ui_use_sender_or_merchant_from" formatted="false">Tumia mtumaji au mfanyabiashara kutoka</string>
+    <string name="ui_everyday_help" formatted="false">Msaada wa kila siku</string>
+    <string name="ui_guided_setup" formatted="false">Mpangilio wa hatua kwa hatua</string>
+    <string name="ui_needs_attention" formatted="false">Vinavyohitaji kushughulikiwa</string>
+    <string name="ui_privacy_and_storage" formatted="false">Faragha na hifadhi</string>
+    <string name="ui_choose_what_you_want_hellfire_to_help" formatted="false">Chagua unachotaka HellFire ikusaidie</string>
+    <string name="ui_capture_connections_models_and_backups" formatted="false">Unasaji, miunganisho, modeli na nakala rudufu</string>
+    <string name="ui_learned_rules_reasons_and_usage_history" formatted="false">Kanuni zilizojifunzwa, sababu na historia ya matumizi</string>
+    <string name="ui_where_your_data_lives" formatted="false">Mahali taarifa zako zilipo</string>
+    <string name="ui_track_spending" formatted="false">Fuatilia matumizi ya fedha</string>
+    <string name="ui_remember_conversations" formatted="false">Kumbuka mazungumzo</string>
+    <string name="ui_manage_commitments" formatted="false">Simamia ahadi</string>
+    <string name="ui_choose_a_starting_goal_you_can_add_the" formatted="false">Chagua lengo la kuanzia. Unaweza kuongeza vipengele vingine baadaye.</string>
+    <string name="ui_permissions_enabled" formatted="false">ruhusa zimewashwa</string>
+    <string name="ui_enabled" formatted="false">Imewashwa</string>
+    <string name="ui_not_enabled" formatted="false">Haijawashwa</string>
+    <string name="ui_needs_your_permission" formatted="false">Inahitaji ruhusa yako</string>
+    <string name="ui_open_setup" formatted="false">Fungua mpangilio</string>
+    <string name="ui_add_an_account" formatted="false">Ongeza akaunti</string>
+    <string name="ui_choose_speech_and_language_models" formatted="false">Chagua modeli za sauti na lugha</string>
+    <string name="ui_check_it_works" formatted="false">Hakiki kama inafanya kazi</string>
+    <string name="ui_open_capture_checks" formatted="false">Fungua ukaguzi wa unasaji</string>
+    <string name="ui_connections_and_recovery" formatted="false">Miunganisho na urejeshaji</string>
+    <string name="ui_continue_to_hellfire" formatted="false">Endelea kwenye HellFire</string>
+    <string name="ui_finish_setup_later" formatted="false">Malizia mpangilio baadaye</string>
+    <string name="ui_your_goal_is_saved_resume_from_settings" formatted="false">Lengo lako limehifadhiwa. Endelea kutoka Mipangilio › Mpangilio wa hatua kwa hatua.</string>
+    <string name="ui_capture_and_permissions" formatted="false">Unasaji na ruhusa</string>
+    <string name="ui_no_delivery_observed_yet" formatted="false">Hakuna taarifa iliyopokelewa bado</string>
+    <string name="ui_no_queued_events" formatted="false">Hakuna matukio yanayosubiri</string>
+    <string name="ui_open_permissions_and_capture" formatted="false">Fungua ruhusa na unasaji</string>
+    <string name="ui_retry_failed_processing" formatted="false">Jaribu tena uchakataji ulioshindwa</string>
+    <string name="ui_connections" formatted="false">Miunganisho</string>
+    <string name="ui_no_connection_results_recorded_optional" formatted="false">Hakuna matokeo ya muunganisho yaliyorekodiwa. Akaunti za hiari zinaweza kusanidiwa hapa chini.</string>
+    <string name="ui_models_and_recordings" formatted="false">Modeli na rekodi</string>
+    <string name="ui_no_model_download_status_recorded" formatted="false">Hakuna hali ya upakuaji wa modeli iliyorekodiwa</string>
+    <string name="ui_recordings_need_attention" formatted="false">rekodi zinahitaji kushughulikiwa</string>
+    <string name="ui_choose_models" formatted="false">Chagua modeli</string>
+    <string name="ui_backup_and_storage" formatted="false">Nakala rudufu na hifadhi</string>
+    <string name="ui_free_on_this_device" formatted="false">nafasi ya bure kwenye kifaa hiki</string>
+    <string name="ui_open_backup_and_verification" formatted="false">Fungua nakala rudufu na uhakiki</string>
+    <string name="ui_original_media" formatted="false">Faili asili za media</string>
+    <string name="ui_database" formatted="false">Hifadhi ya taarifa</string>
+    <string name="ui_free_space" formatted="false">Nafasi ya bure</string>
+    <string name="ui_manage_recordings" formatted="false">Simamia rekodi</string>
+    <string name="ui_manage_memory" formatted="false">Simamia kumbukumbu</string>
+    <string name="ui_manage_ai_skills" formatted="false">Simamia ujuzi wa AI</string>
+    <string name="ui_outside_this_phone" formatted="false">Nje ya simu hii</string>
+    <string name="ui_web_copy" formatted="false">Nakala ya tovuti</string>
+    <string name="ui_enabled_selected_records_are_readable_on" formatted="false">Imewashwa. Rekodi zilizochaguliwa zinasomeka kwenye seva yako.</string>
+    <string name="ui_sync_is_off_an_earlier_server_copy_may" formatted="false">Usawazishaji umezimwa. Nakala ya zamani kwenye seva inaweza kubaki hadi uifute.</string>
+    <string name="ui_review_or_delete_web_copy" formatted="false">Hakiki au futa nakala ya tovuti</string>
+    <string name="ui_drive_backup" formatted="false">Nakala rudufu ya Drive</string>
+    <string name="ui_enabled_passphrase_encrypted_archives" formatted="false">Imewashwa. Nakala zilizosimbwa kwa nenosiri zinapakiwa kwenye Google Drive yako.</string>
+    <string name="ui_automatic_drive_backup_is_off_previously" formatted="false">Nakala za kiotomatiki za Drive zimezimwa. Nakala zilizohamishwa au kupakiwa awali zinaweza kubaki.</string>
+    <string name="ui_manage_backup_archives" formatted="false">Simamia nakala rudufu</string>
+    <string name="ui_enabled_for_text_you_explicitly_submit" formatted="false">Imewashwa kwa maandishi unayowasilisha wazi kwa modeli ya mtandaoni. Hakiki maandishi kabla ya kutuma.</string>
+    <string name="ui_off_local_answers_do_not_use_a_cloud" formatted="false">Imezimwa. Majibu ya kwenye simu hayahamii kwenye modeli ya mtandaoni.</string>
+    <string name="ui_manage_cloud_ai" formatted="false">Simamia AI ya mtandaoni</string>
+    <string name="ui_model_catalog" formatted="false">Orodha ya modeli</string>
+    <string name="ui_model" formatted="false">Modeli</string>
+    <string name="ui_choose_a_compatible_format_from_a" formatted="false">Chagua fomati inayofaa kutoka kwa mchapishaji anayeaminika. Huhitaji kuandika jina la modeli au anwani ya upakuaji.</string>
+    <string name="ui_publisher_and_model_details" formatted="false">Mchapishaji na maelezo ya modeli</string>
+    <string name="ui_download_and_use_selected_model" formatted="false">Pakua na tumia modeli iliyochaguliwa</string>
+    <string name="ui_pause_download" formatted="false">Sitisha upakuaji</string>
+    <string name="ui_pause_gemma_download" formatted="false">Sitisha upakuaji wa Gemma</string>
+    <string name="ui_install_published_gemma_update" formatted="false">Sakinisha sasisho la Gemma lililochapishwa</string>
+    <string name="ui_check_gemma_updates" formatted="false">Angalia masasisho ya Gemma</string>
+    <string name="ui_not_installed" formatted="false">Haijasakinishwa</string>
+    <string name="ui_imported_model" formatted="false">Modeli iliyoletwa</string>
+    <string name="ui_search_memory" formatted="false">Tafuta kumbukumbu</string>
+    <string name="ui_load_older_memories" formatted="false">Pakia kumbukumbu za zamani</string>
+    <string name="ui_save_with_provenance" formatted="false">Hifadhi pamoja na chanzo</string>
+    <string name="ui_could_not_save_check_storage_and_try" formatted="false">Haikuweza kuhifadhiwa. Kagua hifadhi kisha jaribu tena.</string>
+    <string name="ui_skill_settings_saved" formatted="false">Mipangilio ya ujuzi imehifadhiwa.</string>
+    <string name="ui_draft_could_not_be_saved_keep_this" formatted="false">Rasimu haikuhifadhiwa. Acha ukurasa huu wazi na ukague nafasi ya bure.</string>
+    <string name="ui_draft_could_not_be_opened_check_storage" formatted="false">Rasimu haikufunguliwa. Kagua hifadhi na ufunguzi wa kifaa.</string>
+    <string name="ui_remove_authentication_content" formatted="false">Ondoa taarifa za uthibitishaji.</string>
+    <string name="ui_remove_authentication_content_from_this" formatted="false">Ondoa taarifa za uthibitishaji kutoka kwenye ujuzi huu.</string>
+    <string name="ui_remove_authentication_content_before" formatted="false">Ondoa taarifa za uthibitishaji kabla ya kuhifadhi.</string>
+    <string name="ui_correction_saved_the_original_source" formatted="false">Marekebisho yamehifadhiwa; chanzo cha asili kinabaki kupatikana.</string>
+    <string name="ui_shared_content_saved_locally" formatted="false">Taarifa zilizoshirikiwa zimehifadhiwa kwenye simu.</string>
+    <string name="ui_skills_guide_suggestions_and_local" formatted="false">Ujuzi huongoza mapendekezo na majibu ya kwenye simu. Hauwezi kutuma ujumbe, kurekodi malipo au kutoa ruhusa.</string>
+    <string name="ui_everyday_corrections_create_suggestions" formatted="false">Marekebisho ya kila siku huunda mapendekezo ya kuhakikiwa. Ujuzi uliowashwa pekee huathiri maamuzi yajayo.</string>
+    <string name="ui_no_skills_yet_add_one_or_review" formatted="false">Hakuna ujuzi bado. Ongeza mmoja, au hakiki mapendekezo baada ya kurekebisha malipo, jukumu au kumbukumbu.</string>
+    <string name="ui_this_removes_the_skill_and_its_usage" formatted="false">Hii huondoa ujuzi na historia yake ya matumizi. Ushahidi wa asili unabaki umehifadhiwa.</string>
+    <string name="ui_saved_records_stay_on_the_phone_retry" formatted="false">Rekodi zilizohifadhiwa hubaki kwenye simu. Jaribu tena unasaji au uchambuzi hapa; kutuma kunahitaji idhini yake tofauti.</string>
+    <string name="ui_permission_enabled_is_not_proof_of" formatted="false">Ruhusa iliyowashwa si ushahidi wa kupokea taarifa. Pokea arifa au SMS halisi, kisha ukague hali ya unasaji na chanzo kilichohifadhiwa. Jaribu kurekodi na kupokea vikumbusho kwenye simu hii.</string>
+    <string name="ui_captured_sources_memories_skills_and" formatted="false">Vyanzo vilivyonaswa, kumbukumbu, ujuzi na historia ya matumizi huhifadhiwa kwenye hifadhi iliyosimbwa. Faili asili na rasimu za binafsi zimesimbwa kwenye simu.</string>
+    <string name="ui_model_weights_and_app_code_are_separate" formatted="false">Faili za modeli na msimbo wa programu ni tofauti na rekodi za binafsi. Rekodi za asili hubaki hadi uzifute wazi.</string>
+    <string name="ui_turning_a_connection_off_does_not_erase" formatted="false">Kuzima muunganisho hakufuti nakala zilizokwisha kuhamishwa. Lazima uombe kufuta kwenye mahali husika.</string>
+    <string name="ui_downloads_wait_for_wi_fi_and_adequate" formatted="false">Upakuaji husubiri Wi-Fi, betri na hifadhi ya kutosha. Ukubwa na SHA-256 huhakikiwa, kisha modeli hufunguliwa kabla ya kusakinishwa. Modeli zilizopo hubaki hadi uingizwaji ufaulu.</string>
+    <string name="ui_connections_models_backups_and_recovery" formatted="false">Miunganisho, modeli, nakala rudufu na urejeshaji</string>
+    <string name="ui_needs_review" formatted="false">Inahitaji kuhakikiwa</string>
+    <string name="ui_disabled" formatted="false">Imezimwa</string>
+    <string name="ui_personal_guidance" formatted="false">Mwongozo wa binafsi</string>
+    <string name="ui_payment_choices" formatted="false">Machaguo ya malipo</string>
+    <string name="ui_repeated_false_task" formatted="false">Jukumu lisilo sahihi linalojirudia</string>
+    <string name="ui_repeated_false_payment" formatted="false">Malipo yasiyo sahihi yanayojirudia</string>
+    <string name="ui_status" formatted="false">Hali</string>
+    <string name="ui_revision" formatted="false">Toleo</string>
+    <string name="ui_uses" formatted="false">Mara ilipotumiwa</string>
+    <string name="ui_updated" formatted="false">Imesasishwa</string>
+    <string name="ui_language_model" formatted="false">Modeli ya lugha</string>
+    <string name="ui_speech_model" formatted="false">Modeli ya sauti</string>
+    <string name="ui_meaning_search" formatted="false">Utafutaji wa maana</string>
+    <string name="ui_choose" formatted="false">Chagua</string>
+    <string name="ui_all_meaningful_topic_words_must_match" formatted="false">Maneno yote muhimu ya mada lazima yalingane. Ujuzi hauwezi kubatilisha ukweli wa chanzo.</string>
+    <string name="ui_exact_repeated_text_from_the_original" formatted="false">Maandishi halisi yanayojirudia kutoka programu ya chanzo cha asili</string>
+    <string name="ui_this_exact_wording_will_not_create_the" formatted="false">Maandishi haya halisi hayataunda tena pendekezo lilelile la jukumu au malipo.</string>
+    <string name="ui_choose_a_real_reviewed_or_pending" formatted="false">Chagua malipo halisi yaliyohakikiwa au yanayosubiri ili kutambua mtumaji au mfanyabiashara. Ujuzi hupendekeza machaguo; bado unathibitisha kila malipo.</string>
+    <string name="ui_you_chose_remember_my_account_and" formatted="false">Ulichagua kukumbuka akaunti na kundi baada ya kuhakiki malipo.</string>
+    <string name="ui_you_confirmed_this_account_category" formatted="false">Ulithibitisha akaunti na kundi hili wakati wa kuhakiki malipo. Hakiki kabla ya kutumia kwa malipo mengine yanayolingana.</string>
+    <string name="ui_you_marked_this_captured_item_as_not_a" formatted="false">Uliweka alama kuwa taarifa hii si malipo. Kanuni ya maneno halisi inaweza kuzuia pendekezo hili lisijirudie.</string>
+    <string name="ui_you_marked_this_proposal_as_not_a_task" formatted="false">Uliweka alama kuwa pendekezo hili si jukumu. Hakiki kanuni hii ya maneno halisi kabla ya kuitumia.</string>
+    <string name="ui_you_rejected_this_task_in_daily_review" formatted="false">Ulikataa jukumu hili kwenye ukaguzi wa kila siku. Hakiki kanuni hii kabla ya kuitumia.</string>
+    <string name="ui_you_corrected_this_memory_review_whether" formatted="false">Ulirekebisha kumbukumbu hii. Hakiki kama marekebisho yaongoze majibu yajayo yanayohusiana.</string>
+    <string name="ui_you_saved_this_source_excerpt_for_future" formatted="false">Ulihifadhi sehemu hii ya chanzo kwa marejeo yajayo. Hakiki kama iongoze majibu yanayohusiana.</string>
+    <string name="ui_review_ai_skills" formatted="false">Hakiki ujuzi wa AI</string>
+    <string name="ui_learned_from_your_corrections" formatted="false">Umejifunzwa kutokana na marekebisho yako</string>
+    <string name="ui_refresh_status" formatted="false">Onyesha hali ya sasa</string>
+    <string name="ui_account_unavailable" formatted="false">Akaunti haipatikani</string>
+    <string name="ui_earlier_versions" formatted="false">Matoleo ya awali</string>
+    <string name="ui_choose_meaningful_topic_words" formatted="false">Chagua maneno yenye maana ya mada.</string>
+    <string name="ui_choose_an_existing_account" formatted="false">Chagua akaunti iliyopo.</string>
+    <string name="ui_could_not_save_the_complete_share" formatted="false">Taarifa zote hazikuhifadhiwa. Zilizohifadhiwa zinabaki; kujaribu tena huendeleza kazi na kuruka faili zilizokamilika. Shiriki faili tena ikiwa ruhusa ya Android imeisha.</string>
+    <string name="ui_check_file_access_and_storage" formatted="false">Kagua ruhusa ya faili na nafasi ya hifadhi.</string>
+    <string name="ui_processing_scheduled_check_the_updated" formatted="false">Uchakataji umepangwa; kagua foleni iliyosasishwa. Hakuna ujumbe uliotumwa.</string>
+    <string name="ui_could_not_schedule_processing_saved" formatted="false">Uchakataji haukuweza kupangwa. Rekodi zilizohifadhiwa zinabaki.</string>
+    <string name="ui_privacy_settings_could_not_be_read" formatted="false">Mipangilio ya faragha haikusomeka. Hakuna kilichobadilishwa.</string>
+    <string name="ui_loading_privacy_settings" formatted="false">Inapakia mipangilio ya faragha…</string>
+    <string name="ui_retry" formatted="false">Jaribu tena</string>
+    <string name="ui_library" formatted="false">Maktaba</string>
+    <string name="ui_pictures" formatted="false">Picha</string>
+    <string name="ui_videos" formatted="false">Video</string>
+    <string name="ui_audio" formatted="false">Sauti</string>
+    <string name="ui_collections" formatted="false">Makusanyo</string>
+    <string name="ui_favorites" formatted="false">Vipendwa</string>
+    <string name="ui_categories" formatted="false">Makundi</string>
+    <string name="ui_duplicates" formatted="false">Nakala</string>
+    <string name="ui_scan" formatted="false">Chunguza</string>
+    <string name="ui_add_folder" formatted="false">Ongeza folda</string>
+    <string name="ui_grid" formatted="false">Gridi</string>
+    <string name="ui_list" formatted="false">Orodha</string>
+    <string name="ui_newest" formatted="false">Mpya</string>
+    <string name="ui_size" formatted="false">Ukubwa</string>
+    <string name="ui_recently_played" formatted="false">Zilizochezwa karibuni</string>
+    <string name="ui_managed_sync" formatted="false">Usawazishaji unaosimamiwa</string>
+    <string name="ui_not_selected_for_sync" formatted="false">Haijachaguliwa kusawazishwa</string>
+    <string name="ui_not_analysed_yet" formatted="false">Haijachambuliwa bado</string>
+    <string name="ui_play" formatted="false">Cheza</string>
+    <string name="ui_share_with_ai" formatted="false">Shiriki na AI</string>
+    <string name="ui_reprocess" formatted="false">Chakata tena</string>
+    <string name="ui_original_metadata" formatted="false">Data asili</string>
+    <string name="ui_ai_metadata" formatted="false">Data ya AI</string>
+    <string name="ui_your_description" formatted="false">Maelezo yako</string>
+    <string name="ui_similar" formatted="false">Zinazofanana</string>
+    <string name="ui_partial_access" formatted="false">Ruhusa ya sehemu</string>
+    <string name="ui_media_access_needed" formatted="false">Ruhusa ya media inahitajika</string>
+    <string name="ui_slideshow" formatted="false">Onyesho</string>
+    <string name="ui_albums" formatted="false">Albamu</string>
+    <string name="ui_playlists" formatted="false">Orodha za kucheza</string>
+    <string name="ui_private" formatted="false">Faragha</string>
+    <string name="ui_merge_into" formatted="false">Unganisha na</string>
+    <string name="ui_exclude" formatted="false">Ondoa</string>
+    <string name="ui_assign" formatted="false">Weka</string>
+    <string name="ui_tags" formatted="false">Lebo</string>
+    <string name="ui_select" formatted="false">Chagua</string>
+    <string name="ui_indexed_only" formatted="false">Imeorodheshwa tu</string>
+    <string name="ui_not_backed_up" formatted="false">Haijahifadhiwa</string>
+    <string name="ui_backed_up" formatted="false">Imehifadhiwa</string>
+    <string name="ui_not_queued" formatted="false">Haijawekwa foleni</string>
+    <string name="ui_selected_for_sync" formatted="false">Imechaguliwa kusawazishwa</string>
+    <string name="ui_compare_pictures" formatted="false">Linganisha picha</string>
+    <string name="ui_new_category" formatted="false">Kundi jipya</string>
+    <string name="ui_rename" formatted="false">Badilisha jina</string>
+    <string name="ui_remove_tag" formatted="false">Ondoa lebo</string>
+    <string name="ui_queue_processing" formatted="false">Weka kwenye foleni</string>
+    <string name="ui_add_to_collection" formatted="false">Ongeza kwenye mkusanyiko</string>
+    <string name="ui_mark_favorite" formatted="false">Weka kipendwa</string>
+    <string name="ui_clear" formatted="false">Futa</string>
+    <string name="ui_load_more" formatted="false">Pakia zaidi</string>
+    <string name="ui_missing" formatted="false">Haipatikani</string>
+    <string name="ui_permission_revoked" formatted="false">Ruhusa imeondolewa</string>
+    <string name="ui_changed" formatted="false">Imebadilika</string>
+    <string name="ui_available" formatted="false">Inapatikana</string>
+    <string name="ui_sync_on" formatted="false">Usawazishaji umewashwa</string>
+    <string name="ui_processing" formatted="false">Inachakata</string>
+    <string name="ui_backup" formatted="false">Hifadhi</string>
+    <string name="ui_sort" formatted="false">Panga</string>
+    <string name="ui_filter" formatted="false">Chuja</string>
+    <string name="ui_player" formatted="false">Kicheza</string>
+    <string name="ui_unlock" formatted="false">Fungua</string>
+    <string name="ui_lock_screen" formatted="false">Funga skrini</string>
+    <string name="ui_original_is_not_available" formatted="false">Asili haipatikani.</string>
+    <string name="ui_notifications_are_off_so_lock_screen" formatted="false">Arifa zimezimwa, hivyo vidhibiti vya skrini iliyofungwa vinaweza kufichwa na Android.</string>
+    <string name="ui_thumbnail_unavailable" formatted="false">Picha ndogo haipatikani</string>
+    <string name="ui_pause" formatted="false">Sitisha</string>
+    <string name="ui_skip_back" formatted="false">Rudi nyuma</string>
+    <string name="ui_skip_forward" formatted="false">Ruka mbele</string>
+    <string name="ui_previous" formatted="false">Iliyotangulia</string>
+    <string name="ui_next" formatted="false">Inayofuata</string>
+    <string name="ui_exit_full_screen" formatted="false">Toka kwenye skrini nzima</string>
+    <string name="ui_full_screen" formatted="false">Skrini nzima</string>
+    <string name="ui_picture_in_picture" formatted="false">Picha ndani ya picha</string>
+    <string name="ui_speed" formatted="false">Kasi</string>
+    <string name="ui_shuffle" formatted="false">Changanya</string>
+    <string name="ui_unfavorite" formatted="false">Ondoa kipendwa</string>
+    <string name="ui_favorite" formatted="false">Kipendwa</string>
+    <string name="ui_sleep_timer" formatted="false">Kipima muda wa kulala</string>
+    <string name="ui_end_of_item" formatted="false">Mwisho wa kipengee</string>
+    <string name="ui_set_a" formatted="false">Weka A</string>
+    <string name="ui_set_b" formatted="false">Weka B</string>
+    <string name="ui_clear_loop" formatted="false">Futa mzunguko</string>
+    <string name="ui_save_range" formatted="false">Hifadhi kipindi</string>
+    <string name="ui_previous_chapter" formatted="false">Sura iliyotangulia</string>
+    <string name="ui_next_chapter" formatted="false">Sura inayofuata</string>
+    <string name="ui_search_in_this_item" formatted="false">Tafuta katika kipengee hiki</string>
+    <string name="ui_indexed_search" formatted="false">Tafuta kwenye faharasa</string>
+    <string name="ui_bookmark" formatted="false">Alamisho</string>
+    <string name="ui_seek" formatted="false">Nenda</string>
+    <string name="ui_hide" formatted="false">Ficha</string>
+    <string name="ui_delete" formatted="false">Futa</string>
+    <string name="ui_convert_to_manual" formatted="false">Geuza kuwa ya mkono</string>
+    <string name="ui_remove" formatted="false">Ondoa</string>
+    <string name="ui_transcript" formatted="false">Nakala</string>
+    <string name="ui_copy" formatted="false">Nakili</string>
+    <string name="ui_correct" formatted="false">Sahihisha</string>
+    <string name="ui_playback_history" formatted="false">Historia ya kucheza</string>
+    <string name="ui_no_playback_history_yet" formatted="false">Bado hakuna historia ya kucheza.</string>
+    <string name="ui_title" formatted="false">Kichwa</string>
+    <string name="ui_notes" formatted="false">Maelezo</string>
+    <string name="ui_save_bookmark" formatted="false">Hifadhi alamisho</string>
+    <string name="ui_close" formatted="false">Funga</string>
+    <string name="ui_volume" formatted="false">Sauti</string>
+    <string name="ui_brightness" formatted="false">Mwangaza</string>
+    <string name="ui_no_extra_audio_or_subtitle_tracks" formatted="false">Hakuna njia za ziada za sauti au manukuu zilizoripotiwa.</string>
+    <string name="ui_audio_track" formatted="false">Njia ya sauti</string>
+    <string name="ui_subtitles_off" formatted="false">Zima manukuu</string>
+    <string name="ui_no_bookmarks_or_chapters_yet" formatted="false">Bado hakuna alamisho au sura.</string>
+    <string name="ui_open" formatted="false">Fungua</string>
+    <string name="ui_system_overlay_is_not_available_picture" formatted="false">Dirisha la juu la mfumo halipatikani. Picha ndani ya picha ndiyo kicheza kinachoelea kinachotumika.</string>
+    <string name="ui_playback_session_could_not_start" formatted="false">Kipindi cha kucheza hakikuweza kuanza.</string>
+    <string name="ui_storage_permission_was_not_granted_the" formatted="false">Ruhusa ya hifadhi haikutolewa. Faili ya nje haikufunguliwa.</string>
+    <string name="ui_picture_in_picture_is_not_available_on" formatted="false">Picha ndani ya picha haipatikani kwenye kifaa hiki.</string>
+    <string name="ui_picture_in_picture_was_refused_by_this" formatted="false">Kifaa kimekataa picha ndani ya picha. Uchezaji unaendelea ndani ya programu.</string>
+    <string name="ui_volume_control_was_refused_by_this" formatted="false">Kifaa kimekataa udhibiti wa sauti.</string>
+    <string name="ui_waveform_not_available_for_this_file" formatted="false">Umbo la wimbi halipatikani kwa faili hii. Uchezaji unaweza kuendelea.</string>
+    <string name="ui_no_indexed_match_analysis_was_not" formatted="false">Hakuna mechi kwenye faharasa. Uchambuzi haukuanzishwa.</string>
+    <string name="ui_this_file_cannot_be_played_on_this" formatted="false">Faili hii haiwezi kuchezwa kwenye kifaa hiki. Kodeki au mfuko haukubaliwi. Asili haikubadilishwa.</string>
+    <string name="ui_the_original_could_not_be_read_nothing" formatted="false">Asili haikusomeka. Hakuna faili iliyofafanuliwa iliandikwa.</string>
+    <string name="ui_playback_failed_the_original_was_not" formatted="false">Uchezaji umeshindwa. Asili haikubadilishwa.</string>
+    <string name="ui_this_item_is_not_audio_or_video" formatted="false">Kipengee hiki si sauti wala video.</string>
+    <string name="ui_this_external_item_has_no_content_uri" formatted="false">Kipengee hiki cha nje hakina anwani ya maudhui.</string>
     <string name="ui_intel_search" formatted="false">Tafuta</string>
     <string name="ui_intel_queue" formatted="false">Foleni ya uchakataji</string>
     <string name="ui_intel_settings" formatted="false">Ufahamu wa media</string>
@@ -595,21 +595,21 @@
     <string name="ui_intel_balanced" formatted="false">Wastani</string>
     <string name="ui_intel_deep" formatted="false">Kina</string>
     <string name="ui_intel_absent" formatted="false">Kiainishi hakijasakinishwa</string>
-    <string name="ui_0e81c52de2" formatted="false">Dashibodi ya nakala</string>
-    <string name="ui_452233847f" formatted="false">Dashibodi ya hali</string>
-    <string name="ui_6d46697086" formatted="false">Matumizi ya hifadhi</string>
-    <string name="ui_1a29a43bc9" formatted="false">Hakiki nakala</string>
-    <string name="ui_bee9dcc44e" formatted="false">Omba nakala</string>
-    <string name="ui_4f5d99b422" formatted="false">Sitisha uchambuzi</string>
-    <string name="ui_905dccea41" formatted="false">Endelea na uchambuzi</string>
-    <string name="ui_1e96a60ec9" formatted="false">Jaribu tena zilizoshindwa</string>
-    <string name="ui_bf0066107e" formatted="false">Panga upya</string>
-    <string name="ui_430a5aaa1e" formatted="false">Sitisha ulandanishi</string>
-    <string name="ui_41b7c8f0bf" formatted="false">Endelea na ulandanishi</string>
-    <string name="ui_d33461e6c0" formatted="false">Futa akiba</string>
-    <string name="ui_464b6e0507" formatted="false">Nakala imezuiwa</string>
-    <string name="ui_4159a74294" formatted="false">Hali ya joto</string>
-    <string name="ui_a748b5aa8c" formatted="false">Upatikanaji wa modeli</string>
+    <string name="ui_backup_dashboard" formatted="false">Dashibodi ya nakala</string>
+    <string name="ui_status_dashboard" formatted="false">Dashibodi ya hali</string>
+    <string name="ui_storage_usage" formatted="false">Matumizi ya hifadhi</string>
+    <string name="ui_verify_backups" formatted="false">Hakiki nakala</string>
+    <string name="ui_request_backup" formatted="false">Omba nakala</string>
+    <string name="ui_pause_analysis" formatted="false">Sitisha uchambuzi</string>
+    <string name="ui_resume_analysis" formatted="false">Endelea na uchambuzi</string>
+    <string name="ui_retry_failures" formatted="false">Jaribu tena zilizoshindwa</string>
+    <string name="ui_reindex" formatted="false">Panga upya</string>
+    <string name="ui_pause_sync" formatted="false">Sitisha ulandanishi</string>
+    <string name="ui_resume_sync" formatted="false">Endelea na ulandanishi</string>
+    <string name="ui_clear_cache" formatted="false">Futa akiba</string>
+    <string name="ui_backup_blocked" formatted="false">Nakala imezuiwa</string>
+    <string name="ui_thermal_state" formatted="false">Hali ya joto</string>
+    <string name="ui_model_availability" formatted="false">Upatikanaji wa modeli</string>
     <string name="share_with_ai" formatted="false">Shiriki na AI</string>
     <string name="share_prepare" formatted="false">Andaa nakala iliyosafishwa</string>
     <string name="share_open_sheet" formatted="false">Fungua laha ya kushiriki</string>

@@ -19,6 +19,7 @@ import com.hellfire.ass.HellFireApp
 import com.hellfire.ass.media.MediaItem
 import kotlinx.coroutines.CancellationException
 import java.util.concurrent.TimeUnit
+import com.hellfire.ass.Diagnostics
 
 data class ItemStatus(val processing: String?, val sync: String, val backup: String)
 
@@ -101,7 +102,7 @@ class LibraryScanWorker(context: Context, params: WorkerParameters) : CoroutineW
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (caught: Exception) {
-            com.hellfire.ass.Diagnostics.warn(caught)
+            Diagnostics.warn(caught)
             Result.retry()
         }
     }

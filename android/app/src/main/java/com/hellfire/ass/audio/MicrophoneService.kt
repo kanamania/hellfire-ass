@@ -18,6 +18,15 @@ import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.util.UUID
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.media.AacEncoderStream
+import com.hellfire.ass.media.ChunkedMedia
+import com.hellfire.ass.media.LearnedVad
+import com.hellfire.ass.media.MediaWork
+import com.hellfire.ass.media.RecordingPolicy
+import com.hellfire.ass.media.SpeechActivity
+import com.hellfire.ass.media.VadModels
+import com.hellfire.ass.widgets.Widgets
 
 object MicrophoneStatus {
     val state = MutableStateFlow("Off")
@@ -30,7 +39,7 @@ class MicrophoneService : Service() {
     @Volatile private var capturing = false
     private var job: Job? = null
     @Volatile private var queueAfter = false
-    private fun refreshWidget() { (application as HellFireApp).captureScope.launch { com.hellfire.ass.widgets.Widgets.refreshRecord(application) } }
+    private fun refreshWidget() { (application as HellFireApp).captureScope.launch { Widgets.refreshRecord(application) } }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -70,7 +79,7 @@ class MicrophoneService : Service() {
             } else {
                 startForeground(41, notification)
             }
-        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
+        } catch (caught: Exception) { Diagnostics.warn(caught);
             MicrophoneStatus.state.value = "Recording unavailable: Android denied the foreground microphone service."
             stopSelf()
             return START_NOT_STICKY
@@ -93,7 +102,7 @@ class MicrophoneService : Service() {
         var written = 0
         val startedAt = System.currentTimeMillis()
         val id = UUID.randomUUID().toString()
-        var learnedVad: com.hellfire.ass.media.LearnedVad? = null
+        var learnedVad: LearnedVad? = null
         val maximum = if (monitoring) SAMPLE_RATE * 2 * 30 * 60 else MAX_BYTES
         try {
             val bufferSize = maxOf(4096, AudioRecord.getMinBufferSize(SAMPLE_RATE,
@@ -104,13 +113,13 @@ class MicrophoneService : Service() {
                 .setBufferSizeInBytes(bufferSize).build()
             check(recorder.state == AudioRecord.STATE_INITIALIZED) { "Microphone unavailable" }
             val app = application as HellFireApp
-            if (monitoring && com.hellfire.ass.media.VadModels.file(app).isFile) {
-                learnedVad = runCatching { com.hellfire.ass.media.LearnedVad.open(com.hellfire.ass.media.VadModels.file(app)) }
-                    .onFailure(com.hellfire.ass.Diagnostics::warn).getOrNull()
+            if (monitoring && VadModels.file(app).isFile) {
+                learnedVad = runCatching { LearnedVad.open(VadModels.file(app)) }
+                    .onFailure(Diagnostics::warn).getOrNull()
             }
-            val activity = if (learnedVad == null) com.hellfire.ass.media.SpeechActivity() else com.hellfire.ass.media.SpeechActivity(frameProbability = { frame ->
+            val activity = if (learnedVad == null) SpeechActivity() else SpeechActivity(frameProbability = { frame ->
                 runCatching { learnedVad?.probability(frame) }.getOrElse {
-                    com.hellfire.ass.Diagnostics.warn(it)
+                    Diagnostics.warn(it)
                     runCatching { learnedVad?.close() }; learnedVad = null
                     MicrophoneStatus.state.value = "Monitoring active · encrypted · adaptive VAD fallback · 30 minute limit"
                     null
@@ -147,14 +156,14 @@ class MicrophoneService : Service() {
             }
             if (monitoring) {
                 // Compressed AAC-LC (ADTS, 32 kbit/s) instead of 256 kbit/s PCM; VAD still sees the raw PCM above.
-                val saved = com.hellfire.ass.media.AacEncoderStream(input).use { encoded ->
-                    com.hellfire.ass.media.ChunkedMedia.write(encoded, file, id, false, cipher, retainInterrupted = true)
+                val saved = AacEncoderStream(input).use { encoded ->
+                    ChunkedMedia.write(encoded, file, id, false, cipher, retainInterrupted = true)
                 }
                 if (saved.size > 0) {
                     val item = app.media.registerRecording(id, startedAt, saved.interrupted, activity.finish(), written.toLong() * 1000 / (SAMPLE_RATE * 2))
                     if (queueAfter) {
                         // Started from the Record widget: queue local transcription (charging and battery rules still apply).
-                        runCatching { com.hellfire.ass.media.MediaWork.queue(app, item.id) }
+                        runCatching { MediaWork.queue(app, item.id) }
                         getSharedPreferences("widgets", 0).edit().putLong("record_saved_at", System.currentTimeMillis()).apply()
                     }
                 }
@@ -163,14 +172,14 @@ class MicrophoneService : Service() {
             MicrophoneStatus.state.value = if (written > 0) "Saved encrypted ${if (monitoring) "conversation in Media" else "sample"} · ${written / (SAMPLE_RATE * 2)} seconds"
                 else "Stopped before audio was captured"
             if (written == 0) file.delete()
-        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught);
+        } catch (caught: Exception) { Diagnostics.warn(caught);
             // A failed GCM stream is not a playable sample; never report it as saved.
             if (!monitoring) file?.delete()
             MicrophoneStatus.state.value = "Error: microphone interrupted, silenced, permission denied, or storage unavailable. Start again from the app."
         } finally {
             runCatching { learnedVad?.close() }
             capturing = false
-            try { recorder?.stop() } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); }
+            try { recorder?.stop() } catch (caught: Exception) { Diagnostics.warn(caught); }
             recorder?.release()
             MicrophoneStatus.active.value = false
             MicrophoneStatus.busy.value = false
@@ -196,7 +205,7 @@ class MicrophoneService : Service() {
             startBlock(context, intent)?.let { MicrophoneStatus.state.value = it; return false }
             return try { context.startForegroundService(intent) != null }
             catch (error: Exception) {
-                com.hellfire.ass.Diagnostics.warn(error)
+                Diagnostics.warn(error)
                 MicrophoneStatus.state.value = "Android blocked recording. Keep the app visible and check permissions."
                 false
             }
@@ -212,7 +221,7 @@ class MicrophoneService : Service() {
                 val allowed = runCatching {
                     val app = (context as? HellFireApp) ?: context.applicationContext as HellFireApp
                     val settings = app.secrets.read("recording-exclusions")
-                    intent.getBooleanExtra("notice", false) && com.hellfire.ass.media.RecordingPolicy.allowed(
+                    intent.getBooleanExtra("notice", false) && RecordingPolicy.allowed(
                         intent.getStringExtra("participants").orEmpty(), intent.getStringExtra("place").orEmpty(),
                         settings?.optString("people").orEmpty(), settings?.optString("places").orEmpty())
                 }.getOrDefault(false)

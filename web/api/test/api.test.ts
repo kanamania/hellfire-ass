@@ -9,8 +9,8 @@ import { createApp } from '../src/app.js';
 import { hashPassword, issueSession, validSession, verifyPassword } from '../src/auth.js';
 import type { Config } from '../src/config.js';
 
-const databaseUrl = process.env.TEST_DATABASE_URL;
-if (!databaseUrl) throw new Error('Set TEST_DATABASE_URL to a disposable Postgres database');
+// Defaults to the host's dedicated test database (local PostgreSQL over the Unix socket); the tests drop its tables.
+const databaseUrl = process.env.TEST_DATABASE_URL || 'postgresql:///hellfire_test?host=/run/postgresql';
 
 const config: Config = {
   databaseUrl,
@@ -26,10 +26,11 @@ let base = '';
 let close: () => Promise<void>;
 let session = '';
 
-async function call(path: string, init: { method?: string; token?: string; body?: unknown } = {}) {
+async function call(path: string, init: { method?: string; token?: string; body?: unknown; visitor?: string } = {}) {
   const response = await fetch(base + path, {
     method: init.method ?? (init.body === undefined ? 'GET' : 'POST'),
-    headers: { 'content-type': 'application/json', ...(init.token ? { authorization: `Bearer ${init.token}` } : {}) },
+    headers: { 'content-type': 'application/json', ...(init.token ? { authorization: `Bearer ${init.token}` } : {}),
+      ...(init.visitor ? { 'x-real-ip': init.visitor } : {}) },
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
   });
   const text = await response.text();
@@ -351,6 +352,18 @@ describe('login', () => {
     const statuses = [];
     for (let i = 0; i < 5; i++) statuses.push((await call('/api/auth/login', { body: { password: 'nope' } })).status);
     assert.ok(statuses.includes(429));
+    // Another visitor behind nginx keeps its own allowance.
+    assert.equal((await call('/api/auth/login', { body: { password: 'nope' }, visitor: '203.0.113.9' })).status, 401);
+  });
+  it('logout signs out every session issued before it', async () => {
+    const before = (await call('/api/auth/login', { body: { password: 'correct horse battery' }, visitor: '203.0.113.10' })).body.token;
+    assert.equal((await call('/api/auth/logout', { token: before, body: {} })).status, 204);
+    assert.equal((await call('/api/overview', { token: before })).status, 401);
+    assert.equal((await call('/api/overview', { token: session })).status, 401);
+    assert.equal((await call('/api/library/state', { token: before })).status, 401);
+    await new Promise((done) => setTimeout(done, 5));
+    session = issueSession(config.sessionSecret).token;
+    assert.equal((await owner('/api/overview')).status, 200);
   });
 });
 

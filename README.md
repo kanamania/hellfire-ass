@@ -11,7 +11,7 @@ testing until last. No phone, live account or personal corpus was used to establ
 Downloaded public model weights stay outside Git. No real recipient was contacted
 and no gateway was deployed.
 
-## Current status — 2026-11-25
+## Current status — 2026-11-26
 
 - **Code:** `main` holds every merged slice: Phases 0–6 software, the UI redesign
   (five tabs, reports, 13 home screen widgets), money entry pickers, fingerprint app
@@ -19,12 +19,17 @@ and no gateway was deployed.
   the 2026-11-16 review findings, **multiple email inboxes and WhatsApp accounts**, and
   **Gemma 4 E2B downloaded on first launch with on-device update checks**, and the
   **daily brief, waiting-on, people, debts, bills, expiry reminders, capture alerts and
-  action templates**, plus **local contact picking and person links**, and **device-calendar context and approved event changes**. Debug/release version **0.9.0** (code 9), Room schema **21**, backup schema **21**.
+  action templates**, plus **local contact picking and person links**, and **device-calendar context and approved event changes**. Debug/release version **0.10.0** (code 10), Room schema **21**, backup schema **21** (restores 8 and 10–21).
 - **News and media:** scheduled/readable/spoken news, source controls, saved stories and news Ask; device library, media playback, local analysis/search, capture drawer, sanitized sharing, encrypted library sync and backup coverage. See the setup notes below.
 - **Web access:** an optional read-only web copy (NestJS API, Postgres, Next.js site
   in `web/`) synced from the phone; see [Web access](#web-access-read-only-mirror).
   Local website: `https://hellfire.local`; not yet connected to a real phone.
-- **Current Android host checks (2026-11-25):** 550 tests, 545 passed, 5 existing
+- **Review follow-up (2026-11-26):** versioned handover APK names from Gradle, inbox
+  search through the full-text index, interface text as named string resources (no
+  English-text lookup), web logout revocation and per-visitor login limits, relay under
+  systemd. Android host checks: 551 tests, 546 passed, 5 existing credential/fixture
+  skips, 0 failures. Details in DEVICE_FEASIBILITY.md.
+- **Calendar checkpoint (2026-11-25):** 550 tests, 545 passed, 5 existing
   credential/fixture-dependent skips, 0 failures; 22 new calendar tests pass.
   Debug build and lint pass (0 errors). Provider/permissions/sync on the OnePlus
   remain NOT TESTED. See the calendar checkpoint in DEVICE_FEASIBILITY.md.
@@ -70,12 +75,14 @@ cd android
 
 **Build naming (owner requirement, 2026-11-18):** Use versioned names for prepared
 and delivered build artifacts: `HellFire-Ass-<versionName>-code<versionCode>-<variant>.apk`.
-Read the actual version from `android/app/build.gradle.kts`; for the current version,
-use `HellFire-Ass-0.9.0-code9-debug.apk` or `HellFire-Ass-0.9.0-code9-release.apk`.
-Unsigned releases must end in `-release-unsigned.apk`. Copy the Gradle output to
-the versioned name when preparing a build for handover.
+Gradle names the debug and release APKs this way itself, from the version in
+`android/app/build.gradle.kts`: currently `HellFire-Ass-0.10.0-code10-debug.apk`, and
+`HellFire-Ass-0.10.0-code10-release.apk` (or `-release-unsigned.apk` without the private
+signing file). Bump `versionCode` for every build handed over, so no two different
+builds share a name. Test-only variants (emulator, deviceTest, benchmark, profile) keep
+Gradle's default names for the tools in `tools/`.
 
-Gradle output: `android/app/build/outputs/apk/debug/app-debug.apk`, version **0.9.0**.
+Gradle output: `android/app/build/outputs/apk/debug/HellFire-Ass-0.10.0-code10-debug.apk`.
 It is built for **arm64-v8a only** (since 2026-11-16), Android API 29+, target/compile
 API 36. Confirm the phone ABI before installation (`adb shell getprop ro.product.cpu.abilist`);
 32-bit-only phones and x86_64 PC emulators cannot run it. Size: about 171 MB
@@ -100,122 +107,6 @@ phone. Host and emulator compatibility results are reported separately.
 The app remains one Gradle module with bounded Kotlin packages. Core capture,
 ledger calculations, task review and bundled OCR work without account credentials.
 Optional network adapters remain disconnected until configured by the owner.
-
-## Everyday improvements and AI skills (0.9.0)
-
-**Settings › AI skills** shows pending, active and disabled personal decision rules.
-Corrections during payment review, rejecting false task/payment suggestions, and
-saving/correcting source memories can propose skills. Proposals need approval;
-choosing **Remember my account and category** is explicit approval for that default.
-Existing encrypted review defaults migrate when next used.
-
-- Add a guidance skill with a topic and instruction, or choose a real recent payment
-  to set sender/merchant account/category suggestions. Edit, disable, re-enable or
-  remove any skill. Removal also removes its usage log; original source records stay.
-- Each skill shows why it was created, evidence, revision, status, use count and
-  paged history linking to where it was used. Counts reflect guidance supplied to
-  local Ask, defaults applied to review, or a repeated false candidate suppressed.
-  They do **not** prove a language model followed an instruction or authorize actions.
-- New advice about the same trigger is a separate pending update. Enabling it
-  disables the previous active rule for that trigger. Past usage keeps its revision.
-  Disabled rules are not automatically reactivated by repeated observations.
-- Guidance matches all meaningful topic words. False-candidate rules are exact
-  normalized-text rules scoped to their original app/sender/conversation/account.
-  They suppress derived suggestions, never capture of the underlying source.
-- Skill application records are accessible from history but excluded from full-text,
-  semantic and assistant fallback retrieval, so old advice is not learned back after
-  a skill is removed. Skills/usage are encrypted and included in portable backups;
-  restored active skills become pending for review. They are not added to web sync.
-
-**Settings › On-device models › Model catalog** offers compatible published formats,
-without typing model names or URLs:
-
-| Model | Purpose | Publisher/source | Download size |
-|---|---|---|---|
-| Gemma 4 E2B | Language, existing default | Hugging Face `litert-community` | 2,588 MB |
-| Qwen3 0.6B | Smaller language model | Hugging Face `litert-community` | 614 MB |
-| Gemma 4 E4B | Larger language model | Hugging Face `litert-community` | 3,660 MB |
-| Whisper Base multilingual | Transcription | Hugging Face `ggerganov/whisper.cpp` | 148 MB |
-| Whisper Small multilingual | Transcription | Hugging Face `ggerganov/whisper.cpp` | 488 MB |
-| Universal Sentence Encoder | English semantic search | Google MediaPipe | 6 MB |
-
-The picker shows source, license information, format notes, size, pinned revision
-and SHA-256. Downloads wait for Wi-Fi, adequate battery and storage, retain partial
-bytes for retry, verify integrity and load the runtime before replacement. Existing
-models remain on failure. Gemma's existing daily update checks and explicit update
-button remain. Advanced compatible-file imports remain available; there is no free-
-text local model identifier or download URL. Speaker models retain their advanced
-ONNX file picker because a generic model name cannot establish compatible inputs.
-Actual accuracy, speed, memory use and Kiswahili performance need device evaluation;
-the English text embedder is not advertised as verified Kiswahili semantic search.
-
-Further daily-use changes:
-
-- Guided setup starts from spending, conversations or commitments, preserves the
-  chosen goal, allows finishing later, and distinguishes permissions from real
-  delivery tests. Resume in Settings › Guided setup.
-- Home/Settings › **Needs attention** combines capture, connection results, queued
-  work, models, recordings, backup status and recovery links. Retry processes saved
-  sources; it never retries uncertain sends.
-- **Privacy and storage** distinguishes encrypted phone records, readable optional
-  server copies, encrypted Drive archives and explicitly submitted cloud-AI text.
-  Switching a destination off does not claim to erase previously exported copies.
-- Memory has search, filters, older pages and earlier correction versions. Private
-  drafts for memory, reconciliation, source notes, shares and skill editors are
-  encrypted locally and excluded from backups. Capture-grant expiry may require
-  sharing files again; a partial import resumes saved per-file checkpoints and
-  content hashes prevent duplicate originals. Shared text/derived records commit
-  atomically; a shared reminder remains a review proposal until approved.
-- Ask accepts `compare spending on Fuel this month vs last month`,
-  `why was transport spending higher this month`, and `budget for Fuel this month`.
-  Differences and category contributors use integer ledger arithmetic; they do not
-  invent causes. Budgets are monthly, category-based, across all accounts.
-- English/Kiswahili labels now cover the new daily flows and common errors. Status
-  banners announce changes; permission targets and bottom navigation better support
-  touch and larger text. Advanced model descriptions/diagnostics remain English.
-  Touch, TalkBack, voice and large-font rendering still require phone verification.
-
-## Review improvements (0.8.0)
-
-- Home › **Review** combines payment, task and draft review; **Record** opens recordings.
-- Ask supports `spending on Fuel from M-Pesa this month`, `and last month?`,
-  `spending at merchant "Cafe" last week`, and `spending for person "Asha" this month`
-  (use your own account/category/person names). Unknown filters need clarification.
-  Choose **Local model + saved sources** for read-only model explanations. **History**
-  offers optional encrypted history and Clear.
-- **Share → HellFire Ass** accepts text, screenshots, PDFs and audio/video through
-  the existing app unlock gate. Review before saving a note, reminder or expense
-  candidate. It never sends or posts a payment automatically.
-- Inbox has Conversations / All items, saved-history search and older-page loading.
-  Waiting on has per-request clearing and thread snooze. People can have identical
-  names; Manage linked identities offers explicit merge/separation.
-- Task editing has date/time pickers, recurrence, reminder intensity, per-task
-  snooze and **Add to calendar** (you save or cancel in your calendar app).
-- Money › **Check account balance** guides reconciliation before an adjustment.
-  Review sheets can remember account/category suggestions after your approval.
-- Settings › **Language** selects English/Kiswahili main controls and speech locale;
-  advanced diagnostics and some dynamic explanations remain English. Captured
-  messages, names and source excerpts remain unchanged.
-- Backup shows staging-space estimates and **Verify an archive**. Streaming archives
-  support more than the previous 7 GiB originals ceiling, subject to free space:
-  500 GiB originals / 512 GiB archive; individual originals remain limited to 8 GiB.
-  Verification checks authentication and original hashes without replacing data.
-
-### Release APK and automated checks
-
-`cd android && ./gradlew :app:assembleRelease` builds a shrunk release APK. To sign,
-put private `android/signing.properties` (mode 600, ignored) beside Gradle settings:
-`storeFile`, `storePassword`, `keyAlias`, `keyPassword`; `storeFile` is relative to
-`android/`. Never commit that file or the keystore. Without it, CI builds an unsigned
-release for validation. A release key differs from the debug key: keep using the
-debug APK for an in-place upgrade of a debug install; do not uninstall personal data
-just to change signing identity. Android/Google authorization must be configured for
-whichever signing certificate you use.
-
-`.github/workflows/checks.yml` runs Android tests/lint/debug/release builds, relay and
-worker tests, web API tests against disposable Postgres, and frontend typecheck/build.
-It needs no personal messages, accounts, model weights or production secrets and
-performs no deployment. A hosted successful run has not been claimed.
 
 ## App controls
 
@@ -437,7 +328,7 @@ blocking remain possible. See the [library's own warning](https://wwebjs.dev/gui
 
 ### Linked WhatsApp Web capture
 
-Required: Docker/Compose on a trusted Linux server, persistent storage, a working
+Required: a trusted Linux server with systemd, Python 3 and Node 22.12+, persistent storage, a working
 HTTPS reverse proxy, and the public key exported from **Messages** in the Android
 app. No Meta credentials are needed. No service has been deployed or account linked
 by this implementation run.
@@ -446,11 +337,15 @@ by this implementation run.
 2. Create private `server/.env` with only `DEVICE_TOKEN` (at least 32 random
    characters) and `STORE_KEY_BASE64` (base64 of 32 random bytes). Generate these
    locally and save them privately; do not paste actual values into commands,
-   documentation or Git. Compose supplies the public-key path and Web mode.
-3. When deploying on your selected server, use this entry point from `server/`:
+   documentation or Git. The systemd units supply the public-key path and Web mode.
+3. When deploying on your selected server, install both services from the repository root
+   (paths and `User` in the units assume this checkout at `/home/dev/Projects/hellfire-ass`):
 
    ```bash
-   docker compose -f compose.yaml -f compose.web.yaml up -d --build
+   python3 -m venv server/.venv && server/.venv/bin/pip install -r server/requirements.txt
+   (cd server/whatsapp-web && npm ci --omit=dev --omit=optional)
+   sudo cp server/systemd/*.service /etc/systemd/system/ && sudo systemctl daemon-reload
+   sudo systemctl enable --now hellfire-relay hellfire-whatsapp-web
    ```
 
 4. On a separate screen, open `https://YOUR-RELAY/pair`, enter the device token,
@@ -477,19 +372,17 @@ npm audit --omit=dev --omit=optional
 The lockfile pins whatsapp-web.js **1.34.8**, qrcode **1.5.4**, and a Puppeteer
 **25.17.0** override to avoid advisories in the upstream-pinned browser dependency.
 Unused RemoteAuth archive dependencies are omitted; the worker uses `LocalAuth`.
-The Docker base pins the matching official Puppeteer image. Live WhatsApp/browser
-compatibility still requires account verification. Outside Docker, install a
-matching browser through Puppeteer or provide `CHROME_BIN`, provide the two private
-environment values above, and run `npm start` under a service manager. Do not run
-two workers against the same browser profile. The Compose worker has no exposed
-port, runs as UID 10001 and keeps Chromium's sandbox enabled. It uses the official
-[Puppeteer Docker setup's `SYS_ADMIN` capability](https://pptr.dev/guides/docker);
-run it only on the trusted host. The relay retains its existing dropped capabilities.
+`npm ci` without `PUPPETEER_SKIP_DOWNLOAD` installs Puppeteer's matching Chrome; to use
+an installed browser instead, set `CHROME_BIN` in `hellfire-whatsapp-web.service`. Live
+WhatsApp/browser compatibility still requires account verification. Do not run two
+workers against the same browser profile. The worker has no listening port, runs as the
+unit's `User` with `NoNewPrivileges` and keeps Chromium's sandbox enabled; run it only on
+the trusted host. The relay listens on `127.0.0.1:8080` only.
 
-Three persistent volumes have distinct purposes: `whatsapp-web-session` holds the
-browser credentials/history; `whatsapp-web-spool` holds encrypted pending capture
-and private QR/status files; `relay-data` holds the phone-encrypted queue and replay
-fingerprints. The browser is a decrypted endpoint, and its profile is **not**
+Three ignored directories under `server/state/` have distinct purposes:
+`whatsapp-web-session/` holds the browser credentials/history; `whatsapp-web/` holds
+encrypted pending capture and private QR/status files; `relay.db` holds the
+phone-encrypted queue and replay fingerprints. The browser is a decrypted endpoint, and its profile is **not**
 encrypted by our spool/envelope code. Protect its host disk and backups. The worker
 gets the spool key but not the device bearer token or Meta credentials. Message
 bodies, raw browser objects, QR tokens and provider errors are not printed by our
@@ -506,15 +399,15 @@ captured in this first slice. No attachment bytes or inferred transcripts are
 fabricated.
 
 **Several WhatsApp accounts:** one relay (and one linked browser session) serves one
-WhatsApp account. For a second account run a second relay with its own Compose
-project, volumes, device token, store key and HTTPS URL, then add it in Android under
+WhatsApp account. For a second account run a second pair of units (copies with
+another name, port and `server/state/` paths) with its own device token, store key and HTTPS URL, then add it in Android under
 Settings › WhatsApp › Add another WhatsApp account. All relays use the same phone
 public key. Never point two relays at the same browser profile or relay database.
 
 To revoke access, log out this session from WhatsApp's **Linked devices**, stop
 the worker, and disconnect the gateway in Android. Disconnecting Android alone
 does not revoke the linked server session. If the linked session disconnects or its
-authentication fails, the worker exits and Compose restarts it with the saved session;
+authentication fails, the worker exits and systemd restarts it with the saved session;
 if WhatsApp no longer accepts that session, the pairing page shows a new QR code.
 Changing the WhatsApp account or transport requires draining the old queue first
 and a separate relay database/profile; old queued evidence must not be relabeled
@@ -525,7 +418,7 @@ Host relay checks:
 ```bash
 cd server
 .venv/bin/python -m pytest -q
-docker compose -f compose.yaml -f compose.web.yaml config --no-env-resolution --no-interpolate
+systemd-analyze verify systemd/*.service
 ```
 
 ### Alternative official Meta transport
@@ -538,7 +431,6 @@ cd server
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 .venv/bin/python -m pytest -q
-docker compose config --no-env-resolution --no-interpolate
 ```
 
 For an owner-authorized deployment, export the device public key in Messages and
@@ -555,12 +447,13 @@ place it at ignored `server/device-public.pem`. Create a private, ignored
 | `META_PHONE_NUMBER_ID` | Connected phone-number ID |
 | `META_ACCESS_TOKEN` | Authorized WhatsApp Business access token |
 | `GRAPH_API_VERSION` | Explicit supported version, such as the version selected in the owner's Meta app; no guessed default |
-| `DEVICE_PUBLIC_KEY_FILE` | Set by Compose to `/app/device-public.pem` |
-| `RELAY_DATABASE` | Optional; default `state/relay.db` in the persistent volume |
+| `DEVICE_PUBLIC_KEY_FILE` | Set by `hellfire-relay.service` to `server/device-public.pem` |
+| `RELAY_DATABASE` | Set by `hellfire-relay.service` to `server/state/relay.db` |
 
-Compose binds only `127.0.0.1:8080`. A real HTTPS reverse proxy is required for Meta
+The relay binds only `127.0.0.1:8080`. A real HTTPS reverse proxy is required for Meta
 and the Android client. After provisioning and explicit deployment authorization,
-`docker compose up -d --build` is the service entry point. This development run did
+`hellfire-relay.service` is the service entry point; for Meta, delete its two
+`WHATSAPP_*` lines and do not install the WhatsApp Web worker. This development run did
 not execute that deployment command. Register `/webhook`, verify signatures and
 actual account eligibility/Coexistence onboarding with Meta; app configuration alone
 cannot prove eligibility. Enter the matching HTTPS URL/device token in Android.
@@ -571,7 +464,7 @@ Endpoints: `GET /health`, `GET/POST /webhook`, `GET /device/events`,
 `POST /drafts/{id}/send`. Device endpoints require bearer auth; webhooks require
 verification/signatures and match configured business/phone IDs. Rate limit is
 120 requests/minute per client address, taken from the reverse proxy's
-`X-Forwarded-For` (Compose trusts it because the port is bound to 127.0.0.1 only).
+`X-Forwarded-For` (trusted only from 127.0.0.1, the local reverse proxy).
 Requests carrying the valid device token have a separate allowance of 1,200/minute. Access logs retain requests while redacting queries.
 No raw webhook contents or credentials are logged.
 
@@ -1017,223 +910,7 @@ measure language backends. CPU remains the fallback until a compatible imported
 model succeeds in a device probe. Queue limits, thermal policy and cooperative
 yielding are host-tested; speed, memory, power and heat require the OnePlus 16.
 
-## Verification and change log
+## Change history
 
-- 2026-11-25, Priority 1 calendar slice: CalendarContract reads feed appointments
-  and overlap warnings into Ask and morning/evening briefs. Confirmed tasks can
-  create/edit/cancel linked one-off events in an owner-chosen device calendar,
-  through fresh approval and the existing audit log. Room/backup schema 21 keeps
-  older archive allowlists and revokes provider links/approvals after restore.
-  Calendar permission status is under Settings → Permissions and capture.
-  Open a confirmed task → Device calendar to review changes; task edits never
-  silently mutate the calendar. Start/end input uses EAT. Synced calendars may
-  upload approved changes through their own sync adapters. No Google Calendar API,
-  invitations, new dependency or server change. Physical OnePlus provider/sync,
-  permissions and calendar-app source links remain NOT TESTED. Detailed commands,
-  limits, recovery behavior and evidence: `docs/DEVICE_FEASIBILITY.md`.
-
-- 2026-11-18, performance checkpoint: bounded native audio ownership/error handling,
-  one video retriever per batch, bounded media scheduling queries, idle-model
-  cleanup under the existing gate, local stage diagnostics and isolated AndroidX
-  startup/navigation/profile collectors. 501 host Android tests pass, native
-  CheckJNI and ASan/UBSan checks pass, and debug/release/benchmark/profile APKs
-  compile. Raw comparison evidence is in `docs/performance-results.json`.
-
-- 2026-11-17, news/media/performance/universal drawer: consolidated the pending
-  feature branches on schema 19; added news Ask and scheduled notices; corrected
-  same-refresh clustering, drawer action priorities, player search/navigation,
-  thermal/queue policy, encrypted sync and backup/restore recovery. Full host
-  regression and lint pass; physical/device, provider and model checks remain open.
-
-Exact host results, artifact checksum and the final physical checklist are in
-[DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md). Host tests use synthetic data,
-ordinary SQLite/Robolectric and generated AES/RSA keys; they do not prove native
-SQLCipher/Keystore, actual model execution, live accounts or Android/OEM behavior.
-
-- 2026-11-16, local contacts (0.7.0, Room/backup v15): contact picker with explained
-  runtime access and free-text fallback; all existing person/vendor fields plus
-  optional task/payment links; multi-number/email message joins, audited link edits,
-  deleted-contact status, older-backup restores and no contact fields in WebSync;
-  263 host tests, including 16 new synthetic contact/link/privacy tests. Phone checks
-  remain NOT TESTED.
-- 2026-11-16, daily outputs and templates (0.7.0, Room v14): morning brief and evening
-  wrap-up with a morning notification, waiting-on tracker, people pages, debts with
-  repayment suggestions, recurring-bill detection and 30-day shortfall, expiry-date
-  task proposals from scans, capture-gap alerts, action templates for tasks, expenses
-  and income, compound Kiswahili amounts and income/template commands; 247 host tests.
-- 2026-11-16, web access: optional read-only web copy (`web/`: NestJS API, Postgres,
-  Next.js site) and Settings › Web access with an incremental WebSync worker on the phone;
-  no Room change. 226 Android, 11 web API tests.
-- 2026-11-16, Gemma 4 E2B (0.6.0): pinned official model downloaded on first launch over
-  Wi-Fi with resume, SHA-256 check and load test; daily update check with owner-approved
-  updates; arm64-v8a-only build; 232 host tests.
-- 2026-11-16, review fixes and multiple accounts (0.5.0, Room v13): stable SMS/mail/relay
-  identity, SMS high-water mark, money-preserving redaction, cross-source payment
-  duplicates, tighter finance/task rules with Swahili clock times, full-text search,
-  AAC recording recovery, recent-window mail sync, whole-folder call import, Drive
-  retention, AI output-limit and thinking-block handling, relay rate-limit and batch
-  ack, worker restart, internal-only deep links, debug-build diagnostics, and several
-  email inboxes and WhatsApp accounts; 221 host tests.
-- 2026-11-16, project review: full code and docs review; host suites re-run (205
-  Android, 21 relay, 6 worker tests, no failures; lint 0 errors). Findings and next actions are in
-  DEVICE_FEASIBILITY.md → "Project review checkpoint". No code changed.
-- 2026-11-14, money entry: date/time, category and account pickers for cash entry,
-  accounts without a provider field, Room v12; 192 host tests at that checkpoint.
-- 2026-11-14, UI redesign: new theme and five-tab navigation, redesigned Home, Money,
-  Tasks, Inbox and Ask, settings hub, reports with PDF/CSV export, Room v10–v11 and 13
-  Glance home screen widgets. Emulator-checked only; see REDESIGN_SUMMARY.md.
-- 2026-11-14, device security/recovery: opt-in platform fingerprint/device-credential
-  app lock, encrypted daily Google Drive upload and confirmed backup selection/restore.
-  Live Google/OEM verification remains pending.
-- 2026-11-13, Phase 0: skeleton, assistant/session, notification capture, encrypted
-  prototypes and access/status screens; 34 host tests.
-- 2026-11-13, Phase 1: durable processing/recovery, audit/policy, authorized SMS history
-  and reconciliation; 58 host tests.
-- 2026-11-13, Phases 2–6 software slices: finance/local AI/OCR, encrypted database,
-  mail/relay/drafts, tasks/alarms, encrypted multimedia/transcription adapters,
-  evidence queries/memory and portable backup/recovery. Device testing stays last.
-- 2026-11-13, advanced audio: compressed AAC conversation recordings, adaptive-noise-floor
-  speech intervals, and experimental ONNX speaker grouping with owner-voice enrollment
-  and conversation-name placeholders.
-- 2026-11-13, smarter memory: on-device image labels and owner-imported text-embedding
-  meaning search (schema 9 `semantic_vector`, rebuildable and excluded from backup); 141 host tests.
-- 2026-11-13, agent workflows: confirm-first voice/chat commands for reminders,
-  memory notes, task done/snooze/reschedule, cash review items and email/WhatsApp
-  drafts; 137 host tests.
-- 2026-11-13, WhatsApp Web: owner-authorized switch to linked-device capture with
-  persistent LocalAuth, authenticated QR pairing/status, encrypted spool and relay,
-  separate Android provenance and capture-only send guards. No live account paired.
-- 2026-11-13, capture quality: narrower whole-item security redaction (above);
-  notification removal records stay as evidence without re-creating finance/task
-  candidates; a candidate repeating an existing provider reference is kept as
-  duplicate evidence outside the review queue and linked on approval; promotions,
-  system notices and deadlines over seven days old create no task review items;
-  `leo`/`kesho` match whole words and `keshokutwa` means two days ahead; 152 host tests.
-- 2026-11-14, resource use: coalesced queued processing drains with a successor for
-  events arriving during a running drain; duplicate-only notification/SMS batches
-  skip scheduling. Automatic meaning indexing waits for charging and adequate battery,
-  skips native model initialization for an empty backlog, respects the requested
-  batch limit and shares the heavy-model lock. Actual battery/peak RAM gains remain
-  unmeasured pending device profiling.
-- 2026-11-17, adaptive performance: the same gate and workers now yield to interactive
-  work, reuse one heavy runtime when memory allows, skip silent audio and duplicate
-  video frames, and cap how many media jobs are scheduled. CPU stays selected until a
-  phone benchmark succeeds. Host policy tests pass; OnePlus 16 speed, power and codecs are
-  not measured. See `docs/DEVICE_FEASIBILITY.md`.
-
-References: [Android assistant](https://developer.android.com/reference/android/service/voice/VoiceInteractionService),
-[exact alarms](https://developer.android.com/develop/background-work/services/alarms/schedule),
-[foreground timeouts](https://developer.android.com/develop/background-work/services/fgs/timeout),
-[LiteRT-LM](https://developers.google.com/edge/litert-lm/overview),
-[Gemma 4](https://developers.google.com/edge/litert-lm/models/gemma-4),
-[bundled OCR](https://developers.google.com/ml-kit/vision/text-recognition/v2/android),
-[SQLCipher Android](https://github.com/sqlcipher/sqlcipher-android),
-[JavaMail IMAP](https://javaee.github.io/javamail/docs/api/com/sun/mail/imap/IMAPFolder.html),
-[Gmail app passwords](https://support.google.com/accounts/answer/185833),
-[whisper.cpp](https://github.com/ggml-org/whisper.cpp/tree/v1.9.5),
-[WhatsApp Business](https://developers.facebook.com/docs/whatsapp/).
-
-Local release signing material for this machine is kept under
-`~/.config/hellfire-ass/release-signing/` (directory mode 700, key/properties mode
-600). Ignored `android/signing.properties` links to that private configuration.
-Keep a separate private backup of the signing key and properties for future APK
-updates. They are deliberately excluded from Git, CI and application backups.
-
-### TheftGuard (owner-device vertical slice, 2026-11-25)
-
-Open **Settings → TheftGuard**. Configure the existing FastAPI relay's HTTPS
-**origin**, its existing device bearer token, and a separate random 32-byte,
-base64-encoded guard transport key. Store that same key as
-`GUARD_PAYLOAD_KEY_BASE64` in the relay's private environment. Do not reuse
-`STORE_KEY_BASE64` or put keys in commands, source files or screenshots. Existing
-relay configuration (device public key, store key, token and selected WhatsApp
-transport requirements) is still required.
-
-Server-only SMTP configuration:
-
-| Variable | Purpose |
-|---|---|
-| `GUARD_SMTP_HOST` | SMTP hostname with implicit TLS |
-| `GUARD_SMTP_PORT` | Implicit TLS port; default 465 |
-| `GUARD_SMTP_USER`, `GUARD_SMTP_PASSWORD` | SMTP login; never stored in APK |
-| `GUARD_MAIL_FROM`, `GUARD_MAIL_TO` | Sender and owner destination |
-| `GUARD_TIMEOUT_SECONDS` | Missing-heartbeat threshold; default 180, env minimum 120 |
-
-The existing Compose `env_file: .env` passes these values to the relay. Run one
-Uvicorn worker per relay database; its lifespan task checks persisted deadlines and
-mail approximately every ten seconds. No scheduler runs unless the app lifespan
-is started. The configured relay refuses remote arming when SMTP settings are
-missing; configured does not mean live delivery has been verified.
-
-Allow **precise location**, camera and notifications, and optionally phone/SIM
-access. Background location is a separate Android Settings grant after foreground
-location; the app never represents it as granted automatically. Enable Device
-Admin for repeated wrong-unlock callbacks (three failures; callback support must
-be verified on firmware). Request battery optimization exemption if desired.
-Arming, camera resume and disarming each require a fresh strong biometric;
-ordinary app-lock screen-lock fallback does not bypass guard biometric checks.
-
-Once armed, the guard service runs in `:guard` with a low-importance persistent
-notification. An independent best-effort 60-second heartbeat keeps the server
-informed while sequential front/back CameraX and fused-location cycles collect
-triggered evidence. Missing cameras, unavailable location, Google Play services,
-revoked access and upload failures are recorded as unavailable/unconfirmed, not
-synthetic successes. Triggers are repeated wrong unlock, observed subscription
-change, loss of validated connectivity, manual owner test and server-reported
-missed heartbeat. Only the first trigger is retained until disarm/re-arm. Camera
-bytes stay in memory until encrypted in the Room log. Local evidence has a 50 MiB
-budget; full storage pauses new capture. Offline uploads are retried while the
-same session remains armed. Disarm retains evidence and stops further uploads.
-
-Both new bearer-authenticated, existing-rate-limited routes accept
-`{"payload":"<base64 PayloadCipher envelope>"}` with AES-256-GCM v1
-(`0x01 || 12-byte nonce || ciphertext-and-tag`), AAD `hellfire-guard-v1`, and
-4 MiB maximum request bodies:
-
-- `POST /device/theft/heartbeat`: `session_id` UUID, increasing `sequence`, Unix
-  `timestamp` **seconds**, `armed`, `active`, `battery` (-1 unknown or 0–100),
-  `network` (`online`/`offline`). The relay uses its receipt clock for timeout;
-  heartbeat timestamps must be within five minutes. Acknowledgments report
-  `active`, allowing a server dead-man trigger to reach a reconnected phone.
-- `POST /device/theft/evidence`: `id` UUID, `session_id`, Unix `timestamp` seconds,
-  `trigger`, nullable `location` (latitude, longitude, accuracy metres, timestamp),
-  `images` (up to two distinct front/back base64 JPEGs, each ≤1 MiB), and bounded
-  capture-status `errors`. An armed heartbeat must establish the session first.
-  Evidence IDs are idempotent; reused IDs with changed content are refused.
-
-Evidence is sealed to the existing paired device public key on the relay. A
-separate server-store-key-encrypted outbox supplies **readable coordinates and JPEG
-attachments** to the owner through implicit TLS SMTP; it clears the payload after
-SMTP accepts. This makes recovery email usable without the stolen phone. The
-configured owner mailbox intentionally retains its own readable evidence copy.
-Relay retention for evidence and unsent mail is seven days, with a 256 MiB retained
-evidence budget (storage-full responses preserve the phone's pending upload). Mail acknowledgment is queueing,
-not verified inbox delivery; SMTP failure retries and rare crash-related duplicate
-emails are possible. Offline local disarm queues remote cancellation with
-WorkManager; re-arming waits for acknowledgment. Lost network, power-off, Doze,
-force-stop or OEM termination may all cause the same missing-heartbeat alert.
-
-Boot recovery is dedicated to guard and resumes only saved armed state after the
-first unlock makes credential-protected storage available. Background location
-allows a **location-only** foreground service; stock Android camera recovery needs
-an owner tap and biometric. Without background location, tap the guard notification
-to resume the service. Android can block either path; no indicator suppression,
-power-key interception, shutdown veto or root path exists.
-
-Tier 2 provisioning is a scaffold, **NOT TESTED**: on an empty, owner-approved
-provisioning/test device with no conflicting accounts/owners, Android's Device
-Owner provisioning tooling can assign `com.hellfire.ass/.guard.GuardAdminReceiver`
-(for example `adb shell dpm set-device-owner com.hellfire.ass/.guard.GuardAdminReceiver`
-when Android permits it). Do not reset the owner's phone for this slice. Arming
-checks actual Device Owner status before applying uninstall/safe-boot restrictions
-and lock-task policy. Disarming restores the previous settings. Power-menu
-suppression only applies if a future explicitly authorized kiosk flow enters
-lock-task mode; this slice does not. Hardware shutdown is always outside userspace
-control. Tier 3 root support is out of scope.
-
-Official constraints checked: [foreground service types](https://developer.android.com/develop/background-work/services/fgs/service-types),
-[background-start restrictions](https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start),
-[DevicePolicyManager](https://developer.android.com/reference/android/app/admin/DevicePolicyManager),
-[CameraX releases](https://developer.android.com/jetpack/androidx/releases/camera),
-[Google Play services releases](https://developers.google.com/android/guides/releases).
-See `docs/DEVICE_FEASIBILITY.md` for actual test results and the final-device checklist.
+Release notes for 0.8.0–0.9.0 and the dated verification log moved to
+[DEVICE_FEASIBILITY.md → History moved from the README](docs/DEVICE_FEASIBILITY.md#history-moved-from-the-readme-2026-11-26).

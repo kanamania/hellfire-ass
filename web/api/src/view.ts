@@ -120,7 +120,7 @@ export class ViewService {
 
 @Controller('api')
 export class ViewController {
-  constructor(private readonly view: ViewService, @Inject(CONFIG) private readonly config: Config) {}
+  constructor(private readonly view: ViewService, private readonly db: Db, @Inject(CONFIG) private readonly config: Config) {}
 
   // Reached only from the Next.js server, which keeps the token in an HttpOnly cookie.
   @Post('auth/login') @HttpCode(200) @Throttle({ default: { limit: 5, ttl: 60_000 } })
@@ -130,6 +130,9 @@ export class ViewController {
       throw new UnauthorizedException();
     return issueSession(this.config.sessionSecret);
   }
+
+  @Post('auth/logout') @HttpCode(204) @UseGuards(SessionGuard)
+  async logout() { await this.db.revokeSessions(); }
 
   @Get('overview') @UseGuards(SessionGuard)
   overview() { return this.view.overview(); }

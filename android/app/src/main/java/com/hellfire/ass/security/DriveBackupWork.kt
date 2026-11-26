@@ -9,6 +9,8 @@ import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.audio.MicrophoneStatus
 
 object DriveBackupWork {
     const val CONFIG = "drive-backup"
@@ -67,7 +69,7 @@ class DriveBackupWorker(context: Context, params: WorkerParameters) : CoroutineW
             try {
                 val config = app.secrets.read(DriveBackupWork.CONFIG)
                 if (config?.optBoolean("enabled") != true) return@withLock Result.success()
-                if (com.hellfire.ass.audio.MicrophoneStatus.busy.value) {
+                if (MicrophoneStatus.busy.value) {
                     DriveBackupWork.status(app, "Waiting for recording to stop")
                     return@withLock Result.retry()
                 }
@@ -98,7 +100,7 @@ class DriveBackupWorker(context: Context, params: WorkerParameters) : CoroutineW
                     drive.list(token).filter { it.id != id }.sortedByDescending { it.createdAt }.drop(keep - 1).forEach { drive.delete(it.id, token) }
                 } catch (e: CancellationException) { throw e }
                 catch (caught: Exception) {
-                    com.hellfire.ass.Diagnostics.warn(caught)
+                    Diagnostics.warn(caught)
                     DriveBackupWork.status(app, "Backup uploaded and confirmed; removing older backups failed and will be retried after the next upload", id)
                 }
                 Result.success()
@@ -114,7 +116,7 @@ class DriveBackupWorker(context: Context, params: WorkerParameters) : CoroutineW
                 DriveBackupWork.failure(app, "Drive upload failed (HTTP ${e.status})")
                 DriveBackupWork.status(app, if (e.status == 403) "Drive access or storage quota denied; check Google account and reconnect" else "Drive upload failed (HTTP ${e.status}); no new success recorded")
                 if (e.status == 429 || e.status >= 500) Result.retry() else Result.failure()
-            } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught)
+            } catch (caught: Exception) { Diagnostics.warn(caught)
                 DriveBackupWork.failure(app, "Drive backup failed before a confirmed upload")
                 DriveBackupWork.status(app, "Backup failed; check connection, storage, Google setup and passphrase. Previous backups retained.")
                 Result.retry()

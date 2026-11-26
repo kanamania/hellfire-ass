@@ -1,7 +1,9 @@
 import { CanActivate, ExecutionContext, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import type { Request } from 'express';
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { CONFIG, type Config } from './config.js';
+import { Db } from './db.js';
 
 const SCRYPT = { N: 1 << 15, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 const SESSION_MS = 12 * 60 * 60 * 1000;
@@ -27,9 +29,10 @@ export function issueSession(secret: string, now = Date.now()): { token: string;
   return { token: `${expiresAt}.${sign(secret, String(expiresAt))}`, expiresAt };
 }
 
-export function validSession(secret: string, token: string, now = Date.now()): boolean {
+export function validSession(secret: string, token: string, now = Date.now(), issuedAfter = 0): boolean {
   const [expiry, mac] = token.split('.');
   if (!expiry || !mac || !/^\d+$/.test(expiry) || Number(expiry) <= now) return false;
+  if (Number(expiry) - SESSION_MS <= issuedAfter) return false;
   return sameSecret(mac, sign(secret, expiry));
 }
 
@@ -62,10 +65,10 @@ export class SyncGuard implements CanActivate {
 /** Phone sync token or an owner session. Used by the encrypted library, not the plaintext mirror. */
 @Injectable()
 export class ClientGuard implements CanActivate {
-  constructor(@Inject(CONFIG) private readonly config: Config) {}
+  constructor(@Inject(CONFIG) private readonly config: Config, private readonly db: Db) {}
   canActivate(context: ExecutionContext): boolean {
     const token = bearer(context.switchToHttp().getRequest<Request>());
-    if (token && (sameSecret(token, this.config.syncToken) || validSession(this.config.sessionSecret, token))) return true;
+    if (token && (sameSecret(token, this.config.syncToken) || validSession(this.config.sessionSecret, token, Date.now(), this.db.sessionsAfter))) return true;
     throw new UnauthorizedException();
   }
 }
@@ -73,10 +76,22 @@ export class ClientGuard implements CanActivate {
 /** The owner, signed in through the web app. */
 @Injectable()
 export class SessionGuard implements CanActivate {
-  constructor(@Inject(CONFIG) private readonly config: Config) {}
+  constructor(@Inject(CONFIG) private readonly config: Config, private readonly db: Db) {}
   canActivate(context: ExecutionContext): boolean {
     const token = bearer(context.switchToHttp().getRequest<Request>());
-    if (!token || !validSession(this.config.sessionSecret, token)) throw new UnauthorizedException();
+    if (!token || !validSession(this.config.sessionSecret, token, Date.now(), this.db.sessionsAfter)) throw new UnauthorizedException();
     return true;
+  }
+}
+
+/**
+ * Rate limits per visitor. The API listens on loopback only, so its callers are the website and nginx-fronted
+ * rewrites; both pass nginx's X-Real-IP. Without it every visitor would share the website's address.
+ */
+@Injectable()
+export class VisitorThrottlerGuard extends ThrottlerGuard {
+  protected override async getTracker(request: Record<string, any>): Promise<string> {
+    const visitor = request.headers?.['x-real-ip'];
+    return typeof visitor === 'string' && visitor ? visitor : request.ip;
   }
 }

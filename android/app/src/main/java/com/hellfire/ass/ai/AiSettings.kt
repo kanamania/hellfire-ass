@@ -8,6 +8,7 @@ import org.json.JSONObject
 import java.io.File
 import java.math.BigDecimal
 import java.math.RoundingMode
+import com.hellfire.ass.Diagnostics
 
 // Prices are micro-USD per million tokens, entered from the owner's API price sheet.
 data class ModelPrice(val input: Long, val output: Long) {
@@ -51,15 +52,15 @@ class EncryptedAiStore(private val file: AtomicFile, private val cipher: () -> P
     @Synchronized override fun read(): AiState = try {
         if (!file.baseFile.exists() && !File(file.baseFile.path + ".bak").exists()) AiState()
         else AiStateCodec.decode(cipher().decrypt(file.readFully()).toString(Charsets.UTF_8))
-    } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); throw AiException(AiError.STORAGE) }
+    } catch (caught: Exception) { Diagnostics.warn(caught); throw AiException(AiError.STORAGE) }
 
     @Synchronized override fun update(transform: (AiState) -> AiState): AiState {
         val next = transform(read())
         val bytes = try { cipher().encrypt(AiStateCodec.encode(next).toByteArray(Charsets.UTF_8)) }
-            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); throw AiException(AiError.STORAGE) }
-        val stream = try { file.startWrite() } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); throw AiException(AiError.STORAGE) }
+            catch (caught: Exception) { Diagnostics.warn(caught); throw AiException(AiError.STORAGE) }
+        val stream = try { file.startWrite() } catch (caught: Exception) { Diagnostics.warn(caught); throw AiException(AiError.STORAGE) }
         try { stream.write(bytes); file.finishWrite(stream) }
-        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); file.failWrite(stream); throw AiException(AiError.STORAGE) }
+        catch (caught: Exception) { Diagnostics.warn(caught); file.failWrite(stream); throw AiException(AiError.STORAGE) }
         return next
     }
 }

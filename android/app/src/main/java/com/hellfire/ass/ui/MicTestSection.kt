@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
@@ -47,6 +50,7 @@ import kotlinx.coroutines.*
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import com.hellfire.ass.Diagnostics
 
 @Composable
 fun MicTestSection(app: HellFireApp, permissions: PermissionStatus, onPermission: () -> Unit, onSettings: (String) -> Unit) {
@@ -79,14 +83,14 @@ fun MicTestSection(app: HellFireApp, permissions: PermissionStatus, onPermission
     Button(enabled = !busy && playback == null && permissions.microphone && permissions.notificationPosting, onClick = {
         try {
             MicrophoneService.requestStart(app, Intent(app, MicrophoneService::class.java).setAction(MicrophoneService.ACTION_START))
-        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); MicrophoneStatus.state.value = "Android blocked recording. Keep the app visible and check permissions." }
+        } catch (caught: Exception) { Diagnostics.warn(caught); MicrophoneStatus.state.value = "Android blocked recording. Keep the app visible and check permissions." }
     }) { Text("Start 60-second recording") }
     OutlinedButton(enabled = busy, onClick = {
         app.startService(Intent(app, MicrophoneService::class.java).setAction(MicrophoneService.ACTION_STOP))
     }) { Text("Stop recording") }
     TextButton(onClick = { onSettings(Settings.ACTION_APP_NOTIFICATION_SETTINGS) }) { Text("Recording notification settings") }
     result?.let { Text(it) }
-    if (playback != null) OutlinedButton(onClick = { playback?.cancel(); playback = null }) { Text(com.hellfire.ass.ui.tr("Stop playback")) }
+    if (playback != null) OutlinedButton(onClick = { playback?.cancel(); playback = null }) { Text(stringResource(R.string.ui_stop_playback)) }
     Text("${files.size} encrypted samples retained", style = MaterialTheme.typography.titleMedium)
     files.forEach { file ->
         Text("Sample · ${formatTime(file.lastModified())}")
@@ -98,7 +102,7 @@ fun MicTestSection(app: HellFireApp, permissions: PermissionStatus, onPermission
                         withContext(Dispatchers.IO) { playSample(app, file) }
                         result = "Playback finished."
                     } catch (e: CancellationException) { result = "Playback stopped."; throw e }
-                    catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); result = "Sample could not be played. It may be incomplete or its device key is unavailable." }
+                    catch (caught: Exception) { Diagnostics.warn(caught); result = "Sample could not be played. It may be incomplete or its device key is unavailable." }
                     finally { playback = null }
                 }
             }) { Text("Play sample") }

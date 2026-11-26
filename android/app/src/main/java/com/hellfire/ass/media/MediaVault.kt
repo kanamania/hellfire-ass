@@ -19,6 +19,10 @@ import java.io.InputStream
 import java.security.DigestInputStream
 import java.security.MessageDigest
 import java.util.UUID
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.audio.MicrophoneStatus
+import com.hellfire.ass.performance.ProcessingCheckpoint
+import com.hellfire.ass.player.FrameScrubber
 
 /**
  * Managed encrypted storage for originals (spec §13, §16, §27). Contract for every feature:
@@ -245,8 +249,8 @@ class MediaVault(private val app: HellFireApp) {
                 .filter { it.startsWith("intelligence-thumbs/") && !it.contains("..") }.forEach { File(app.cacheDir, it).delete() }
             app.database.library().unindexItem(item.id)
             app.database.media().delete(item.id)
-            com.hellfire.ass.player.FrameScrubber.deleteForItem(app, id)
-            com.hellfire.ass.performance.ProcessingCheckpoint.clear(app, id)
+            FrameScrubber.deleteForItem(app, id)
+            ProcessingCheckpoint.clear(app, id)
         }
     }
     suspend fun recover() = withContext(Dispatchers.IO) {
@@ -265,7 +269,7 @@ class MediaVault(private val app: HellFireApp) {
         // Plaintext copies left by a crash inside withPlainCopy; recent ones may still be in use.
         plainDirectory.listFiles().orEmpty().filter { it.lastModified() < System.currentTimeMillis() - 3_600_000 }.forEach { it.delete() }
         // An unregistered file is the live recording while the microphone is busy; never touch it then.
-        if (com.hellfire.ass.audio.MicrophoneStatus.busy.value) return@withContext
+        if (MicrophoneStatus.busy.value) return@withContext
         for (path in directory.listFiles().orEmpty().filter { it.extension == "hfm" }) {
             val id = path.nameWithoutExtension
             if (runCatching { UUID.fromString(id) }.isFailure || app.database.media().item(id) != null) continue
@@ -274,7 +278,7 @@ class MediaVault(private val app: HellFireApp) {
                 // A recording with no authenticated audio is an empty orphan; remove it rather than leave ciphertext behind.
                 if (recovered == null) path.delete()
                 else registerRecording(id, recoveredStart(path), true, emptyList(), mime = if (recovered.pcm) "audio/pcm" else "audio/aac")
-            }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }
+            }.onFailure { Diagnostics.warn(it) }
         }
     }
 }

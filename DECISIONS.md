@@ -403,3 +403,29 @@ No new runtime dependencies. Existing action approvals and capture-all policy st
   21.4.0 and lifecycle-service at the existing 2.9.4 pin, checked against official
   Android/Google release documentation. No unrelated dependency or global package
   upgrades are included. Physical OnePlus tests and live SMTP remain NOT TESTED.
+
+## 2026-11-26 — Project review follow-up
+
+- Handover builds: Gradle names debug and release APKs
+  `HellFire-Ass-<versionName>-code<versionCode>-<variant>.apk` (`-release-unsigned` without
+  owner signing). Test-only variants keep default names because `tools/` scripts and CI
+  locate them by path. `versionCode` is bumped for every handed-over build; 0.10.0 (code 10)
+  is the first, because two different 0.9.0/code 9 APKs had been handed over.
+- Interface text: screens call `stringResource(R.string.<name>)` directly; the
+  English-text-to-resource lookup (`UiLabels`, `tr()`, `UiLanguage.text()`) is removed, so
+  editing English text can no longer silently drop its Kiswahili translation. Resource
+  names were derived from the English text. Components do not translate their parameters.
+  Values stored in the database (spending categories, skill reasons) keep their stored
+  English keys and use explicit label functions in `ui/Language.kt`. Model-layer refusals
+  shown to the owner throw `OwnerError(@StringRes)` instead of English messages. Places that
+  were English-only before stay English-only; one such string is marked
+  `MissingTranslation` rather than given an unreviewed Kiswahili text.
+- Inbox event search uses the full-text index (`MATCH`, word prefix) instead of a substring
+  scan. A query fragment in the middle of a word no longer matches.
+- Web sessions stay stateless, but logout records a `sessions_after` time in `meta`; owner
+  tokens issued at or before it are rejected. With one owner, logout signs out every session.
+  The API rate-limits by nginx's `X-Real-IP` (forwarded by the website), because every
+  caller reaches the loopback-only API from the same address.
+- The relay and the WhatsApp Web worker run as systemd units (`server/systemd/`), matching
+  the web stack; the Compose/Docker files are removed. Disposable test fixtures in `tools/`
+  still use Docker.

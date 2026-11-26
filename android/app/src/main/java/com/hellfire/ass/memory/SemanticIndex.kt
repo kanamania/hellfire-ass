@@ -35,6 +35,9 @@ import java.nio.channels.FileChannel
 import java.security.MessageDigest
 import java.util.PriorityQueue
 import java.util.concurrent.TimeUnit
+import com.hellfire.ass.BuildConfig
+import com.hellfire.ass.Diagnostics
+import java.io.FileNotFoundException
 
 /** Rebuildable cache of L2-normalized source embeddings; excluded from backups. An empty vector marks a source with no indexable text. */
 @Entity(tableName = "semantic_vector", indices = [Index("model")], foreignKeys = [ForeignKey(
@@ -102,7 +105,7 @@ class SemanticIndex(private val app: HellFireApp) {
         ModelSlots.drop("EMBEDDING")
     }
     val modelFile get() = File(app.filesDir, "models/text_embedder.tflite")
-    val supported get() = !com.hellfire.ass.BuildConfig.EMULATOR_BUILD
+    val supported get() = !BuildConfig.EMULATOR_BUILD
     val configured get() = supported && modelFile.isFile
 
     private fun modelId(): String {
@@ -155,7 +158,7 @@ class SemanticIndex(private val app: HellFireApp) {
             modelFile.parentFile!!.mkdirs()
             val temp = File(modelFile.parentFile, "text_embedder.part")
             try {
-                app.contentResolver.openInputStream(uri)!!.use { input -> temp.outputStream().use { output ->
+                (app.contentResolver.openInputStream(uri) ?: throw FileNotFoundException("Android could not open that file")).use { input -> temp.outputStream().use { output ->
                     val buffer = ByteArray(65536); var size = 0L
                     while (true) { currentCoroutineContext().ensureActive(); val n = input.read(buffer); if (n < 0) break
                         size += n; require(size <= 512L * 1024 * 1024) { "Embedding model exceeds 512 MiB" }; output.write(buffer, 0, n) }
@@ -270,6 +273,6 @@ class SemanticIndexWorker(context: Context, params: WorkerParameters) : Coroutin
             (applicationContext as HellFireApp).semantic.indexPending()
             Result.success()
         } catch (e: kotlinx.coroutines.CancellationException) { throw e }
-        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); Result.retry() }
+        catch (caught: Exception) { Diagnostics.warn(caught); Result.retry() }
     }
 }

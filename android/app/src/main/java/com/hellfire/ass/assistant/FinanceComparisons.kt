@@ -4,11 +4,13 @@ import com.hellfire.ass.finance.*
 import java.time.Instant
 import java.time.YearMonth
 import com.hellfire.ass.tasks.TaskTime
+import com.hellfire.ass.contacts.PersonContact
+import com.hellfire.ass.ui.UiLanguage
 
 object FinanceComparisons {
-    private fun label(en: String, sw: String) = if (com.hellfire.ass.ui.UiLanguage.code == "sw") sw else en
+    private fun label(en: String, sw: String) = if (UiLanguage.code == "sw") sw else en
     fun requested(text: String) = Regex("(?i)\\b(compare|versus|vs|higher|lower|increased|decreased|linganisha|kuliko)\\b").containsMatchIn(text)
-    fun questions(text: String, now: Instant, accounts: List<FinanceAccount>, categories: List<String>, people: List<com.hellfire.ass.contacts.PersonContact>): Pair<FinanceQuestion, FinanceQuestion> {
+    fun questions(text: String, now: Instant, accounts: List<FinanceAccount>, categories: List<String>, people: List<PersonContact>): Pair<FinanceQuestion, FinanceQuestion> {
         val cleaned = text.lowercase().replace(Regex("\\b(compare|why|was|is|higher|lower|increased|decreased|linganisha|kwa nini)\\b"), " ").replace(Regex("\\s+"), " ").trim()
         val parts = cleaned.split(Regex("\\s+(?:vs\\.?|versus|with|against|compared to|dhidi ya|kuliko)\\s+"), limit = 2)
         val current = FinanceQuestion.parse(parts[0], now, accounts, categories, people = people)

@@ -36,6 +36,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.util.UUID
+import com.hellfire.ass.library.LibraryOrganize
+import com.hellfire.ass.library.ProcessingJob
+import com.hellfire.ass.media.LocalBarcodes
 
 class ContentEngine(private val app: HellFireApp) {
     private val adult = AdultClassifier(app)
@@ -240,7 +243,7 @@ class ContentEngine(private val app: HellFireApp) {
             "PARTIAL", JSONObject().put("label", verdict.label ?: JSONObject.NULL).put("verified", false).put("message", verdict.message).put("atMs", atMs ?: JSONObject.NULL),
             verdict.message, verdict.confidence)
         if (verdict.applied && isAdultLabel(verdict.label) && (verdict.confidence ?: 0.0) >= 0.7) {
-            CategoryApply.suggest(dao, item.id, listOf(CategorySuggestion(com.hellfire.ass.library.LibraryOrganize.ADULT_ROOT, verdict.label!!, verdict.confidence ?: 0.7)), now)
+            CategoryApply.suggest(dao, item.id, listOf(CategorySuggestion(LibraryOrganize.ADULT_ROOT, verdict.label!!, verdict.confidence ?: 0.7)), now)
         }
     }
 
@@ -256,7 +259,7 @@ class ContentEngine(private val app: HellFireApp) {
             val ocr = runCatching { LocalOcr.read(copy) }
                 .getOrElse { if (it is kotlinx.coroutines.CancellationException) throw it; "" }
             currentCoroutineContext().ensureActive()
-            val qr = runCatching { com.hellfire.ass.media.LocalBarcodes.read(software) }
+            val qr = runCatching { LocalBarcodes.read(software) }
                 .getOrElse { if (it is kotlinx.coroutines.CancellationException) throw it; emptyList() }
             Observed(labels, ocr, qr)
         } finally { if (software !== bitmap) software.recycle() }
@@ -381,7 +384,7 @@ class ContentEngine(private val app: HellFireApp) {
         fun isAdultLabel(label: String?) = label?.lowercase() in setOf("porn", "pornography", "hentai", "explicit", "sexual", "nudity", "sexy")
         const val PIPELINE = 3
         const val JOB = "intelligence"
-        fun newJob(itemId: String, now: Long) = com.hellfire.ass.library.ProcessingJob(
+        fun newJob(itemId: String, now: Long) = ProcessingJob(
             UUID.randomUUID().toString(), JOB, itemId, priority = JobPriority.BACKGROUND, createdAt = now, updatedAt = now)
     }
 }

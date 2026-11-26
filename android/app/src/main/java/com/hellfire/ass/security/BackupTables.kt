@@ -5,6 +5,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import org.json.*
 import java.util.Base64
 import java.util.zip.*
+import com.hellfire.ass.calendar.CalendarSchema
+import com.hellfire.ass.guard.GuardSchema
+import com.hellfire.ass.news.NewsSchema
 
 /** Fixed table/column allowlists; archives cannot supply executable SQL. */
 object BackupTables {
@@ -23,9 +26,9 @@ object BackupTables {
         "media_item_tag", "collection_member", "media_bookmark", "playback_state", "play_history", "processing_job", "inbox_item",
         "inbox_member", "drawer_message", "action_record", "saved_location", "share_export", "privacy_finding", "sync_record",
         "sync_conflict", "backup_manifest", "backup_item")
-    private val schema19 = schema18 + com.hellfire.ass.news.NewsSchema.tables
-    private val schema20 = schema19 + com.hellfire.ass.guard.GuardSchema.tables
-    val tables = schema20 + com.hellfire.ass.calendar.CalendarSchema.tables
+    private val schema19 = schema18 + NewsSchema.tables
+    private val schema20 = schema19 + GuardSchema.tables
+    val tables = schema20 + CalendarSchema.tables
     fun tablesFor(schema: Int): List<String> = when (schema) {
         8 -> schema8
         10 -> schema10

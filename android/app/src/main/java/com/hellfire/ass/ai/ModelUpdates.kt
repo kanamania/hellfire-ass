@@ -19,6 +19,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
+import com.hellfire.ass.Diagnostics
 
 /** One published version of the model file: repository commit, file SHA-256 and size. */
 data class ModelRelease(val commit: String, val sha256: String, val size: Long)
@@ -227,7 +228,7 @@ class ModelDownloadWorker(context: Context, params: WorkerParameters) : Coroutin
                 ModelUpdates.status(app, "Not enough free storage for ${GemmaModel.NAME}: ${needed / 1_000_000} MB needed")
                 return@withContext Result.retry()
             }
-            runCatching { setForeground(foreground(app, "Downloading", part.length(), release.size)) }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }
+            runCatching { setForeground(foreground(app, "Downloading", part.length(), release.size)) }.onFailure { Diagnostics.warn(it) }
             var lastShown = -1L
             val context = currentCoroutineContext()
             ModelDownloader().download(release, part, { context.ensureActive() }, { done ->
@@ -252,7 +253,7 @@ class ModelDownloadWorker(context: Context, params: WorkerParameters) : Coroutin
             ModelUpdates.status(app, "Download paused; it resumes on Wi-Fi", part.length(), release.size)
             throw e
         } catch (caught: Exception) {
-            com.hellfire.ass.Diagnostics.warn(caught)
+            Diagnostics.warn(caught)
             ModelUpdates.status(app, "Download interrupted; it resumes on Wi-Fi from ${part.length() / 1_000_000} MB", part.length(), release.size)
             Result.retry()
         }
@@ -271,6 +272,6 @@ class ModelCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
             ModelUpdates.markAvailable(applicationContext, ModelDownloader().latest())
             Result.success()
         } catch (e: CancellationException) { throw e }
-        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); Result.retry() }
+        catch (caught: Exception) { Diagnostics.warn(caught); Result.retry() }
     }
 }

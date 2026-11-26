@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.layout.*
 import androidx.room.withTransaction
 import androidx.compose.material3.Text
@@ -13,6 +16,8 @@ import com.hellfire.ass.ui.tasks.*
 import com.hellfire.ass.ui.theme.Hf
 import kotlinx.coroutines.*
 import java.util.UUID
+import com.hellfire.ass.events.NotificationNormalizer
+import com.hellfire.ass.events.NotificationSnapshot
 
 @Composable
 fun SourceActions(sourceId: String, evidence: String) {
@@ -24,22 +29,22 @@ fun SourceActions(sourceId: String, evidence: String) {
     var quote by rememberPrivateDraft("source-$sourceId-quote", evidence.take(4000))
     var result by remember { mutableStateOf<String?>(null) }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        SecondaryButton(com.hellfire.ass.ui.tr("Remember this"), { note = true })
-        SecondaryButton(com.hellfire.ass.ui.tr("Create task"), { task = true })
+        SecondaryButton(stringResource(R.string.ui_remember_this), { note = true })
+        SecondaryButton(stringResource(R.string.ui_create_task), { task = true })
     }
     result?.let { Note(it) }
     if (note) HfBottomSheet({ note = false }) {
-        Text(com.hellfire.ass.ui.tr("Remember this"), style = Hf.type.cardTitle, color = Hf.colors.onSurface)
-        HfTextField(subject, { subject = it }, "Person or subject")
-        HfTextField(quote, { quote = it }, "Source excerpt", singleLine = false, minLines = 3)
-        Note(com.hellfire.ass.ui.tr("Choose an exact passage from the source. It stays linked to the original."))
-        PrimaryButton(com.hellfire.ass.ui.tr("Save memory"), {
+        Text(stringResource(R.string.ui_remember_this), style = Hf.type.cardTitle, color = Hf.colors.onSurface)
+        HfTextField(subject, { subject = it }, stringResource(R.string.ui_person_or_subject))
+        HfTextField(quote, { quote = it }, stringResource(R.string.ui_source_excerpt), singleLine = false, minLines = 3)
+        Note(stringResource(R.string.ui_choose_an_exact_passage_from_the_source))
+        PrimaryButton(stringResource(R.string.ui_save_memory), {
             scope.launch {
                 result = try { withContext(Dispatchers.IO) {
                     val source = requireNotNull(app.database.events().find(sourceId))
                     require(source.contentAvailable && !source.securitySensitive)
                     require(quote.isNotBlank() && evidence.contains(quote) && subject.isNotBlank())
-                    val safeSubject = com.hellfire.ass.events.NotificationNormalizer.normalize(com.hellfire.ass.events.NotificationSnapshot("subject", "owner.memory", 0, 0, fields = mapOf("text" to listOf(subject))), app.packageName)!!
+                    val safeSubject = NotificationNormalizer.normalize(NotificationSnapshot("subject", "owner.memory", 0, 0, fields = mapOf("text" to listOf(subject))), app.packageName)!!
                     require(!safeSubject.securitySensitive && !safeSubject.contentRedacted) { "Remove authentication codes from the subject." }
                     val now = System.currentTimeMillis()
                     app.database.withTransaction {

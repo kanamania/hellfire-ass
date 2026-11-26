@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.insights
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
@@ -24,6 +27,8 @@ import com.hellfire.ass.ui.theme.Hf
 import com.hellfire.ass.ui.theme.HfIcons
 import kotlinx.coroutines.launch
 import java.util.UUID
+import com.hellfire.ass.contacts.ContactChoice
+import com.hellfire.ass.contacts.ContactLinks
 
 /** Starting values for the debt sheet, e.g. from a transaction or a repayment suggestion. */
 data class DebtPrefill(val person: String = "", val kind: String = "LENT", val amount: Long? = null,
@@ -35,7 +40,7 @@ fun DebtSheet(prefill: DebtPrefill, onDone: (String?) -> Unit) {
     val app = LocalEnv.current.app
     val scope = rememberCoroutineScope()
     var person by remember { mutableStateOf(prefill.person) }
-    var picked by remember { mutableStateOf<com.hellfire.ass.contacts.ContactChoice?>(null) }
+    var picked by remember { mutableStateOf<ContactChoice?>(null) }
     var kind by remember { mutableStateOf(prefill.kind) }
     var amount by remember { mutableStateOf(prefill.amount?.toString().orEmpty()) }
     var occurred by remember { mutableStateOf(TaskTime.display(prefill.occurredAt)) }
@@ -50,11 +55,11 @@ fun DebtSheet(prefill: DebtPrefill, onDone: (String?) -> Unit) {
     HfBottomSheet({ onDone(null) }) {
         Text("Loan or repayment", style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
         if (prefill.ledgerId != null) Note("Linked to the payment you opened. Its amount and account stay as they are in Money.")
-        ContactPersonField(person, { person = it; picked = null }, "Person", known, onPick = { picked = it; person = it.displayName })
-        SavedContactStatus(com.hellfire.ass.insights.People.namedKey(person))
+        ContactPersonField(person, { person = it; picked = null }, stringResource(R.string.ui_person), known, onPick = { picked = it; person = it.displayName })
+        SavedContactStatus(People.namedKey(person))
         GroupLabel("What happened")
-        ChipPicker(Debts.kinds, kind, Debts::label) { kind = it }
-        HfTextField(amount, { amount = it.filter(Char::isDigit) }, "Amount TZS", number = true)
+        ChipPicker(Debts.kinds, kind, { Debts.label(it) }) { kind = it }
+        HfTextField(amount, { amount = it.filter(Char::isDigit) }, stringResource(R.string.ui_amount_tzs), number = true)
         DateTimeField(occurred, { occurred = it }, "When · East Africa Time")
         if (kind == "LENT" || kind == "BORROWED") {
             CheckRow("A date was agreed to pay it back", hasDue, onChange = { hasDue = it })
@@ -62,12 +67,12 @@ fun DebtSheet(prefill: DebtPrefill, onDone: (String?) -> Unit) {
         }
         HfTextField(note, { note = it.take(300) }, "Note (optional)")
         error?.let { Banner(it, Tone.Danger, null) }
-        PrimaryButton(com.hellfire.ass.ui.tr("Save"), {
+        PrimaryButton(stringResource(R.string.ui_save), {
             scope.launch {
                 val saved = io {
                     val now = System.currentTimeMillis()
                     app.database.withTransaction {
-                        val personKey = com.hellfire.ass.contacts.ContactLinks(app.database).save(picked ?: com.hellfire.ass.contacts.ContactChoice(person, personKey = prefill.personKey))
+                        val personKey = ContactLinks(app.database).save(picked ?: ContactChoice(person, personKey = prefill.personKey))
                         app.database.debts().insert(DebtEntry(UUID.randomUUID().toString(), person.trim(), Debts.signed(kind, Money.tzs(amount)), kind, note.trim(),
                             TaskTime.parse(occurred), if (hasDue && (kind == "LENT" || kind == "BORROWED")) TaskTime.parse(due) else null, prefill.ledgerId, now, personKey))
                     }
@@ -96,8 +101,8 @@ private fun ReminderSheet(balance: DebtBalance, onDone: (String?) -> Unit) {
     }
     HfBottomSheet({ onDone(null) }) {
         Text("Remind ${balance.person}", style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
-        ChipPicker(listOf("Kiswahili", "English"), if (swahili) "Kiswahili" else "English") { swahili = it == "Kiswahili" }
-        HfTextField(text, { text = it.take(1000) }, "Message", singleLine = false, minLines = 3)
+        ChipPicker(listOf("Kiswahili", "English"), if (swahili) "Kiswahili" else "English", { languageLabel(it) }) { swahili = it == "Kiswahili" }
+        HfTextField(text, { text = it.take(1000) }, stringResource(R.string.ui_message), singleLine = false, minLines = 3)
         PrimaryButton("Share…", {
             context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), "Send reminder"))
             onDone(null)
@@ -143,7 +148,7 @@ fun DebtsPage() {
             Debts.suggestRepayments(balances, dao.allCandidates(), now - 60L * 86_400_000, linked + dismissed)
         } ?: emptyList()
     }
-    PushedPage(com.hellfire.ass.ui.tr("Debts"), breadcrumb = "Money") {
+    PushedPage(stringResource(R.string.ui_debts), breadcrumb = "Money") {
         message?.let { Banner(it, modifier = Modifier.clickableRow { message = null }) }
         TwoColumnGrid(listOf(
             { m -> KpiTile("Owed to you", Fmt.amount(balances.filter { it.balance > 0 }.sumOf { it.balance }), m, "TZS", Hf.colors.success) },

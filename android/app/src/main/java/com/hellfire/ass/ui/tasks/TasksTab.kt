@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.tasks
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -42,6 +45,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.contacts.ContactChoice
+import com.hellfire.ass.contacts.ContactLinks
+import com.hellfire.ass.events.NotificationNormalizer
+import com.hellfire.ass.events.NotificationSnapshot
+import com.hellfire.ass.ui.money.ChipPicker
 
 /** A task the sheet should edit: an existing proposal or task, or a new one typed by the owner. */
 data class TaskDraft(val id: String?, val title: String, val dueAt: Long, val party: String, val direction: String = "NONE",
@@ -77,14 +86,14 @@ fun TasksTab() {
 
     Box(Modifier.fillMaxSize()) {
         ScrollPage(bottomInset = 92.dp) {
-            ScreenHeader(com.hellfire.ass.ui.tr("Tasks")) { IconCircleButton(HfIcons.Bolt, "Templates", { nav.push(Screen.Templates) }) }
-            SegmentedControl(listOf("Today", "Upcoming", "Done"), view, { view = it })
+            ScreenHeader(stringResource(R.string.ui_tasks)) { IconCircleButton(HfIcons.Bolt, "Templates", { nav.push(Screen.Templates) }) }
+            SegmentedControl(listOf("Today", "Upcoming", "Done"), view, { view = it }, label = { when (it) { "Today" -> stringResource(R.string.ui_today); "Upcoming" -> stringResource(R.string.ui_upcoming); "Done" -> stringResource(R.string.ui_done); else -> it } })
             banner?.let { Banner(it, modifier = Modifier.clickableRow { banner = null }) }
             undo?.let { t ->
                 Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Hf.colors.inverse).padding(start = 14.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     Text("Done: ${t.title.take(40)}", Modifier.weight(1f), style = Hf.type.body.copy(fontSize = 14.sp), color = Hf.colors.onInverse, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    QuietButton(com.hellfire.ass.ui.tr("Undo"), { undo = null; scope.launch { runCatching { withContext(Dispatchers.IO) { TaskScheduler.reopen(app, t.id) } } } })
+                    QuietButton(stringResource(R.string.ui_undo), { undo = null; scope.launch { runCatching { withContext(Dispatchers.IO) { TaskScheduler.reopen(app, t.id) } } } })
                 }
             }
             if (view != "Done") proposals.forEach { t ->
@@ -93,13 +102,13 @@ fun TasksTab() {
                     context = "Found in ${src?.let { EventText.sourceLabel(it) } ?: "a message"}" + (src?.let { " · ${Fmt.relativeDay(it.occurredAt)}" } ?: ""),
                     contextIcon = HfIcons.Chat, quote = t.evidence.take(220),
                     actions = {
-                        PrimaryButton(com.hellfire.ass.ui.tr("Add task"), { scope.launch {
+                        PrimaryButton(stringResource(R.string.ui_add_task), { scope.launch {
                             banner = runCatching { withContext(Dispatchers.IO) { TaskScheduler.activate(app, t.id, t.title, t.dueAt, t.party) } }
                                 .fold({ "Task added. Reminder set for ${Fmt.weekdayDayTime(t.dueAt)}." }, { "Not added. Check the date and reminder access." })
                         } })
-                        SecondaryButton(com.hellfire.ass.ui.tr("Edit"), { editing = TaskDraft.of(t) })
+                        SecondaryButton(stringResource(R.string.ui_edit), { editing = TaskDraft.of(t) })
                         Note("Why suggested: time/commitment wording was found in the source. Check who promised, and the date.")
-                        QuietButton(com.hellfire.ass.ui.tr("Not a task"), { scope.launch { withContext(Dispatchers.IO) { TaskScheduler.action(app, t.id, "REJECTED"); app.skills.feedbackFor(app, "IGNORE_TASK", t.sourceId, "You marked this proposal as not a task. Review this exact-match rule before using it.") } } })
+                        QuietButton(stringResource(R.string.ui_not_a_task), { scope.launch { withContext(Dispatchers.IO) { TaskScheduler.action(app, t.id, "REJECTED"); app.skills.feedbackFor(app, "IGNORE_TASK", t.sourceId, "You marked this proposal as not a task. Review this exact-match rule before using it.") } } })
                     },
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -113,7 +122,7 @@ fun TasksTab() {
                 "Today" -> {
                     val due = active.filter { it.dueAt < endToday }.sortedBy { it.dueAt }
                     val finished = tasks.filter { it.state == "DONE" && it.updatedAt >= startToday }
-                    SectionHeader(com.hellfire.ass.ui.tr("Today"), trailing = "${finished.size} of ${due.size + finished.size} done")
+                    SectionHeader(stringResource(R.string.ui_today), trailing = "${finished.size} of ${due.size + finished.size} done")
                     TaskList(due + finished, now, onToggle = { t -> if (t.state == "ACTIVE") done(t) else scope.launch { runCatching { withContext(Dispatchers.IO) { TaskScheduler.reopen(app, t.id) } } } },
                         onOpen = { nav.push(Screen.Task, it.id) }, empty = "Nothing due today.")
                 }
@@ -127,7 +136,7 @@ fun TasksTab() {
                 }
                 else -> {
                     val finished = tasks.filter { it.state == "DONE" }.sortedByDescending { it.updatedAt }.take(60)
-                    SectionHeader(com.hellfire.ass.ui.tr("Done"), trailing = "${finished.size} shown")
+                    SectionHeader(stringResource(R.string.ui_done), trailing = "${finished.size} shown")
                     TaskList(finished, now, { t -> scope.launch { runCatching { withContext(Dispatchers.IO) { TaskScheduler.reopen(app, t.id) } } } },
                         { nav.push(Screen.Task, it.id) }, "Nothing done yet.")
                 }
@@ -211,7 +220,7 @@ fun TaskEditSheet(draft: TaskDraft, onDone: (String?) -> Unit) {
     val scope = rememberCoroutineScope()
     var title by rememberSaveable { mutableStateOf(draft.title) }
     var person by rememberSaveable { mutableStateOf("") }
-    var picked by rememberSaveable(saver = ContactChoiceStateSaver) { mutableStateOf<com.hellfire.ass.contacts.ContactChoice?>(null) }
+    var picked by rememberSaveable(saver = ContactChoiceStateSaver) { mutableStateOf<ContactChoice?>(null) }
     var personLoaded by rememberSaveable { mutableStateOf(draft.personKey == null) }
     LaunchedEffect(draft.personKey) {
         if (!personLoaded) {
@@ -230,29 +239,29 @@ fun TaskEditSheet(draft: TaskDraft, onDone: (String?) -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     HfBottomSheet({ onDone(null) }) {
         Text(if (draft.id == null) "New task" else "Edit task", style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
-        HfTextField(title, { title = it }, "Task", singleLine = false)
-        if (personLoaded) ContactPersonField(person, { person = it; picked = null }, "Person (optional)", onPick = { picked = it; person = it.displayName })
+        HfTextField(title, { title = it }, stringResource(R.string.ui_task), singleLine = false)
+        if (personLoaded) ContactPersonField(person, { person = it; picked = null }, stringResource(R.string.ui_person_optional), onPick = { picked = it; person = it.displayName })
         SavedContactStatus(draft.personKey)
-        DateTimeField(due, { due = it }, "Due · East Africa Time")
+        DateTimeField(due, { due = it }, stringResource(R.string.ui_due_east_africa_time))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val base = Fmt.today()
             listOf("Today 17:00" to base.atTime(17, 0), "Tomorrow 09:00" to base.plusDays(1).atTime(9, 0), "Next week" to base.plusWeeks(1).atTime(9, 0)).forEach { (label, at) ->
                 HfChip(label, { due = TaskTime.display(at.atZone(TaskTime.zone).toInstant().toEpochMilli()) })
             }
         }
-        GroupLabel(com.hellfire.ass.ui.tr("Who does it"))
-        com.hellfire.ass.ui.money.ChipPicker(listOf("OWNER", "OTHER", "UNKNOWN"), party, { when (it) { "OWNER" -> "Me"; "OTHER" -> "Someone else"; else -> "Not sure" } }) { party = it }
-        GroupLabel(com.hellfire.ass.ui.tr("Kind"))
-        com.hellfire.ass.ui.money.ChipPicker(listOf("TASK", "BILL"), kind, { if (it == "BILL") "Bill to pay" else "Task" }) { kind = it }
-        GroupLabel(com.hellfire.ass.ui.tr("Promise"))
-        com.hellfire.ass.ui.money.ChipPicker(listOf("I_OWE", "OWED_TO_ME", "NONE"), direction, { when (it) { "I_OWE" -> "I owe"; "OWED_TO_ME" -> "Owed to me"; else -> "Neither" } }) { direction = it }
-        if (kind == "BILL" || direction != "NONE") HfTextField(amount, { amount = it.filter(Char::isDigit) }, "Amount TZS (optional, not added to Money)", number = true)
-        GroupLabel(com.hellfire.ass.ui.tr("Repeat"))
-        com.hellfire.ass.ui.money.ChipPicker(listOf("NONE", "DAILY", "WEEKLY", "MONTHLY"), repeatRule, { it.lowercase().replaceFirstChar(Char::uppercase) }) { repeatRule = it }
-        GroupLabel(com.hellfire.ass.ui.tr("Overdue reminder intensity"))
-        com.hellfire.ass.ui.money.ChipPicker(listOf("GENTLE", "NORMAL", "PERSISTENT"), profile, { when (it) { "GENTLE" -> "Daily"; "NORMAL" -> "Hourly"; else -> "Keep reminding" } }) { profile = it }
-        HfTextField(snooze, { snooze = it.filter(Char::isDigit) }, "Snooze minutes · 5–1440", number = true)
-        Note(com.hellfire.ass.ui.tr("Repeating tasks schedule the next occurrence when you mark this one done. Keep reminding uses your overdue interval in Settings."))
+        GroupLabel(stringResource(R.string.ui_who_does_it))
+        ChipPicker(listOf("OWNER", "OTHER", "UNKNOWN"), party, { when (it) { "OWNER" -> stringResource(R.string.ui_me); "OTHER" -> stringResource(R.string.ui_someone_else); else -> stringResource(R.string.ui_not_sure) } }) { party = it }
+        GroupLabel(stringResource(R.string.ui_kind))
+        ChipPicker(listOf("TASK", "BILL"), kind, { if (it == "BILL") stringResource(R.string.ui_bill_to_pay) else stringResource(R.string.ui_task) }) { kind = it }
+        GroupLabel(stringResource(R.string.ui_promise))
+        ChipPicker(listOf("I_OWE", "OWED_TO_ME", "NONE"), direction, { when (it) { "I_OWE" -> stringResource(R.string.ui_i_owe); "OWED_TO_ME" -> stringResource(R.string.ui_owed_to_me); else -> stringResource(R.string.ui_neither) } }) { direction = it }
+        if (kind == "BILL" || direction != "NONE") HfTextField(amount, { amount = it.filter(Char::isDigit) }, stringResource(R.string.ui_amount_tzs_optional_not_added_to_money), number = true)
+        GroupLabel(stringResource(R.string.ui_repeat))
+        ChipPicker(listOf("NONE", "DAILY", "WEEKLY", "MONTHLY"), repeatRule, { when (it) { "NONE" -> stringResource(R.string.ui_none); "DAILY" -> stringResource(R.string.ui_daily); "WEEKLY" -> stringResource(R.string.ui_weekly); "MONTHLY" -> stringResource(R.string.ui_monthly); else -> it } }) { repeatRule = it }
+        GroupLabel(stringResource(R.string.ui_overdue_reminder_intensity))
+        ChipPicker(listOf("GENTLE", "NORMAL", "PERSISTENT"), profile, { when (it) { "GENTLE" -> stringResource(R.string.ui_daily); "NORMAL" -> stringResource(R.string.ui_hourly); else -> stringResource(R.string.ui_keep_reminding) } }) { profile = it }
+        HfTextField(snooze, { snooze = it.filter(Char::isDigit) }, stringResource(R.string.ui_snooze_minutes_5_1440), number = true)
+        Note(stringResource(R.string.ui_repeating_tasks_schedule_the_next))
         error?.let { Banner(it, Tone.Danger, null) }
         PrimaryButton(if (draft.id == null) "Add task" else "Save and schedule", {
             scope.launch {
@@ -262,9 +271,9 @@ fun TaskEditSheet(draft: TaskDraft, onDone: (String?) -> Unit) {
                     withContext(Dispatchers.IO) {
                         val id = draft.id ?: run {
                             val now = System.currentTimeMillis()
-                            val raw = com.hellfire.ass.events.NotificationSnapshot(java.util.UUID.randomUUID().toString(), "owner.task", now, now, source = "owner_entry",
+                            val raw = NotificationSnapshot(java.util.UUID.randomUUID().toString(), "owner.task", now, now, source = "owner_entry",
                                 fields = mapOf("text" to listOf(title)))
-                            val safe = com.hellfire.ass.events.NotificationNormalizer.normalize(raw, app.packageName)!!
+                            val safe = NotificationNormalizer.normalize(raw, app.packageName)!!
                             require(!safe.securitySensitive) { "Authentication content is not suitable for a reminder" }
                             val sourceId = draft.sourceId ?: safe.id.also { app.events.capture(raw, app.packageName) }
                             require(app.database.events().find(sourceId)?.let { it.contentAvailable && !it.securitySensitive } == true)
@@ -275,13 +284,13 @@ fun TaskEditSheet(draft: TaskDraft, onDone: (String?) -> Unit) {
                         TaskScheduler.activate(app, id, title.trim(), at, party)
                         TaskScheduler.updateDetails(app, id, direction, amount.toLongOrNull()?.takeIf { it > 0 }, kind, repeatRule == "MONTHLY" && kind == "BILL")
                         TaskScheduler.updateReminderOptions(app, id, repeatRule, profile, snoozeMinutes)
-                        val links = com.hellfire.ass.contacts.ContactLinks(app.database)
+                        val links = ContactLinks(app.database)
                         app.database.withTransaction {
-                            links.task(id, if (person.isBlank()) null else links.save(picked ?: com.hellfire.ass.contacts.ContactChoice(person, personKey = draft.personKey?.takeIf { app.database.contacts().find(it)?.displayName == person })))
+                            links.task(id, if (person.isBlank()) null else links.save(picked ?: ContactChoice(person, personKey = draft.personKey?.takeIf { app.database.contacts().find(it)?.displayName == person })))
                         }
                     }
                     onDone("Task scheduled for ${Fmt.weekdayDayTime(at)}.")
-                } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); error = "Not saved. Use yyyy-MM-dd HH:mm and remove any security codes." }
+                } catch (caught: Exception) { Diagnostics.warn(caught); error = "Not saved. Use yyyy-MM-dd HH:mm and remove any security codes." }
             }
         }, Modifier.fillMaxWidth(), enabled = title.isNotBlank() && personLoaded, height = 52.dp)
     }

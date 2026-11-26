@@ -9,6 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.hellfire.ass.HellFireApp
 import kotlinx.coroutines.*
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.media.LocalOcr
 
 @Composable
 fun LocalAiScreen(app: HellFireApp) {
@@ -21,15 +23,15 @@ fun LocalAiScreen(app: HellFireApp) {
         if (uri != null) scope.launch {
             busy = true
             result = try { app.localModel.import(uri); "Local model imported. Compatibility and speed require physical verification." }
-                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Model import failed. Select a compatible .litertlm file with sufficient free storage." }
+                catch (caught: Exception) { Diagnostics.warn(caught); "Model import failed. Select a compatible .litertlm file with sufficient free storage." }
             finally { busy = false }
         }
     }
     val imageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             busy = true
-            result = try { com.hellfire.ass.media.LocalOcr.read(app, uri).ifBlank { "No readable text found." } }
-                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Local OCR could not read this image." }
+            result = try { LocalOcr.read(app, uri).ifBlank { "No readable text found." } }
+                catch (caught: Exception) { Diagnostics.warn(caught); "Local OCR could not read this image." }
             finally { busy = false }
         }
     }
@@ -48,7 +50,7 @@ fun LocalAiScreen(app: HellFireApp) {
             result = try {
                 val answer = app.localModel.generate(prompt, backend == "GPU")
                 "${answer.text}\n\nMeasured ${answer.elapsedMs} ms · ${answer.backend} · process PSS ${answer.pssKb} KB. Generated answer; verify source evidence."
-            } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Local inference unavailable. Check model compatibility, backend and free memory. No cloud fallback was used." }
+            } catch (caught: Exception) { Diagnostics.warn(caught); "Local inference unavailable. Check model compatibility, backend and free memory. No cloud fallback was used." }
             finally { busy = false }
         }
     }) { Text(if (busy) "Working locally…" else "Run local question") }
@@ -58,7 +60,7 @@ fun LocalAiScreen(app: HellFireApp) {
     Text("Meaning search", style = MaterialTheme.typography.titleMedium)
     Text("Import a MediaPipe text-embedder .tflite model (for example Universal Sentence Encoder) to add meaning-based matches to assistant search. Vectors stay in the encrypted database, skip security-sensitive sources and are rebuilt rather than backed up. Requires an arm64-v8a device.")
     var semanticStatus by remember { mutableStateOf("") }
-    LaunchedEffect(busy) { if (!busy) semanticStatus = try { app.semantic.status() } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Index status unavailable." } }
+    LaunchedEffect(busy) { if (!busy) semanticStatus = try { app.semantic.status() } catch (caught: Exception) { Diagnostics.warn(caught); "Index status unavailable." } }
     Text(semanticStatus)
     Text("Automatic indexing waits for charging and adequate battery. Use Index now to index on battery; new sources remain available to literal search.")
     val embedderLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -66,7 +68,7 @@ fun LocalAiScreen(app: HellFireApp) {
             busy = true
             result = try { app.semantic.import(uri); "Embedding model imported. Tap Index now or let automatic indexing run while charging." }
                 catch (e: IllegalArgumentException) { e.message ?: "Embedding model import failed." }
-                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Embedding model import failed. Check free storage." }
+                catch (caught: Exception) { Diagnostics.warn(caught); "Embedding model import failed. Check free storage." }
             finally { busy = false }
         }
     }
@@ -74,7 +76,7 @@ fun LocalAiScreen(app: HellFireApp) {
     OutlinedButton(enabled = !busy && app.semantic.configured, onClick = { scope.launch {
         busy = true
         result = try { "Indexed ${app.semantic.indexPending(2000)} sources in this run." }
-            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Indexing stopped. Check model compatibility, device temperature and free memory." }
+            catch (caught: Exception) { Diagnostics.warn(caught); "Indexing stopped. Check model compatibility, device temperature and free memory." }
         finally { busy = false }
     } }) { Text("Index now (up to 2,000 sources)") }
     TextButton(enabled = !busy && app.semantic.configured, onClick = { scope.launch { busy = true; try { app.semantic.remove(); result = "Embedding model and vectors removed; literal search remains." } finally { busy = false } } }) { Text("Remove embedding model and index") }

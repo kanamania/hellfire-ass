@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.library
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import android.graphics.Bitmap
 import android.util.LruCache
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -37,6 +40,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import com.hellfire.ass.HellFireApp
+import com.hellfire.ass.intelligence.ContentEngine
+import com.hellfire.ass.intelligence.IntelligenceWork
 
 private val thumbs = object : LruCache<String, Bitmap>(12 * 1024 * 1024) {
     override fun sizeOf(key: String, value: Bitmap) = value.byteCount.coerceAtLeast(1)
@@ -106,27 +112,27 @@ fun LibraryPage(route: Route) {
         }
     }
     val title = when {
-        kind == ContentKind.IMAGE.name -> tr("Pictures")
-        kind == ContentKind.VIDEO.name -> tr("Videos")
-        kind == ContentKind.AUDIO.name -> tr("Audio")
-        mode == "collections" -> tr("Collections")
-        mode == "categories" -> tr("Categories")
-        mode == "duplicates" -> tr("Duplicates")
-        else -> tr("Library")
+        kind == ContentKind.IMAGE.name -> stringResource(R.string.ui_pictures)
+        kind == ContentKind.VIDEO.name -> stringResource(R.string.ui_videos)
+        kind == ContentKind.AUDIO.name -> stringResource(R.string.ui_audio)
+        mode == "collections" -> stringResource(R.string.ui_collections)
+        mode == "categories" -> stringResource(R.string.ui_categories)
+        mode == "duplicates" -> stringResource(R.string.ui_duplicates)
+        else -> stringResource(R.string.ui_library)
     }
     Column(Modifier.fillMaxSize().padding(horizontal = ScreenPadding, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         PushedTopBar(title, { nav.pop() }, breadcrumb = "Library")
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            HfChip(tr("Search"), { nav.push(LibraryRoutes.search()) })
+            HfChip(stringResource(R.string.ui_intel_search), { nav.push(LibraryRoutes.search()) })
             HfChip("Processing queue", { nav.push(LibraryRoutes.processingQueue()) })
             HfChip("Media settings", { nav.push(LibraryRoutes.mediaSettings()) })
-            HfChip(tr("All"), { kind = ""; offset = 0; mode = "browse" })
-            HfChip(tr("Pictures"), { kind = ContentKind.IMAGE.name; offset = 0; mode = "browse" })
-            HfChip(tr("Videos"), { kind = ContentKind.VIDEO.name; offset = 0; mode = "browse" })
-            HfChip(tr("Audio"), { kind = ContentKind.AUDIO.name; offset = 0; mode = "browse" })
-            HfChip(tr("Collections"), { mode = "collections" })
-            HfChip(tr("Categories"), { mode = "categories" })
-            HfChip(tr("Duplicates"), { mode = "duplicates" })
+            HfChip(stringResource(R.string.ui_all), { kind = ""; offset = 0; mode = "browse" })
+            HfChip(stringResource(R.string.ui_pictures), { kind = ContentKind.IMAGE.name; offset = 0; mode = "browse" })
+            HfChip(stringResource(R.string.ui_videos), { kind = ContentKind.VIDEO.name; offset = 0; mode = "browse" })
+            HfChip(stringResource(R.string.ui_audio), { kind = ContentKind.AUDIO.name; offset = 0; mode = "browse" })
+            HfChip(stringResource(R.string.ui_collections), { mode = "collections" })
+            HfChip(stringResource(R.string.ui_categories), { mode = "categories" })
+            HfChip(stringResource(R.string.ui_duplicates), { mode = "duplicates" })
         }
         if (mode == "browse") {
             HfTextField(nameFilter, { nameFilter = it; offset = 0 }, "File name")
@@ -134,18 +140,18 @@ fun LibraryPage(route: Route) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 HfChip("Date taken", { sort = LibrarySort.TAKEN.name; offset = 0 })
                 HfChip("Date modified", { sort = LibrarySort.MODIFIED.name; offset = 0 })
-                HfChip(tr("Newest"), { sort = LibrarySort.NEWEST.name; offset = 0 })
-                HfChip(tr("Name"), { sort = LibrarySort.NAME.name; offset = 0 })
-                HfChip(tr("Size"), { sort = LibrarySort.SIZE.name; offset = 0 })
-                HfChip(tr("Recently played"), { sort = LibrarySort.RECENTLY_PLAYED.name; offset = 0 })
-                HfChip(tr("Favorites"), { favoritesOnly = !favoritesOnly; offset = 0 })
-                HfChip(if (grid) tr("List") else tr("Grid"), { grid = !grid })
-                HfChip(tr("Select"), { selecting = !selecting; if (!selecting) selected = emptySet() })
+                HfChip(stringResource(R.string.ui_newest), { sort = LibrarySort.NEWEST.name; offset = 0 })
+                HfChip(stringResource(R.string.ui_name), { sort = LibrarySort.NAME.name; offset = 0 })
+                HfChip(stringResource(R.string.ui_size), { sort = LibrarySort.SIZE.name; offset = 0 })
+                HfChip(stringResource(R.string.ui_recently_played), { sort = LibrarySort.RECENTLY_PLAYED.name; offset = 0 })
+                HfChip(stringResource(R.string.ui_favorites), { favoritesOnly = !favoritesOnly; offset = 0 })
+                HfChip(if (grid) stringResource(R.string.ui_list) else stringResource(R.string.ui_grid), { grid = !grid })
+                HfChip(stringResource(R.string.ui_select), { selecting = !selecting; if (!selecting) selected = emptySet() })
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SecondaryButton(tr("Scan"), { scope.launch { busy = true; scan(app) { note = it }; busy = false } }, enabled = !busy)
-                SecondaryButton(tr("Add folder"), { folder.launch(null) })
-                if (LibraryAccess.missing(context).isNotEmpty()) SecondaryButton(tr("Media access needed"), { permission.launch(LibraryAccess.missing(context)) })
+                SecondaryButton(stringResource(R.string.ui_scan), { scope.launch { busy = true; scan(app) { note = it }; busy = false } }, enabled = !busy)
+                SecondaryButton(stringResource(R.string.ui_add_folder), { folder.launch(null) })
+                if (LibraryAccess.missing(context).isNotEmpty()) SecondaryButton(stringResource(R.string.ui_media_access_needed), { permission.launch(LibraryAccess.missing(context)) })
             }
             folders.forEach { tree ->
                 ListRow(tree.substringAfterLast('/'), subtitle = "Selected folder", trailing = {
@@ -170,7 +176,7 @@ fun LibraryPage(route: Route) {
                     if (selecting) selected = toggle(selected, item.id) else nav.push(LibraryRoutes.mediaDetail(item.id))
                 }) }
             }
-            if (rows.size >= 60 && rows.size % 60 == 0) SecondaryButton(tr("Load more"), { offset += 60 })
+            if (rows.size >= 60 && rows.size % 60 == 0) SecondaryButton(stringResource(R.string.ui_load_more), { offset += 60 })
         } else {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 when (mode) {
@@ -185,7 +191,7 @@ fun LibraryPage(route: Route) {
 
 private fun toggle(selected: Set<String>, id: String) = if (id in selected) selected - id else selected + id
 
-private suspend fun scan(app: com.hellfire.ass.HellFireApp, report: (String) -> Unit) {
+private suspend fun scan(app: HellFireApp, report: (String) -> Unit) {
     val result = runCatching { withContext(Dispatchers.IO) { LibraryIndex.scan(app) } }
     LibraryScanWork.runNow(app)
     report(result.fold(
@@ -201,15 +207,15 @@ private fun BulkBar(count: Int, onAction: (String) -> Unit, onClear: () -> Unit)
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Note("$count selected. Managed sync copies originals into encrypted storage. It does not upload by itself.")
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            HfChip(tr("Mark favorite"), { onAction("favorite") })
-            HfChip(tr("Tags"), { onAction("tag") })
-            HfChip(tr("Assign"), { onAction("category") })
+            HfChip(stringResource(R.string.ui_mark_favorite), { onAction("favorite") })
+            HfChip(stringResource(R.string.ui_tags), { onAction("tag") })
+            HfChip(stringResource(R.string.ui_assign), { onAction("category") })
             HfChip("Exclude category", { onAction("exclude") })
             HfChip("Unassign category", { onAction("unassign") })
-            HfChip(tr("Add to collection"), { onAction("collection") })
-            HfChip(tr("Managed sync"), { onAction("sync") })
-            HfChip(tr("Queue processing"), { onAction("queue") })
-            HfChip(tr("Clear"), onClear)
+            HfChip(stringResource(R.string.ui_add_to_collection), { onAction("collection") })
+            HfChip(stringResource(R.string.ui_managed_sync), { onAction("sync") })
+            HfChip(stringResource(R.string.ui_queue_processing), { onAction("queue") })
+            HfChip(stringResource(R.string.ui_clear), onClear)
         }
     }
 }
@@ -228,17 +234,17 @@ private fun BulkAction(action: String, draft: String, onDraft: (String) -> Unit,
             }
         }
     }
-    SectionCard(tr(when (action) {
-        "tag" -> "Tags"
-        "category" -> "Assign"
+    SectionCard(when (action) {
+        "tag" -> stringResource(R.string.ui_tags)
+        "category" -> stringResource(R.string.ui_assign)
         "exclude" -> "Exclude category"
         "unassign" -> "Unassign category"
-        "collection" -> "Add to collection"
-        "sync" -> "Managed sync"
-        "queue" -> "Queue processing"
-        else -> "Favorites"
-    })) {
-        if (action == "tag") HfTextField(draft, onDraft, "Tags")
+        "collection" -> stringResource(R.string.ui_add_to_collection)
+        "sync" -> stringResource(R.string.ui_managed_sync)
+        "queue" -> stringResource(R.string.ui_queue_processing)
+        else -> stringResource(R.string.ui_favorites)
+    }) {
+        if (action == "tag") HfTextField(draft, onDraft, stringResource(R.string.ui_tags))
         if (action == "sync") Note("This copies each selected original into encrypted managed storage and marks it for sync. External indexing stays in place until the copy succeeds.")
         choices.forEach { (id, label) -> ListRow(label, onClick = {
             scope.launch {
@@ -255,19 +261,19 @@ private fun BulkAction(action: String, draft: String, onDraft: (String) -> Unit,
             }
         }) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SecondaryButton(tr("Done"), {
+            SecondaryButton(stringResource(R.string.ui_done), {
                 scope.launch {
                     val message = withContext(Dispatchers.IO) { runBulk(app, action, selected, draft) }
                     note(message)
                     onDone()
                 }
             })
-            SecondaryButton(tr("Cancel"), onDone)
+            SecondaryButton(stringResource(R.string.ui_cancel), onDone)
         }
     }
 }
 
-private suspend fun runBulk(app: com.hellfire.ass.HellFireApp, action: String, selected: Set<String>, draft: String): String {
+private suspend fun runBulk(app: HellFireApp, action: String, selected: Set<String>, draft: String): String {
     val now = System.currentTimeMillis()
     var ok = 0
     var failed = 0
@@ -277,14 +283,14 @@ private suspend fun runBulk(app: com.hellfire.ass.HellFireApp, action: String, s
                 "favorite" -> app.database.library().setFavorite(id, true)
                 "tag" -> LibraryOrganize.setTag(app.database.library(), id, draft, LinkState.ASSIGNED, now) ?: error("blank")
                 "sync" -> app.media.promote(id, true)
-                "queue" -> app.database.jobs().enqueue(ProcessingJob(UUID.randomUUID().toString(), com.hellfire.ass.intelligence.ContentEngine.JOB, id, priority = JobPriority.USER_REQUESTED, createdAt = now, updatedAt = now))
+                "queue" -> app.database.jobs().enqueue(ProcessingJob(UUID.randomUUID().toString(), ContentEngine.JOB, id, priority = JobPriority.USER_REQUESTED, createdAt = now, updatedAt = now))
             }
         }
         if (result.isSuccess) ok++ else failed++
     }
     return when (action) {
         "sync" -> "Copied $ok into managed storage and marked them for sync. $failed could not be copied. Upload is not confirmed."
-        "queue" -> { com.hellfire.ass.intelligence.IntelligenceWork.schedule(app); "Queued $ok for analysis. $failed were not queued. Nothing was sent." }
+        "queue" -> { IntelligenceWork.schedule(app); "Queued $ok for analysis. $failed were not queued. Nothing was sent." }
         else -> "Updated $ok. $failed failed."
     }
 }
@@ -303,7 +309,7 @@ private fun MediaCell(item: MediaItem, status: ItemStatus?, grid: Boolean, selec
     val marks = listOfNotNull(
         if (item.favorite) "Favorite" else null,
         item.availability.takeIf { it != Availability.AVAILABLE.name },
-        if (item.storage == StorageMode.EXTERNAL.name) tr("Indexed only") else "Managed",
+        if (item.storage == StorageMode.EXTERNAL.name) stringResource(R.string.ui_indexed_only) else "Managed",
         status?.sync, status?.backup, status?.processing,
     )
     if (grid) Column(Modifier.clip(RoundedCornerShape(12.dp)).background(if (selected) Hf.colors.primaryContainer else Hf.colors.surface).clickable(onClick = onClick).padding(4.dp)) {
@@ -326,16 +332,16 @@ private fun CategoryPane(note: (String) -> Unit) {
     fun load() { scope.launch { categories = withContext(Dispatchers.IO) { app.database.library().categoriesNow() } } }
     LaunchedEffect(Unit) { load() }
     Note("User assignments and exclusions are kept when indexing runs again. AI suggestions cannot replace them.")
-    HfTextField(name, { name = it }, "New category")
+    HfTextField(name, { name = it }, stringResource(R.string.ui_new_category))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        SecondaryButton(tr("New category"), {
+        SecondaryButton(stringResource(R.string.ui_new_category), {
             scope.launch {
                 val created = withContext(Dispatchers.IO) { LibraryOrganize.createCategory(app.database.library(), parent, name, false, System.currentTimeMillis()) }
                 note(if (created == null) "Category name was empty or already used." else "Category saved.")
                 name = ""; load()
             }
         })
-        SecondaryButton(tr("Private"), {
+        SecondaryButton(stringResource(R.string.ui_private), {
             scope.launch {
                 val created = withContext(Dispatchers.IO) { LibraryOrganize.createCategory(app.database.library(), parent, name, true, System.currentTimeMillis()) }
                 note(if (created == null) "Category name was empty or already used." else "Private category saved.")
@@ -357,21 +363,21 @@ private fun CategoryNode(category: MediaCategory, all: List<MediaCategory>, draf
     ListCard {
         ListRow(category.name, subtitle = listOfNotNull(if (category.isPrivate) "Private" else null, category.policy, category.origin).joinToString(" · "), onClick = { open(category.id) })
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            HfChip(tr("Assign"), { onParent(category.id) })
-            HfChip(tr("Rename"), {
+            HfChip(stringResource(R.string.ui_assign), { onParent(category.id) })
+            HfChip(stringResource(R.string.ui_rename), {
                 scope.launch {
                     val ok = withContext(Dispatchers.IO) { LibraryOrganize.rename(app.database.library(), category.id, draft, System.currentTimeMillis()) }
                     done(if (ok) "Renamed." else "Could not rename. The name may already exist.")
                 }
             })
-            HfChip(tr("Private"), {
+            HfChip(stringResource(R.string.ui_private), {
                 scope.launch {
                     withContext(Dispatchers.IO) { LibraryOrganize.setPrivate(app.database.library(), category.id, !category.isPrivate, System.currentTimeMillis()) }
                     done(if (category.isPrivate) "Category is no longer private." else "Category marked private.")
                 }
             })
-            HfChip(tr("Merge into"), { onMergeFrom(category.id) })
-            if (mergeFrom != null && mergeFrom != category.id) HfChip(tr("Assign"), {
+            HfChip(stringResource(R.string.ui_merge_into), { onMergeFrom(category.id) })
+            if (mergeFrom != null && mergeFrom != category.id) HfChip(stringResource(R.string.ui_assign), {
                 scope.launch {
                     val ok = withContext(Dispatchers.IO) { LibraryOrganize.merge(app.database.library(), mergeFrom, category.id, System.currentTimeMillis()) }
                     done(if (ok) "Merged. Existing user links were kept." else "Could not merge those categories.")
@@ -396,10 +402,10 @@ private fun CollectionPane(note: (String) -> Unit) {
     fun load() { scope.launch { rows = withContext(Dispatchers.IO) { app.database.library().collectionsNow() } } }
     LaunchedEffect(Unit) { load() }
     LaunchedEffect(openId) { members = openId?.let { withContext(Dispatchers.IO) { app.database.library().membersNow(it) } } ?: emptyList() }
-    HfTextField(name, { name = it }, "Collections")
+    HfTextField(name, { name = it }, stringResource(R.string.ui_collections))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf(CollectionKind.ALBUM to "Albums", CollectionKind.COLLECTION to "Collections", CollectionKind.PLAYLIST to "Playlists").forEach { (kind, label) ->
-            SecondaryButton(tr(label), {
+        listOf(CollectionKind.ALBUM to R.string.ui_albums, CollectionKind.COLLECTION to R.string.ui_collections, CollectionKind.PLAYLIST to R.string.ui_playlists).forEach { (kind, label) ->
+            SecondaryButton(stringResource(label), {
                 scope.launch {
                     val created = withContext(Dispatchers.IO) { LibraryOrganize.createCollection(app.database.library(), name, kind, System.currentTimeMillis()) }
                     note(if (created == null) "Name was empty." else "Saved.")
@@ -412,8 +418,8 @@ private fun CollectionPane(note: (String) -> Unit) {
         ListCard {
             ListRow(row.name, subtitle = row.kind, chevron = true, onClick = { nav.push(LibraryRoutes.library(collectionId = row.id)) })
             Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SecondaryButton(tr("List"), { openId = row.id })
-                SecondaryButton(tr("Clear"), {
+                SecondaryButton(stringResource(R.string.ui_list), { openId = row.id })
+                SecondaryButton(stringResource(R.string.ui_clear), {
                     scope.launch {
                         withContext(Dispatchers.IO) { app.database.library().deleteCollection(row.id) }
                         note("Collection removed. Media files were not deleted.")
@@ -455,7 +461,7 @@ private fun DuplicatePane(note: (String) -> Unit) {
     var similar by remember { mutableStateOf<List<SimilarPair>>(emptyList()) }
     var compared by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) { exact = withContext(Dispatchers.IO) { app.database.library().duplicates(200) } }
-    SecondaryButton(tr("Compare pictures"), {
+    SecondaryButton(stringResource(R.string.ui_compare_pictures), {
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 val images = app.database.library().queryItems(LibraryQuery.sql(LibraryFilter(kinds = listOf(ContentKind.IMAGE.name), limit = 80)))

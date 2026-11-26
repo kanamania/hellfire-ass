@@ -2,7 +2,8 @@ import 'reflect-metadata';
 import { Module, type DynamicModule } from '@nestjs/common';
 import { APP_GUARD, NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { VisitorThrottlerGuard } from './auth.js';
 import { CONFIG, type Config } from './config.js';
 import { Db } from './db.js';
 import { LibraryController, LibraryService } from './library.js';
@@ -17,7 +18,7 @@ class AppModule {
       module: AppModule,
       imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: 600 }])],
       controllers: [SyncController, ViewController, LibraryController, NewsController, NewsSyncController],
-      providers: [{ provide: CONFIG, useValue: config }, { provide: APP_GUARD, useClass: ThrottlerGuard }, Db, SyncService, ViewService, LibraryService, NewsService],
+      providers: [{ provide: CONFIG, useValue: config }, { provide: APP_GUARD, useClass: VisitorThrottlerGuard }, Db, SyncService, ViewService, LibraryService, NewsService],
     };
   }
 }

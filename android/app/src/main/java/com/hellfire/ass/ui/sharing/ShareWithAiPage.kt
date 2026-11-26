@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.sharing
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -54,10 +57,14 @@ import com.hellfire.ass.ui.components.SecondaryButton
 import com.hellfire.ass.ui.components.SectionCard
 import com.hellfire.ass.ui.money.ChipPicker
 import com.hellfire.ass.ui.theme.Hf
-import com.hellfire.ass.ui.tr
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.hellfire.ass.sharing.ImageOrientation
+import com.hellfire.ass.sharing.MediaReadAccess
+import com.hellfire.ass.sharing.MetadataExport
+import com.hellfire.ass.sharing.SensitiveText
+import com.hellfire.ass.sharing.TimestampNote
 
 @Composable
 fun ShareWithAiPage(route: Route) {
@@ -80,7 +87,7 @@ fun ShareWithAiPage(route: Route) {
     var hashtags by remember { mutableStateOf("") }
     var timestamps by remember { mutableStateOf("") }
     var excerpts by remember { mutableStateOf("") }
-    var timestampNotes by remember { mutableStateOf(listOf<com.hellfire.ass.sharing.TimestampNote>()) }
+    var timestampNotes by remember { mutableStateOf(listOf<TimestampNote>()) }
     var includeTranscript by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf(ShareTemplates.STORED_NOTICE) }
     var suggestion by remember { mutableStateOf("") }
@@ -90,7 +97,7 @@ fun ShareWithAiPage(route: Route) {
     var preview by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var mode by remember { mutableStateOf(RedactMode.COVER) }
     var rects by remember { mutableStateOf(listOf<RedactRect>()) }
-    var suggestions by remember { mutableStateOf(listOf<com.hellfire.ass.sharing.SensitiveText.Suggestion>()) }
+    var suggestions by remember { mutableStateOf(listOf<SensitiveText.Suggestion>()) }
     var left by remember { mutableStateOf("0") }
     var top by remember { mutableStateOf("0") }
     var right by remember { mutableStateOf("1000") }
@@ -133,7 +140,7 @@ fun ShareWithAiPage(route: Route) {
     }
 
     val askPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
-        status = if (com.hellfire.ass.sharing.MediaReadAccess.granted(granted)) "Media read permission granted. Prepare the copy again." else "Media read permission is not granted. Nothing was shared."
+        status = if (MediaReadAccess.granted(granted)) "Media read permission granted. Prepare the copy again." else "Media read permission is not granted. Nothing was shared."
     }
 
     fun approved(): ApprovedShare? {
@@ -151,9 +158,9 @@ fun ShareWithAiPage(route: Route) {
             busy = true
             status = ""
             val item = withContext(Dispatchers.IO) { app.database.library().item(itemId) }
-            if (item?.storage == StorageMode.EXTERNAL.name && com.hellfire.ass.sharing.MediaReadAccess.requiresMediaPermission(item.externalUri) && !com.hellfire.ass.sharing.MediaReadAccess.canRead(context, com.hellfire.ass.sharing.MediaReadAccess.kindOf(item.contentKind, item.mime))) {
+            if (item?.storage == StorageMode.EXTERNAL.name && MediaReadAccess.requiresMediaPermission(item.externalUri) && !MediaReadAccess.canRead(context, MediaReadAccess.kindOf(item.contentKind, item.mime))) {
                 busy = false
-                askPermission.launch(com.hellfire.ass.sharing.MediaReadAccess.request(com.hellfire.ass.sharing.MediaReadAccess.kindOf(item.contentKind, item.mime)))
+                askPermission.launch(MediaReadAccess.request(MediaReadAccess.kindOf(item.contentKind, item.mime)))
                 return@launch
             }
             val result = ShareSession.prepare(app, context, itemId, extraIds.toList(), current, rects, mode, muteRanges)
@@ -164,11 +171,11 @@ fun ShareWithAiPage(route: Route) {
         }
     }
 
-    PushedPage(tr("Share with AI"), breadcrumb = "Inbox") {
+    PushedPage(stringResource(R.string.ui_share_with_ai), breadcrumb = "Inbox") {
         if (missing) { Note("This item is no longer available."); return@PushedPage }
         if (facts == null) { Note("Reading stored facts…"); return@PushedPage }
         val plan = ShareFormats.plan("", facts!!.contentKind)
-        SectionCard(tr("Sanitized copy")) {
+        SectionCard(stringResource(R.string.share_sanitized_copy)) {
             Note("This prepares a new copy. The original file was not changed. Embedded metadata is removed only when verification succeeds. Visible or audible content can still identify people and places. HellFire Ass does not publish the post.")
             Note(plan.note)
             Note("The sanitized copy is kept in app cache and is not the encrypted original.")
@@ -200,12 +207,12 @@ fun ShareWithAiPage(route: Route) {
             Note(notice)
             ChipPicker(CaptionStyle.entries.map { it.name }, style.name) { style = CaptionStyle.valueOf(it); prepared = null }
             SecondaryButton("Rebuild from stored facts", { facts?.let { apply(ShareTemplates.fromFacts(it, style)) } }, enabled = !busy)
-            HfTextField(title, { title = it.take(200); prepared = null }, "Title")
+            HfTextField(title, { title = it.take(200); prepared = null }, stringResource(R.string.ui_title))
             HfTextField(shortSummary, { shortSummary = it.take(500); prepared = null }, "Short summary", singleLine = false, minLines = 2)
             HfTextField(detailed, { detailed = it.take(2000); prepared = null }, "Detailed summary", singleLine = false, minLines = 3)
             HfTextField(caption, { caption = it.take(2000); prepared = null }, "Caption", singleLine = false, minLines = 3)
-            HfTextField(categories, { categories = it.take(300); prepared = null }, "Categories")
-            HfTextField(tags, { tags = it.take(300); prepared = null }, "Tags")
+            HfTextField(categories, { categories = it.take(300); prepared = null }, stringResource(R.string.ui_categories))
+            HfTextField(tags, { tags = it.take(300); prepared = null }, stringResource(R.string.ui_tags))
             HfTextField(hashtags, { hashtags = it.take(300); prepared = null }, "Hashtags")
             HfTextField(timestamps, { timestamps = it.take(1000); prepared = null }, "Timestamps", singleLine = false, minLines = 2)
             HfTextField(excerpts, { excerpts = it.take(2000); prepared = null }, "Transcript excerpts", singleLine = false, minLines = 2)
@@ -232,7 +239,7 @@ fun ShareWithAiPage(route: Route) {
             ChipPicker(ShareProfile.entries.map { it.name }, profile.name) { profile = ShareProfile.valueOf(it); prepared = null }
             Note(profileLabel(profile))
             Note("Some apps ignore captions or reject a JSON sidecar. That is not a published post.")
-            approved()?.let { Note(com.hellfire.ass.sharing.MetadataExport.assemble(it).text.ifBlank { "No text will be attached." }) }
+            approved()?.let { Note(MetadataExport.assemble(it).text.ifBlank { "No text will be attached." }) }
         }
         SectionCard("Redaction") {
             Note(ShareSession.DETECTORS)
@@ -247,7 +254,7 @@ fun ShareWithAiPage(route: Route) {
                             app.media.withPlainCopy(item) { file ->
                                 val bitmap = BitmapFactory.decodeFile(file.absolutePath) ?: return@withPlainCopy emptyList()
                                 val orientation = runCatching { androidx.exifinterface.media.ExifInterface(file.path).getAttributeInt(androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION, 1) }.getOrDefault(1)
-                                val oriented = com.hellfire.ass.sharing.ImageOrientation.bake(bitmap, orientation)
+                                val oriented = ImageOrientation.bake(bitmap, orientation)
                                 try { ShareSession.textBoxes(oriented) } finally { if (oriented !== bitmap) oriented.recycle(); bitmap.recycle() }
                             }
                         }
@@ -300,18 +307,18 @@ fun ShareWithAiPage(route: Route) {
         }
         if (status.isNotBlank()) Note(status)
         prepared?.let { ready ->
-            preview?.let { Image(it.asImageBitmap(), tr("Sanitized preview"), Modifier.fillMaxWidth().heightIn(max = 240.dp)) }
+            preview?.let { Image(it.asImageBitmap(), stringResource(R.string.share_preview), Modifier.fillMaxWidth().heightIn(max = 240.dp)) }
             Note(ready.text.ifBlank { "No caption will be attached." })
         }
-        PrimaryButton(tr("Prepare sanitized copy"), { prepare() }, Modifier.fillMaxWidth(), enabled = !busy)
-        SecondaryButton(tr("Copy caption"), { copy(context, caption); status = "Copied. Nothing was shared." }, enabled = caption.isNotBlank())
-        SecondaryButton(tr("Copy summary"), { copy(context, shortSummary); status = "Copied. Nothing was shared." }, enabled = shortSummary.isNotBlank())
-        SecondaryButton(tr("Export JSON"), {
-            val json = approved()?.let { com.hellfire.ass.sharing.MetadataExport.assemble(it.copy(profile = ShareProfile.MEDIA_JSON_SIDECAR)).sidecarJson }.orEmpty()
+        PrimaryButton(stringResource(R.string.share_prepare), { prepare() }, Modifier.fillMaxWidth(), enabled = !busy)
+        SecondaryButton(stringResource(R.string.share_copy_caption), { copy(context, caption); status = "Copied. Nothing was shared." }, enabled = caption.isNotBlank())
+        SecondaryButton(stringResource(R.string.share_copy_summary), { copy(context, shortSummary); status = "Copied. Nothing was shared." }, enabled = shortSummary.isNotBlank())
+        SecondaryButton(stringResource(R.string.share_export_json), {
+            val json = approved()?.let { MetadataExport.assemble(it.copy(profile = ShareProfile.MEDIA_JSON_SIDECAR)).sidecarJson }.orEmpty()
             copy(context, json)
             status = "JSON copied. Nothing was published."
         })
-        PrimaryButton(tr("Open share sheet"), {
+        PrimaryButton(stringResource(R.string.share_open_sheet), {
             val ready = prepared ?: return@PrimaryButton
             val uris = ready.files.map { ShareHandoff.uri(context, it) }
             context.startActivity(ShareHandoff.chooser(uris, ready.mime, ready.text))

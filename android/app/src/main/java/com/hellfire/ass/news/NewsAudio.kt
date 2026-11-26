@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.util.Locale
+import com.hellfire.ass.Diagnostics
 
 /** Sentence splitting and duration estimates for spoken news (pure Kotlin). */
 object NewsSpeech {
@@ -200,7 +201,7 @@ object NewsAudio {
             _state.value = NewsAudioState(true, true, briefingId, q.index, q.size, q.current?.title.orEmpty(), rate.coerceIn(0.75f, 2f), continuous)
             val background = runCatching {
                 context.applicationContext.startForegroundService(Intent(context.applicationContext, NewsAudioService::class.java).setAction(NewsAudioService.ACTION_SHOW))
-            }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }.isSuccess
+            }.onFailure { Diagnostics.warn(it) }.isSuccess
             if (!background) note("Background listening is unavailable right now; keep HellFire open while listening.")
             val engine = tts
             if (engine == null) {
@@ -323,7 +324,7 @@ object NewsAudio {
         val q = queue ?: return
         val context = app as? HellFireApp ?: return
         val index = q.index; val ms = q.audioMs(s.rate)
-        scope.launch { runCatching { context.news.savePosition(id, index, ms) }.onFailure { com.hellfire.ass.Diagnostics.warn(it) } }
+        scope.launch { runCatching { context.news.savePosition(id, index, ms) }.onFailure { Diagnostics.warn(it) } }
     }
 
     private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->

@@ -23,6 +23,7 @@ import java.time.temporal.ChronoUnit
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.HttpsURLConnection
+import com.hellfire.ass.performance.PerfLog
 
 /**
  * Read-only mirror of selected records on the owner's web server (web/ in this repository).
@@ -329,8 +330,8 @@ class WebSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                 val counts = WebSync.run(app.database, app.cipher, app.secrets.read(WebSync.STATE),
                     WebSync.https(config.getString("url"), config.getString("token")),
                     save = { state -> if (app.secrets.read(WebSync.CONFIG)?.optString("generation") == generation) app.secrets.save(WebSync.STATE, state) else throw Superseded() })
-                com.hellfire.ass.performance.PerfLog.record("web_sync_rows", counts.upserted.toLong() + counts.deleted)
-                com.hellfire.ass.performance.PerfLog.record("web_sync_bytes", counts.bytes.toLong())
+                PerfLog.record("web_sync_rows", counts.upserted.toLong() + counts.deleted)
+                PerfLog.record("web_sync_bytes", counts.bytes.toLong())
                 WebSync.status(app, "Synced · ${counts.upserted} updated, ${counts.deleted} removed", success = true)
                 Result.success()
             } catch (_: Superseded) {

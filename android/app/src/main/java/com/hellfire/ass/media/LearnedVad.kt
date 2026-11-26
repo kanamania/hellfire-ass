@@ -16,10 +16,13 @@ import java.nio.FloatBuffer
 import java.nio.LongBuffer
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import com.hellfire.ass.ai.onnxEnvironment
+import com.hellfire.ass.audio.MicrophoneStatus
+import java.io.FileNotFoundException
 
 /** Silero recurrent ONNX contract: 512 mono samples at 16 kHz, 64 samples of context. CPU only. */
 class LearnedVad private constructor(private val session: OrtSession) : Closeable {
-    private val environment = com.hellfire.ass.ai.onnxEnvironment
+    private val environment = onnxEnvironment
     private val context = FloatArray(64)
     private val state = FloatArray(256)
 
@@ -53,7 +56,7 @@ class LearnedVad private constructor(private val session: OrtSession) : Closeabl
             require(file.isFile && file.length() in 1..8L * 1024 * 1024) { "VAD model must be a standalone ONNX file under 8 MiB" }
             val session = OrtSession.SessionOptions().use { options ->
                 options.setIntraOpNumThreads(1); options.setInterOpNumThreads(1)
-                com.hellfire.ass.ai.onnxEnvironment.createSession(file.path, options)
+                onnxEnvironment.createSession(file.path, options)
             }
             try {
                 require(session.inputNames == setOf("input", "state", "sr") && session.outputNames.containsAll(setOf("output", "stateN"))) {
@@ -74,12 +77,12 @@ class LearnedVad private constructor(private val session: OrtSession) : Closeabl
 object VadModels {
     fun file(context: Context) = File(context.filesDir, "models/vad.onnx")
     suspend fun import(context: Context, uri: Uri) = withContext(Dispatchers.IO) {
-        check(!com.hellfire.ass.audio.MicrophoneStatus.busy.value) { "Stop recording before replacing the VAD model" }
+        check(!MicrophoneStatus.busy.value) { "Stop recording before replacing the VAD model" }
         val target = file(context)
         target.parentFile!!.mkdirs()
         val temporary = File.createTempFile("vad-", ".part", target.parentFile)
         try {
-            context.contentResolver.openInputStream(uri)!!.use { source -> temporary.outputStream().use { output ->
+            (context.contentResolver.openInputStream(uri) ?: throw FileNotFoundException("Android could not open that file")).use { source -> temporary.outputStream().use { output ->
                 val buffer = ByteArray(65536)
                 var total = 0L
                 while (true) {
@@ -94,7 +97,7 @@ object VadModels {
         } finally { temporary.delete() }
     }
     fun remove(context: Context) {
-        check(!com.hellfire.ass.audio.MicrophoneStatus.busy.value) { "Stop recording before removing the VAD model" }
+        check(!MicrophoneStatus.busy.value) { "Stop recording before removing the VAD model" }
         val file = file(context)
         check(!file.exists() || file.delete()) { "Could not remove VAD model" }
     }

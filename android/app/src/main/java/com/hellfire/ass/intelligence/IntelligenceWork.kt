@@ -23,6 +23,9 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import com.hellfire.ass.library.JobState
+import com.hellfire.ass.performance.ExecutionScheduler
+import com.hellfire.ass.performance.WorkPriority
 
 object QueueStep {
     suspend fun run(jobs: JobDao, job: ProcessingJob, token: String, now: Long, work: suspend () -> Unit): String = try {
@@ -103,7 +106,7 @@ class IntelligenceWorker(context: Context, params: WorkerParameters) : Coroutine
         var pending = false
         while (ran < prefs.maxConcurrent) {
             kotlinx.coroutines.currentCoroutineContext().ensureActive()
-            if (com.hellfire.ass.performance.ExecutionScheduler.shouldYield(com.hellfire.ass.performance.WorkPriority.DEFERRED) ||
+            if (ExecutionScheduler.shouldYield(WorkPriority.DEFERRED) ||
                 DeviceGate.blockReason(prefs.policy(), IntelligenceWork.snapshot(app)) != null) {
                 pending = true
                 break
@@ -124,7 +127,7 @@ class IntelligenceWorker(context: Context, params: WorkerParameters) : Coroutine
                     if (item.storage == StorageMode.MANAGED.name) app.database.media().state(item.id, "INDEXED", null)
                 }
                 else {
-                    app.database.jobs().checkpoint(job.id, token, com.hellfire.ass.library.JobState.PROCESSING.name, (next.doneMs.coerceAtLeast(1)).toDouble() / 1000.0, next.encode(), now)
+                    app.database.jobs().checkpoint(job.id, token, JobState.PROCESSING.name, (next.doneMs.coerceAtLeast(1)).toDouble() / 1000.0, next.encode(), now)
                     app.database.jobs().release(job.id, token, now)
                     pending = true
                 }

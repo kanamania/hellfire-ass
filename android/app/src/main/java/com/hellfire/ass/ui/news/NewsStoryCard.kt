@@ -1,5 +1,10 @@
 package com.hellfire.ass.ui.news
 
+import com.hellfire.ass.ui.languageLabel
+
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -27,7 +32,6 @@ import com.hellfire.ass.ui.LocalEnv
 import com.hellfire.ass.ui.components.*
 import com.hellfire.ass.ui.theme.Hf
 import com.hellfire.ass.ui.theme.HfIcons
-import com.hellfire.ass.ui.tr
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -75,17 +79,17 @@ internal fun publisherOf(view: StoryView, article: NewsArticle): String = view.s
 fun StoryRow(view: StoryView, zone: ZoneId, onClick: () -> Unit) {
     val s = view.summary
     ListRow(s.headline.ifBlank { view.event.headline },
-        subtitle = listOf(tr(NewsUi.levelLabel(view.event.level)), "${view.event.independentSources} " + tr("independent sources"),
+        subtitle = listOf(NewsUi.levelLabel(view.event.level), "${view.event.independentSources} " + "independent sources",
             NewsUi.stamp(view.event.lastArticleAt, zone)).joinToString(" · "),
-        trailing = { StatusPill(tr(NewsUi.levelLabel(view.event.level)), NewsUi.levelTone(view.event.level)) },
+        trailing = { StatusPill(NewsUi.levelLabel(view.event.level), NewsUi.levelTone(view.event.level)) },
         chevron = true, onClick = onClick)
 }
 
 @Composable
 fun StoryList(views: List<StoryView>?, empty: String, zone: ZoneId, onOpen: (StoryView) -> Unit) {
     when {
-        views == null -> Note(tr("Loading…"))
-        views.isEmpty() -> HfCard(padding = PaddingValues(16.dp)) { Text(tr(empty), style = Hf.type.body, color = Hf.colors.muted) }
+        views == null -> Note("Loading…")
+        views.isEmpty() -> HfCard(padding = PaddingValues(16.dp)) { Text(empty, style = Hf.type.body, color = Hf.colors.muted) }
         else -> ListCard {
             views.forEachIndexed { i, v -> if (i > 0) ListDivider(16.dp); StoryRow(v, zone) { onOpen(v) } }
         }
@@ -98,8 +102,8 @@ private fun Expandable(title: String, open: Boolean = false, content: @Composabl
     var expanded by rememberSaveable(title) { mutableStateOf(open) }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickableRow { expanded = !expanded }, verticalAlignment = Alignment.CenterVertically) {
-            Text(tr(title), Modifier.weight(1f), style = Hf.type.cardTitle, color = Hf.colors.onSurface)
-            Icon(HfIcons.ChevronDown, if (expanded) tr("Collapse") else tr("Expand"), Modifier.size(18.dp).rotate(if (expanded) 180f else 0f), tint = Hf.colors.muted)
+            Text(title, Modifier.weight(1f), style = Hf.type.cardTitle, color = Hf.colors.onSurface)
+            Icon(HfIcons.ChevronDown, if (expanded) "Collapse" else "Expand", Modifier.size(18.dp).rotate(if (expanded) 180f else 0f), tint = Hf.colors.muted)
         }
         if (expanded) content()
     }
@@ -129,19 +133,19 @@ fun WhatChangedCard(view: StoryView, zone: ZoneId) {
     val (bg, fg) = (if (correction) Tone.Warning else Tone.Primary).colors()
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(bg).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(tr("What Changed"), Modifier.weight(1f), style = Hf.type.cardTitle, color = fg)
-            StatusPill(tr(NewsUi.classificationLabel(delta.classification)), if (correction) Tone.Warning else Tone.Primary)
+            Text("What Changed", Modifier.weight(1f), style = Hf.type.cardTitle, color = fg)
+            StatusPill(NewsUi.classificationLabel(delta.classification), if (correction) Tone.Warning else Tone.Primary)
         }
         @Composable fun part(label: String, text: String) {
             if (text.isBlank()) return
-            Text(tr(label).uppercase(), style = Hf.type.caption.copy(fontWeight = FontWeight.SemiBold), color = fg)
+            Text(label.uppercase(), style = Hf.type.caption.copy(fontWeight = FontWeight.SemiBold), color = fg)
             Text(text, style = Hf.type.body, color = Hf.colors.onSurface)
         }
         part("Previously", delta.previously)
         part("What's New", delta.whatsNew)
         part("Why It Matters", delta.whyItMatters)
-        part("Source Evidence", evidence.joinToString(", ").ifBlank { "${view.event.independentSources} " + tr("independent sources") })
-        part("Updated", NewsUi.stamp(delta.at, zone))
+        part("Source Evidence", evidence.joinToString(", ").ifBlank { "${view.event.independentSources} " + "independent sources" })
+        part(stringResource(R.string.ui_updated), NewsUi.stamp(delta.at, zone))
     }
 }
 
@@ -152,17 +156,17 @@ private fun RankSheet(eventId: String, onDismiss: () -> Unit) {
     var result by remember { mutableStateOf<Result<NewsScore?>?>(null) }
     LaunchedEffect(eventId) { result = newsCall { app.news.explain(eventId) } }
     HfBottomSheet(onDismiss) {
-        Text(tr("Why this rank?"), style = Hf.type.cardTitle, color = Hf.colors.onSurface)
+        Text("Why this rank?", style = Hf.type.cardTitle, color = Hf.colors.onSurface)
         val r = result
         val score = r?.getOrNull()
         when {
-            r == null -> Note(tr("Loading…"))
+            r == null -> Note("Loading…")
             r.isFailure -> Banner(failText(r.exceptionOrNull(), "Could not explain this rank"), Tone.Danger, HfIcons.Info)
-            score == null -> Note(tr("No score has been recorded for this story yet."))
+            score == null -> Note("No score has been recorded for this story yet.")
             else -> {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("${score.total}/100", style = Hf.type.figure, color = Hf.colors.onSurface)
-                    StatusPill(tr(NewsUi.levelLabel(score.level)), NewsUi.levelTone(score.level))
+                    StatusPill(NewsUi.levelLabel(score.level), NewsUi.levelTone(score.level))
                 }
                 score.factors.entries.sortedByDescending { it.value }.forEach { (name, value) ->
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -174,7 +178,7 @@ private fun RankSheet(eventId: String, onDismiss: () -> Unit) {
                     }
                 }
                 if (score.reasons.isNotEmpty()) Bullets(score.reasons)
-                if (score.protectedPublic) Note(tr("Public-interest story: it is never personalized away, even for hidden subjects."))
+                if (score.protectedPublic) Note("Public-interest story: it is never personalized away, even for hidden subjects.")
             }
         }
     }
@@ -187,19 +191,19 @@ private fun GroupingSheet(view: StoryView, onDone: (String) -> Unit, onDismiss: 
     val scope = rememberCoroutineScope()
     var chosen by remember { mutableStateOf<NewsArticle?>(null) }
     HfBottomSheet(onDismiss) {
-        Text(tr("Wrong grouping"), style = Hf.type.cardTitle, color = Hf.colors.onSurface)
-        Note(tr("Choose the report that is about a different event. It will be split out and kept apart from this story."))
+        Text("Wrong grouping", style = Hf.type.cardTitle, color = Hf.colors.onSurface)
+        Note("Choose the report that is about a different event. It will be split out and kept apart from this story.")
         view.articles.forEach { a ->
             OptionCard(a.title, publisherOf(view, a) + " · " + NewsUi.contentTypeLabel(a.contentType), chosen?.id == a.id, { chosen = a })
         }
-        PrimaryButton(tr("Split this report out"), {
+        PrimaryButton("Split this report out", {
             val a = chosen ?: return@PrimaryButton
             scope.launch {
                 val r = newsCall { app.news.feedback("NOT_SAME_EVENT", view.event.id, articleId = a.id) }
                 onDone(if (r.isSuccess) "Thanks. That report will be kept apart from this story." else failText(r.exceptionOrNull(), "Could not save the correction"))
             }
         }, Modifier.fillMaxWidth(), enabled = chosen != null && view.articles.size > 1)
-        if (view.articles.size <= 1) Note(tr("This story has only one report, so there is nothing to split."))
+        if (view.articles.size <= 1) Note("This story has only one report, so there is nothing to split.")
     }
 }
 
@@ -212,9 +216,9 @@ private fun HideSheet(view: StoryView, onDone: (String) -> Unit, onDismiss: () -
             listOfNotNull(view.event.place?.takeIf { it.isNotBlank() }?.let { "place:${it.lowercase()}" to it.replaceFirstChar { c -> c.uppercase() } })
     }
     HfBottomSheet(onDismiss) {
-        Text(tr("Hide a subject"), style = Hf.type.cardTitle, color = Hf.colors.onSurface)
-        Note(tr("Stories about this subject leave your ordinary briefings. Critical public-interest news still shows. Unhide it in News › Interests."))
-        if (subjects.isEmpty()) Note(tr("No subjects were recognized for this story."))
+        Text("Hide a subject", style = Hf.type.cardTitle, color = Hf.colors.onSurface)
+        Note("Stories about this subject leave your ordinary briefings. Critical public-interest news still shows. Unhide it in News › Interests.")
+        if (subjects.isEmpty()) Note("No subjects were recognized for this story.")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             subjects.forEach { (key, label) ->
                 HfChip(label, {
@@ -239,10 +243,10 @@ private fun TimelineSheet(view: StoryView, settings: NewsSettings, onDismiss: ()
     LaunchedEffect(view.event.id) { updates = newsCall { app.news.timeline(view.event.id, sinceVersion = seen) } }
     val fresh = updates?.getOrNull() ?: view.versions.filter { it.version > seen }
     HfBottomSheet(onDismiss) {
-        Text(tr("What changed"), style = Hf.type.cardTitle, color = Hf.colors.onSurface)
-        updates?.exceptionOrNull()?.let { Note(failText(it, "Could not load the latest updates") + " " + tr("Showing the versions saved with this story.")) }
-        Note(if (fresh.isEmpty()) tr("Nothing new since you last read this story.") else "${fresh.size} " + tr("updates since you last read this story"))
-        if (fresh.isNotEmpty()) SecondaryButton(tr("Listen to updates only"), {
+        Text("What changed", style = Hf.type.cardTitle, color = Hf.colors.onSurface)
+        updates?.exceptionOrNull()?.let { Note(failText(it, "Could not load the latest updates") + " " + "Showing the versions saved with this story.") }
+        Note(if (fresh.isEmpty()) "Nothing new since you last read this story." else "${fresh.size} " + "updates since you last read this story")
+        if (fresh.isNotEmpty()) SecondaryButton("Listen to updates only", {
             NewsAudio.play(context, null, fresh.sortedBy { it.version }.map {
                 SpokenStory("${view.event.id}#${it.version}", view.event.headline, it.whatsNew.ifBlank { it.previously })
             }, rate = settings.speechRate, language = view.summary.language, continuous = true)
@@ -254,12 +258,12 @@ private fun TimelineSheet(view: StoryView, settings: NewsSettings, onDismiss: ()
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("v${v.version} · " + NewsUi.stamp(v.at, zone), Modifier.weight(1f), style = Hf.type.label, color = Hf.colors.muted)
-                        if (new) StatusPill(tr("New"), Tone.Primary)
-                        StatusPill(tr(NewsUi.classificationLabel(v.classification)), if (correction) Tone.Warning else Tone.Neutral)
+                        if (new) StatusPill("New", Tone.Primary)
+                        StatusPill(NewsUi.classificationLabel(v.classification), if (correction) Tone.Warning else Tone.Neutral)
                     }
                     if (v.whatsNew.isNotBlank()) Text(v.whatsNew, style = Hf.type.body, color = if (correction) Hf.colors.warning else Hf.colors.onSurface)
-                    if (v.previously.isNotBlank()) Text(tr("Previously") + ": " + v.previously, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
-                    if (v.whyItMatters.isNotBlank()) Text(tr("Why It Matters") + ": " + v.whyItMatters, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+                    if (v.previously.isNotBlank()) Text("Previously" + ": " + v.previously, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+                    if (v.whyItMatters.isNotBlank()) Text("Why It Matters" + ": " + v.whyItMatters, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
                 }
             }
         }
@@ -314,8 +318,8 @@ fun StoryCard(view: StoryView, settings: NewsSettings, read: Boolean, onListen: 
         media.firstOrNull { it.second.type == "IMAGE" && NewsImages.accept(it.second.url) }?.let { (a, m) -> NewsImage(m.url, publisherOf(view, a)) }
 
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            StatusPill(tr(NewsUi.levelLabel(event.level)), NewsUi.levelTone(event.level))
-            NewsUi.labels(summary.labels).forEach { l -> NewsUi.labelText(l)?.let { StatusPill(tr(it), NewsUi.labelTone(l)) } }
+            StatusPill(NewsUi.levelLabel(event.level), NewsUi.levelTone(event.level))
+            NewsUi.labels(summary.labels).forEach { l -> NewsUi.labelText(l)?.let { StatusPill(it, NewsUi.labelTone(l)) } }
         }
         Text(summary.headline.ifBlank { event.headline }, style = Hf.type.reportTitle, color = Hf.colors.onSurface)
         val status = when {
@@ -323,24 +327,24 @@ fun StoryCard(view: StoryView, settings: NewsSettings, read: Boolean, onListen: 
             view.state?.readAt != null -> "Updated since you read"
             else -> "Unread"
         }
-        Text(listOf("${view.articles.size} " + tr("reports"), "${event.independentSources} " + tr("independent sources"), tr(status),
-            tr("Updated") + " " + NewsUi.stamp(event.updatedAt, zone)).joinToString(" · "), style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+        Text(listOf("${view.articles.size} " + "reports", "${event.independentSources} " + "independent sources", status,
+            stringResource(R.string.ui_updated) + " " + NewsUi.stamp(event.updatedAt, zone)).joinToString(" · "), style = Hf.type.rowSubtitle, color = Hf.colors.muted)
 
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SegmentedControl(NewsUi.lengths.map { it.second }, NewsUi.lengths.firstOrNull { it.first == length }?.second ?: "Standard",
                 { label -> reload(NewsUi.lengths.first { it.second == label }.first, language) }, compact = true)
             SegmentedControl(listOf("English", "Kiswahili"), if (language == "sw") "Kiswahili" else "English",
-                { reload(length, if (it == "Kiswahili") "sw" else "en") }, compact = true)
+                { reload(length, if (it == "Kiswahili") "sw" else "en") }, compact = true, label = { languageLabel(it) })
         }
         summaryNote?.let { Note(it) }
-        if ("TRANSLATED" in summary.labels) Note(tr("Translated by AI") + " · " + summary.generatedBy.removePrefix("AI:"))
+        if ("TRANSLATED" in summary.labels) Note("Translated by AI" + " · " + summary.generatedBy.removePrefix("AI:"))
 
         if (summary.quick.isNotEmpty()) HfCard(padding = PaddingValues(16.dp)) { Bullets(summary.quick) }
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PrimaryButton(tr("Listen"), onListen, icon = HfIcons.Waveform)
-            if (onSkip != null) SecondaryButton(tr("Skip"), onSkip)
-            if (view.versions.size > 1) SecondaryButton(tr("What changed"), { sheet = "timeline" })
+            PrimaryButton("Listen", onListen, icon = HfIcons.Waveform)
+            if (onSkip != null) SecondaryButton("Skip", onSkip)
+            if (view.versions.size > 1) SecondaryButton("What changed", { sheet = "timeline" })
         }
 
         HfCard(padding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)) {
@@ -355,26 +359,26 @@ fun StoryCard(view: StoryView, settings: NewsSettings, read: Boolean, onListen: 
             if (summary.localImpact.isNotBlank()) Expandable("Local impact") { Text(summary.localImpact, style = Hf.type.body, color = Hf.colors.onSurface) }
             if (summary.background.isNotBlank()) Expandable("Background") { Text(summary.background, style = Hf.type.body, color = Hf.colors.onSurface) }
             if (summary.whatsNext.isNotEmpty()) Expandable("What's next") {
-                StatusPill(tr("Expected, not confirmed"), Tone.Warning)
+                StatusPill("Expected, not confirmed", Tone.Warning)
                 Bullets(summary.whatsNext)
             }
             if (summary.conflicts.isNotEmpty()) Expandable("Conflicting reports", open = true) { Bullets(summary.conflicts) }
         }
 
         val playable = media.filter { it.second.type in setOf("VIDEO", "AUDIO", "EMBED") && NewsUi.openable(it.second.url) }.distinctBy { it.second.url }
-        if (playable.isNotEmpty()) ListCard(title = tr("Video and audio")) {
+        if (playable.isNotEmpty()) ListCard(title = "Video and audio") {
             playable.forEachIndexed { i, (a, m) ->
                 if (i > 0) ListDivider(16.dp)
-                ListRow((if (m.type == "AUDIO") tr("Listen at") else tr("Watch at")) + " " + publisherOf(view, a),
-                    subtitle = tr("Plays on the publisher's site/app"), icon = HfIcons.Waveform, chevron = true,
+                ListRow((if (m.type == "AUDIO") "Listen at" else "Watch at") + " " + publisherOf(view, a),
+                    subtitle = "Plays on the publisher's site/app", icon = HfIcons.Waveform, chevron = true,
                     onClick = { if (!openLink(context, m.url)) message = "No app can open this link." })
             }
         }
 
-        if (summary.sources.isNotEmpty()) ListCard(title = tr("Sources"), count = summary.sources.size) {
+        if (summary.sources.isNotEmpty()) ListCard(title = stringResource(R.string.ui_sources), count = summary.sources.size) {
             summary.sources.forEachIndexed { i, s ->
                 if (i > 0) ListDivider(16.dp)
-                ListRow(s.title.ifBlank { s.publisher }, subtitle = listOfNotNull(s.publisher, NewsUi.stamp(s.publishedAt, zone), tr(NewsUi.contentTypeLabel(s.contentType)),
+                ListRow(s.title.ifBlank { s.publisher }, subtitle = listOfNotNull(s.publisher, NewsUi.stamp(s.publishedAt, zone), NewsUi.contentTypeLabel(s.contentType),
                     s.agency?.let { "via $it" }).joinToString(" · "), chevron = true,
                     onClick = { if (!openLink(context, s.url)) message = "No app can open this link." })
             }
@@ -382,20 +386,20 @@ fun StoryCard(view: StoryView, settings: NewsSettings, read: Boolean, onListen: 
         }
 
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            HfChip(tr(if (bookmarked) "Bookmarked" else "Bookmark"), { bookmarked = !bookmarked; val v = bookmarked; flag("bookmarked", v) { bookmarked = !v } },
+            HfChip(if (bookmarked) "Bookmarked" else stringResource(R.string.ui_bookmark), { bookmarked = !bookmarked; val v = bookmarked; flag("bookmarked", v) { bookmarked = !v } },
                 style = if (bookmarked) ChipStyle.Selected else ChipStyle.Outline)
-            HfChip(tr("Read later"), { readLater = !readLater; val v = readLater; flag("readLater", v) { readLater = !v } },
+            HfChip("Read later", { readLater = !readLater; val v = readLater; flag("readLater", v) { readLater = !v } },
                 style = if (readLater) ChipStyle.Selected else ChipStyle.Outline)
-            HfChip(tr(if (followed) "Following" else "Follow story"), { followed = !followed; val v = followed; flag("followed", v) { followed = !v } },
+            HfChip(if (followed) "Following" else "Follow story", { followed = !followed; val v = followed; flag("followed", v) { followed = !v } },
                 style = if (followed) ChipStyle.Selected else ChipStyle.Outline)
-            HfChip(tr("Share"), { shareStory(context, view, summary) })
-            HfChip(tr("More like this"), { feedback("MORE_IMPORTANT", "Thanks. Similar stories will rank higher.") })
-            HfChip(tr("Less like this"), { feedback("LESS_IMPORTANT", "Thanks. Similar stories will rank lower.") })
-            HfChip(tr("Hide subject"), { sheet = "hide" })
-            HfChip(tr("Wrong grouping"), { sheet = "grouping" })
-            HfChip(tr("Why this rank?"), { sheet = "rank" })
+            HfChip("Share", { shareStory(context, view, summary) })
+            HfChip("More like this", { feedback("MORE_IMPORTANT", "Thanks. Similar stories will rank higher.") })
+            HfChip("Less like this", { feedback("LESS_IMPORTANT", "Thanks. Similar stories will rank lower.") })
+            HfChip("Hide subject", { sheet = "hide" })
+            HfChip("Wrong grouping", { sheet = "grouping" })
+            HfChip("Why this rank?", { sheet = "rank" })
         }
-        Note(tr("Summaries come only from the listed reports. Open a source to read the original."))
+        Note("Summaries come only from the listed reports. Open a source to read the original.")
     }
 
     when (sheet) {

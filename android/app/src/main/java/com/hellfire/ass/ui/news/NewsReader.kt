@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.news
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -19,10 +22,10 @@ import com.hellfire.ass.ui.LocalNav
 import com.hellfire.ass.ui.PushedPage
 import com.hellfire.ass.ui.components.*
 import com.hellfire.ass.ui.theme.Hf
-import com.hellfire.ass.ui.tr
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.hellfire.ass.ui.theme.HfIcons
 
 /** Sequential immersive reader for one briefing: one story per page, resumable, with spoken playback. */
 @Composable
@@ -40,13 +43,13 @@ fun NewsReaderPage(briefingId: String) {
         stories = newsCall { app.news.stories(briefingId) }
     }
     Column(Modifier.fillMaxSize().padding(start = ScreenPadding, end = ScreenPadding, top = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        PushedTopBar(title, onBack = { nav.pop() }, breadcrumb = tr("News"))
+        PushedTopBar(title, onBack = { nav.pop() }, breadcrumb = "News")
         val r = stories
         val list = r?.getOrNull()
         when {
-            r == null -> Note(tr("Loading…"))
+            r == null -> Note("Loading…")
             r.isFailure -> Banner(failText(r.exceptionOrNull(), "Could not open this briefing"), Tone.Danger, null)
-            list.isNullOrEmpty() -> Note(tr("This briefing has no stories."))
+            list.isNullOrEmpty() -> Note("This briefing has no stories.")
             else -> Reader(briefingId, list, progress, settings)
         }
     }
@@ -88,23 +91,23 @@ private fun ColumnScope.Reader(briefingId: String, list: List<StoryView>, progre
     val page = pager.currentPage
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Column(Modifier.weight(1f)) {
-            Text(tr(sectionTitle(list[page].section)).uppercase(), style = Hf.type.caption.copy(fontWeight = FontWeight.SemiBold), color = Hf.colors.primary)
-            Text("${page + 1} " + tr("of") + " ${list.size}", style = Hf.type.label, color = Hf.colors.muted)
+            Text(sectionTitle(list[page].section).uppercase(), style = Hf.type.caption.copy(fontWeight = FontWeight.SemiBold), color = Hf.colors.primary)
+            Text("${page + 1} " + "of" + " ${list.size}", style = Hf.type.label, color = Hf.colors.muted)
         }
-        QuietButton(tr("Previous"), { scope.launch { pager.animateScrollToPage(page - 1) } }, enabled = page > 0)
-        QuietButton(tr("Next"), { scope.launch { pager.animateScrollToPage(page + 1) } }, enabled = page < list.lastIndex)
+        QuietButton(stringResource(R.string.ui_previous), { scope.launch { pager.animateScrollToPage(page - 1) } }, enabled = page > 0)
+        QuietButton(stringResource(R.string.ui_next), { scope.launch { pager.animateScrollToPage(page + 1) } }, enabled = page < list.lastIndex)
     }
     if (mine) HfCard(padding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
-        Text(tr("Listening") + " · ${audio.index + 1} " + tr("of") + " ${audio.count} · ${audio.title}", style = Hf.type.rowSubtitle, color = Hf.colors.muted, maxLines = 1)
+        Text("Listening" + " · ${audio.index + 1} " + "of" + " ${audio.count} · ${audio.title}", style = Hf.type.rowSubtitle, color = Hf.colors.muted, maxLines = 1)
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            QuietButton(tr("Previous"), { NewsAudio.previous() })
-            QuietButton(tr(if (audio.playing) "Pause" else "Resume"), { if (audio.playing) NewsAudio.pause() else NewsAudio.resume() })
-            QuietButton(tr("Next"), { NewsAudio.next() })
-            QuietButton(tr("Stop"), { NewsAudio.stop() })
+            QuietButton(stringResource(R.string.ui_previous), { NewsAudio.previous() })
+            QuietButton(if (audio.playing) stringResource(R.string.ui_pause) else stringResource(R.string.ui_intel_resume), { if (audio.playing) NewsAudio.pause() else NewsAudio.resume() })
+            QuietButton(stringResource(R.string.ui_next), { NewsAudio.next() })
+            QuietButton("Stop", { NewsAudio.stop() })
             Spacer(Modifier.weight(1f))
             HfChip("${audio.rate}×", { NewsAudio.setRate(NewsUi.nextSpeed(audio.rate, NewsAudio.speedSteps)) })
         }
-    } else PrimaryButton(tr("Listen to briefing"), { listen(page, continuous = true) }, Modifier.fillMaxWidth(), icon = com.hellfire.ass.ui.theme.HfIcons.Waveform)
+    } else PrimaryButton("Listen to briefing", { listen(page, continuous = true) }, Modifier.fillMaxWidth(), icon = HfIcons.Waveform)
     audio.note?.let { Note(it) }
 
     HorizontalPager(pager, Modifier.weight(1f).fillMaxWidth(), pageSpacing = 16.dp, key = { list[it].event.id }) { i ->
@@ -136,18 +139,18 @@ fun NewsStoryPage(eventId: String) {
         if (story?.getOrNull() != null) { delay(NewsUi.READ_AFTER_MS); read = newsCall { app.news.markRead(eventId) }.isSuccess }
     }
     val audio by NewsAudio.state.collectAsStateWithLifecycle()
-    PushedPage(tr("Story"), breadcrumb = tr("News")) {
+    PushedPage("Story", breadcrumb = "News") {
         val r = story
         val v = r?.getOrNull()
         when {
-            r == null -> Note(tr("Loading…"))
+            r == null -> Note("Loading…")
             r.isFailure -> Banner(failText(r.exceptionOrNull(), "Could not open this story"), Tone.Danger, null)
-            v == null -> Note(tr("This story is no longer available."))
+            v == null -> Note("This story is no longer available.")
             else -> {
                 if (audio.active && audio.briefingId == null) Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(tr("Listening") + " · ${audio.title}", Modifier.weight(1f), style = Hf.type.rowSubtitle, color = Hf.colors.muted, maxLines = 1)
-                    QuietButton(tr(if (audio.playing) "Pause" else "Resume"), { if (audio.playing) NewsAudio.pause() else NewsAudio.resume() })
-                    QuietButton(tr("Stop"), { NewsAudio.stop() })
+                    Text("Listening" + " · ${audio.title}", Modifier.weight(1f), style = Hf.type.rowSubtitle, color = Hf.colors.muted, maxLines = 1)
+                    QuietButton(if (audio.playing) stringResource(R.string.ui_pause) else stringResource(R.string.ui_intel_resume), { if (audio.playing) NewsAudio.pause() else NewsAudio.resume() })
+                    QuietButton("Stop", { NewsAudio.stop() })
                 }
                 audio.note?.let { Note(it) }
                 StoryCard(v, settings, read = read, onListen = {

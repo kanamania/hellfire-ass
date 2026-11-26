@@ -27,6 +27,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import com.hellfire.ass.ui.UiLanguage
 
 /** The only ExoPlayer. Full player, mini player and picture-in-picture attach to this session. */
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -143,7 +144,8 @@ class HellFirePlaybackService : MediaSessionService() {
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            PlaybackFlags.error.value = PlaybackLogic.playbackError(error.errorCodeName)
+            PlaybackFlags.error.value = PlaybackLogic.playbackError(error.errorCodeName)?.let { UiLanguage.context(this@HellFirePlaybackService).getString(it) }
+                ?: "Playback failed (${error.errorCodeName}). The original was not modified."
             PlaybackFlags.playing.value = false
             persist(false)
         }

@@ -10,6 +10,7 @@ import com.hellfire.ass.performance.SceneSampler
 import com.hellfire.ass.performance.fingerprintLuma
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import com.hellfire.ass.Diagnostics
 
 data class ImageText(val ocr: String, val labels: String?)
 
@@ -25,7 +26,7 @@ object VisualReader {
         val bitmap = app.media.reader(item).use { BitmapFactory.decodeStream(it.stream(), null, options) } ?: error("UNSUPPORTED_IMAGE")
         // Labels run first because OCR recycles the bitmap; a labeling failure never blocks OCR.
         val labels = try { LocalImageLabels.describe(LocalImageLabels.read(bitmap)) }
-            catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); null }
+            catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (caught: Exception) { Diagnostics.warn(caught); null }
         return ImageText(LocalOcr.read(bitmap), labels)
     }
     suspend fun pdf(app: HellFireApp, item: MediaItem, start: Int, pages: Int = 5, accept: suspend (Int, String) -> Unit): Boolean {

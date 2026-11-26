@@ -10,6 +10,11 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.TimeUnit
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.communications.CommunicationWork
+import com.hellfire.ass.insights.CaptureGaps
+import com.hellfire.ass.media.MediaWork
+import com.hellfire.ass.tasks.TaskScheduler
 
 object CaptureWork {
     private val scheduling = Mutex()
@@ -43,27 +48,27 @@ class ProcessEventsWorker(context: Context, params: WorkerParameters) : Coroutin
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val app = applicationContext as HellFireApp
         try {
-            EventProcessor(app.database.events(), app.finances::collect, { id, time, text, outgoing -> com.hellfire.ass.tasks.TaskScheduler.collect(app, id, time, text, outgoing) }) { app.cipher }.drain()
+            EventProcessor(app.database.events(), app.finances::collect, { id, time, text, outgoing -> TaskScheduler.collect(app, id, time, text, outgoing) }) { app.cipher }.drain()
             Result.success()
         } catch (e: CancellationException) { throw e }
-        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); Result.retry() }
+        catch (caught: Exception) { Diagnostics.warn(caught); Result.retry() }
     }
 }
 
 class CaptureMaintenanceWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
-            com.hellfire.ass.tasks.TaskScheduler.restore(applicationContext as HellFireApp)
+            TaskScheduler.restore(applicationContext as HellFireApp)
             CaptureWork.process(applicationContext)
-            com.hellfire.ass.communications.CommunicationWork.schedule(applicationContext)
+            CommunicationWork.schedule(applicationContext)
             if (SmsCaptureSettings.enabled(applicationContext)) SmsSyncWorker.schedule(applicationContext)
             // A failed health check must not stop the maintenance above from counting as done.
-            runCatching { com.hellfire.ass.media.MediaWork.pump(applicationContext as HellFireApp) }
-                .onFailure { if (it is CancellationException) throw it; com.hellfire.ass.Diagnostics.warn(it) }
-            runCatching { (applicationContext as HellFireApp).let { app -> com.hellfire.ass.insights.CaptureGaps.report(app, com.hellfire.ass.insights.CaptureGaps.check(app)) } }
-                .onFailure { if (it is CancellationException) throw it; com.hellfire.ass.Diagnostics.warn(it) }
+            runCatching { MediaWork.pump(applicationContext as HellFireApp) }
+                .onFailure { if (it is CancellationException) throw it; Diagnostics.warn(it) }
+            runCatching { (applicationContext as HellFireApp).let { app -> CaptureGaps.report(app, CaptureGaps.check(app)) } }
+                .onFailure { if (it is CancellationException) throw it; Diagnostics.warn(it) }
             Result.success()
         } catch (e: CancellationException) { throw e }
-        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); Result.retry() }
+        catch (caught: Exception) { Diagnostics.warn(caught); Result.retry() }
     }
 }

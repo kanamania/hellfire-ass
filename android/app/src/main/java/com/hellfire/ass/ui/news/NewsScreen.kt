@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.news
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -30,7 +33,6 @@ fun NewsScreen() {
     val nav = LocalNav.current
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
-    fun t(text: String) = UiLanguage.text(context, text)
     var tab by rememberSaveable { mutableStateOf(if (java.time.LocalTime.now().hour < 12) "Morning" else "Evening") }
     var settings by remember { mutableStateOf(NewsSettings()) }
     LaunchedEffect(Unit) { newsCall { app.news.settings() }.getOrNull()?.let { settings = it } }
@@ -39,17 +41,18 @@ fun NewsScreen() {
     var refreshErrors by remember { mutableStateOf<List<String>>(emptyList()) }
     var busy by remember { mutableStateOf(false) }
 
-    PushedPage(tr("News"), breadcrumb = tr("Home"), actions = {
-        IconCircleButton(HfIcons.Settings, tr("News settings"), { nav.push(Screen.NewsSettings) })
+    PushedPage("News", breadcrumb = stringResource(R.string.ui_home), actions = {
+        IconCircleButton(HfIcons.Settings, "News settings", { nav.push(Screen.NewsSettings) })
     }) {
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
-            SegmentedControl(listOf("Morning", "Evening", "Breaking", "Saved", "Archive"), tab, { tab = it }, compact = true)
+            SegmentedControl(listOf("Morning", "Evening", "Breaking", "Saved", "Archive"), tab, { tab = it }, compact = true,
+                label = { when (it) { "Saved" -> stringResource(R.string.ui_saved); "Archive" -> stringResource(R.string.drawer_archive); else -> it } })
         }
         message?.let { (text, tone) -> Banner(text, tone, HfIcons.Info, Modifier.clickableRow { message = null; refreshErrors = emptyList() }) }
         if (refreshErrors.isNotEmpty()) HfCard(padding = PaddingValues(14.dp)) {
-            Text(tr("Sources that failed"), style = Hf.type.cardTitle, color = Hf.colors.onSurface)
+            Text("Sources that failed", style = Hf.type.cardTitle, color = Hf.colors.onSurface)
             refreshErrors.take(12).forEach { Text(it, style = Hf.type.rowSubtitle, color = Hf.colors.muted) }
-            if (refreshErrors.size > 12) Note("+${refreshErrors.size - 12} " + tr("more"))
+            if (refreshErrors.size > 12) Note("+${refreshErrors.size - 12} " + "more")
         }
         when (tab) {
             "Morning", "Evening" -> Briefings(tab == "Morning", zone, busy, onBriefNow = {
@@ -67,13 +70,13 @@ fun NewsScreen() {
                     busy = false
                     val x = r.getOrNull()
                     message = if (x == null) failText(r.exceptionOrNull(), "Could not refresh sources") to Tone.Danger
-                        else ("${t("Checked")} ${x.sourcesTried} ${t("sources")} · ${x.sourcesFailed} ${t("failed")} · ${x.articlesNew} ${t("new reports")} · " +
-                            "${x.eventsNew} ${t("new stories")} · ${x.eventsUpdated} ${t("updated")}") to (if (x.sourcesFailed > 0) Tone.Warning else Tone.Success)
+                        else ("Checked ${x.sourcesTried} sources · ${x.sourcesFailed} failed · ${x.articlesNew} new reports · " +
+                            "${x.eventsNew} new stories · ${x.eventsUpdated} updated") to (if (x.sourcesFailed > 0) Tone.Warning else Tone.Success)
                     refreshErrors = x?.errors.orEmpty()
                 }
             })
             "Breaking" -> Loaded("Breaking", { app.news.breaking() }) { list ->
-                Note(tr("Critical and high-importance stories from the last 24 hours."))
+                Note("Critical and high-importance stories from the last 24 hours.")
                 StoryList(list, "No breaking stories right now.", zone) { nav.push(Screen.NewsStory, it.event.id) }
             }
             "Saved" -> Loaded("Saved", { app.news.saved() }) { list ->
@@ -102,22 +105,22 @@ private fun Briefings(morning: Boolean, zone: java.time.ZoneId, busy: Boolean, o
     val all by remember { safeFlow(emptyList(), { failed = it }) { app.news.briefings(NewsUi.allSlots - "BREAKING", 60) } }
         .collectAsStateWithLifecycle(null)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        PrimaryButton(tr(if (busy) "Working…" else "Brief me now"), onBriefNow, Modifier.weight(1f), enabled = !busy)
-        SecondaryButton(tr("Refresh sources"), onRefresh, Modifier.weight(1f), enabled = !busy)
+        PrimaryButton(if (busy) stringResource(R.string.ui_working) else "Brief me now", onBriefNow, Modifier.weight(1f), enabled = !busy)
+        SecondaryButton("Refresh sources", onRefresh, Modifier.weight(1f), enabled = !busy)
     }
     failed?.let { Banner(failText(it, "Could not read briefings"), Tone.Danger, null) }
     val list = all?.filter { NewsUi.isMorning(it, zone) == morning }
     when {
-        list == null -> Note(tr("Loading…"))
+        list == null -> Note("Loading…")
         list.isEmpty() -> HfCard(padding = PaddingValues(16.dp)) {
-            Text(tr(if (morning) "No morning briefings yet." else "No evening briefings yet."), style = Hf.type.body, color = Hf.colors.muted)
+            Text(if (morning) "No morning briefings yet." else "No evening briefings yet.", style = Hf.type.body, color = Hf.colors.muted)
         }
-        else -> ListCard(title = tr(if (morning) "Morning briefings" else "Evening briefings"), count = list.size) {
+        else -> ListCard(title = if (morning) "Morning briefings" else "Evening briefings", count = list.size) {
             list.forEachIndexed { i, b ->
                 if (i > 0) ListDivider(16.dp)
-                ListRow(b.title, subtitle = listOf(NewsUi.stamp(b.generatedAt, zone), "${NewsUi.itemCount(b.itemsJson)} " + tr("stories"), b.note)
+                ListRow(b.title, subtitle = listOf(NewsUi.stamp(b.generatedAt, zone), "${NewsUi.itemCount(b.itemsJson)} " + "stories", b.note)
                     .filter { it.isNotBlank() }.joinToString(" · "),
-                    trailing = { QuietButton(tr("Open"), { nav.push(Screen.NewsReader, b.id) }) },
+                    trailing = { QuietButton(stringResource(R.string.ui_open), { nav.push(Screen.NewsReader, b.id) }) },
                     onClick = { nav.push(Screen.NewsReader, b.id) })
             }
             Spacer(Modifier.height(6.dp))
@@ -142,9 +145,9 @@ private fun Archive(zone: java.time.ZoneId) {
     HfTextField(query, { query = it.take(200) }, "Search past stories")
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf("Today", "This week", "30 days").forEach { chip ->
-            HfChip(tr(chip), { range = chip }, style = if (range == chip) ChipStyle.Selected else ChipStyle.Outline)
+            HfChip(if (chip == "Today") stringResource(R.string.ui_today) else chip, { range = chip }, style = if (range == chip) ChipStyle.Selected else ChipStyle.Outline)
         }
-        PrimaryButton(tr("Search"), { search() })
+        PrimaryButton(stringResource(R.string.ui_intel_search), { search() })
     }
     val r = result
     if (r?.isFailure == true) Banner(failText(r.exceptionOrNull(), "Could not search the archive"), Tone.Danger, null)

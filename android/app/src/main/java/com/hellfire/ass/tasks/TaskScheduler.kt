@@ -18,6 +18,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Instant
 import java.util.UUID
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.events.NotificationNormalizer
+import com.hellfire.ass.insights.Briefs
 
 object TaskScheduler {
     private const val CHANNEL = "commitment-reminders"
@@ -76,7 +79,7 @@ object TaskScheduler {
         val now = System.currentTimeMillis()
         TaskExtractor.extract(text, sourceTime, outgoing)?.takeIf { TaskTime.reviewable(it.dueAt, now) }?.let { candidate ->
             if (app.skills.ignoredFor(app, "IGNORE_TASK", sourceId, text)) return
-            app.database.tasks().insert(AssistantTask(com.hellfire.ass.events.NotificationNormalizer.sha256("task:$sourceId"), sourceId,
+            app.database.tasks().insert(AssistantTask(NotificationNormalizer.sha256("task:$sourceId"), sourceId,
                 candidate.title, candidate.dueAt, party = candidate.party, evidence = candidate.evidence, createdAt = now, updatedAt = now,
                 direction = directionFor(candidate.party)))
         }
@@ -95,7 +98,7 @@ object TaskScheduler {
     fun nextBill(task: AssistantTask, now: Long): AssistantTask? {
         if (task.kind != "BILL" || !task.repeatMonthly || task.state != "ACTIVE") return null
         val next = Instant.ofEpochMilli(task.dueAt).atZone(TaskTime.zone).plusMonths(1).toInstant().toEpochMilli()
-        return task.copy(id = com.hellfire.ass.events.NotificationNormalizer.sha256("bill:${task.id}:$next"), dueAt = next, state = "ACTIVE",
+        return task.copy(id = NotificationNormalizer.sha256("bill:${task.id}:$next"), dueAt = next, state = "ACTIVE",
             createdAt = now, updatedAt = now, nextAlertAt = TaskTime.firstAlert(next, now), lastAlertAt = null, alertCount = 0, completedAt = null)
     }
 
@@ -128,7 +131,7 @@ object TaskScheduler {
         date = advance(count)
         if (date.toInstant().toEpochMilli() <= now) date = advance(count + 1)
         val next = date.toInstant().toEpochMilli()
-        return task.copy(id = com.hellfire.ass.events.NotificationNormalizer.sha256("repeat:${task.id}:$next"), dueAt = next, state = "ACTIVE",
+        return task.copy(id = NotificationNormalizer.sha256("repeat:${task.id}:$next"), dueAt = next, state = "ACTIVE",
             createdAt = now, updatedAt = now, nextAlertAt = TaskTime.firstAlert(next, now), lastAlertAt = null, alertCount = 0, completedAt = null)
     }
     internal suspend fun retainNext(dao: TaskDao, task: AssistantTask, now: Long): AssistantTask? {
@@ -202,9 +205,9 @@ object TaskScheduler {
         if (briefHour != null && local.hour in briefHour until 12 && prefs.getString("brief_day", null) != day) {
             // Mark the day first: a brief that fails to load must not re-fire the alarm in a loop.
             prefs.edit().putString("brief_day", day).apply()
-            try { com.hellfire.ass.insights.Briefs.notify(app, com.hellfire.ass.insights.Briefs.load(app, now, evening = false)) }
+            try { Briefs.notify(app, Briefs.load(app, now, evening = false)) }
             catch (e: CancellationException) { throw e }
-            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught) }
+            catch (caught: Exception) { Diagnostics.warn(caught) }
         }
         arm(app)
     }
@@ -216,7 +219,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val app = context.applicationContext as HellFireApp
         app.captureScope.launch {
             try { TaskScheduler.fire(app) }
-            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); runCatching { app.database.communications().integration(IntegrationState("REMINDERS", "FAILED", System.currentTimeMillis(), "ALARM_PROCESSING_FAILED")) } }
+            catch (caught: Exception) { Diagnostics.warn(caught); runCatching { app.database.communications().integration(IntegrationState("REMINDERS", "FAILED", System.currentTimeMillis(), "ALARM_PROCESSING_FAILED")) } }
             finally { result.finish() }
         }
     }
@@ -227,7 +230,7 @@ class ReminderRestoreReceiver : BroadcastReceiver() {
         val result = goAsync()
         val app = context.applicationContext as HellFireApp
         app.captureScope.launch { try { TaskScheduler.restore(app) }
-            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); runCatching { app.database.events().failure("reminders", "RESTORATION_FAILED") } }
+            catch (caught: Exception) { Diagnostics.warn(caught); runCatching { app.database.events().failure("reminders", "RESTORATION_FAILED") } }
             finally { result.finish() } }
     }
 }

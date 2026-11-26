@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.intelligence
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -48,8 +51,10 @@ import com.hellfire.ass.ui.components.SecondaryButton
 import com.hellfire.ass.ui.components.SectionCard
 import com.hellfire.ass.ui.components.SwitchRow
 import com.hellfire.ass.ui.theme.Hf
-import com.hellfire.ass.ui.tr
 import kotlinx.coroutines.launch
+import com.hellfire.ass.intelligence.ContentEngine
+import com.hellfire.ass.library.CategoryPolicy
+import com.hellfire.ass.ui.library.SceneThumbnail
 
 @Composable
 fun SearchScreen(route: Route) {
@@ -68,9 +73,9 @@ fun SearchScreen(route: Route) {
             status = if (hits.isEmpty()) "No matching saved items." else "${hits.size} results."
         }
     }
-    PushedPage(tr("Search"), breadcrumb = tr("Media intelligence")) {
-        OutlinedTextField(query, { query = it }, modifier = Modifier.fillMaxWidth(), label = { Text(tr("Search")) }, singleLine = true)
-        PrimaryButton(tr("Search"), {
+    PushedPage(stringResource(R.string.ui_intel_search), breadcrumb = stringResource(R.string.ui_intel_settings)) {
+        OutlinedTextField(query, { query = it }, modifier = Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.ui_intel_search)) }, singleLine = true)
+        PrimaryButton(stringResource(R.string.ui_intel_search), {
             scope.launch {
                 val now = System.currentTimeMillis()
                 val next = constraints?.let { QueryParser.refine(it, query, now) } ?: QueryParser.parse(query, now)
@@ -91,7 +96,7 @@ fun SearchScreen(route: Route) {
                     else -> LibraryRoutes.mediaDetail(hit.itemId)
                 })
             }.padding(vertical = 8.dp)) {
-                com.hellfire.ass.ui.library.SceneThumbnail(hit.thumbnailPath)
+                SceneThumbnail(hit.thumbnailPath)
                 Text(hit.title, style = Hf.type.rowTitle, color = Hf.colors.onSurface)
                 Text("${hit.contentKind} · ${hit.matchSource} · ${"%.2f".format(hit.relevance)}", style = Hf.type.caption, color = Hf.colors.muted)
                 if (hit.startMs != null) Text("At ${hit.startMs} ms", style = Hf.type.caption, color = Hf.colors.muted)
@@ -106,7 +111,7 @@ fun ProcessingQueueScreen() {
     val app = LocalEnv.current.app
     val scope = rememberCoroutineScope()
     val jobs by remember { app.database.jobs().queue(50) }.collectAsStateWithLifecycle(emptyList())
-    PushedPage(tr("Processing queue"), breadcrumb = tr("Media intelligence")) {
+    PushedPage(stringResource(R.string.ui_intel_queue), breadcrumb = stringResource(R.string.ui_intel_settings)) {
         if (jobs.isEmpty()) Note("No analysis jobs. Use Media intelligence settings to queue the library.")
         jobs.forEach { job ->
             SectionCard("${job.type} · ${job.state}") {
@@ -114,9 +119,9 @@ fun ProcessingQueueScreen() {
                 Text("Progress ${job.progress} · attempts ${job.attempts}", style = Hf.type.caption, color = Hf.colors.muted)
                 if (!job.error.isNullOrBlank()) Text(job.error, style = Hf.type.caption, color = Hf.colors.danger)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SecondaryButton(tr("Pause"), { scope.launch { app.database.jobs().pause(job.id, System.currentTimeMillis()) } })
-                    SecondaryButton(tr("Resume"), { scope.launch { app.database.jobs().resume(job.id, System.currentTimeMillis()); IntelligenceWork.schedule(app) } })
-                    SecondaryButton(tr("Retry"), { scope.launch { app.database.jobs().retryFailed(job.id, System.currentTimeMillis()); IntelligenceWork.schedule(app) } })
+                    SecondaryButton(stringResource(R.string.ui_pause), { scope.launch { app.database.jobs().pause(job.id, System.currentTimeMillis()) } })
+                    SecondaryButton(stringResource(R.string.ui_intel_resume), { scope.launch { app.database.jobs().resume(job.id, System.currentTimeMillis()); IntelligenceWork.schedule(app) } })
+                    SecondaryButton(stringResource(R.string.ui_retry), { scope.launch { app.database.jobs().retryFailed(job.id, System.currentTimeMillis()); IntelligenceWork.schedule(app) } })
                 }
             }
         }
@@ -156,18 +161,18 @@ fun MediaSettingsScreen() {
         }
     }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { }
-    PushedPage(tr("Media intelligence"), breadcrumb = tr("Settings")) {
-        SectionCard(tr("Search")) {
+    PushedPage(stringResource(R.string.ui_intel_settings), breadcrumb = stringResource(R.string.ui_settings)) {
+        SectionCard(stringResource(R.string.ui_intel_search)) {
             Note(mediaPermissionText(context))
             SecondaryButton("Request media read", {
                 permission.launch(if (Build.VERSION.SDK_INT >= 33) arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_AUDIO)
                 else arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE))
             })
-            SecondaryButton(tr("Search"), { nav.push(LibraryRoutes.search()) })
-            SecondaryButton(tr("Processing queue"), { nav.push(LibraryRoutes.processingQueue()) })
+            SecondaryButton(stringResource(R.string.ui_intel_search), { nav.push(LibraryRoutes.search()) })
+            SecondaryButton(stringResource(R.string.ui_intel_queue), { nav.push(LibraryRoutes.processingQueue()) })
         }
         SectionCard("When analysis may run") {
-            SwitchRow(tr("Charging only"), charging, { charging = it; prefs.chargingOnly = it })
+            SwitchRow(stringResource(R.string.ui_intel_charging), charging, { charging = it; prefs.chargingOnly = it })
             SwitchRow("Prefer idle device", idle, { idle = it; prefs.idlePreference = it })
             SwitchRow("Pause when warm", thermal, { thermal = it; prefs.pauseAtModerate = it })
             SwitchRow("Pause when storage is low", storage, { storage = it; prefs.storageNotLow = it })
@@ -187,7 +192,7 @@ fun MediaSettingsScreen() {
         }
         SectionCard("Sampling") {
             SampleMode.entries.forEach { entry ->
-                val label = when (entry) { SampleMode.FAST -> tr("Fast"); SampleMode.BALANCED -> tr("Balanced"); SampleMode.DEEP -> tr("Deep") }
+                val label = when (entry) { SampleMode.FAST -> stringResource(R.string.ui_intel_fast); SampleMode.BALANCED -> stringResource(R.string.ui_intel_balanced); SampleMode.DEEP -> stringResource(R.string.ui_intel_deep) }
                 OptionCard(label, entry.name, mode == entry.name, {
                     mode = entry.name
                     prefs.sampleMode = entry.name
@@ -216,15 +221,15 @@ fun MediaSettingsScreen() {
                 Text("${category.name}: ${category.policy}", style = Hf.type.rowSubtitle, color = Hf.colors.onSurface)
                 SecondaryButton("Next policy", {
                     scope.launch {
-                        val order = com.hellfire.ass.library.CategoryPolicy.entries
-                        val current = runCatching { com.hellfire.ass.library.CategoryPolicy.valueOf(category.policy) }.getOrDefault(com.hellfire.ass.library.CategoryPolicy.DEFAULT)
+                        val order = CategoryPolicy.entries
+                        val current = runCatching { CategoryPolicy.valueOf(category.policy) }.getOrDefault(CategoryPolicy.DEFAULT)
                         val next = order[(order.indexOf(current) + 1) % order.size]
                         app.database.library().updateCategory(category.copy(policy = next.name, updatedAt = System.currentTimeMillis()))
                     }
                 })
             }
         }
-        PrimaryButton(tr("Analyze library"), {
+        PrimaryButton(stringResource(R.string.ui_intel_analyze), {
             scope.launch {
                 IntelligenceWork.enqueueMissing(app, 30)
                 IntelligenceWork.schedule(app)
@@ -234,7 +239,7 @@ fun MediaSettingsScreen() {
         SecondaryButton("Reanalyse with installed models", {
             scope.launch {
                 val ids = app.database.library().analysedWithoutModel(listOf("transcript", "description", "adult"), 5000)
-                ids.forEach { app.database.jobs().enqueue(com.hellfire.ass.intelligence.ContentEngine.newJob(it, System.currentTimeMillis())) }
+                ids.forEach { app.database.jobs().enqueue(ContentEngine.newJob(it, System.currentTimeMillis())) }
                 IntelligenceWork.schedule(app)
                 note = "Queued ${ids.size} items that previously lacked a model. Jobs run sequentially."
             }

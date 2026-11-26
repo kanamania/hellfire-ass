@@ -8,6 +8,8 @@ import kotlinx.coroutines.*
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.TimeUnit
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.media.WhisperNative
 
 /** Curated runtime formats; an arbitrary Hugging Face model is not necessarily compatible. */
 data class CatalogModel(val id: String, val name: String, val role: String, val publisher: String, val license: String,
@@ -61,7 +63,7 @@ class CatalogDownloadWorker(context: Context, params: WorkerParameters) : Corout
             when (model.role) {
                 "LANGUAGE" -> { require(app.localModel.loads(part)) { "Model did not load; previous model retained" }; app.localModel.install(part)
                     if (model.id == "gemma4-e2b") ModelUpdates.markInstalled(app, model.release) else ModelUpdates.markImported(app) }
-                "SPEECH" -> { HeavyModelGate.mutex.lock(); try { val handle = com.hellfire.ass.media.WhisperNative.open(part.path); require(handle != 0L); com.hellfire.ass.media.WhisperNative.release(handle) } finally { HeavyModelGate.mutex.unlock() }; app.speech.import(Uri.fromFile(part)) }
+                "SPEECH" -> { HeavyModelGate.mutex.lock(); try { val handle = WhisperNative.open(part.path); require(handle != 0L); WhisperNative.release(handle) } finally { HeavyModelGate.mutex.unlock() }; app.speech.import(Uri.fromFile(part)) }
                 "EMBEDDING" -> app.semantic.import(Uri.fromFile(part))
             }
             part.delete()
@@ -69,6 +71,6 @@ class CatalogDownloadWorker(context: Context, params: WorkerParameters) : Corout
             ModelCatalog.status(app, "Installed and loaded: ${model.name}. Device accuracy and speed still need evaluation.")
             Result.success()
         } catch (e: CancellationException) { ModelCatalog.status(app, "Download paused. Select this model again to resume."); throw e }
-        catch (e: Exception) { com.hellfire.ass.Diagnostics.warn(e); ModelCatalog.status(app, if (e is IllegalArgumentException) e.message ?: "Model rejected; previous model retained." else "Download interrupted. Check Wi-Fi/storage and retry; previous model retained."); Result.failure() }
+        catch (e: Exception) { Diagnostics.warn(e); ModelCatalog.status(app, if (e is IllegalArgumentException) e.message ?: "Model rejected; previous model retained." else "Download interrupted. Check Wi-Fi/storage and retry; previous model retained."); Result.failure() }
     }
 }

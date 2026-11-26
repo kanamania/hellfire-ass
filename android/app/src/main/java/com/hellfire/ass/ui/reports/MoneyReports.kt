@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.reports
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -20,6 +23,7 @@ import com.hellfire.ass.ui.theme.Hf
 import com.hellfire.ass.ui.theme.HfIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.hellfire.ass.tasks.TaskTime
 
 /** Ledger and accounts loaded once per screen; reports then compute from these in memory. */
 @Composable
@@ -65,8 +69,8 @@ fun ReportsHub() {
     }
     var pickDates by remember { mutableStateOf(false) }
     if (pickDates) RangeSheet(startCustom = true) { pickDates = false }
-    PushedPage(com.hellfire.ass.ui.tr("Reports")) {
-        SegmentedControl(listOf("Today", "Week", "Month", "Custom"), ReportRange.preset, { p -> if (p == "Custom") pickDates = true else ReportRange.set(p) })
+    PushedPage(stringResource(R.string.ui_reports)) {
+        SegmentedControl(listOf("Today", "Week", "Month", "Custom"), ReportRange.preset, { p -> if (p == "Custom") pickDates = true else ReportRange.set(p) }, label = { if (it == "Today") stringResource(R.string.ui_today) else it })
         Note("${range.label} · East Africa Time")
         ListCard {
             listOf(Triple("Money", "money", Screen.ReportMoney) to (HfIcons.Money to Tone.Info), Triple("Accounts and merchants", "accounts", Screen.ReportAccounts) to (HfIcons.Bank to Tone.Neutral),
@@ -166,7 +170,7 @@ fun MoneyReport(arg: String) {
         }, calendar = { MoneyCalendar(all.filter { filter.accepts(it) }) })
 }
 
-object TaskTimeFmt { fun iso(ms: Long) = com.hellfire.ass.tasks.TaskTime.display(ms) }
+object TaskTimeFmt { fun iso(ms: Long) = TaskTime.display(ms) }
 
 @Composable
 private fun MoneyFilterSheet(initial: MoneyFilter, accounts: List<FinanceAccount>, count: Int, onApply: (MoneyFilter) -> Unit) {
@@ -177,12 +181,12 @@ private fun MoneyFilterSheet(initial: MoneyFilter, accounts: List<FinanceAccount
         Text("Filter Money", Modifier.weight(1f), style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
         QuietButton("Reset", { f = MoneyFilter(); min = ""; max = "" })
     }
-    FilterGroup("Type", listOf("Expense", "Income", "Transfer", "Fee", "Refund"), f.types) { f = f.copy(types = it) }
-    GroupLabel(com.hellfire.ass.ui.tr("Accounts"))
+    FilterGroup(stringResource(R.string.ui_type), listOf("Expense", "Income", "Transfer", "Fee", "Refund"), f.types) { f = f.copy(types = it) }
+    GroupLabel(stringResource(R.string.ui_accounts))
     FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         accounts.forEach { a -> CheckRow(a.label, a.id in f.accounts, onChange = { on -> f = f.copy(accounts = if (on) f.accounts + a.id else f.accounts - a.id) }) }
     }
-    FilterGroup("Category", Categories + "Fees", f.categories) { f = f.copy(categories = it) }
+    FilterGroup(stringResource(R.string.ui_category), Categories + "Fees", f.categories) { f = f.copy(categories = it) }
     GroupLabel("Amount · TZS")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         HfTextField(min, { min = it.filter(Char::isDigit) }, "Min", Modifier.weight(1f), number = true)

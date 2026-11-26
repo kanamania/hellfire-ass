@@ -2,6 +2,9 @@
 
 package com.hellfire.ass.ui.drawer
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
@@ -41,6 +44,7 @@ import com.hellfire.ass.ui.theme.HfIcons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.hellfire.ass.HellFireApp
 
 @Composable
 fun DrawerHost() {
@@ -106,8 +110,8 @@ fun DrawerHost() {
                 Modifier.align(Alignment.BottomCenter).padding(12.dp).background(Hf.colors.surface, RoundedCornerShape(16.dp)).border(1.dp, Hf.colors.outline, RoundedCornerShape(16.dp)).padding(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(tr("Open floating player"), color = Hf.colors.onSurface, modifier = Modifier.clickableRow { nav.push(LibraryRoutes.player(mediaId)) })
-                QuietButton(tr("Close"), { DrawerController.miniPlayerId = null })
+                Text(stringResource(R.string.drawer_float), color = Hf.colors.onSurface, modifier = Modifier.clickableRow { nav.push(LibraryRoutes.player(mediaId)) })
+                QuietButton(stringResource(R.string.ui_close), { DrawerController.miniPlayerId = null })
             }
         }
         if (!DrawerController.expanded) return@Box
@@ -122,13 +126,13 @@ fun DrawerHost() {
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(tr("Drawer"), style = Hf.type.rowTitle, color = Hf.colors.onSurface, modifier = Modifier.weight(1f))
-                QuietButton(if (side == "right") tr("Left") else tr("Right"), {
+                Text(stringResource(R.string.drawer_name), style = Hf.type.rowTitle, color = Hf.colors.onSurface, modifier = Modifier.weight(1f))
+                QuietButton(if (side == "right") stringResource(R.string.drawer_left) else stringResource(R.string.drawer_right), {
                     side = if (side == "right") "left" else "right"
                     prefs.edit().putString("drawer_side", side).apply()
                 })
-                QuietButton(tr("Minimize"), { DrawerController.collapse() })
-                IconCircleButton(HfIcons.Close, tr("Close drawer"), { DrawerController.collapse() })
+                QuietButton(stringResource(R.string.drawer_minimize), { DrawerController.collapse() })
+                IconCircleButton(HfIcons.Close, stringResource(R.string.drawer_close), { DrawerController.collapse() })
             }
             Box(
                 Modifier.fillMaxWidth().height(8.dp).background(Hf.colors.handle, RoundedCornerShape(4.dp))
@@ -142,18 +146,18 @@ fun DrawerHost() {
                     },
             )
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (busy) Note(tr("Saving the original before analysis."))
+                if (busy) Note("Saving the original before analysis.")
                 DrawerController.status?.let { Banner(it) }
-                if (item == null) Note(tr("Drop, paste or choose files. Nothing is read from the clipboard until you tap Paste."))
+                if (item == null) Note("Drop, paste or choose files. Nothing is read from the clipboard until you tap Paste.")
                 item?.let { row ->
-                    Text(row.title.ifBlank { tr("Saved") }, style = Hf.type.rowTitle, color = Hf.colors.onSurface)
-                    Note(row.summary.ifBlank { row.captureError ?: tr("Saved") })
-                    if (row.captureState != "COMPLETE") Banner(tr("Incomplete capture") + ": " + (row.captureError ?: ""), com.hellfire.ass.ui.components.Tone.Warning, HfIcons.Info)
-                    Text(tr("Saved") + " · " + row.captureState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
-                    Text(tr("Processing") + ": " + row.processingState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
-                    Text(tr("Sync") + ": " + row.syncState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
-                    Text(tr("Backup") + ": " + row.backupState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
-                    if (messages.isNotEmpty()) Text(tr("Saved") + " · " + messages.size, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+                    Text(row.title.ifBlank { stringResource(R.string.ui_saved) }, style = Hf.type.rowTitle, color = Hf.colors.onSurface)
+                    Note(row.summary.ifBlank { row.captureError ?: stringResource(R.string.ui_saved) })
+                    if (row.captureState != "COMPLETE") Banner(stringResource(R.string.drawer_incomplete) + ": " + (row.captureError ?: ""), Tone.Warning, HfIcons.Info)
+                    Text(stringResource(R.string.ui_saved) + " · " + row.captureState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+                    Text(stringResource(R.string.ui_processing) + ": " + row.processingState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+                    Text(stringResource(R.string.drawer_sync) + ": " + row.syncState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+                    Text(stringResource(R.string.ui_backup) + ": " + row.backupState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+                    if (messages.isNotEmpty()) Text(stringResource(R.string.ui_saved) + " · " + messages.size, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
                     messages.takeLast(4).forEach { Text("${it.role}: ${it.text.take(240)}", style = Hf.type.body, color = Hf.colors.onSurface) }
                     if (row.contentKind == "IMAGE") Note("QR codes are not decoded: no on-device barcode decoder is included.")
                     actions.filter { it.state in setOf("PROPOSED", "FAILED") }.distinctBy { it.actionType }.take(8).forEach { record ->
@@ -172,15 +176,15 @@ fun DrawerHost() {
                             }
                         }, enabled = !busy)
                     }
-                    if (confirm != null) Note(tr("Needs a live source").let { "Confirmation required. Tap the action again to continue. External apps are not opened until then." })
-                    SecondaryButton(tr("Universal inbox"), { nav.push(LibraryRoutes.inboxItem(row.id)) })
-                    QuietButton(tr("Clear context"), {
+                    if (confirm != null) Note(stringResource(R.string.drawer_live).let { "Confirmation required. Tap the action again to continue. External apps are not opened until then." })
+                    SecondaryButton(stringResource(R.string.drawer_inbox), { nav.push(LibraryRoutes.inboxItem(row.id)) })
+                    QuietButton(stringResource(R.string.drawer_clear), {
                         scope.launch { withContext(Dispatchers.IO) { DrawerTalk(app.database.inbox()).clear(DrawerTalk.session(row.id)) }; DrawerController.status = "Context cleared for this item. The saved item is still here." }
                     })
                 }
             }
-            HfTextField(followUp, { followUp = it.take(2000) }, tr("Follow-up"), singleLine = false, minLines = 2, enabled = !busy && inboxId != null)
-            PrimaryButton(tr("Follow-up"), {
+            HfTextField(followUp, { followUp = it.take(2000) }, stringResource(R.string.drawer_follow), singleLine = false, minLines = 2, enabled = !busy && inboxId != null)
+            PrimaryButton(stringResource(R.string.drawer_follow), {
                 val id = inboxId ?: return@PrimaryButton
                 val question = followUp.trim()
                 if (question.isBlank()) return@PrimaryButton
@@ -195,12 +199,12 @@ fun DrawerHost() {
                 }
             }, Modifier.fillMaxWidth(), enabled = !busy && inboxId != null && followUp.isNotBlank())
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SecondaryButton(tr("Paste"), {
+                SecondaryButton(stringResource(R.string.drawer_paste), {
                     val text = pasteExplicit(context)
                     if (text.isNullOrBlank()) DrawerController.status = "Clipboard is empty."
                     else scope.launch { ingest(app, listOf(DropPart.Text(text)), CaptureOrigin.DRAWER) { busy = it } }
                 }, enabled = !busy)
-                SecondaryButton(tr("Choose files"), { picker.launch(arrayOf("*/*")) }, enabled = !busy)
+                SecondaryButton(stringResource(R.string.drawer_files), { picker.launch(arrayOf("*/*")) }, enabled = !busy)
             }
         }
     }
@@ -221,7 +225,7 @@ private fun clipPart(item: ClipData.Item, context: android.content.Context): Dro
     return DropPart.Text(text.take(60_000))
 }
 
-private suspend fun ingest(app: com.hellfire.ass.HellFireApp, parts: List<DropPart>, origin: CaptureOrigin, busy: (Boolean) -> Unit) {
+private suspend fun ingest(app: HellFireApp, parts: List<DropPart>, origin: CaptureOrigin, busy: (Boolean) -> Unit) {
     busy(true)
     try {
         val outcome = withContext(Dispatchers.IO) { DrawerPipeline(app).ingest(parts, origin) }

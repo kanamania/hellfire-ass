@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.sync
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -57,7 +60,7 @@ fun SyncDashboardPage() {
                 .map { it.id to it.name }
         }
     }
-    PushedPage(tr("Sync"), breadcrumb = tr("Settings")) {
+    PushedPage(stringResource(R.string.drawer_sync), breadcrumb = stringResource(R.string.ui_settings)) {
         message?.let { Banner(it, Tone.Info, null) }
         Note("Drawer and share captures are queued when web access is on. Photos and videos found on the phone stay local until you mark them. Originals and analysis are encrypted on this phone; the server stores ciphertext and search runs only after decryption on your device.")
         KvList(listOf(
@@ -66,7 +69,7 @@ fun SyncDashboardPage() {
             "Passphrase" to if (hasPass) "Saved on this phone" else "Not set",
             "Network" to if (wifi) "Wi-Fi only" else "Any connection",
         ) + counts.map { it.state to it.count.toString() })
-        if (server == null) SecondaryButton(tr("Web access"), { nav.push(com.hellfire.ass.ui.Screen.WebAccess) }, Modifier.fillMaxWidth())
+        if (server == null) SecondaryButton(stringResource(R.string.ui_web_access), { nav.push(Screen.WebAccess) }, Modifier.fillMaxWidth())
         SectionCard("Passphrase") {
             HfTextField(passphrase, { passphrase = it }, "Library passphrase", password = true, supporting = "At least 12 characters. It never leaves this phone. The website asks for the same passphrase to decrypt.")
             PrimaryButton("Save passphrase", {

@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.drawer
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -25,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.hellfire.ass.library.ItemCategory
 
 @Composable
 fun UniversalInboxPage() {
@@ -71,52 +75,52 @@ fun UniversalInboxPage() {
         "Title" -> items.sortedBy { it.title.lowercase() }
         else -> items.sortedByDescending { it.capturedAt }
     }
-    PushedPage(tr("Universal inbox"), breadcrumb = tr("Inbox")) {
-        HfTextField(query, { query = it }, tr("Search drawer"))
+    PushedPage(stringResource(R.string.drawer_inbox), breadcrumb = stringResource(R.string.ui_inbox)) {
+        HfTextField(query, { query = it }, stringResource(R.string.drawer_search))
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("Recent", "Favorites", "Archived", "Trash").forEach { name ->
-                SecondaryButton(tr(name), { filter = name })
+                SecondaryButton(when (name) { "Recent" -> stringResource(R.string.ui_recent); "Favorites" -> stringResource(R.string.ui_favorites); else -> name }, { filter = name })
             }
         }
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("Newest", "Oldest", "Title").forEach { name -> SecondaryButton(name, { sort = name }) }
         }
         if (categories.isNotEmpty()) {
-            Text(tr("Categories"), style = Hf.type.label, color = Hf.colors.muted)
+            Text(stringResource(R.string.ui_categories), style = Hf.type.label, color = Hf.colors.muted)
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SecondaryButton(tr("Recent"), { category = "" })
+                SecondaryButton(stringResource(R.string.ui_recent), { category = "" })
                 categories.take(12).forEach { cat -> SecondaryButton(cat.name, { category = cat.id }) }
             }
         }
         if (collections.isNotEmpty()) {
-            Text(tr("Collections"), style = Hf.type.label, color = Hf.colors.muted)
+            Text(stringResource(R.string.ui_collections), style = Hf.type.label, color = Hf.colors.muted)
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SecondaryButton(tr("Recent"), { collection = "" })
+                SecondaryButton(stringResource(R.string.ui_recent), { collection = "" })
                 collections.take(12).forEach { col -> SecondaryButton(col.name, { collection = col.id }) }
             }
         }
         message?.let { Banner(it) }
         if (filter == "Trash" && shown.isNotEmpty()) {
-            if (!confirmEmpty) SecondaryButton(tr("Empty trash"), { confirmEmpty = true })
+            if (!confirmEmpty) SecondaryButton("Empty trash", { confirmEmpty = true })
             else {
                 Note("Permanently delete every item in the trash? Their conversations, action history and saved places are removed. Originals still used by another inbox item, a collection or the library are kept. This cannot be undone.")
-                PrimaryButton(tr("Empty trash"), {
+                PrimaryButton("Empty trash", {
                     scope.launch {
                         val result = withContext(Dispatchers.IO) { runCatching { DrawerInbox.emptyTrash(app) } }
                         message = result.exceptionOrNull()?.let { "Some items could not be deleted: ${it.message.orEmpty()}" } ?: "Deleted ${result.getOrNull()} items."
                         confirmEmpty = false; refresh++
                     }
                 })
-                QuietButton(tr("Cancel"), { confirmEmpty = false })
+                QuietButton(stringResource(R.string.ui_cancel), { confirmEmpty = false })
             }
         }
-        if (shown.isEmpty()) Note(tr("Saved drops, files and shares"))
+        if (shown.isEmpty()) Note(stringResource(R.string.drawer_saved))
         shown.forEach { row ->
             ListRow((if (row.favorite) "★ " else "") + row.title.ifBlank { row.contentKind }, subtitle = listOf(row.captureState, row.processingState, row.syncState, row.backupState).joinToString(" · "), chevron = true) {
                 nav.push(LibraryRoutes.inboxItem(row.id))
             }
         }
-        QuietButton(tr("Drawer"), { DrawerController.expanded = true })
+        QuietButton(stringResource(R.string.drawer_name), { DrawerController.expanded = true })
     }
 }
 
@@ -137,28 +141,28 @@ fun InboxItemPage(id: String) {
     var kept by remember { mutableStateOf<Int?>(null) }
     val categories by app.database.library().categories().collectAsStateWithLifecycle(emptyList())
     val collections by app.database.library().collections(listOf("COLLECTION", "ALBUM")).collectAsStateWithLifecycle(emptyList())
-    PushedPage(item?.title?.ifBlank { tr("Universal inbox") } ?: tr("Universal inbox"), breadcrumb = tr("Inbox")) {
+    PushedPage(item?.title?.ifBlank { stringResource(R.string.drawer_inbox) } ?: stringResource(R.string.drawer_inbox), breadcrumb = stringResource(R.string.ui_inbox)) {
         message?.let { Banner(it) }
         val row = item
         if (row == null) {
             Note("This saved item is not on this phone.")
             return@PushedPage
         }
-        if (row.captureState != "COMPLETE") Banner(tr("Incomplete capture") + ": " + (row.captureError ?: "The original was not fully saved."), Tone.Warning)
+        if (row.captureState != "COMPLETE") Banner(stringResource(R.string.drawer_incomplete) + ": " + (row.captureError ?: "The original was not fully saved."), Tone.Warning)
         Note(row.summary.ifBlank { "No summary yet." })
-        SecondaryButton(if (row.favorite) "★ " + tr("Remove from favorites") else "☆ " + tr("Add to favorites"), {
+        SecondaryButton(if (row.favorite) "★ " + "Remove from favorites" else "☆ " + "Add to favorites", {
             scope.launch { withContext(Dispatchers.IO) { DrawerInbox.setFavorite(app, id, !row.favorite) } }
         })
-        Text(tr("Processing") + ": " + row.processingState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
-        Text(tr("Sync") + ": " + row.syncState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
-        Text(tr("Backup") + ": " + row.backupState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+        Text(stringResource(R.string.ui_processing) + ": " + row.processingState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+        Text(stringResource(R.string.drawer_sync) + ": " + row.syncState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+        Text(stringResource(R.string.ui_backup) + ": " + row.backupState, style = Hf.type.rowSubtitle, color = Hf.colors.muted)
         contents.forEach { media ->
             ListRow(media.name, subtitle = "${media.contentKind} · ${media.mime}", chevron = media.contentKind == "VIDEO" || media.contentKind == "AUDIO") {
                 if (media.contentKind == "VIDEO" || media.contentKind == "AUDIO") nav.push(LibraryRoutes.player(media.id))
             }
         }
-        HfTextField(notes, { notes = it.take(4000) }, "Notes", singleLine = false, minLines = 2)
-        SecondaryButton(tr("Saved"), {
+        HfTextField(notes, { notes = it.take(4000) }, stringResource(R.string.ui_notes), singleLine = false, minLines = 2)
+        SecondaryButton(stringResource(R.string.ui_saved), {
             scope.launch {
                 withContext(Dispatchers.IO) { app.database.inbox().saveEdits(row.copy(notes = notes, updatedAt = System.currentTimeMillis())) }
                 message = "Notes saved."
@@ -166,18 +170,18 @@ fun InboxItemPage(id: String) {
         })
         val target = contents.firstOrNull()
         if (target != null && categories.isNotEmpty()) {
-            Text(tr("Categories"), style = Hf.type.label, color = Hf.colors.muted)
+            Text(stringResource(R.string.ui_categories), style = Hf.type.label, color = Hf.colors.muted)
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 categories.take(30).forEach { cat -> SecondaryButton(cat.name, {
                     scope.launch {
-                        withContext(Dispatchers.IO) { contents.forEach { media -> app.database.library().setCategory(com.hellfire.ass.library.ItemCategory(media.id, cat.id, "USER", updatedAt = System.currentTimeMillis())) } }
+                        withContext(Dispatchers.IO) { contents.forEach { media -> app.database.library().setCategory(ItemCategory(media.id, cat.id, "USER", updatedAt = System.currentTimeMillis())) } }
                         message = "Assigned to ${cat.name}."
                     }
                 }) }
             }
         }
         if (target != null && collections.isNotEmpty()) {
-            Text(tr("Collections"), style = Hf.type.label, color = Hf.colors.muted)
+            Text(stringResource(R.string.ui_collections), style = Hf.type.label, color = Hf.colors.muted)
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 collections.take(30).forEach { col -> SecondaryButton(col.name, {
                     scope.launch {
@@ -188,10 +192,10 @@ fun InboxItemPage(id: String) {
             }
         }
         if (row.contentKind == "IMAGE") Note("QR codes are not decoded: no on-device barcode decoder is included.")
-        Text(tr("Follow-up"), style = Hf.type.label, color = Hf.colors.muted)
+        Text(stringResource(R.string.drawer_follow), style = Hf.type.label, color = Hf.colors.muted)
         messages.forEach { Text("${it.role}: ${it.text.take(500)}", style = Hf.type.body, color = Hf.colors.onSurface) }
-        HfTextField(question, { question = it.take(2000) }, tr("Follow-up"), singleLine = false, minLines = 2, enabled = !asking)
-        PrimaryButton(tr("Follow-up"), {
+        HfTextField(question, { question = it.take(2000) }, stringResource(R.string.drawer_follow), singleLine = false, minLines = 2, enabled = !asking)
+        PrimaryButton(stringResource(R.string.drawer_follow), {
             val asked = question.trim()
             asking = true
             scope.launch {
@@ -202,7 +206,7 @@ fun InboxItemPage(id: String) {
             }
         }, Modifier.fillMaxWidth(), enabled = !asking && question.isNotBlank())
         if (!DrawerAi.available(app)) Note(DrawerAi.NOT_INSTALLED)
-        QuietButton(tr("Clear context"), {
+        QuietButton(stringResource(R.string.drawer_clear), {
             scope.launch {
                 withContext(Dispatchers.IO) { DrawerTalk(app.database.inbox()).clear(DrawerTalk.session(id)) }
                 message = "Context cleared. The saved item is still here."
@@ -211,28 +215,28 @@ fun InboxItemPage(id: String) {
         Text("Actions", style = Hf.type.label, color = Hf.colors.muted)
         actions.forEach { Text("${it.label}: ${it.state}" + (it.result?.let { result -> " · $result" } ?: ""), style = Hf.type.rowSubtitle, color = Hf.colors.muted) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (row.lifecycle == "TRASHED") SecondaryButton(tr("Restore"), { scope.launch { withContext(Dispatchers.IO) { DrawerInbox.restore(app, id) } } })
+            if (row.lifecycle == "TRASHED") SecondaryButton(stringResource(R.string.drawer_restore), { scope.launch { withContext(Dispatchers.IO) { DrawerInbox.restore(app, id) } } })
             else {
-                SecondaryButton(tr("Archive"), { scope.launch { withContext(Dispatchers.IO) { DrawerInbox.archive(app, id) } } })
-                SecondaryButton(tr("Move to trash"), { scope.launch { withContext(Dispatchers.IO) { DrawerInbox.trash(app, id) } } })
+                SecondaryButton(stringResource(R.string.drawer_archive), { scope.launch { withContext(Dispatchers.IO) { DrawerInbox.archive(app, id) } } })
+                SecondaryButton(stringResource(R.string.drawer_trash), { scope.launch { withContext(Dispatchers.IO) { DrawerInbox.trash(app, id) } } })
             }
         }
-        if (!confirmDelete) SecondaryButton(tr("Delete permanently"), {
+        if (!confirmDelete) SecondaryButton(stringResource(R.string.drawer_delete), {
             confirmDelete = true
             scope.launch { kept = withContext(Dispatchers.IO) { contents.size - DrawerInbox.deletableOriginals(app, id).size } }
         })
         else {
             Note("Permanently delete this item, its conversation, action history and places saved from it? This cannot be undone." +
                 (kept?.takeIf { it > 0 }?.let { " $it original(s) are also used by another inbox item, a collection or the library and will be kept there." } ?: ""))
-            PrimaryButton(tr("Delete permanently"), {
+            PrimaryButton(stringResource(R.string.drawer_delete), {
                 scope.launch {
                     val result = withContext(Dispatchers.IO) { runCatching { DrawerInbox.deletePermanently(app, id) } }
                     message = result.exceptionOrNull()?.message ?: "Deleted."
                     if (result.isSuccess) nav.pop()
                 }
             })
-            QuietButton(tr("Close"), { confirmDelete = false })
+            QuietButton(stringResource(R.string.ui_close), { confirmDelete = false })
         }
-        SecondaryButton(tr("Drawer"), { DrawerController.show(id) })
+        SecondaryButton(stringResource(R.string.drawer_name), { DrawerController.show(id) })
     }
 }

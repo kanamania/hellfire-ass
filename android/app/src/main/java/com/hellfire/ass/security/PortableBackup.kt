@@ -15,6 +15,16 @@ import java.io.*
 import java.security.*
 import java.util.*
 import java.util.zip.*
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.audio.MicrophoneStatus
+import com.hellfire.ass.communications.Accounts
+import com.hellfire.ass.contacts.ContactSchema
+import com.hellfire.ass.data.SearchBackfill
+import com.hellfire.ass.drawer.DrawerInbox
+import com.hellfire.ass.library.LibrarySchema
+import com.hellfire.ass.sms.SmsCaptureSettings
+import com.hellfire.ass.tasks.TaskScheduler
+
 
 class PortableBackup(
     private val app: HellFireApp,
@@ -41,14 +51,14 @@ class PortableBackup(
     }
     private suspend fun export(password: CharArray, incremental: Boolean, destinationRef: String, commit: Boolean,
         readBack: () -> InputStream, destination: () -> OutputStream): BackupOutcome = withContext(Dispatchers.IO) {
-        require(!com.hellfire.ass.audio.MicrophoneStatus.busy.value) { "Stop microphone recording first" }
+        require(!MicrophoneStatus.busy.value) { "Stop microphone recording first" }
         val archiveId = UUID.randomUUID().toString()
         val salt = SecureRandom().generateSeed(16)
         val encrypted = File(app.noBackupFilesDir, "backup-${UUID.randomUUID()}.hfm")
         var portable: PayloadCipher? = null
         try {
             // Rows of permanently deleted drawer items must not be carried into a new archive.
-            com.hellfire.ass.drawer.DrawerInbox.purgeDeletedRows(app)
+            DrawerInbox.purgeDeletedRows(app)
             var planned: BackupPlan? = null
             var previous = emptySet<String>()
             var baseId: String? = null
@@ -146,7 +156,7 @@ class PortableBackup(
         restore(password, verifyOnly = true) { app.contentResolver.openInputStream(uri) ?: error("Backup unavailable") }
     private suspend fun restore(password: CharArray, verifyOnly: Boolean = false, parents: List<() -> InputStream> = emptyList(), selection: BackupSelection? = null, source: () -> InputStream): RestoreReport = withContext(Dispatchers.IO) {
         if (!verifyOnly && selection == null) checkRestoreAllowed()
-        else if (!verifyOnly) require(!com.hellfire.ass.audio.MicrophoneStatus.busy.value) { "Stop microphone recording first" }
+        else if (!verifyOnly) require(!MicrophoneStatus.busy.value) { "Stop microphone recording first" }
         val parentPassword = if (parents.isNotEmpty()) password.copyOf() else null
         val stageId = "restore-${UUID.randomUUID()}"
         val folder = File(app.noBackupFilesDir, stageId).apply { mkdirs() }
@@ -216,8 +226,8 @@ class PortableBackup(
                     require(zip.nextEntry == null) { "Unexpected backup data" }
                 }
             }
-            com.hellfire.ass.contacts.ContactSchema.backfill(db.openHelper.writableDatabase)
-            com.hellfire.ass.library.LibrarySchema.backfill(db.openHelper.writableDatabase)
+            ContactSchema.backfill(db.openHelper.writableDatabase)
+            LibrarySchema.backfill(db.openHelper.writableDatabase)
             val missing = db.media().all().filter { it.id in unavailable }.map { it.name }
             if (verifyOnly) {
                 app.getSharedPreferences("ui", 0).edit().putLong("last_backup_verified_at", System.currentTimeMillis()).apply()
@@ -275,10 +285,10 @@ class PortableBackup(
                     app.secrets.remove("restore-journal")
                 } }
                 if (format2) applySettings(manifestJson)
-                runCatching { com.hellfire.ass.tasks.TaskScheduler.restore(app) }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }
-                runCatching { MediaWork.recover(app) }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }
-                runCatching { com.hellfire.ass.data.SearchBackfill.reset(app) }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }
-                runCatching { app.database.library().rebuildSearch() }.onFailure { com.hellfire.ass.Diagnostics.warn(it) }
+                runCatching { TaskScheduler.restore(app) }.onFailure { Diagnostics.warn(it) }
+                runCatching { MediaWork.recover(app) }.onFailure { Diagnostics.warn(it) }
+                runCatching { SearchBackfill.reset(app) }.onFailure { Diagnostics.warn(it) }
+                runCatching { app.database.library().rebuildSearch() }.onFailure { Diagnostics.warn(it) }
             }
             RestoreReport(moved.size, missing)
         } finally {
@@ -291,10 +301,10 @@ class PortableBackup(
         }
     }
     suspend fun checkRestoreAllowed() = withContext(Dispatchers.IO) {
-        require(!com.hellfire.ass.audio.MicrophoneStatus.busy.value)
-        require(!com.hellfire.ass.sms.SmsCaptureSettings.enabled(app)) { "Disable SMS capture before restore" }
+        require(!MicrophoneStatus.busy.value)
+        require(!SmsCaptureSettings.enabled(app)) { "Disable SMS capture before restore" }
         require(!androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(app).contains(app.packageName)) { "Disable notification access before restore" }
-        require(!com.hellfire.ass.communications.Accounts.any(app.secrets)) { "Disconnect email and WhatsApp accounts before restore" }
+        require(!Accounts.any(app.secrets)) { "Disconnect email and WhatsApp accounts before restore" }
         requireEmpty()
     }
     private suspend fun requireEmpty() {
@@ -302,22 +312,6 @@ class PortableBackup(
         for (table in BackupTables.tables.filterNot { it in setOf("capture_audit", "notification_policy", "daily_review") }) {
             db.query("SELECT COUNT(*) FROM $table").use { require(it.moveToFirst() && it.getLong(0) == 0L) { "Restore requires an empty local database; existing data is never replaced" } }
         }
-    }
-    private fun readSmall(input: InputStream): String {
-        val output = ByteArrayOutputStream(); val buffer = ByteArray(8192)
-        while (true) { val count = input.read(buffer); if (count < 0) break; require(output.size() + count <= 8 * 1024 * 1024); output.write(buffer, 0, count) }
-        return output.toString(Charsets.UTF_8.name())
-    }
-    private suspend fun copyBounded(input: InputStream, output: OutputStream, maximum: Long) {
-        val buffer = ByteArray(65536); var count = 0L
-        try { while (true) { currentCoroutineContext().ensureActive(); val n = input.read(buffer); if (n < 0) break
-            require(n > 0); count += n; require(count <= maximum); output.write(buffer, 0, n) }
-        } finally { buffer.fill(0) }
-    }
-    private class NonClosingInput(input: InputStream) : FilterInputStream(input) { override fun close() {} }
-    private class Discard : OutputStream() {
-        override fun write(b: Int) {}
-        override fun write(bytes: ByteArray, off: Int, len: Int) {}
     }
 
     private suspend fun writeFormat2(zip: ZipOutputStream, id: String, plan: BackupPlan, media: List<MediaItem>, baseId: String?) {
@@ -503,11 +497,6 @@ class PortableBackup(
         return items
     }
 
-    private fun discard(input: InputStream) {
-        val buffer = ByteArray(65536)
-        while (input.read(buffer) >= 0) {}
-    }
-
     private suspend fun record(id: String, plan: BackupPlan, verified: Set<String>, previously: Set<String>, baseId: String?, archiveHash: String, destinationRef: String, destination: String) {
         val now = System.currentTimeMillis()
         val backed = BackupPlanner.backedUpIds(plan, verified, previously)
@@ -634,52 +623,4 @@ class PortableBackup(
         }
     }
 
-    /** Sequential reader for the ChunkedMedia layout, for archives that are only available as a stream. */
-    private class SequentialChunks(private val input: DataInputStream, private val cipher: PayloadCipher) : InputStream() {
-        private val id: String
-        private val size: Long
-        private var index = 0
-        private var done = 0L
-        private var chunk = ByteArray(0)
-        private var position = 0
-        init {
-            val magic = ByteArray(9); input.readFully(magic)
-            require(magic.contentEquals("HFAMEDIA2".toByteArray(Charsets.US_ASCII))) { "Unsupported backup format" }
-            id = UUID(input.readLong(), input.readLong()).toString()
-            input.readInt()
-            require(input.readInt() == ChunkedMedia.CHUNK)
-            size = input.readLong()
-            require(size in 0..BackupReadiness.MAX_ARCHIVE) { "Incomplete backup" }
-        }
-        override fun read(): Int { val one = ByteArray(1); return if (read(one, 0, 1) < 0) -1 else one[0].toInt() and 255 }
-        override fun read(b: ByteArray, off: Int, len: Int): Int {
-            if (len == 0) return 0
-            if (position == chunk.size) {
-                if (done >= size) return -1
-                val plain = input.readInt()
-                require(plain == minOf(ChunkedMedia.CHUNK.toLong(), size - done).toInt()) { "Corrupt backup chunk" }
-                val envelope = ByteArray(plain + 29); input.readFully(envelope)
-                chunk.fill(0)
-                chunk = cipher.decrypt(envelope, ChunkedMedia.aad(id, index, plain))
-                index++; done += plain; position = 0
-            }
-            val count = minOf(len, chunk.size - position)
-            chunk.copyInto(b, off, position, position + count)
-            position += count
-            return count
-        }
-        override fun close() { chunk.fill(0); input.close() }
-    }
-
-    private fun hashCopy(file: File, output: OutputStream): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        file.inputStream().use { input ->
-            val buffer = ByteArray(65536)
-            while (true) {
-                val n = input.read(buffer); if (n < 0) break
-                digest.update(buffer, 0, n); output.write(buffer, 0, n)
-            }
-        }
-        return digest.digest().joinToString("") { "%02x".format(it) }
-    }
 }

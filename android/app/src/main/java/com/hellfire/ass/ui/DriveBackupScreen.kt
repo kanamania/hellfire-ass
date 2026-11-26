@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import android.accounts.AccountManager
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -30,6 +33,7 @@ import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import java.io.File
 import java.util.UUID
+import com.hellfire.ass.Diagnostics
 
 @Composable
 fun DriveBackupScreen(app: HellFireApp) {
@@ -57,20 +61,20 @@ fun DriveBackupScreen(app: HellFireApp) {
             dailyAccount = config?.optString("account").orEmpty()
             if (config != null) keep = config.optInt("keep", DriveBackupWork.DEFAULT_KEEP)
             if (account.isBlank()) account = config?.optString("account").orEmpty()
-        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); message = "Saved Drive settings unavailable. Reconnect to configure backups." }
+        } catch (caught: Exception) { Diagnostics.warn(caught); message = "Saved Drive settings unavailable. Reconnect to configure backups." }
     }
     fun authorized(result: com.google.android.gms.auth.api.identity.AuthorizationResult) {
         try {
             token = DriveAuthorization.token(result)
             message = "Google Drive authorized. Enter a passphrase to enable daily uploads, or find backups to restore."
-        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); token = null; message = "Google Drive access was not granted. Connect again when ready." }
+        } catch (caught: Exception) { Diagnostics.warn(caught); token = null; message = "Google Drive access was not granted. Connect again when ready." }
         busy = false
     }
     val consent = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
         try {
             if (result.resultCode == Activity.RESULT_OK) authorized(Identity.getAuthorizationClient(context).getAuthorizationResultFromIntent(result.data))
             else { busy = false; token = null; message = "Google Drive connection cancelled." }
-        } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); busy = false; token = null; message = "Google authorization failed. Check Google Play services and OAuth setup." }
+        } catch (caught: Exception) { Diagnostics.warn(caught); busy = false; token = null; message = "Google authorization failed. Check Google Play services and OAuth setup." }
     }
     val chooser = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val email = result.data?.getStringExtra(AccountManager.KEY_ACCOUNT_NAME)
@@ -82,7 +86,7 @@ fun DriveBackupScreen(app: HellFireApp) {
                     if (authorization.hasResolution()) consent.launch(IntentSenderRequest.Builder(requireNotNull(authorization.pendingIntent)).build())
                     else authorized(authorization)
                 } catch (e: CancellationException) { busy = false; throw e }
-                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); busy = false; message = "Google authorization failed. Check Play services, network and the app’s registered signing certificate." }
+                catch (caught: Exception) { Diagnostics.warn(caught); busy = false; message = "Google authorization failed. Check Play services, network and the app’s registered signing certificate." }
             }
         } else message = "Google account selection cancelled."
     }
@@ -100,7 +104,7 @@ fun DriveBackupScreen(app: HellFireApp) {
                     if (option == 0) "All backups are kept. Delete old ones in Drive when storage runs low."
                     else "After each confirmed upload, HellFire deletes its own older backups beyond the newest $option."
                 } catch (e: CancellationException) { throw e }
-                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Could not save the retention setting." }
+                catch (caught: Exception) { Diagnostics.warn(caught); "Could not save the retention setting." }
             }
         }, label = { Text(if (option == 0) "All" else "$option") })
     }
@@ -108,7 +112,7 @@ fun DriveBackupScreen(app: HellFireApp) {
     Text("Google account: ${account.ifBlank { "not connected" }}")
     OutlinedButton(enabled = !busy, onClick = {
         try { chooser.launch(AccountManager.newChooseAccountIntent(null, null, arrayOf("com.google"), null, null, null, null)) }
-        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); message = "Google account chooser unavailable. This device needs Google Play services and a Google account." }
+        catch (caught: Exception) { Diagnostics.warn(caught); message = "Google account chooser unavailable. This device needs Google Play services and a Google account." }
     }) { Text("Connect / reconnect Google Drive…") }
     OutlinedTextField(passphrase, { passphrase = it }, modifier = Modifier.fillMaxWidth(),
         label = { Text("Drive backup / restore passphrase · 12–1024 characters") },
@@ -125,7 +129,7 @@ fun DriveBackupScreen(app: HellFireApp) {
                 }
                 enabled = true; dailyAccount = account; message = "Daily backups enabled. First backup queued under Wi-Fi, battery and storage conditions."
             } catch (e: CancellationException) { throw e }
-            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); message = "Could not enable daily backups. Check encrypted storage and try again." }
+            catch (caught: Exception) { Diagnostics.warn(caught); message = "Could not enable daily backups. Check encrypted storage and try again." }
             finally { busy = false }
         }
     }) { Text("Enable daily encrypted backups") }
@@ -142,7 +146,7 @@ fun DriveBackupScreen(app: HellFireApp) {
                     enabled = false; status = DriveBackupWork.readStatus(app)
                     message = "Daily uploads stopped and saved passphrase removed. Existing Drive files retained."
                 } catch (e: CancellationException) { throw e }
-                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); message = "Could not disable backup. Try again before leaving this screen." }
+                catch (caught: Exception) { Diagnostics.warn(caught); message = "Could not disable backup. Try again before leaving this screen." }
                 finally { busy = false }
             }
         }) { Text("Disable daily backups") }
@@ -155,7 +159,7 @@ fun DriveBackupScreen(app: HellFireApp) {
                 message = if (snapshots.isEmpty()) "No HellFire backups found for this Google account and app registration." else "Showing up to 100 newest backups. Select one to restore."
             } catch (e: CancellationException) { throw e }
             catch (_: DriveReconnectRequired) { token = null; message = "Reconnect Google Drive to list backups." }
-            catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); message = "Could not list Drive backups. Check connection, Google setup or reconnect." }
+            catch (caught: Exception) { Diagnostics.warn(caught); message = "Could not list Drive backups. Check connection, Google setup or reconnect." }
             finally { busy = false; status = DriveBackupWork.readStatus(app) }
         }
     }) { Text("Find Google Drive backups to restore") }
@@ -204,10 +208,10 @@ fun DriveBackupScreen(app: HellFireApp) {
                             " Regrant permissions and reconnect accounts as needed."
                     } catch (e: CancellationException) { throw e }
                     catch (_: DriveReconnectRequired) { token = null; message = "Reconnect Google Drive and try restore again." }
-                    catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); message = "Restore failed: check passphrase, empty local database, disconnected capture/accounts and free space. Existing local data retained." }
+                    catch (caught: Exception) { Diagnostics.warn(caught); message = "Restore failed: check passphrase, empty local database, disconnected capture/accounts and free space. Existing local data retained." }
                     finally { password.fill('\u0000'); file.delete(); extra.forEach { it.delete() }; busy = false }
                 }
             }) { Text("Download and restore") } },
-            dismissButton = { TextButton(onClick = { restore = null }) { Text(com.hellfire.ass.ui.tr("Cancel")) } })
+            dismissButton = { TextButton(onClick = { restore = null }) { Text(stringResource(R.string.ui_cancel)) } })
     }
 }

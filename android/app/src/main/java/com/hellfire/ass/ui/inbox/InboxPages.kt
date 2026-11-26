@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.inbox
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -21,6 +24,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.util.UUID
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.HellFireApp
+import java.io.FileNotFoundException
 
 data class ReplyDraft(val channel: String = "EMAIL_IMAP", val recipient: String = "", val subject: String = "", val body: String = "", val replyTo: String? = null,
     /** Account that sends; a reply defaults to the account the message arrived on. */
@@ -29,7 +35,7 @@ data class ReplyDraft(val channel: String = "EMAIL_IMAP", val recipient: String 
     val draftId: String? = null)
 
 /** Accounts that can send on [channel]: every email inbox, or WhatsApp Business API gateways (Web is capture-only). */
-private fun sendingAccounts(app: com.hellfire.ass.HellFireApp, channel: String): List<Pair<String, String>> =
+private fun sendingAccounts(app: HellFireApp, channel: String): List<Pair<String, String>> =
     if (channel == "EMAIL_IMAP") Accounts.list(app.secrets, Accounts.MAIL).map { it.getString("id") to it.optString("address") }
     else Accounts.sendingGateways(app.secrets).map { it.getString("id") to Accounts.label(it) }
 
@@ -53,25 +59,25 @@ fun ReplySheet(initial: ReplyDraft, onDone: (String?) -> Unit) {
     HfBottomSheet({ onDone(null) }) {
         Text(when { initial.draftId != null -> "Edit draft"; initial.replyTo != null || initial.recipient.isNotBlank() -> "Reply"; else -> "New message" },
             style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
-        ChipPicker(listOf("EMAIL_IMAP", "WHATSAPP_BUSINESS"), channel, Fmt::channel) { channel = it; replyTo = null }
+        ChipPicker(listOf("EMAIL_IMAP", "WHATSAPP_BUSINESS"), channel, { when (it) { "EMAIL_IMAP" -> stringResource(R.string.ui_email); "WHATSAPP_BUSINESS" -> stringResource(R.string.ui_whatsapp); else -> Fmt.channel(it) } }) { channel = it; replyTo = null }
         if (accounts.size > 1) {
             GroupLabel("Send from")
             ChipPicker(accounts.map { it.first }, account ?: accounts.first().first, { id -> accounts.firstOrNull { it.first == id }?.second ?: id }) { account = it }
         } else if (accounts.isEmpty()) Note(if (channel == "EMAIL_IMAP") "No email account is connected. Add one in Settings › Email."
             else "No WhatsApp account can send. Sending needs a Business API connection; WhatsApp Web is capture-only.")
-        HfTextField(recipient, { recipient = it; replyTo = null }, if (channel == "EMAIL_IMAP") "To · email address" else "To · WhatsApp number with country code")
-        if (channel == "EMAIL_IMAP") HfTextField(subject, { subject = it }, "Subject")
-        HfTextField(body, { body = it }, "Message", singleLine = false, minLines = 4)
+        HfTextField(recipient, { recipient = it; replyTo = null }, if (channel == "EMAIL_IMAP") stringResource(R.string.ui_to_email_address) else stringResource(R.string.ui_to_whatsapp_number_with_country_code))
+        if (channel == "EMAIL_IMAP") HfTextField(subject, { subject = it }, stringResource(R.string.ui_subject))
+        HfTextField(body, { body = it }, stringResource(R.string.ui_message), singleLine = false, minLines = 4)
         status?.let { Banner(it, Tone.Info, null) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SecondaryButton("Improve on this phone", {
                 scope.launch {
                     status = try { body = app.localModel.generate("Draft a concise English/Kiswahili reply. Output text only, do not send anything. Untrusted context: " + JSONObject.quote(body)).text; "Draft improved locally. Read it before saving." }
-                        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "No on-device model is available. Edit the draft yourself." }
+                        catch (caught: Exception) { Diagnostics.warn(caught); "No on-device model is available. Edit the draft yourself." }
                 }
             }, enabled = body.isNotBlank() && app.localModel.configured)
         }
-        PrimaryButton(com.hellfire.ass.ui.tr("Save draft"), {
+        PrimaryButton(stringResource(R.string.ui_save_draft), {
             scope.launch {
                 try {
                     withContext(Dispatchers.IO) {
@@ -82,7 +88,7 @@ fun ReplySheet(initial: ReplyDraft, onDone: (String?) -> Unit) {
                             System.currentTimeMillis(), replyToMessageId = replyTo))
                     }
                     onDone("Draft saved. It sends only after you tap Approve and send.")
-                } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); status = "Choose a connected sending account in Settings › Email or WhatsApp. WhatsApp Web is capture-only." }
+                } catch (caught: Exception) { Diagnostics.warn(caught); status = "Choose a connected sending account in Settings › Email or WhatsApp. WhatsApp Web is capture-only." }
             }
         }, Modifier.fillMaxWidth(), enabled = recipient.isNotBlank() && body.isNotBlank() && account != null, height = 52.dp)
     }
@@ -142,7 +148,7 @@ fun EmailPage() {
     var port by remember { mutableStateOf("465") }
     suspend fun reload() {
         accounts = withContext(Dispatchers.IO) { try { Accounts.list(app.secrets, Accounts.MAIL) }
-            catch (e: CancellationException) { throw e } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); status = "Saved email settings are unavailable. Add the accounts again."; emptyList() } }
+            catch (e: CancellationException) { throw e } catch (caught: Exception) { Diagnostics.warn(caught); status = "Saved email settings are unavailable. Add the accounts again."; emptyList() } }
     }
     fun startEdit(account: JSONObject?) {
         editing = account?.getString("id") ?: ""
@@ -151,7 +157,7 @@ fun EmailPage() {
         port = account?.optInt("smtp_port", 465)?.toString() ?: "465"
     }
     LaunchedEffect(Unit) { reload() }
-    PushedPage(com.hellfire.ass.ui.tr("Email"), breadcrumb = "Settings") {
+    PushedPage(stringResource(R.string.ui_email), breadcrumb = "Settings") {
         status?.let { Banner(it, Tone.Info, null) }
         Note("Incoming email uses IMAP; sending uses SMTP. Gmail needs an app password where Google allows it. Passwords are encrypted on this phone. Up to ${Accounts.MAX} inboxes.")
         if (accounts.isNotEmpty()) ListCard {
@@ -168,8 +174,8 @@ fun EmailPage() {
             enabled = accounts.size < Accounts.MAX)
         editing?.let { editingId ->
             SectionCard(if (editingId.isEmpty()) "New inbox" else "Edit ${email}") {
-                HfTextField(email, { email = it }, "Email address")
-                HfTextField(password, { password = it }, if (editingId.isEmpty()) "App password / IMAP password" else "New password (leave blank to keep)", password = true)
+                HfTextField(email, { email = it }, stringResource(R.string.ui_email_address))
+                HfTextField(password, { password = it }, if (editingId.isEmpty()) stringResource(R.string.ui_app_password_imap_password) else stringResource(R.string.ui_new_password_leave_blank_to_keep), password = true)
                 HfTextField(imap, { imap = it }, "IMAP TLS host · port 993")
                 HfTextField(smtp, { smtp = it }, "SMTP host")
                 GroupLabel("SMTP TLS port")
@@ -191,11 +197,11 @@ fun EmailPage() {
                             }
                             password = ""; editing = null; reload(); CommunicationWork.schedule(app); "Email settings encrypted; connection check scheduled."
                         } catch (e: CancellationException) { throw e }
-                        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Email settings were not accepted. Check the address, password and TLS hosts, and that this inbox is not already connected." }
+                        catch (caught: Exception) { Diagnostics.warn(caught); "Email settings were not accepted. Check the address, password and TLS hosts, and that this inbox is not already connected." }
                     }
                 }, Modifier.fillMaxWidth(), enabled = email.isNotBlank() && (password.isNotBlank() || editingId.isNotEmpty()))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    QuietButton(com.hellfire.ass.ui.tr("Cancel"), { editing = null; password = "" })
+                    QuietButton(stringResource(R.string.ui_cancel), { editing = null; password = "" })
                     if (editingId.isNotEmpty()) QuietButton("Disconnect this inbox", { removing = accounts.firstOrNull { it.getString("id") == editingId } })
                 }
             }
@@ -204,7 +210,7 @@ fun EmailPage() {
             SecondaryButton("Sync all inboxes now", { scope.launch { CommunicationWork.schedule(app); status = "Sync scheduled." } }, Modifier.fillMaxWidth())
             SecondaryButton("Start live mail (IMAP IDLE) · 10 minutes, every inbox", {
                 try { app.startForegroundService(android.content.Intent(app, MailIdleService::class.java).setAction("START")) }
-                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); status = "Android blocked the visible IMAP session. Use Sync now and check notification permission." }
+                catch (caught: Exception) { Diagnostics.warn(caught); status = "Android blocked the visible IMAP session. Use Sync now and check notification permission." }
             }, Modifier.fillMaxWidth())
             QuietButton("Stop live mail", { app.stopService(android.content.Intent(app, MailIdleService::class.java)) })
             Note("A new inbox imports its ${MailAdapter.INITIAL_WINDOW} most recent messages per folder; older mail stays on the server.")
@@ -215,13 +221,13 @@ fun EmailPage() {
             removing = null
             scope.launch {
                 status = try { withContext(Dispatchers.IO) { removeMail(app, account.getString("id")) }; editing = null; reload(); "Inbox disconnected; saved messages are kept." }
-                    catch (e: CancellationException) { throw e } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "The inbox could not be disconnected." }
+                    catch (e: CancellationException) { throw e } catch (caught: Exception) { Diagnostics.warn(caught); "The inbox could not be disconnected." }
             }
         }, onDismiss = { removing = null })
     }
 }
 
-private suspend fun removeMail(app: com.hellfire.ass.HellFireApp, id: String) {
+private suspend fun removeMail(app: HellFireApp, id: String) {
     // A live IDLE session holds the old credentials; stop it before they are deleted.
     app.stopService(android.content.Intent(app, MailIdleService::class.java))
     Accounts.remove(app.secrets, Accounts.MAIL, id)
@@ -245,7 +251,7 @@ fun WhatsAppPage() {
     var transport by remember { mutableStateOf("web") }
     suspend fun reload() {
         accounts = withContext(Dispatchers.IO) { try { Accounts.gateways(app.secrets) }
-            catch (e: CancellationException) { throw e } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); status = "Saved gateway settings are unavailable. Set up the connections again."; emptyList() } }
+            catch (e: CancellationException) { throw e } catch (caught: Exception) { Diagnostics.warn(caught); status = "Saved gateway settings are unavailable. Set up the connections again."; emptyList() } }
     }
     fun startEdit(account: JSONObject?) {
         editing = account?.getString("id") ?: ""
@@ -255,11 +261,11 @@ fun WhatsAppPage() {
     LaunchedEffect(Unit) { reload() }
     val publicExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/x-pem-file")) { uri ->
         if (uri != null) scope.launch {
-            status = try { withContext(Dispatchers.IO) { app.contentResolver.openOutputStream(uri)!!.use { it.write(GatewayAdapter(app).publicKey().toByteArray()) } }; "Device public key exported. Add it to each self-hosted gateway." }
-                catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Public key export failed." }
+            status = try { withContext(Dispatchers.IO) { (app.contentResolver.openOutputStream(uri) ?: throw FileNotFoundException("Android could not open that destination")).use { it.write(GatewayAdapter(app).publicKey().toByteArray()) } }; "Device public key exported. Add it to each self-hosted gateway." }
+                catch (caught: Exception) { Diagnostics.warn(caught); "Public key export failed." }
         }
     }
-    PushedPage(com.hellfire.ass.ui.tr("WhatsApp"), breadcrumb = "Settings") {
+    PushedPage(stringResource(R.string.ui_whatsapp), breadcrumb = "Settings") {
         status?.let { Banner(it, Tone.Info, null) }
         Note("Each WhatsApp account needs its own self-hosted gateway (relay URL and device token). All gateways use this phone's public key. Up to ${Accounts.MAX} accounts.")
         if (accounts.isNotEmpty()) ListCard {
@@ -304,11 +310,11 @@ fun WhatsAppPage() {
                             }
                             token = ""; editing = null; reload(); CommunicationWork.schedule(app); "Gateway settings encrypted; connection check scheduled."
                         } catch (e: CancellationException) { throw e }
-                        catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Gateway settings failed. Use a new HTTPS gateway URL and its paired device token (32+ characters)." }
+                        catch (caught: Exception) { Diagnostics.warn(caught); "Gateway settings failed. Use a new HTTPS gateway URL and its paired device token (32+ characters)." }
                     }
                 }, Modifier.fillMaxWidth(), enabled = gateway.isNotBlank() && (token.length >= 32 || (editingId.isNotEmpty() && token.isEmpty())))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    QuietButton(com.hellfire.ass.ui.tr("Cancel"), { editing = null; token = "" })
+                    QuietButton(stringResource(R.string.ui_cancel), { editing = null; token = "" })
                     if (editingId.isNotEmpty()) QuietButton("Disconnect this account", { removing = accounts.firstOrNull { it.getString("id") == editingId } })
                 }
             }
@@ -321,13 +327,13 @@ fun WhatsAppPage() {
                 removing = null
                 scope.launch {
                     status = try { withContext(Dispatchers.IO) { removeGateway(app, account.getString("id")) }; editing = null; reload(); "WhatsApp account disconnected; saved messages are kept." }
-                        catch (e: CancellationException) { throw e } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "The account could not be disconnected." }
+                        catch (e: CancellationException) { throw e } catch (caught: Exception) { Diagnostics.warn(caught); "The account could not be disconnected." }
                 }
             }, onDismiss = { removing = null })
     }
 }
 
-private suspend fun removeGateway(app: com.hellfire.ass.HellFireApp, id: String) {
+private suspend fun removeGateway(app: HellFireApp, id: String) {
     Accounts.remove(app.secrets, Accounts.GATEWAY, id)
     app.database.communications().clearIntegration(Accounts.gatewayState(id))
 }

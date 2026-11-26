@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.reports
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
@@ -24,6 +27,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
+import com.hellfire.ass.Diagnostics
+import java.io.FileNotFoundException
 
 /** The date range every report opens with; set on the hub or from any report's date chip. */
 object ReportRange {
@@ -67,7 +72,8 @@ fun ReportScaffold(
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (chart != null) SegmentedControl(listOfNotNull("Chart", "Calendar".takeIf { calendar != null }, "Table"), view,
-                { view = it; prefs.edit().putString("view_$id", it).apply() }, compact = true)
+                { view = it; prefs.edit().putString("view_$id", it).apply() }, compact = true,
+                label = { if (it == "Calendar") stringResource(R.string.ui_calendar) else it })
             Spacer(Modifier.weight(1f))
             if (group != null && (view == "Table" || chart == null)) Dropdown("Group", group.first, group.second, { it }, onGroup)
         }
@@ -99,14 +105,14 @@ fun RangeSheet(startCustom: Boolean = false, onDone: () -> Unit) {
                 }
                 custom = false; onDone()
             }) { Text("Use these dates") }
-        }, dismissButton = { TextButton({ custom = false; if (startCustom) onDone() }) { Text(com.hellfire.ass.ui.tr("Cancel")) } }) {
+        }, dismissButton = { TextButton({ custom = false; if (startCustom) onDone() }) { Text(stringResource(R.string.ui_cancel)) } }) {
             DateRangePicker(state, Modifier.heightIn(max = 520.dp), title = { Text("Choose dates", Modifier.padding(16.dp)) })
         }
         return
     }
     HfBottomSheet(onDone) {
         Text("Date range", style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
-        SegmentedControl(listOf("Today", "Week", "Month", "Custom"), ReportRange.preset, { p -> if (p == "Custom") custom = true else { ReportRange.set(p); onDone() } })
+        SegmentedControl(listOf("Today", "Week", "Month", "Custom"), ReportRange.preset, { p -> if (p == "Custom") custom = true else { ReportRange.set(p); onDone() } }, label = { if (it == "Today") stringResource(R.string.ui_today) else it })
         Note("${ReportRange.range.label} · East Africa Time. Every report uses this range.")
     }
 }
@@ -122,7 +128,7 @@ private fun ExportSheet(spec: ExportSpec, onDone: () -> Unit) {
         if (uri != null) scope.launch {
             status = try {
                 withContext(Dispatchers.IO) {
-                    app.contentResolver.openOutputStream(uri, "wt")!!.use { out ->
+                    (app.contentResolver.openOutputStream(uri, "wt") ?: throw FileNotFoundException("Android could not open that destination")).use { out ->
                         when (format) {
                             "pdf" -> PdfReport.write(spec, out)
                             "csv" -> out.write(Csv.table(spec).toByteArray())
@@ -131,7 +137,7 @@ private fun ExportSheet(spec: ExportSpec, onDone: () -> Unit) {
                     }
                 }
                 "Saved where you chose. Nothing was uploaded."
-            } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Export failed. Check the destination and free space." }
+            } catch (caught: Exception) { Diagnostics.warn(caught); "Export failed. Check the destination and free space." }
         }
     }
     HfBottomSheet(onDone) {
@@ -144,7 +150,7 @@ private fun ExportSheet(spec: ExportSpec, onDone: () -> Unit) {
         Note("You pick where to save it. Nothing is uploaded.")
         status?.let { Banner(it, Tone.Info, null) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SecondaryButton(com.hellfire.ass.ui.tr("Cancel"), onDone, Modifier.weight(1f))
+            SecondaryButton(stringResource(R.string.ui_cancel), onDone, Modifier.weight(1f))
             PrimaryButton(if (format == "pdf") "Export PDF" else "Export CSV", {
                 val stamp = TaskTime.display(System.currentTimeMillis()).replace(' ', '_').replace(':', '-')
                 save.launch("HellFire-${spec.title.replace(' ', '-')}-$stamp.${if (format == "pdf") "pdf" else "csv"}")

@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.hellfire.ass.R
+import com.hellfire.ass.ui.UiLanguage
 
 /** Design tokens from the UI handoff (§3). Light values are exact; dark values are derived at the same contrast targets. */
 @Immutable
@@ -210,8 +211,8 @@ private fun Typography.withInter(): Typography {
 @Composable
 fun HellFireTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     val baseContext = androidx.compose.ui.platform.LocalContext.current
-    val language = com.hellfire.ass.ui.UiLanguage.code
-    val localized = androidx.compose.runtime.remember(baseContext, language) { com.hellfire.ass.ui.UiLanguage.context(baseContext) }
+    val language = UiLanguage.code
+    val localized = androidx.compose.runtime.remember(baseContext, language) { UiLanguage.context(baseContext) }
     val c = if (dark) DarkHfColors else LightHfColors
     val scheme = (if (dark) darkColorScheme() else lightColorScheme()).copy(
         primary = c.primary, onPrimary = c.onPrimary,

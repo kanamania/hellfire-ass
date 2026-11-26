@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.insights
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
@@ -24,10 +27,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
+import com.hellfire.ass.Diagnostics
+import com.hellfire.ass.contacts.ContactChoice
+import com.hellfire.ass.contacts.ContactLinks
+import com.hellfire.ass.contacts.PersonContact
+import com.hellfire.ass.finance.LedgerEntry
+import com.hellfire.ass.ui.money.ownerStatement
 
 /** Runs [block] off the main thread; a failure is logged and returns null so the screen can say so. */
 internal suspend fun <T> io(block: suspend () -> T): T? = try { withContext(Dispatchers.IO) { block() } }
-    catch (e: CancellationException) { throw e } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); null }
+    catch (e: CancellationException) { throw e } catch (caught: Exception) { Diagnostics.warn(caught); null }
 
 internal fun channelIcon(channel: String) = when (channel) { "Email" -> HfIcons.Mail; "SMS" -> HfIcons.ChatLines; else -> HfIcons.Chat }
 
@@ -87,21 +96,21 @@ fun WaitingPage() {
                 if (i > 0) ListDivider()
                 ListRow(item.name, subtitle = "${item.channel} · ${Fmt.age(item.at)} ago · ${item.preview.take(90)}", icon = channelIcon(item.channel), tone = Tone.Neutral,
                     trailing = { Column {
-                        QuietButton(com.hellfire.ass.ui.tr("No reply needed"), { WaitingPrefs.dismiss(app, item.reviewKey, item.at); version++ })
-                        QuietButton(com.hellfire.ass.ui.tr("Tomorrow"), { WaitingPrefs.snooze(app, item.reviewKey, System.currentTimeMillis() + 86_400_000); version++ })
+                        QuietButton(stringResource(R.string.ui_no_reply_needed), { WaitingPrefs.dismiss(app, item.reviewKey, item.at); version++ })
+                        QuietButton(stringResource(R.string.ui_tomorrow), { WaitingPrefs.snooze(app, item.reviewKey, System.currentTimeMillis() + 86_400_000); version++ })
                     } },
                     onClick = { item.messageId?.let { nav.push(Screen.Message, it) } ?: nav.push(Screen.Source, item.sourceId) })
             }
         }
     }
-    PushedPage(com.hellfire.ass.ui.tr("Waiting on"), breadcrumb = "Inbox") {
+    PushedPage(stringResource(R.string.ui_waiting_on), breadcrumb = "Inbox") {
         val w = waiting
         if (w == null) { Note("Reading your recent messages…"); return@PushedPage }
         SectionHeader("You owe a reply", trailing = w.iOwe.size.toString())
         rows(w.iOwe.sortedByDescending { it.at }, "Nobody is waiting on you.")
         SectionHeader("Waiting to hear back", trailing = w.theyOwe.size.toString())
         rows(w.theyOwe.sortedByDescending { it.at }, "Nothing you asked is unanswered.")
-        ListCard { ListRow(com.hellfire.ass.ui.tr("People"), subtitle = "Everything with one person in one place", icon = HfIcons.Chat, chevron = true, onClick = { nav.push(Screen.People) }) }
+        ListCard { ListRow(stringResource(R.string.ui_people), subtitle = "Everything with one person in one place", icon = HfIcons.Chat, chevron = true, onClick = { nav.push(Screen.People) }) }
         Note("From the last 14 days. An unanswered request appears after 4 hours; \"waiting\" means you asked something a day ago and got no answer. " +
             "Groups, short codes and automated senders are left out. No reply needed clears that request. Tomorrow snoozes the thread; separate email threads stay independent.")
     }
@@ -121,7 +130,7 @@ fun PeoplePage() {
             conversations + saved
         } ?: emptyList()
     }
-    PushedPage(com.hellfire.ass.ui.tr("People"), breadcrumb = "Home") {
+    PushedPage(stringResource(R.string.ui_people), breadcrumb = "Home") {
         val all = people
         if (all == null) { Note("Reading your messages from the last 6 months…"); return@PushedPage }
         HfTextField(query, { query = it }, "Search a name, number or address")
@@ -141,7 +150,7 @@ fun PeoplePage() {
 }
 
 private class PersonView(val person: Person, val timeline: List<Interaction>, val tasks: List<AssistantTask>, val debt: DebtBalance?, val media: List<MediaItem>,
-    val payments: List<com.hellfire.ass.finance.LedgerEntry>, val debts: List<DebtEntry>)
+    val payments: List<LedgerEntry>, val debts: List<DebtEntry>)
 
 /** One person: every message across channels, what was promised, money between you, and matching recordings. */
 @Composable
@@ -152,16 +161,16 @@ fun PersonPage(key: String) {
     var view by remember { mutableStateOf<PersonView?>(null) }
     var loaded by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
-    var picked by remember { mutableStateOf<com.hellfire.ass.contacts.ContactChoice?>(null) }
+    var picked by remember { mutableStateOf<ContactChoice?>(null) }
     var managing by remember { mutableStateOf(false) }
-    var mergeTarget by remember { mutableStateOf<com.hellfire.ass.contacts.PersonContact?>(null) }
+    var mergeTarget by remember { mutableStateOf<PersonContact?>(null) }
     var separateHandle by remember { mutableStateOf<String?>(null) }
     var separateName by remember { mutableStateOf("") }
     var moveTasks by remember { mutableStateOf<Set<String>>(emptySet()) }
     var movePayments by remember { mutableStateOf<Set<String>>(emptySet()) }
     var moveDebts by remember { mutableStateOf<Set<String>>(emptySet()) }
     var otherDetails by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
-    var others by remember { mutableStateOf<List<com.hellfire.ass.contacts.PersonContact>>(emptyList()) }
+    var others by remember { mutableStateOf<List<PersonContact>>(emptyList()) }
     LaunchedEffect(managing) { if (managing) {
         others = io { app.database.contacts().all().filter { it.personKey != key } }.orEmpty()
         otherDetails = io { app.database.people().all().groupBy { it.personKey ?: People.namedKey(it.name) }.mapValues { (_, list) -> list.take(2).joinToString { Handles.label(it.handle) } } }.orEmpty()
@@ -201,13 +210,13 @@ fun PersonPage(key: String) {
         ))
         SavedContactStatus(key)
         SectionCard(if (p.named) "Name" else "Give this person a name") {
-            ContactPersonField(name, { name = it; picked = null }, "Name", onPick = { picked = it; name = it.displayName })
+            ContactPersonField(name, { name = it; picked = null }, stringResource(R.string.ui_name), onPick = { picked = it; name = it.displayName })
             Note("A contact joins all its numbers and email addresses into this person. Choose the correct saved person when names repeat.")
-            PrimaryButton(com.hellfire.ass.ui.tr("Save name"), {
+            PrimaryButton(stringResource(R.string.ui_save_name), {
                 val chosen = name.trim()
                 scope.launch {
-                    val saved = io { com.hellfire.ass.contacts.ContactLinks(app.database).namePerson(key,
-                        picked ?: com.hellfire.ass.contacts.ContactChoice(chosen), p.handles.keys, p.name) }
+                    val saved = io { ContactLinks(app.database).namePerson(key,
+                        picked ?: ContactChoice(chosen), p.handles.keys, p.name) }
                     if (saved == null) message = "The name could not be saved."
                     else { nav.pop(); nav.push(Screen.Person, saved) }
                 }
@@ -215,7 +224,7 @@ fun PersonPage(key: String) {
         }
         SecondaryButton("Manage linked identities…", { managing = true })
         if (v.tasks.isNotEmpty()) {
-            SectionHeader(com.hellfire.ass.ui.tr("Tasks"), trailing = v.tasks.size.toString())
+            SectionHeader(stringResource(R.string.ui_tasks), trailing = v.tasks.size.toString())
             ListCard { v.tasks.forEachIndexed { i, t ->
                 if (i > 0) ListDivider()
                 ListRow(t.title.take(100), subtitle = (when (t.state) { "REVIEW" -> "Found in a message · not added yet"; "DONE" -> "Done"; "DISMISSED" -> "Dismissed"; else -> "Due ${Fmt.dayTime(t.dueAt)}" }) +
@@ -241,7 +250,7 @@ fun PersonPage(key: String) {
         }
         if (v.debt != null) ListCard { ListRow("Loans and repayments", subtitle = "Open the debt record", icon = HfIcons.Money, chevron = true, onClick = { nav.push(Screen.Debts) }) }
         if (v.media.isNotEmpty()) {
-            SectionHeader(com.hellfire.ass.ui.tr("Recordings"), trailing = v.media.size.toString())
+            SectionHeader(stringResource(R.string.ui_recordings), trailing = v.media.size.toString())
             ListCard { v.media.forEachIndexed { i, m ->
                 if (i > 0) ListDivider()
                 ListRow(m.name.take(80), subtitle = Fmt.dayTime(m.recordedAt ?: m.importedAt) + (m.summary.takeIf { it.isNotBlank() }?.let { " · ${it.take(80)}" } ?: ""),
@@ -265,7 +274,7 @@ fun PersonPage(key: String) {
     }
     mergeTarget?.let { target -> ConfirmDialog("Merge these people?", "Move aliases, tasks, payment associations and debt notes into ${target.displayName}. Ledger amounts stay unchanged. Review the target carefully.", "Merge people", {
         mergeTarget = null
-        scope.launch { val ok = io { com.hellfire.ass.contacts.ContactLinks(app.database).merge(key, target.personKey) }; if (ok != null) { nav.pop(); nav.push(Screen.Person, target.personKey) } else message = "Merge failed; no changes committed." }
+        scope.launch { val ok = io { ContactLinks(app.database).merge(key, target.personKey) }; if (ok != null) { nav.pop(); nav.push(Screen.Person, target.personKey) } else message = "Merge failed; no changes committed." }
     }, { mergeTarget = null }) }
     separateHandle?.let { handle -> HfBottomSheet({ separateHandle = null }) {
         Text("Separate identity", style = Hf.type.cardTitle, color = Hf.colors.onSurface)
@@ -276,7 +285,7 @@ fun PersonPage(key: String) {
         v?.debts?.forEach { d -> CheckRow("Debt · ${Fmt.amount(d.amount)} · ${d.note}", d.id in moveDebts, { checked -> moveDebts = if (checked) moveDebts + d.id else moveDebts - d.id }) }
         PrimaryButton("Separate selected identity and records", {
             scope.launch {
-                val newKey = io { com.hellfire.ass.contacts.ContactLinks(app.database).separate(key, handle, separateName, moveTasks, movePayments, moveDebts) }
+                val newKey = io { ContactLinks(app.database).separate(key, handle, separateName, moveTasks, movePayments, moveDebts) }
                 separateHandle = null
                 if (newKey != null) { nav.pop(); nav.push(Screen.Person, newKey) } else message = "Separation failed; no changes committed."
             }
@@ -293,7 +302,7 @@ private suspend fun trackBill(app: HellFireApp, r: RecurringPayment) {
     val due = day.atTime(9, 0).atZone(TaskTime.zone).toInstant().toEpochMilli().takeIf { it > now }
         ?: Fmt.today().plusDays(1).atTime(9, 0).atZone(TaskTime.zone).toInstant().toEpochMilli()
     val text = "Owner chose to track ${r.label} as a monthly bill of about TZS ${Fmt.amount(r.amount)}, paid ${r.months} months in a row"
-    val sourceId = com.hellfire.ass.ui.money.ownerStatement(app, text, now)
+    val sourceId = ownerStatement(app, text, now)
     val id = java.util.UUID.randomUUID().toString()
     app.database.tasks().insert(AssistantTask(id, sourceId, r.label, due, party = "OWNER", evidence = text, createdAt = now, updatedAt = now))
     TaskScheduler.activate(app, id, r.label, due, "OWNER")

@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.settings
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -43,7 +46,7 @@ fun WebAccessPage() {
             busy = false; refresh++
         }
     }
-    PushedPage(com.hellfire.ass.ui.tr("Web access"), breadcrumb = "Settings") {
+    PushedPage(stringResource(R.string.ui_web_access), breadcrumb = "Settings") {
         message?.let { Banner(it, Tone.Info, null) }
         Note("Keep a read-only copy on your own server so you can look at Money, Tasks, Inbox, Recordings and Memory from a browser. " +
             "Everything is still worked out on this phone; confirming, sending and changing things stay here.")
@@ -73,7 +76,7 @@ fun WebAccessPage() {
                 withContext(Dispatchers.IO) { WebSync.mutex.withLock { app.secrets.remove(WebSync.STATE) } }
                 WebSync.now(app); "The server copy will be replaced with a fresh full copy."
             } }, Modifier.fillMaxWidth(), enabled = !busy)
-            QuietButton(com.hellfire.ass.ui.tr("Turn off"), { act { WebSync.disable(app, wipe = false); "Web access is off. The server keeps the copy from the last sync." } },
+            QuietButton(stringResource(R.string.ui_turn_off), { act { WebSync.disable(app, wipe = false); "Web access is off. The server keeps the copy from the last sync." } },
                 Modifier.fillMaxWidth(), enabled = !busy)
             QuietButton("Turn off and delete the web copy…", { confirmWipe = true }, Modifier.fillMaxWidth(), enabled = !busy)
         }

@@ -178,7 +178,7 @@ fun Banner(text: String, tone: Tone = Tone.Success, icon: ImageVector? = HfIcons
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (icon != null) Icon(icon, null, Modifier.size(18.dp), tint = textColor)
-        Text(com.hellfire.ass.ui.tr(text), style = Hf.type.body.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium), color = textColor)
+        Text(text, style = Hf.type.body.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium), color = textColor)
     }
 }
 
@@ -325,7 +325,7 @@ fun ActionCard(
 @Composable
 fun SegmentedControl(
     options: List<String>, selected: String, onSelect: (String) -> Unit,
-    modifier: Modifier = Modifier, compact: Boolean = false,
+    modifier: Modifier = Modifier, compact: Boolean = false, label: @Composable (String) -> String = { it },
 ) {
     val pad = if (compact) 3.dp else 4.dp
     Row(
@@ -345,7 +345,7 @@ fun SegmentedControl(
                     .padding(horizontal = 16.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(com.hellfire.ass.ui.tr(option), style = Hf.type.label.copy(fontSize = if (compact) 13.sp else 13.5.sp, fontWeight = FontWeight.SemiBold),
+                Text(label(option), style = Hf.type.label.copy(fontSize = if (compact) 13.sp else 13.5.sp, fontWeight = FontWeight.SemiBold),
                     color = if (on) Hf.colors.onSurface else Hf.colors.muted)
             }
         }

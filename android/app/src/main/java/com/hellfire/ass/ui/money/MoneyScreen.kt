@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.money
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,6 +43,9 @@ import kotlinx.coroutines.withContext
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import com.hellfire.ass.finance.FinanceSummary
+import com.hellfire.ass.reports.posted
+import com.hellfire.ass.tasks.TaskTime
 
 val Categories = listOf("Food", "Groceries", "Transport", "Fuel", "Utilities", "Rent", "Business", "Family", "Airtime", "Income", "Other")
 
@@ -64,11 +70,11 @@ fun MoneyScreen() {
     val candidates by remember { dao.candidates() }.collectAsStateWithLifecycle(emptyList())
     val aliases by remember { dao.aliases() }.collectAsStateWithLifecycle(emptyList())
     val reviews by remember { app.database.tasks().reviews() }.collectAsStateWithLifecycle(emptyList())
-    var month by remember { mutableStateOf(YearMonth.now(com.hellfire.ass.tasks.TaskTime.zone)) }
+    var month by remember { mutableStateOf(YearMonth.now(TaskTime.zone)) }
     val start = Fmt.startOf(month.atDay(1)); val end = Fmt.startOf(month.plusMonths(1).atDay(1))
     val entries by remember(start) { dao.periodFlow(start, end) }.collectAsStateWithLifecycle(emptyList())
     var balances by remember { mutableStateOf<Map<String, Long>>(emptyMap()) }
-    var totals by remember { mutableStateOf<com.hellfire.ass.finance.FinanceSummary?>(null) }
+    var totals by remember { mutableStateOf<FinanceSummary?>(null) }
     LaunchedEffect(entries, accounts) {
         withContext(Dispatchers.IO) {
             balances = accounts.associate { it.id to dao.balance(it.id) }
@@ -88,7 +94,7 @@ fun MoneyScreen() {
 
     Box(Modifier.fillMaxSize()) {
         ScrollPage(bottomInset = 96.dp) {
-            ScreenHeader(com.hellfire.ass.ui.tr("Money")) {
+            ScreenHeader(stringResource(R.string.ui_money)) {
                 MonthChip(month) { month = it }
                 Row(
                     Modifier.height(36.dp).clip(CircleShape).background(Hf.colors.primaryContainer).clickableRow { nav.push(Screen.ReportMoney) }
@@ -96,25 +102,25 @@ fun MoneyScreen() {
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Icon(HfIcons.Reports, null, Modifier.size(15.dp), tint = Hf.colors.primaryPressed)
-                    Text(com.hellfire.ass.ui.tr("Report"), style = Hf.type.label.copy(fontWeight = FontWeight.SemiBold), color = Hf.colors.primaryPressed)
+                    Text(stringResource(R.string.ui_report), style = Hf.type.label.copy(fontWeight = FontWeight.SemiBold), color = Hf.colors.primaryPressed)
                 }
             }
             banner?.let { Banner(it, modifier = Modifier.clickableRow { banner = null }) }
             BalanceCard(accounts, balances, totals, onOpen = { nav.push(Screen.Accounts) }, onAdd = { nav.push(Screen.Accounts, "add") })
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                HfChip(com.hellfire.ass.ui.tr("Use a template"), { nav.push(Screen.Templates) })
-                HfChip(com.hellfire.ass.ui.tr("Check account balance"), { nav.push(Screen.Reconcile) })
-                HfChip(com.hellfire.ass.ui.tr("Bills"), { nav.push(Screen.Bills) })
-                HfChip(com.hellfire.ass.ui.tr("Debts"), { nav.push(Screen.Debts) })
+                HfChip(stringResource(R.string.ui_use_a_template), { nav.push(Screen.Templates) })
+                HfChip(stringResource(R.string.ui_check_account_balance), { nav.push(Screen.Reconcile) })
+                HfChip(stringResource(R.string.ui_bills), { nav.push(Screen.Bills) })
+                HfChip(stringResource(R.string.ui_debts), { nav.push(Screen.Debts) })
             }
-            val byCategory = remember(entries) { com.hellfire.ass.reports.posted(entries, accounts).groupBy { it.entry.category }
+            val byCategory = remember(entries) { posted(entries, accounts).groupBy { it.entry.category }
                 .mapValues { (_, v) -> v.sumOf(::spend) }.filterValues { it > 0 }.toList() }
             if (byCategory.isNotEmpty()) ChartCard("Where it went", trailing = month.month.getDisplayName(java.time.format.TextStyle.SHORT, Locale.ENGLISH)) {
                 PieChart(byCategory, Fmt::compact, maxSlices = 5, centerLabel = Fmt.compact(byCategory.sumOf { it.second }),
                     onClick = { nav.push(Screen.ReportCategory, it) }, description = "This month's spending by category")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    HfChip(com.hellfire.ass.ui.tr("Calendar"), { nav.push(Screen.ReportMoney, "calendar") })
-                    HfChip(com.hellfire.ass.ui.tr("Full report"), { nav.push(Screen.ReportMoney) })
+                    HfChip(stringResource(R.string.ui_calendar), { nav.push(Screen.ReportMoney, "calendar") })
+                    HfChip(stringResource(R.string.ui_full_report), { nav.push(Screen.ReportMoney) })
                 }
             }
 
@@ -126,7 +132,7 @@ fun MoneyScreen() {
             }
 
             Column(Modifier.bringIntoViewRequester(reviewAnchor), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (candidates.isNotEmpty()) SectionHeader(com.hellfire.ass.ui.tr("To confirm"), trailing = if (candidates.size == 1) "1 waiting" else "${candidates.size} waiting")
+                if (candidates.isNotEmpty()) SectionHeader(stringResource(R.string.ui_to_confirm), trailing = if (candidates.size == 1) "1 waiting" else "${candidates.size} waiting")
                 candidates.take(30).forEach { candidate ->
                     CandidateCard(candidate, aliases.firstOrNull { it.provider == candidate.provider && it.number == candidate.merchant },
                         onConfirm = { reviewId = candidate.id; reviewFocus = "" }, onName = { naming = candidate },
@@ -134,7 +140,7 @@ fun MoneyScreen() {
                 }
             }
 
-            SectionHeader(com.hellfire.ass.ui.tr("Recent"), action = "See all", onAction = { nav.push(Screen.ReportMoney, "table") })
+            SectionHeader(stringResource(R.string.ui_recent), action = "See all", onAction = { nav.push(Screen.ReportMoney, "table") })
             if (entries.isEmpty()) HfCard(padding = PaddingValues(16.dp)) {
                 Text(if (accounts.isEmpty()) "Add an account, then confirm payments to see them here." else "No confirmed payments in ${month.month.getDisplayName(java.time.format.TextStyle.FULL, Locale.ENGLISH)} yet.",
                     style = Hf.type.body, color = Hf.colors.muted)
@@ -152,7 +158,7 @@ fun MoneyScreen() {
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Icon(HfIcons.Plus, null, Modifier.size(22.dp), tint = Hf.colors.onInverse)
-            Text(com.hellfire.ass.ui.tr("Add cash"), style = Hf.type.rowTitle, color = Hf.colors.onInverse)
+            Text(stringResource(R.string.ui_add_cash), style = Hf.type.rowTitle, color = Hf.colors.onInverse)
         }
     }
     reviewing?.let { (c, focus) -> CandidateReviewSheet(c, accounts, aliases, focus, onDone = { msg -> reviewId = null; if (msg != null) banner = msg }) }
@@ -168,7 +174,7 @@ fun MoneyScreen() {
 @Composable
 private fun MonthChip(month: YearMonth, onPick: (YearMonth) -> Unit) {
     var open by remember { mutableStateOf(false) }
-    val now = YearMonth.now(com.hellfire.ass.tasks.TaskTime.zone)
+    val now = YearMonth.now(TaskTime.zone)
     Box {
         Row(
             Modifier.height(36.dp).clip(CircleShape).background(Hf.colors.surface).border(1.dp, Hf.colors.outline, CircleShape)
@@ -189,7 +195,7 @@ private fun MonthChip(month: YearMonth, onPick: (YearMonth) -> Unit) {
 }
 
 @Composable
-private fun BalanceCard(accounts: List<FinanceAccount>, balances: Map<String, Long>, totals: com.hellfire.ass.finance.FinanceSummary?, onOpen: () -> Unit, onAdd: () -> Unit) {
+private fun BalanceCard(accounts: List<FinanceAccount>, balances: Map<String, Long>, totals: FinanceSummary?, onOpen: () -> Unit, onAdd: () -> Unit) {
     val c = Hf.colors
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(c.surfaceDark).clickableRow(onOpen)
@@ -197,10 +203,10 @@ private fun BalanceCard(accounts: List<FinanceAccount>, balances: Map<String, Lo
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(com.hellfire.ass.ui.tr("Total balance · TZS"), style = Hf.type.label, color = c.mutedOnDark)
+            Text(stringResource(R.string.ui_total_balance_tzs), style = Hf.type.label, color = c.mutedOnDark)
             Text(if (accounts.isEmpty()) "—" else Fmt.amount(balances.values.sum()), style = Hf.type.bigFigure, color = c.onSurfaceDark)
         }
-        if (accounts.isEmpty()) Text(com.hellfire.ass.ui.tr("Add your M-Pesa, bank and cash accounts to track balances."), style = Hf.type.rowSubtitle, color = c.mutedOnDark)
+        if (accounts.isEmpty()) Text(stringResource(R.string.ui_add_your_m_pesa_bank_and_cash_accounts), style = Hf.type.rowSubtitle, color = c.mutedOnDark)
         (accounts.map<FinanceAccount, FinanceAccount?> { it } + null).chunked(3).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { a ->
@@ -259,8 +265,8 @@ private fun CandidateCard(c: FinanceCandidate, alias: MerchantAlias?, onConfirm:
                     style = Hf.type.figure.copy(fontSize = 16.sp), color = if (c.kind == "INCOME" || c.kind == "REFUND") Hf.colors.success else Hf.colors.onSurface)
             }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                PrimaryButton(com.hellfire.ass.ui.tr("Confirm"), onConfirm)
-                if (unknown) SecondaryButton(com.hellfire.ass.ui.tr("Name this merchant"), onName) else SecondaryButton(com.hellfire.ass.ui.tr("Change category"), onCategory)
+                PrimaryButton(stringResource(R.string.ui_confirm), onConfirm)
+                if (unknown) SecondaryButton(stringResource(R.string.ui_name_this_merchant), onName) else SecondaryButton(stringResource(R.string.ui_change_category), onCategory)
             }
         }
     }
