@@ -156,6 +156,16 @@ fun GuardPage() {
                 } }, Modifier.fillMaxWidth(), enabled = !busy)
             }
             if (state?.pendingDisarm == true) Note("Relay disarm is pending. Re-arming waits for its acknowledgment. Connect to the network and check relay configuration.")
+            if (state?.armed != true && GuardPolicies.isOwner(app)) {
+                Note("Device Owner blocks uninstalling HellFire and safe boot while armed. Removing it restores those settings; setting it up again needs a computer.")
+                SecondaryButton("Remove Device Owner with biometric", { authenticated {
+                    withContext(Dispatchers.IO) {
+                        check(app.database.guard().state()?.armed != true)
+                        GuardPolicies.relinquish(app)
+                    }
+                    message = if (GuardPolicies.isOwner(app)) "Android kept Device Owner. Check Settings › Security › Device admin apps." else "Device Owner removed. HellFire can now be uninstalled normally."
+                } }, Modifier.fillMaxWidth(), enabled = !busy)
+            }
         }
         SectionCard("Evidence log") {
             if (evidence.isEmpty()) Note("No evidence captured.")

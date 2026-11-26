@@ -109,4 +109,15 @@ class GuardTest {
         val context = RuntimeEnvironment.getApplication()
         assertFalse(GuardPolicies.isOwner(context))
     }
+
+    @Test fun `restore without a saved snapshot unlocks instead of keeping guard policies`() {
+        val missing = com.hellfire.ass.guard.GuardPolicies.restoreValues(null, "com.hellfire.ass", 0, listOf("com.hellfire.ass", "com.other"))
+        assertFalse(missing.uninstallBlocked)
+        assertTrue(missing.clearSafeBoot)
+        assertEquals(listOf("com.other"), missing.packages)
+        assertTrue(missing.features and android.app.admin.DevicePolicyManager.LOCK_TASK_FEATURE_GLOBAL_ACTIONS != 0)
+        val saved = org.json.JSONObject().put("uninstall", true).put("safeBoot", true).put("features", 5).put("packages", org.json.JSONArray(listOf("a")))
+        val restored = com.hellfire.ass.guard.GuardPolicies.restoreValues(saved, "com.hellfire.ass", 0, emptyList())
+        assertTrue(restored.uninstallBlocked); assertFalse(restored.clearSafeBoot); assertEquals(5, restored.features); assertEquals(listOf("a"), restored.packages)
+    }
 }

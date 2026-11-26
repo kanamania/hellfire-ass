@@ -46,7 +46,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-006 | P0 | Sender-ID priority for provider detection | A1.6 | M | DONE (294f81d): sender decides first. Open: flag a personal number that claims to be a provider; exact sender IDs unverified on the phone |
 | HF-007 | P0 | Relay: quarantine unreadable WhatsApp spool files | D-23 | S | DONE (cef9843) |
 | HF-008 | P0 | Deleting a recording purges its transcript events, search rows and vectors | D-19 | S | DONE (8a62ea8); task evidence text the owner accepted is kept |
-| HF-009 | P0 | TheftGuard: owner-gated Device Owner relinquish | D-24 | S | OPEN |
+| HF-009 | P0 | TheftGuard: owner-gated Device Owner relinquish | D-24 | S | DONE (this branch); device NOT TESTED |
 | HF-010 | P0 | Reminder channels: pre-alerts and review off the alarm channel; one sound for many overdue tasks | A1.10, A1.13 | S | OPEN |
 | HF-011 | P1 | Reminder actions (Done, Snooze), open the exact task, `setAlarmClock` when exact is allowed | A1.11, A1.12 | M | OPEN |
 | HF-012 | P1 | Configurable evening review time; quiet hours for non-alarm notices | — | S | OPEN |
