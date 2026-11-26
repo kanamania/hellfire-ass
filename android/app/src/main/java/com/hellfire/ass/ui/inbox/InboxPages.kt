@@ -26,6 +26,7 @@ import org.json.JSONObject
 import java.util.UUID
 import com.hellfire.ass.Diagnostics
 import com.hellfire.ass.HellFireApp
+import java.io.FileNotFoundException
 
 data class ReplyDraft(val channel: String = "EMAIL_IMAP", val recipient: String = "", val subject: String = "", val body: String = "", val replyTo: String? = null,
     /** Account that sends; a reply defaults to the account the message arrived on. */
@@ -260,7 +261,7 @@ fun WhatsAppPage() {
     LaunchedEffect(Unit) { reload() }
     val publicExport = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/x-pem-file")) { uri ->
         if (uri != null) scope.launch {
-            status = try { withContext(Dispatchers.IO) { app.contentResolver.openOutputStream(uri)!!.use { it.write(GatewayAdapter(app).publicKey().toByteArray()) } }; "Device public key exported. Add it to each self-hosted gateway." }
+            status = try { withContext(Dispatchers.IO) { (app.contentResolver.openOutputStream(uri) ?: throw FileNotFoundException("Android could not open that destination")).use { it.write(GatewayAdapter(app).publicKey().toByteArray()) } }; "Device public key exported. Add it to each self-hosted gateway." }
                 catch (caught: Exception) { Diagnostics.warn(caught); "Public key export failed." }
         }
     }

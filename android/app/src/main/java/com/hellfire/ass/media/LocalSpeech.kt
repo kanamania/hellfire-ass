@@ -13,6 +13,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import java.io.File
+import java.io.FileNotFoundException
 
 class LocalSpeech(private val app: HellFireApp) {
     private var handle = 0L
@@ -34,7 +35,7 @@ class LocalSpeech(private val app: HellFireApp) {
             model.parentFile!!.mkdirs()
             val part = File(model.parentFile, "speech.part")
             try {
-                app.contentResolver.openInputStream(uri)!!.use { input -> part.outputStream().use { output ->
+                (app.contentResolver.openInputStream(uri) ?: throw FileNotFoundException("Android could not open that file")).use { input -> part.outputStream().use { output ->
                     val buffer = ByteArray(65536); var size = 0L
                     while (true) { currentCoroutineContext().ensureActive(); val n = input.read(buffer); if (n < 0) break
                         require(n > 0); size += n; require(size <= 4L * 1024 * 1024 * 1024); output.write(buffer, 0, n) }

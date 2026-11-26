@@ -18,6 +18,7 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import com.hellfire.ass.ai.onnxEnvironment
 import com.hellfire.ass.audio.MicrophoneStatus
+import java.io.FileNotFoundException
 
 /** Silero recurrent ONNX contract: 512 mono samples at 16 kHz, 64 samples of context. CPU only. */
 class LearnedVad private constructor(private val session: OrtSession) : Closeable {
@@ -81,7 +82,7 @@ object VadModels {
         target.parentFile!!.mkdirs()
         val temporary = File.createTempFile("vad-", ".part", target.parentFile)
         try {
-            context.contentResolver.openInputStream(uri)!!.use { source -> temporary.outputStream().use { output ->
+            (context.contentResolver.openInputStream(uri) ?: throw FileNotFoundException("Android could not open that file")).use { source -> temporary.outputStream().use { output ->
                 val buffer = ByteArray(65536)
                 var total = 0L
                 while (true) {

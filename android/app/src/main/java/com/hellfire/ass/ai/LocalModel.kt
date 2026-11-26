@@ -22,6 +22,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import com.hellfire.ass.Diagnostics
 import com.hellfire.ass.HellFireApp
+import java.io.FileNotFoundException
 
 /** One bounded inference at a time. Each request releases its engine and conversation. */
 class LocalModel(private val context: Context) {
@@ -46,7 +47,7 @@ class LocalModel(private val context: Context) {
             modelFile.parentFile!!.mkdirs()
             val temp = File(modelFile.parentFile, "assistant.part")
             try {
-                context.contentResolver.openInputStream(uri)!!.use { input -> temp.outputStream().use { output ->
+                (context.contentResolver.openInputStream(uri) ?: throw FileNotFoundException("Android could not open that file")).use { input -> temp.outputStream().use { output ->
                     val buffer = ByteArray(65536); var size = 0L
                     while (true) { kotlinx.coroutines.currentCoroutineContext().ensureActive(); val n = input.read(buffer); if (n < 0) break
                         require(n > 0); size += n; require(size <= 12L * 1024 * 1024 * 1024); output.write(buffer, 0, n) }

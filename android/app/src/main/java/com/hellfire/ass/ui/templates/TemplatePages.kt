@@ -205,11 +205,12 @@ fun TemplateRunSheet(template: ActionTemplate, accounts: List<FinanceAccount>, o
         error?.let { Banner(it, Tone.Danger, null) }
         val ready = at != null && chosen.isNotEmpty() && chosen.all { items[it].type == "TASK" || (amounts[it].toLongOrNull() ?: 0) > 0 } && !busy
         PrimaryButton(if (chosen.size == 1) "Add 1 item" else "Add ${chosen.size} items", {
+            val time = at ?: return@PrimaryButton
             busy = true
             scope.launch {
                 val result = io {
                     val lines = chosen.map { i -> items[i].let { if (it.type == "TASK") it else it.copy(amount = Money.tzs(amounts[i])) } }
-                    app.templates.run(template, lines, at!!).also { if (it.tasks > 0) TaskScheduler.restore(app) }
+                    app.templates.run(template, lines, time).also { if (it.tasks > 0) TaskScheduler.restore(app) }
                 }
                 busy = false
                 if (result == null) error = "Not added. Check the amounts and date, and that the accounts still exist." else onDone("${template.name}: ${result.message}.")

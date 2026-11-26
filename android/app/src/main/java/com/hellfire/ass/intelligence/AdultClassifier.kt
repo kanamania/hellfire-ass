@@ -14,6 +14,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.nio.FloatBuffer
 import com.hellfire.ass.ai.onnxEnvironment
+import java.io.FileNotFoundException
 
 internal data class ImageTensorShape(val width: Int, val height: Int, val channelsFirst: Boolean) {
     companion object {
@@ -66,7 +67,7 @@ class AdultClassifier(private val app: HellFireApp) {
     }
 
     suspend fun importLabels(uri: Uri) = withContext(Dispatchers.IO) {
-        val text = app.contentResolver.openInputStream(uri)!!.use { it.readBytes().toString(Charsets.UTF_8) }
+        val text = (app.contentResolver.openInputStream(uri) ?: throw FileNotFoundException("Android could not open that file")).use { it.readBytes().toString(Charsets.UTF_8) }
         require(text.length <= 16_000) { "Label file is too large" }
         labelsFile.parentFile!!.mkdirs()
         labelsFile.writeText(text.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.take(64).joinToString("\n"))
@@ -122,7 +123,7 @@ class AdultClassifier(private val app: HellFireApp) {
     }
 
     private suspend fun copyLimited(uri: Uri, dest: File, max: Long) {
-        app.contentResolver.openInputStream(uri)!!.use { input -> dest.outputStream().use { output ->
+        (app.contentResolver.openInputStream(uri) ?: throw FileNotFoundException("Android could not open that file")).use { input -> dest.outputStream().use { output ->
             val buffer = ByteArray(65536)
             var size = 0L
             while (true) {

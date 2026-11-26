@@ -2024,3 +2024,21 @@ Official constraints checked: [foreground service types](https://developer.andro
 [CameraX releases](https://developer.android.com/jetpack/androidx/releases/camera),
 [Google Play services releases](https://developers.google.com/android/guides/releases).
 See `docs/DEVICE_FEASIBILITY.md` for actual test results and the final-device checklist.
+
+## Checkpoint — 2026-11-26 project review follow-up (host only)
+
+| Check | Command | Result |
+|---|---|---|
+| Android JVM tests | `./gradlew :app:testDebugUnitTest` | PASS: 551 tests, 546 passed, 5 existing credential/fixture skips, 0 failures |
+| Android lint | `./gradlew :app:lintDebug` | PASS: 0 errors (445 warnings, 11 hints); no `MissingTranslation` |
+| Debug APK | `./gradlew :app:assembleDebug` | PASS: `HellFire-Ass-0.10.0-code10-debug.apk`, 172,868,880 bytes |
+| Release APK | `./gradlew :app:assembleRelease` (no owner signing file in the worktree) | PASS: `HellFire-Ass-0.10.0-code10-release-unsigned.apk`, 115,504,474 bytes |
+| Web API | `npm test` in `web/api` | PASS: 31/31 (new: logout revocation, per-visitor login limit) |
+| Relay / WhatsApp worker | `pytest -q`, `npm test` | PASS: 40/40, 6/6 |
+
+Changes: versioned APK names from Gradle (0.10.0, code 10), inbox event search through the
+FTS index, named string resources replacing the English-text lookup, draft and player errors
+as resources, web logout revocation, relay and worker under systemd, large-file splits,
+imports instead of fully qualified names, and explicit errors where Android may return a null
+stream. Kiswahili rendering of the migrated screens, the systemd relay and all phone behaviour
+remain NOT TESTED on a device or live service.

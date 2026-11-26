@@ -25,6 +25,7 @@ import kotlinx.coroutines.*
 import com.hellfire.ass.Diagnostics
 import com.hellfire.ass.performance.visibleWindow
 import com.hellfire.ass.player.PlaybackHub
+import java.io.FileNotFoundException
 
 @Composable
 fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: () -> Unit, initialSelected: String? = null) {
@@ -75,7 +76,7 @@ fun MediaScreen(app: HellFireApp, permissions: PermissionStatus, onPermission: (
     val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
         val item = exporting; exporting = null
         if (uri != null && item != null) action {
-            EncryptedMediaSource(app.media.reader(item)).use { source -> app.contentResolver.openOutputStream(uri, "wt")!!.use { output ->
+            EncryptedMediaSource(app.media.reader(item)).use { source -> (app.contentResolver.openOutputStream(uri, "wt") ?: throw FileNotFoundException("Android could not open that destination")).use { output ->
                 val buffer = ByteArray(65536); var at = 0L
                 try { while (true) { currentCoroutineContext().ensureActive(); val n = source.readAt(at, buffer, 0, buffer.size); if (n <= 0) break
                     output.write(buffer, 0, n); at += n } } finally { buffer.fill(0) }

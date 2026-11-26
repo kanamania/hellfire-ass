@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import com.hellfire.ass.Diagnostics
+import java.io.FileNotFoundException
 
 /** The date range every report opens with; set on the hub or from any report's date chip. */
 object ReportRange {
@@ -127,7 +128,7 @@ private fun ExportSheet(spec: ExportSpec, onDone: () -> Unit) {
         if (uri != null) scope.launch {
             status = try {
                 withContext(Dispatchers.IO) {
-                    app.contentResolver.openOutputStream(uri, "wt")!!.use { out ->
+                    (app.contentResolver.openOutputStream(uri, "wt") ?: throw FileNotFoundException("Android could not open that destination")).use { out ->
                         when (format) {
                             "pdf" -> PdfReport.write(spec, out)
                             "csv" -> out.write(Csv.table(spec).toByteArray())

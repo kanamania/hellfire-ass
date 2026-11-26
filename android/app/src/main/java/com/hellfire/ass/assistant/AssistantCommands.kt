@@ -35,7 +35,7 @@ sealed interface OwnerCommand {
         override val summary get() = when (action) {
             "DONE" -> "Mark task done: ${title ?: query}"
             "SNOOZE" -> "Snooze task 10 minutes: ${title ?: query}"
-            else -> "Reschedule task: ${title ?: query} → ${TaskTime.display(dueAt!!)} EAT"
+            else -> "Reschedule task: ${title ?: query} → ${dueAt?.let(TaskTime::display) ?: "no time given"} EAT"
         }
     }
     data class Draft(override val utterance: String, val channel: String, val recipient: String, val subject: String, val body: String) : OwnerCommand {
@@ -158,8 +158,9 @@ object AssistantCommands {
                 when (command.action) {
                     "RESCHEDULE" -> {
                         val task = requireNotNull(app.database.tasks().task(id))
-                        TaskScheduler.activate(app, id, task.title, command.dueAt!!, task.party)
-                        "Task moved to ${TaskTime.display(command.dueAt)} EAT."
+                        val dueAt = requireNotNull(command.dueAt) { "Reschedule needs a new time" }
+                        TaskScheduler.activate(app, id, task.title, dueAt, task.party)
+                        "Task moved to ${TaskTime.display(dueAt)} EAT."
                     }
                     else -> { TaskScheduler.action(app, id, command.action); if (command.action == "DONE") "Task marked done." else "Task snoozed for 10 minutes." }
                 }
