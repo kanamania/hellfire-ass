@@ -48,7 +48,8 @@ class ProcessEventsWorker(context: Context, params: WorkerParameters) : Coroutin
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val app = applicationContext as HellFireApp
         try {
-            EventProcessor(app.database.events(), app.finances::collect, { id, time, text, outgoing -> TaskScheduler.collect(app, id, time, text, outgoing) }) { app.cipher }.drain()
+            EventProcessor(app.database.events(), app.finances::collect, { id, time, text, outgoing -> TaskScheduler.collect(app, id, time, text, outgoing) },
+                { id, time, caller -> TaskScheduler.missedCall(app, id, time, caller) }) { app.cipher }.drain()
             Result.success()
         } catch (e: CancellationException) { throw e }
         catch (caught: Exception) { Diagnostics.warn(caught); Result.retry() }

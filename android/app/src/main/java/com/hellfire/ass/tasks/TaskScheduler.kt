@@ -114,6 +114,18 @@ object TaskScheduler {
         }
     }
     suspend fun restore(app: HellFireApp) = lock.withLock { arm(app) }
+    /**
+     * A missed call becomes a "Call back" proposal in review (one per caller per day), never a live alarm: the owner
+     * activates it like any other found task.
+     */
+    suspend fun missedCall(app: HellFireApp, sourceId: String, at: Long, caller: String) {
+        val now = System.currentTimeMillis()
+        val day = Instant.ofEpochMilli(at).atZone(TaskTime.zone).toLocalDate()
+        if (!TaskTime.reviewable(at, now) || app.skills.ignoredFor(app, "IGNORE_TASK", sourceId, "Missed call $caller")) return
+        val id = NotificationNormalizer.sha256("missed-call:${caller.lowercase()}:$day")
+        app.database.tasks().insert(AssistantTask(id, sourceId, "Call back $caller", at + 3_600_000L, party = "OWNER",
+            evidence = "Missed call from $caller", createdAt = now, updatedAt = now))
+    }
     suspend fun collect(app: HellFireApp, sourceId: String, sourceTime: Long, text: String, outgoing: Boolean) {
         val now = System.currentTimeMillis()
         TaskExtractor.extract(text, sourceTime, outgoing)?.takeIf { TaskTime.reviewable(it.dueAt, now) }?.let { candidate ->
