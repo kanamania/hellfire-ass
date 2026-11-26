@@ -19,6 +19,7 @@ import java.io.InputStream
 import java.security.DigestInputStream
 import java.security.MessageDigest
 import java.util.UUID
+import org.json.JSONObject
 import com.hellfire.ass.Diagnostics
 import com.hellfire.ass.audio.MicrophoneStatus
 import com.hellfire.ass.performance.ProcessingCheckpoint
@@ -248,9 +249,27 @@ class MediaVault(private val app: HellFireApp) {
             app.database.library().segmentsNow(item.id).mapNotNull { it.thumbnailPath }
                 .filter { it.startsWith("intelligence-thumbs/") && !it.contains("..") }.forEach { File(app.cacheDir, it).delete() }
             app.database.library().unindexItem(item.id)
+            purgeDerivedText(item.id)
             app.database.media().delete(item.id)
             FrameScrubber.deleteForItem(app, id)
             ProcessingCheckpoint.clear(app, id)
+        }
+    }
+    /**
+     * Transcript, OCR and label text was also captured as source events for Ask. Deleting the original must remove that
+     * text too, or Ask could still quote a deleted recording. Rows stay (tasks or ledger evidence may cite them).
+     */
+    internal suspend fun purgeDerivedText(mediaId: String) {
+        val ids = app.database.media().derivedSources(mediaId)
+        if (ids.isEmpty()) return
+        val blank = JSONObject().put("fields", JSONObject()).put("provenance", JSONObject())
+            .put("content_status", "DELETED_BY_OWNER").toString().toByteArray(Charsets.UTF_8)
+        app.database.withTransaction {
+            ids.chunked(500).forEach { chunk ->
+                app.database.events().blank(chunk, app.cipher.encrypt(blank))
+                app.database.events().unsearch(chunk)
+                app.database.semantic().forget(chunk)
+            }
         }
     }
     suspend fun recover() = withContext(Dispatchers.IO) {

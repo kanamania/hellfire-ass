@@ -56,6 +56,7 @@ interface SemanticDao {
     suspend fun page(model: String, after: String, limit: Int): List<SemanticVector>
     @Query("DELETE FROM semantic_vector WHERE model != :model") suspend fun dropOtherModels(model: String)
     @Query("DELETE FROM semantic_vector") suspend fun clear()
+    @Query("DELETE FROM semantic_vector WHERE sourceId IN (:ids)") suspend fun forget(ids: List<String>)
 }
 
 object SemanticSchema {

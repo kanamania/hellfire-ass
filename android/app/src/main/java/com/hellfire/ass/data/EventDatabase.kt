@@ -207,6 +207,10 @@ interface EventDao {
 
     @Query("DELETE FROM source_event")
     suspend fun deleteSources()
+    /** Owner deleted the content: keep the row for provenance links, drop the text and its index entries. */
+    @Query("UPDATE source_event SET encryptedPayload = :payload, contentAvailable = 0, contentRedacted = 1 WHERE id IN (:ids)")
+    suspend fun blank(ids: List<String>, payload: ByteArray)
+    @Query("DELETE FROM source_search WHERE eventId IN (:ids)") suspend fun unsearch(ids: List<String>)
 
     @Transaction
     suspend fun deleteAll() { deleteSources(); clearSearch() }

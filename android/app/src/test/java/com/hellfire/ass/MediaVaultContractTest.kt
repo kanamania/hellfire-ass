@@ -128,4 +128,17 @@ class MediaVaultContractTest {
             assertEquals(1, vault.directory.listFiles()!!.count { it.extension == "hfm" })
         } finally { file.delete(); File(context.cacheDir, "twin.jpg").delete() }
     }
+
+    @Test fun `deleting an original purges its transcript from Ask search`() = runBlocking {
+        val item = vault.capture(bytes(4096), "meeting.m4a", "audio/mp4", CaptureOrigin.DRAWER)
+        com.hellfire.ass.media.MediaWork.text(app, item, 0, 30_000, "We agreed the zebrafinch invoice is due Friday", "speech")
+        val hit = db.events().search("zebrafinch", 10).single()
+        db.semantic().put(listOf(com.hellfire.ass.memory.SemanticVector(hit.eventId, "m", byteArrayOf(1), 1)))
+        vault.purgeDerivedText(item.id)
+        assertTrue(db.events().search("zebrafinch", 10).isEmpty())
+        val row = db.events().find(hit.eventId)!!
+        assertFalse(row.contentAvailable)
+        assertFalse(String(app.cipher.decrypt(row.encryptedPayload), Charsets.UTF_8).contains("zebrafinch"))
+        assertEquals(0, db.semantic().indexedCount("m"))
+    }
 }
