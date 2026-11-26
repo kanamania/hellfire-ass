@@ -63,7 +63,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-031 | P1 | Person- and month-aware search | D-22 | M | DONE (d940e37) without a new table: names expand to saved handles in the existing FTS index; months filter by date. Open: citation check for model answers (moved to HF-051) |
 | HF-032 | P1 | Interruption coordinator: quiet hours, dedup, budget, "not useful" | — | M | PARTLY DONE (fac2a9c): shared quiet hours and a daily cap (`Interruptions`) for capture-problem alerts and task heads-ups. Open: news through the same gate, `notice_log`, "not useful" feedback |
 | HF-033 | P1 | Conditional reminders ("remind me Friday if Juma hasn't paid") | — | M | DONE (c554a4a): schema 23 adds `assistant_task.condition` |
-| HF-034 | P1 | Scenario replay evaluation harness | — | M | OPEN |
+| HF-034 | P1 | Scenario replay evaluation harness | — | M | PARTLY DONE (this branch): `AssistantEvalTest` with bilingual time, finance and routing sets, report in `build/reports/assistant-eval.json`. Open: the 12-week timeline replay and proactive and retrieval metrics |
 | HF-040 | P2 | Opt-in auto-post for trusted provider formats | A1.15 | M | OWNER DECISION |
 | HF-041 | P2 | Budget warnings and 30-day cash-flow in the brief | — | M | OPEN |
 | HF-042 | P2 | Waiting-on includes notification-only chats | — | S | OPEN |

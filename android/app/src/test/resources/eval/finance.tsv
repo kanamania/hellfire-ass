@@ -1,0 +1,20 @@
+# sender<TAB>message<TAB>provider<TAB>kind<TAB>amount<TAB>fee  (empty provider = no candidate). Synthetic formats written for this test, not real messages.
+M-PESA	QK12ABC3D4 Confirmed. Tsh5,000.00 sent to JOHN DOE on 26/11/26. Total transaction cost, Tsh 300.00	MPESA	EXPENSE	5000	300
+M-PESA	JOHN DOE sent you TZS 10,000. Ref ABC12345	MPESA	INCOME	10000	0
+M-PESA	Umetoa Tsh 20,000 kwa wakala JUMA SHOP. Ref ABC12345	MPESA	EXPENSE	20000	0
+M-PESA	Umelipa TZS 15,000.00 ref SYNTHETIC-123 ada TZS 500.00	MPESA	EXPENSE	15000	500
+M-PESA	The TZS 5,000 you received from JOHN DOE has been reversed. Ref ABC12345	MPESA	EXPENSE	5000	0
+M-PESA	Reversed TZS 5,000 paid to DUKA. Ref ABC12345	MPESA	REFUND	5000	0
+M-PESA	Payment failed. Paid TZS 5,000 ref SYNTH0001				
+Airtel	Umetuma TZS 10,000 kwa JUMA. Makato TZS 250. Ref ABC12345	AIRTEL	EXPENSE	10000	250
+Airtel	Umenunua muda wa maongezi Tsh 1,000. Ref ABC12345	AIRTEL	EXPENSE	1000	0
+NMB	Your account has been debited TZS 50,000.00 and credited to JOHN DOE. Ref ABC12345	NMB	EXPENSE	50000	0
+NMB	Your account has been credited with TZS 50,000.00 from JOHN DOE. Ref ABC12345	NMB	INCOME	50000	0
+NMB	Umelipa TZS 20,000. Gharama TZS 300, tozo TZS 100. Ref ABC12345	NMB	EXPENSE	20000	400
+NMB	Umelipa ada TZS 500,000 kwa SHULE YA MSINGI. Ref ABC12345	NMB	EXPENSE	500000	0
+NMB	Umetuma TZS 10,000 kwenda M-PESA 0712000000. Ref ABC12345	NMB	EXPENSE	10000	0
+CRDB	TZS 50,000.00 has been credited to your account. Ref ABC12345	CRDB	INCOME	50000	0
+CRDB	Paid TZS 20,000. Fees: TZS 100 Levy: TZS 50. Ref ABC12345	CRDB	EXPENSE	20000	150
+AzamPesa	Umelipa TZS 3,000. Ref ABC12345	AZAMPESA	EXPENSE	3000	0
+SELCOM	Paid TZS 3,000 to DUKA. Ref ABC12345	SELCOM	EXPENSE	3000	0
++255712000000	M-Pesa: Umepokea TZS 10,000 kutoka JUMA. Ref ABC12345	MPESA	INCOME	10000	0
