@@ -5,7 +5,8 @@ controls, playback/share paths, inbox/actions, backup/selective restore and sync
 views were corrected and connected. Web notes, collection editing, inbox originals
 and bookmark seeking are now wired. The dated redesign results below remain
 historical; current tests/artifacts are recorded in
-[DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md). Version 0.9.0, schema 19.
+[DEVICE_FEASIBILITY.md](docs/DEVICE_FEASIBILITY.md). At that checkpoint: version 0.9.0, schema 19;
+the current version is in the [README](README.md#current-status--2026-11-26).
 OnePlus 16 is the current owner target; device rendering, permissions and codecs
 remain NOT TESTED. Static checks do not establish physical usability.
 

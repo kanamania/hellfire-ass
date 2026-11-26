@@ -1,6 +1,6 @@
 # Start HellFire Ass with Codex
 
-Current software baseline: version 0.9.0, Room/backup schema 19 (2026-11-17).
+Current software baseline: version 0.10.0 (code 10), Room/backup schema 21 (2026-11-26).
 The owner authorized all phases and keeps physical device testing for last.
 The owner-selected target is now a OnePlus 16, described as Snapdragon 8 Elite Gen 6;
 read actual firmware, ABI and CPU/accelerator capabilities from the connected phone.
@@ -16,7 +16,7 @@ playback, redaction, restore or sync worked end to end.
 The local web copy is installed under systemd at https://hellfire.local. Phone
 reachability and certificate trust remain separate device checks. Contacts use
 Android's local synced provider; person links are not sent to the web copy.
-Backups accept schema 8 and 10–19. QR decoding and a system-wide drawer overlay
+Backups accept schema 8 and 10–21. QR decoding and a system-wide drawer overlay
 are not implemented; the drawer is in-app plus Android Share.
 
 Read [README.md](README.md) for setup, [DECISIONS.md](DECISIONS.md) for implementation
