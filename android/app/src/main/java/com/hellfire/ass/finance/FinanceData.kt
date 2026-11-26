@@ -55,6 +55,7 @@ interface FinanceDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun candidate(candidate: FinanceCandidate): Long
     @Query("SELECT * FROM finance_candidate WHERE state = 'REVIEW' ORDER BY occurredAt DESC") fun candidates(): Flow<List<FinanceCandidate>>
     @Query("SELECT * FROM finance_candidate WHERE id = :id") suspend fun findCandidate(id: String): FinanceCandidate?
+    @Query("SELECT * FROM finance_candidate WHERE state = 'APPROVED' AND sourceId IN (:sources)") suspend fun approvedCandidatesFor(sources: List<String>): List<FinanceCandidate>
     @Query("SELECT EXISTS(SELECT 1 FROM finance_candidate WHERE provider = :provider AND reference = :reference)") suspend fun hasReference(provider: String, reference: String): Boolean
     @Query("SELECT sourceId FROM finance_candidate WHERE provider = :provider AND reference = :reference AND state = 'DUPLICATE'") suspend fun duplicateSources(provider: String, reference: String): List<String>
     @Query("UPDATE finance_candidate SET state = 'DUPLICATE_LINKED' WHERE provider = :provider AND reference = :reference AND state = 'DUPLICATE'") suspend fun linkDuplicates(provider: String, reference: String)

@@ -257,7 +257,7 @@ fun TransactionPage(id: String) {
     if (confirmReverse) ConfirmDialog("Correct with a reversal?", "Adds reversal entries for this payment, its fee and any transfer credit. The original entry and its evidence stay.",
         "Add reversal", onConfirm = {
             confirmReverse = false
-            scope.launch { message = try { withContext(Dispatchers.IO) { app.finances.reverse(id) }; "Reversal entries posted." } catch (caught: Exception) { Diagnostics.warn(caught); "Reversal rejected: already corrected or a correction entry." } }
+            scope.launch { message = try { withContext(Dispatchers.IO) { app.finances.reverse(id) } } catch (caught: Exception) { Diagnostics.warn(caught); "Reversal rejected: already corrected or a correction entry." } }
         }, onDismiss = { confirmReverse = false }, destructive = true)
     if (pickCategory && e != null) HfBottomSheet({ pickCategory = false }) {
         Text(stringResource(R.string.ui_change_category), style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)

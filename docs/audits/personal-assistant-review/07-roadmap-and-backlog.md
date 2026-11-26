@@ -59,7 +59,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-023 | P1 | Bounded queries for widgets, Inbox, Money, Ask categories; remembered Flows | A1.19, A1.21, D-26, D-27 | M | PARTLY DONE (c659cd6: Ask categories via `SELECT DISTINCT`); rest OPEN |
 | HF-024 | P1 | Record release-build failures; alerts for brief failure and cloud key failure | D-30, D-10 | S | PARTLY DONE (88be2d4: brief, search index, recording recovery, restore follow-ups, mail accounts recorded in Needs attention; D-10 fixed with HF-010). Open: cloud-key alert |
 | HF-025 | P1 | Ask search uses the full-text index, not the decrypt scan | A1.20 | S | DONE (c659cd6) |
-| HF-030 | P1 | Ledger: corrected re-post after reversal | D-17 | M | OPEN |
+| HF-030 | P1 | Ledger: corrected re-post after reversal | D-17 | M | DONE (this branch) |
 | HF-031 | P1 | Person- and month-aware search | D-22 | L | OPEN |
 | HF-032 | P1 | Interruption coordinator: quiet hours, dedup, budget, "not useful" | — | M | OPEN |
 | HF-033 | P1 | Conditional reminders ("remind me Friday if Juma hasn't paid") | — | M | OPEN |

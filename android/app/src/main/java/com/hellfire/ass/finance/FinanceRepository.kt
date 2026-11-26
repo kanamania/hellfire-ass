@@ -18,8 +18,13 @@ class FinanceRepository(private val db: EventDatabase, private val suppress: sus
         val account = requireNotNull(dao.account(accountId))
         require(account.currency == "TZS" && candidate.amount > 0 && candidate.fee >= 0)
         Math.addExact(candidate.amount, candidate.fee)
-        val key = NotificationNormalizer.sha256("$accountId|${candidate.provider}|${candidate.reference ?: candidate.id}")
-        val existing = dao.byKey(key)
+        var key = NotificationNormalizer.sha256("$accountId|${candidate.provider}|${candidate.reference ?: candidate.id}")
+        var existing = dao.byKey(key)
+        // A reversed posting no longer counts; the corrected post gets a key derived from the reversed one, so it still dedupes.
+        while (existing != null && dao.reversed(existing.id)) {
+            key = NotificationNormalizer.sha256("$key|after:${existing.id}")
+            existing = dao.byKey(key)
+        }
         if (existing != null) {
             if (personKey != null) ContactLinks(db).ledger(existing.id, personKey)
             dao.evidence(LedgerEvidence(existing.id, candidate.sourceId))
@@ -57,7 +62,8 @@ class FinanceRepository(private val db: EventDatabase, private val suppress: sus
         "Transaction posted with source evidence."
     }
 
-    suspend fun reverse(id: String): Unit = db.withTransaction {
+    /** Reverses a posting. Its candidate returns to review so the corrected transaction can be posted from the same evidence. */
+    suspend fun reverse(id: String): String = db.withTransaction {
         val original = requireNotNull(dao.entry(id))
         require(original.reversesId == null && !dao.reversed(original.id)) { "Already corrected or a correction entry" }
         val group = dao.group(original.groupId)
@@ -67,12 +73,18 @@ class FinanceRepository(private val db: EventDatabase, private val suppress: sus
             Math.addExact(dao.balance(entry.accountId), delta)
             val reversalId = UUID.randomUUID().toString()
             dao.post(entry.copy(id = reversalId, dedupeKey = "reverse:${entry.id}",
+                // Dated with the original so period totals net to zero where the mistake was, not in the month of the fix.
                 kind = "ADJUSTMENT", amount = delta, description = "Reversal: ${entry.description}",
-                occurredAt = System.currentTimeMillis(), createdAt = System.currentTimeMillis(),
+                occurredAt = entry.occurredAt, createdAt = System.currentTimeMillis(),
                 groupId = "reverse:${original.groupId}", reversesId = entry.id))
             dao.sources(entry.id).forEach { dao.evidence(LedgerEvidence(reversalId, it)) }
             db.communications().audit(ActionAudit(UUID.randomUUID().toString(), reversalId, "OWNER_LEDGER_REVERSAL", "POSTED", System.currentTimeMillis()))
         }
+        val approved = dao.approvedCandidatesFor(dao.sources(original.id))
+        val reopen = approved.singleOrNull() ?: approved.singleOrNull { it.amount == Math.absExact(original.amount) }
+        if (reopen != null) dao.candidateState(reopen.id, "REVIEW")
+        if (reopen != null) "Reversal entries posted. The payment is back in To confirm, so you can post it correctly."
+        else "Reversal entries posted."
     }
 
     /**
