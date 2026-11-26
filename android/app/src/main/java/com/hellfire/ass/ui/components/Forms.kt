@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.components
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -49,7 +52,7 @@ fun Note(text: String, modifier: Modifier = Modifier, color: Color = Hf.colors.m
 /** Small uppercase group label used above setting groups and in sheets. */
 @Composable
 fun GroupLabel(text: String, modifier: Modifier = Modifier) {
-    Text(com.hellfire.ass.ui.tr(text).uppercase(), modifier.padding(horizontal = 4.dp), style = Hf.type.caption.copy(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.24.sp),
+    Text(text.uppercase(), modifier.padding(horizontal = 4.dp), style = Hf.type.caption.copy(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.24.sp),
         color = Hf.colors.muted)
 }
 
@@ -76,7 +79,7 @@ fun HfTextField(
     supporting: String? = null, minLines: Int = 1,
 ) {
     OutlinedTextField(
-        value, onValueChange, modifier.fillMaxWidth(), enabled = enabled, label = { Text(com.hellfire.ass.ui.tr(label)) },
+        value, onValueChange, modifier.fillMaxWidth(), enabled = enabled, label = { Text(label) },
         singleLine = singleLine, minLines = minLines, shape = RoundedCornerShape(14.dp),
         visualTransformation = if (password) androidx.compose.ui.text.input.PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = when {
@@ -126,7 +129,7 @@ fun <T> Dropdown(label: String, value: T, options: List<T>, display: (T) -> Stri
                 .clickable(role = Role.DropdownList) { open = true }.padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(com.hellfire.ass.ui.tr(label), style = Hf.type.label, color = Hf.colors.muted)
+            Text(label, style = Hf.type.label, color = Hf.colors.muted)
             Text(display(value), style = Hf.type.label.copy(fontWeight = FontWeight.SemiBold), color = Hf.colors.onSurface, maxLines = 1)
             Icon(HfIcons.ChevronDown, null, Modifier.size(14.dp), tint = Hf.colors.muted)
         }
@@ -141,7 +144,7 @@ fun <T> Dropdown(label: String, value: T, options: List<T>, display: (T) -> Stri
 /** Full-width labelled choice that opens a menu; for form sheets. */
 @Composable
 fun <T> ChoiceField(label: String, value: T?, options: List<T>, display: (T) -> String, onSelect: (T) -> Unit, modifier: Modifier = Modifier,
-    placeholder: String = "Choose") {
+    placeholder: String? = null) {
     var open by remember { mutableStateOf(false) }
     Box(modifier.fillMaxWidth()) {
         Column(
@@ -149,9 +152,9 @@ fun <T> ChoiceField(label: String, value: T?, options: List<T>, display: (T) -> 
                 .background(Hf.colors.surface).clickable(role = Role.DropdownList) { open = true }
                 .padding(horizontal = 14.dp, vertical = 8.dp),
         ) {
-            Text(com.hellfire.ass.ui.tr(label), style = Hf.type.caption.copy(fontWeight = FontWeight.Normal), color = Hf.colors.muted)
+            Text(label, style = Hf.type.caption.copy(fontWeight = FontWeight.Normal), color = Hf.colors.muted)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(value?.let(display) ?: com.hellfire.ass.ui.tr(placeholder), Modifier.weight(1f), style = Hf.type.body,
+                Text(value?.let(display) ?: (placeholder ?: androidx.compose.ui.res.stringResource(com.hellfire.ass.R.string.ui_choose)), Modifier.weight(1f), style = Hf.type.body,
                     color = if (value == null) Hf.colors.muted else Hf.colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Icon(HfIcons.ChevronDown, null, Modifier.size(16.dp), tint = Hf.colors.muted)
             }
@@ -321,7 +324,7 @@ fun ConfirmDialog(title: String, text: String, confirm: String, onConfirm: () ->
         confirmButton = { TextButton(onConfirm, colors = ButtonDefaults.textButtonColors(contentColor = if (destructive) Hf.colors.danger else Hf.colors.primary)) {
             Text(confirm, style = Hf.type.label.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold)) } },
         dismissButton = { TextButton(onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = Hf.colors.muted)) {
-            Text(com.hellfire.ass.ui.tr("Cancel"), style = Hf.type.label.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold)) } },
+            Text(stringResource(R.string.ui_cancel), style = Hf.type.label.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold)) } },
     )
 }
 
@@ -338,13 +341,13 @@ fun SectionCard(title: String? = null, modifier: Modifier = Modifier, content: @
 
 /** Date and time are picked separately and always interpreted in East Africa Time. */
 @Composable
-fun DateTimeField(value: String, onValueChange: (String) -> Unit, label: String = "Date and time · East Africa Time") {
+fun DateTimeField(value: String, onValueChange: (String) -> Unit, label: String? = null) {
     val context = LocalContext.current
     var picking by rememberSaveable { mutableIntStateOf(0) }
     val current = Fmt.zoned(TaskTime.parse(value))
     val onChange by rememberUpdatedState(onValueChange)
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        GroupLabel(label)
+        GroupLabel(label ?: androidx.compose.ui.res.stringResource(com.hellfire.ass.R.string.ui_date_and_time_east_africa_time))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { picking = 1 }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
                 Text(current.toLocalDate().toString(), Modifier.semantics { contentDescription = "Choose date: ${current.toLocalDate()}" })

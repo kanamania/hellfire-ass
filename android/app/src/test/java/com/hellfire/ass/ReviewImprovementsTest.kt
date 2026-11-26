@@ -193,9 +193,9 @@ class ReviewImprovementsTest {
         try {
             com.hellfire.ass.ui.UiLanguage.code = "sw"
             val localized = com.hellfire.ass.ui.UiLanguage.context(app)
-            assertEquals("Fedha", localized.getString(com.hellfire.ass.ui.UiLabels.id("Money")!!))
-            assertEquals("Majukumu", localized.getString(com.hellfire.ass.ui.UiLabels.id("Tasks")!!))
-            assertNull(com.hellfire.ass.ui.UiLabels.id("Synthetic private message"))
+            assertEquals("Fedha", localized.getString(com.hellfire.ass.R.string.ui_money))
+            assertEquals("Majukumu", localized.getString(com.hellfire.ass.R.string.ui_tasks))
+            assertEquals("Money", app.getString(com.hellfire.ass.R.string.ui_money))
         } finally { com.hellfire.ass.ui.UiLanguage.code = "en" }
     }
     @Test fun `international identities do not collide on their last nine digits`() {

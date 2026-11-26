@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.library
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
@@ -74,28 +77,28 @@ fun MediaDetailPage(route: Route) {
     val current = item
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(ScreenPadding), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            PushedTopBar(current?.name ?: "Media", { nav.pop() }, breadcrumb = tr("Library"))
+            PushedTopBar(current?.name ?: "Media", { nav.pop() }, breadcrumb = stringResource(R.string.ui_library))
             if (current == null) {
                 Note("This item is not in the library.")
                 return@Column
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (current.contentKind == ContentKind.IMAGE.name) SecondaryButton(tr("Pictures"), { viewing = true })
-                SecondaryButton(tr("Play"), { nav.push(LibraryRoutes.player(current.id)) })
-                SecondaryButton(tr("Share with AI"), { nav.push(LibraryRoutes.shareWithAi(current.id)) })
+                if (current.contentKind == ContentKind.IMAGE.name) SecondaryButton(stringResource(R.string.ui_pictures), { viewing = true })
+                SecondaryButton(stringResource(R.string.ui_play), { nav.push(LibraryRoutes.player(current.id)) })
+                SecondaryButton(stringResource(R.string.ui_share_with_ai), { nav.push(LibraryRoutes.shareWithAi(current.id)) })
             }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 StatusPill(current.availability)
-                StatusPill(if (current.storage == StorageMode.EXTERNAL.name) tr("Indexed only") else "Managed")
-                StatusPill(status?.sync ?: tr("Not selected for sync"))
-                StatusPill(status?.backup ?: tr("Not backed up"))
-                StatusPill(status?.processing ?: tr("Not queued"))
+                StatusPill(if (current.storage == StorageMode.EXTERNAL.name) stringResource(R.string.ui_indexed_only) else "Managed")
+                StatusPill(status?.sync ?: stringResource(R.string.ui_not_selected_for_sync))
+                StatusPill(status?.backup ?: stringResource(R.string.ui_not_backed_up))
+                StatusPill(status?.processing ?: stringResource(R.string.ui_not_queued))
             }
             note?.let { Note(it) }
-            SectionCard(tr("Original metadata")) {
+            SectionCard(stringResource(R.string.ui_original_metadata)) {
                 MetadataBlock(current)
                 if (!LibraryAccess.read(env.app).location) Note("Location permission is not granted, so GPS metadata is not read.")
-                SecondaryButton(tr("Scan"), {
+                SecondaryButton(stringResource(R.string.ui_scan), {
                     scope.launch {
                         val json = withContext(Dispatchers.IO) {
                             val fresh = app.database.library().item(id) ?: return@withContext null
@@ -108,9 +111,9 @@ fun MediaDetailPage(route: Route) {
                     }
                 })
             }
-            SectionCard(tr("AI metadata")) {
+            SectionCard(stringResource(R.string.ui_ai_metadata)) {
                 val ai = analysis?.takeIf { it.analyzer != "user_description" && it.modelId != "user" && it.rawJson != "{}" }
-                if (ai == null) Note(tr("Not analysed yet"))
+                if (ai == null) Note(stringResource(R.string.ui_not_analysed_yet))
                 else {
                     Note("${ai.analyzer} · ${ai.modelId} ${ai.modelVersion} · ${ai.state}")
                     if (ai.confidence != null) Note("Confidence ${ai.confidence}")
@@ -118,9 +121,9 @@ fun MediaDetailPage(route: Route) {
                     Note(ai.rawJson.take(1500))
                 }
             }
-            SectionCard(tr("Your description")) {
-                HfTextField(description, { description = it }, "Your description", singleLine = false, minLines = 3)
-                SecondaryButton(tr("Done"), {
+            SectionCard(stringResource(R.string.ui_your_description)) {
+                HfTextField(description, { description = it }, stringResource(R.string.ui_your_description), singleLine = false, minLines = 3)
+                SecondaryButton(stringResource(R.string.ui_done), {
                     scope.launch {
                         withContext(Dispatchers.IO) { LibraryOrganize.saveDescription(app.database.library(), id, description, System.currentTimeMillis()) }
                         note = "Saved as your edit. The raw analysis was not overwritten."
@@ -128,7 +131,7 @@ fun MediaDetailPage(route: Route) {
                     }
                 })
             }
-            SectionCard(tr("Categories")) {
+            SectionCard(stringResource(R.string.ui_categories)) {
                 if (categories.isEmpty()) Note("No categories assigned.")
                 categories.forEach { link ->
                     ListRow(link.category.name, subtitle = "${link.linkOrigin} · ${link.linkState}" + if (link.category.isPrivate) " · Private" else "")
@@ -136,17 +139,17 @@ fun MediaDetailPage(route: Route) {
                 allCategories.filter { it.mergedInto == null }.forEach { category ->
                     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(category.name, style = Hf.type.body, color = Hf.colors.onSurface, modifier = Modifier.weight(1f))
-                        Text(tr("Assign"), Modifier.padding(8.dp).clip(RoundedCornerShape(8.dp)).background(Hf.colors.fill).padding(8.dp), color = Hf.colors.primary)
-                        Text(tr("Exclude"), Modifier.padding(8.dp), color = Hf.colors.danger)
+                        Text(stringResource(R.string.ui_assign), Modifier.padding(8.dp).clip(RoundedCornerShape(8.dp)).background(Hf.colors.fill).padding(8.dp), color = Hf.colors.primary)
+                        Text(stringResource(R.string.ui_exclude), Modifier.padding(8.dp), color = Hf.colors.danger)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SecondaryButton(tr("Assign"), {
+                        SecondaryButton(stringResource(R.string.ui_assign), {
                             scope.launch {
                                 withContext(Dispatchers.IO) { LibraryOrganize.assign(app.database.library(), id, category.id, LinkState.ASSIGNED, System.currentTimeMillis()) }
                                 load()
                             }
                         })
-                        SecondaryButton(tr("Exclude"), {
+                        SecondaryButton(stringResource(R.string.ui_exclude), {
                             scope.launch {
                                 withContext(Dispatchers.IO) { LibraryOrganize.assign(app.database.library(), id, category.id, LinkState.EXCLUDED, System.currentTimeMillis()) }
                                 note = "Excluded. Re-indexing will not put this category back."
@@ -156,18 +159,18 @@ fun MediaDetailPage(route: Route) {
                     }
                 }
             }
-            SectionCard(tr("Tags")) {
+            SectionCard(stringResource(R.string.ui_tags)) {
                 tags.forEach { tag -> ListRow(tag.tag, subtitle = "${tag.origin} · ${tag.state}") }
-                HfTextField(tagDraft, { tagDraft = it }, "Tags")
+                HfTextField(tagDraft, { tagDraft = it }, stringResource(R.string.ui_tags))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SecondaryButton(tr("Assign"), {
+                    SecondaryButton(stringResource(R.string.ui_assign), {
                         scope.launch {
                             val saved = withContext(Dispatchers.IO) { LibraryOrganize.setTag(app.database.library(), id, tagDraft, LinkState.ASSIGNED, System.currentTimeMillis()) }
                             note = if (saved == null) "Tag was empty." else "Tag saved."
                             tagDraft = ""; load()
                         }
                     })
-                    SecondaryButton(tr("Remove tag"), {
+                    SecondaryButton(stringResource(R.string.ui_remove_tag), {
                         scope.launch {
                             withContext(Dispatchers.IO) { LibraryOrganize.setTag(app.database.library(), id, tagDraft, LinkState.EXCLUDED, System.currentTimeMillis()) }
                             note = "Tag excluded. A later suggestion will not restore it."
@@ -177,20 +180,20 @@ fun MediaDetailPage(route: Route) {
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SecondaryButton(if (current.favorite) tr("Favorites") else tr("Mark favorite"), {
+                SecondaryButton(if (current.favorite) stringResource(R.string.ui_favorites) else stringResource(R.string.ui_mark_favorite), {
                     scope.launch {
                         withContext(Dispatchers.IO) { app.database.library().setFavorite(id, !current.favorite) }
                         load()
                     }
                 })
-                SecondaryButton(tr("Managed sync"), {
+                SecondaryButton(stringResource(R.string.ui_managed_sync), {
                     scope.launch {
                         val result = runCatching { withContext(Dispatchers.IO) { app.media.promote(id, true) } }
                         note = result.fold({ "Copied into managed storage and marked for sync. Upload is not confirmed." }, { "Could not copy the original. It was not marked synced." })
                         load()
                     }
                 })
-                SecondaryButton(tr("Reprocess"), {
+                SecondaryButton(stringResource(R.string.ui_reprocess), {
                     scope.launch {
                         val job = withContext(Dispatchers.IO) {
                             val now = System.currentTimeMillis()
@@ -252,8 +255,8 @@ private fun ImageViewer(current: MediaItem, siblings: List<MediaItem>, slideshow
     }
     Column(Modifier.fillMaxSize().background(Hf.colors.surfaceDark).padding(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SecondaryButton(tr("Clear"), onClose)
-            SecondaryButton(tr("Slideshow"), { onSlideshow(!slideshow) })
+            SecondaryButton(stringResource(R.string.ui_clear), onClose)
+            SecondaryButton(stringResource(R.string.ui_slideshow), { onSlideshow(!slideshow) })
             Text(if (slideshow) "Slideshow on" else "Slideshow off", color = Hf.colors.onSurface, modifier = Modifier.align(Alignment.CenterVertically))
         }
         HorizontalPager(pager, Modifier.weight(1f), userScrollEnabled = !zoomed) { page ->

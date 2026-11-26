@@ -1,589 +1,589 @@
-<resources>
-    <string name="ui_3a78695388" formatted="false">Home</string>
-    <string name="ui_5ccc2e8715" formatted="false">Money</string>
-    <string name="ui_b8c209cdea" formatted="false">Ask</string>
-    <string name="ui_b3a60e61a5" formatted="false">Tasks</string>
-    <string name="ui_4bc74b2135" formatted="false">Task</string>
-    <string name="ui_94835ea2fc" formatted="false">Inbox</string>
-    <string name="ui_74a883a037" formatted="false">Settings</string>
-    <string name="ui_aff0766a52" formatted="false">Review</string>
-    <string name="ui_8c64fa44d7" formatted="false">Daily review</string>
-    <string name="ui_65e3a57008" formatted="false">Review next</string>
-    <string name="ui_80712e2f2d" formatted="false">Review payment</string>
-    <string name="ui_170da5e1b5" formatted="false">Review task</string>
-    <string name="ui_09a08c5602" formatted="false">Review reply in Inbox</string>
-    <string name="ui_40a3b25c20" formatted="false">Review pending payments</string>
-    <string name="ui_bb3969ce41" formatted="false">Payments, tasks and replies in one place. Nothing is posted, scheduled or sent without its own approval.</string>
-    <string name="ui_4ed36bd325" formatted="false">Next · payment</string>
-    <string name="ui_09f873ccaa" formatted="false">Next · task</string>
-    <string name="ui_cba2fe493c" formatted="false">Next · reply</string>
-    <string name="ui_e68cbfcf62" formatted="false">You\'re caught up</string>
-    <string name="ui_a9e82cdb53" formatted="false">There are no payments, task proposals or drafts waiting for review.</string>
-    <string name="ui_aa025bdd64" formatted="false">Cash check-in</string>
-    <string name="ui_b1d36a4a1f" formatted="false">I have finished these cash check-ins</string>
-    <string name="ui_06268fd2da" formatted="false">Set account/category for pending payments…</string>
-    <string name="ui_1e96751ace" formatted="false">Suggest account and category</string>
-    <string name="ui_f7d5b1abad" formatted="false">Choose another payment</string>
-    <string name="ui_bc994a88a0" formatted="false">Add cash</string>
-    <string name="ui_3e1baf33e3" formatted="false">Add cash spending</string>
-    <string name="ui_ba423a4640" formatted="false">Add task</string>
-    <string name="ui_3e992276b2" formatted="false">New task</string>
-    <string name="ui_cf1368a3d1" formatted="false">Edit task</string>
-    <string name="ui_2b065c7c9c" formatted="false">Today</string>
-    <string name="ui_5f1a2542e4" formatted="false">Upcoming</string>
-    <string name="ui_11a6767d56" formatted="false">Done</string>
-    <string name="ui_2cb1983a1e" formatted="false">Not done yet</string>
-    <string name="ui_a8283ade31" formatted="false">Undo</string>
-    <string name="ui_a6a80431b0" formatted="false">Reschedule</string>
-    <string name="ui_b6b7a00658" formatted="false">Repeat</string>
-    <string name="ui_b36c2611dc" formatted="false">Daily</string>
-    <string name="ui_2975132481" formatted="false">Weekly</string>
-    <string name="ui_9b11f6b707" formatted="false">Monthly</string>
-    <string name="ui_dc937b5989" formatted="false">None</string>
-    <string name="ui_f481a73cda" formatted="false">Keep reminding</string>
-    <string name="ui_eab0cd8fdf" formatted="false">Hourly</string>
-    <string name="ui_b41cc8f2fd" formatted="false">Overdue reminder intensity</string>
-    <string name="ui_5867e278dc" formatted="false">Repeats every month</string>
-    <string name="ui_85b2286585" formatted="false">Repeating tasks schedule the next occurrence when you mark this one done. Keep reminding uses your overdue interval in Settings.</string>
-    <string name="ui_7971dd7526" formatted="false">Reminders</string>
-    <string name="ui_31757bbfa1" formatted="false">Reminder</string>
-    <string name="ui_d660945bc2" formatted="false">Overdue</string>
-    <string name="ui_051cc2b13b" formatted="false">Overdue reminders</string>
-    <string name="ui_cf8e642432" formatted="false">Allow reminder notifications</string>
-    <string name="ui_451cd39654" formatted="false">Manage exact-alarm access</string>
-    <string name="ui_3fac58d0c7" formatted="false">Nightly cash review</string>
-    <string name="ui_c6aa9cd74d" formatted="false">Morning brief</string>
-    <string name="ui_f296e45acc" formatted="false">Evening wrap-up</string>
-    <string name="ui_509d03586b" formatted="false">Capture problem alerts</string>
-    <string name="ui_d0a300f3a4" formatted="false">Save interval</string>
-    <string name="ui_ec5ba0abb7" formatted="false">Access</string>
-    <string name="ui_f5387f9bb6" formatted="false">Kind</string>
-    <string name="ui_baaddf70fb" formatted="false">Type</string>
-    <string name="ui_1eec97a07f" formatted="false">Promise</string>
-    <string name="ui_86ebc563f5" formatted="false">Who does it</string>
-    <string name="ui_d30af076b0" formatted="false">Me</string>
-    <string name="ui_3233cb049a" formatted="false">Someone else</string>
-    <string name="ui_dca5fa430c" formatted="false">Not sure</string>
-    <string name="ui_9c10e38867" formatted="false">Bill to pay</string>
-    <string name="ui_87dbf39d87" formatted="false">I owe</string>
-    <string name="ui_49aa2eb928" formatted="false">Owed to me</string>
-    <string name="ui_9957d09c21" formatted="false">Neither</string>
-    <string name="ui_90a90a48e2" formatted="false">Good morning</string>
-    <string name="ui_d325e1bbfd" formatted="false">Good afternoon</string>
-    <string name="ui_15a421e4cf" formatted="false">Good evening</string>
-    <string name="ui_74b6abdf59" formatted="false">Needs you</string>
-    <string name="ui_baddce6d8b" formatted="false">Spent today</string>
-    <string name="ui_7c9f7617b7" formatted="false">Received today</string>
-    <string name="ui_e31da5b25f" formatted="false">Up next</string>
-    <string name="ui_cb66482383" formatted="false">All tasks</string>
-    <string name="ui_7f6c052da7" formatted="false">Only payments you confirmed count here.</string>
-    <string name="ui_56b564b75c" formatted="false">Templates</string>
-    <string name="ui_d7942d2821" formatted="false">Use a template</string>
-    <string name="ui_7ab15c8cd5" formatted="false">Waiting on</string>
-    <string name="ui_7db2089705" formatted="false">People</string>
-    <string name="ui_3b387c6547" formatted="false">Debts</string>
-    <string name="ui_245ad028f7" formatted="false">Bills</string>
-    <string name="ui_bfdd510698" formatted="false">Record</string>
-    <string name="ui_60c56d66a1" formatted="false">Recordings</string>
-    <string name="ui_dacca3cba3" formatted="false">Reports</string>
-    <string name="ui_b6ce788d97" formatted="false">Report</string>
-    <string name="ui_f3e23734b2" formatted="false">Full report</string>
-    <string name="ui_d5d0a30b51" formatted="false">Calendar</string>
-    <string name="ui_c4e7ea5310" formatted="false">Add to calendar…</string>
-    <string name="ui_0e570ca6fa" formatted="false">Source</string>
-    <string name="ui_caf85b0888" formatted="false">Sources</string>
-    <string name="ui_95a84d695e" formatted="false">Show source</string>
-    <string name="ui_11cbee289f" formatted="false">Remember this</string>
-    <string name="ui_26ddf55db7" formatted="false">Save memory</string>
-    <string name="ui_6f541e1b25" formatted="false">Create task</string>
-    <string name="ui_c78a983b05" formatted="false">Choose an exact passage from the source. It stays linked to the original.</string>
-    <string name="ui_b6b19ae750" formatted="false">Person or subject</string>
-    <string name="ui_fc537eec08" formatted="false">Source excerpt</string>
-    <string name="ui_fbaa34ca38" formatted="false">Ask about your money, tasks and messages</string>
-    <string name="ui_ee7227ce35" formatted="false">Ask history</string>
-    <string name="ui_0e76960093" formatted="false">History</string>
-    <string name="ui_0e15ae8690" formatted="false">Keep encrypted history</string>
-    <string name="ui_28c7029cdb" formatted="false">Clear history and conversation</string>
-    <string name="ui_202610b579" formatted="false">Who answers</string>
-    <string name="ui_f97da48734" formatted="false">On this phone</string>
-    <string name="ui_b321be0264" formatted="false">Local model + saved sources</string>
-    <string name="ui_57f3f6c9f3" formatted="false">AI task</string>
-    <string name="ui_457588a8c6" formatted="false">Cloud AI</string>
-    <string name="ui_2c7e25e017" formatted="false">On-device models</string>
-    <string name="ui_ac6c80d635" formatted="false">Monthly AI budget</string>
-    <string name="ui_eebdd24a77" formatted="false">Confirm</string>
-    <string name="ui_22a970d2e5" formatted="false">Completed</string>
-    <string name="ui_3329a9bb48" formatted="false">Applying…</string>
-    <string name="ui_61a99938eb" formatted="false">Could not complete. Check the result below before trying again.</string>
-    <string name="ui_eb1a70e392" formatted="false">Discard</string>
-    <string name="ui_7fb156411a" formatted="false">Discarded</string>
-    <string name="ui_dd73221dc2" formatted="false">Confirming saves a draft. Sending still needs Approve and send in Inbox.</string>
-    <string name="ui_5e533b4731" formatted="false">Only confirmed payments are counted. Own transfers are excluded.</string>
-    <string name="ui_aa257cd947" formatted="false">The saved records this answer used. Tap one to see the original.</string>
-    <string name="ui_5474eef8d0" formatted="false">Working…</string>
-    <string name="ui_19766ed6cc" formatted="false">Cancel</string>
-    <string name="ui_464c4ffd01" formatted="false">Edit</string>
-    <string name="ui_1509f561f2" formatted="false">Save</string>
-    <string name="ui_31fbef1625" formatted="false">Continue</string>
-    <string name="ui_b58eb52c88" formatted="false">Skip for now</string>
-    <string name="ui_76900f1bfd" formatted="false">Back</string>
-    <string name="ui_5a1f096a0d" formatted="false">Turn on</string>
-    <string name="ui_06f0e210b2" formatted="false">Turn off</string>
-    <string name="ui_1300117561" formatted="false">On</string>
-    <string name="ui_ca7981b46e" formatted="false">Off</string>
-    <string name="ui_969ccbd3cf" formatted="false">Email</string>
-    <string name="ui_6a40edf1fc" formatted="false">WhatsApp</string>
-    <string name="ui_a52ace420f" formatted="false">All</string>
-    <string name="ui_b73a5e2ca6" formatted="false">Calls</string>
-    <string name="ui_40b601a10c" formatted="false">SMS</string>
-    <string name="ui_1d432f5869" formatted="false">Conversations</string>
-    <string name="ui_5110768675" formatted="false">All items</string>
-    <string name="ui_5894fff79e" formatted="false">Load older history</string>
-    <string name="ui_5ffa922919" formatted="false">Search all saved messages</string>
-    <string name="ui_ece2a57619" formatted="false">Search checks saved message bodies and the full source-text index, including older captures.</string>
-    <string name="ui_8a997164d2" formatted="false">Approve and send</string>
-    <string name="ui_56259e319e" formatted="false">DRAFT READY</string>
-    <string name="ui_222753ee56" formatted="false">Sent and failed drafts</string>
-    <string name="ui_ca48e69a9c" formatted="false">Email and WhatsApp accounts are set up in Settings. Nothing is sent without your approval.</string>
-    <string name="ui_12e62269e9" formatted="false">No reply needed</string>
-    <string name="ui_456a73bbce" formatted="false">Tomorrow</string>
-    <string name="ui_292c06f004" formatted="false">Category</string>
-    <string name="ui_7e1b0d5641" formatted="false">Account</string>
-    <string name="ui_8a7c8b67fe" formatted="false">Accounts</string>
-    <string name="ui_aa9b4b5f1b" formatted="false">Amount TZS</string>
-    <string name="ui_cb88202b9f" formatted="false">Fee TZS</string>
-    <string name="ui_526e0087cc" formatted="false">Description</string>
-    <string name="ui_1da9a04272" formatted="false">Merchant</string>
-    <string name="ui_6675fa6b7f" formatted="false">Name this merchant</string>
-    <string name="ui_66e97ac375" formatted="false">Usual category</string>
-    <string name="ui_2b31046ef3" formatted="false">Change category</string>
-    <string name="ui_091fd6e985" formatted="false">To confirm</string>
-    <string name="ui_690dbe9dc0" formatted="false">Recent</string>
-    <string name="ui_9c823cdc78" formatted="false">Total balance · TZS</string>
-    <string name="ui_dcd1d5223f" formatted="false">Name</string>
-    <string name="ui_e4eb18069d" formatted="false">Food</string>
-    <string name="ui_2742b7b24a" formatted="false">Groceries</string>
-    <string name="ui_aaead4abf5" formatted="false">Transport</string>
-    <string name="ui_a80f942f41" formatted="false">Fuel</string>
-    <string name="ui_0a035c2b85" formatted="false">Utilities</string>
-    <string name="ui_f0268cb910" formatted="false">Rent</string>
-    <string name="ui_76f68a75f0" formatted="false">Business</string>
-    <string name="ui_bd2d677b2e" formatted="false">Family</string>
-    <string name="ui_27b54406ac" formatted="false">Airtime</string>
-    <string name="ui_51595db919" formatted="false">Income</string>
-    <string name="ui_6d80486cc3" formatted="false">Fees</string>
-    <string name="ui_f97e9da0e3" formatted="false">Other</string>
-    <string name="ui_a0417ba801" formatted="false">Expense</string>
-    <string name="ui_6b37bd3508" formatted="false">Refund</string>
-    <string name="ui_dde8bef78c" formatted="false">Transfer</string>
-    <string name="ui_12030ceac0" formatted="false">Own transfer</string>
-    <string name="ui_94a26c5abe" formatted="false">Only confirmed payments count toward your totals.</string>
-    <string name="ui_50f18d4f05" formatted="false">Not a payment</string>
-    <string name="ui_bc9eb8587a" formatted="false">Not a task</string>
-    <string name="ui_4d77119a6f" formatted="false">Remember this name and category</string>
-    <string name="ui_2ec5445000" formatted="false">Remember my account and category for this sender/merchant</string>
-    <string name="ui_64e48f1350" formatted="false">Account/category suggested from your saved choice for this sender or merchant. Check them before confirming.</string>
-    <string name="ui_56df739b40" formatted="false">Add an account in Money › Accounts first.</string>
-    <string name="ui_80e5be7c48" formatted="false">Add an account in Money › Accounts to record spending.</string>
-    <string name="ui_162aeba2fa" formatted="false">Add your M-Pesa, bank and cash accounts to track balances.</string>
-    <string name="ui_8725a78f26" formatted="false">Check account balance</string>
-    <string name="ui_82624c4437" formatted="false">Before making an adjustment</string>
-    <string name="ui_ee6ea96032" formatted="false">Latest observed SMS balances</string>
-    <string name="ui_54b97c06ac" formatted="false">The two balances agree at this time.</string>
-    <string name="ui_79f2ed6f2a" formatted="false">Pick a receipt only if it belongs to this account. A provider name alone does not identify your account.</string>
-    <string name="ui_44c32f7da6" formatted="false">Record a reviewed balance adjustment…</string>
-    <string name="ui_105fff40c9" formatted="false">An adjustment records the difference with your approval and evidence. It never fabricates missing payments or counts as income/spending.</string>
-    <string name="ui_bf59ac9cc3" formatted="false">Shared with HellFire</string>
-    <string name="ui_38fd328d04" formatted="false">Share text, a screenshot, document or audio file to HellFire from another app.</string>
-    <string name="ui_0279d4ac56" formatted="false">Review this share before saving. Nothing is sent or posted to your ledger.</string>
-    <string name="ui_3d9b693b09" formatted="false">Shared text</string>
-    <string name="ui_6501e1ced8" formatted="false">Save note</string>
-    <string name="ui_919e271a39" formatted="false">Create reminder</string>
-    <string name="ui_74c3f616fa" formatted="false">Review expense</string>
-    <string name="ui_ea7df3b344" formatted="false">Save shared content</string>
-    <string name="ui_23e39291d6" formatted="false">Saving…</string>
-    <string name="ui_285556b919" formatted="false">Only the first 60,000 characters are shown and saved.</string>
-    <string name="ui_f52e06762e" formatted="false">Private by default</string>
-    <string name="ui_97de5a90ae" formatted="false">Permissions and capture</string>
-    <string name="ui_c6f448a169" formatted="false">Capture status</string>
-    <string name="ui_788011833a" formatted="false">Notifications</string>
-    <string name="ui_186352a881" formatted="false">Microphone</string>
-    <string name="ui_889eda1fc5" formatted="false">On-time reminders</string>
-    <string name="ui_14f7901e72" formatted="false">Phone assistant</string>
-    <string name="ui_c7b156d319" formatted="false">Run in background</string>
-    <string name="ui_85330cea66" formatted="false">Fingerprint app lock</string>
-    <string name="ui_0e6b09c31f" formatted="false">Encrypted backup</string>
-    <string name="ui_4d2e102158" formatted="false">Memory and proposals</string>
-    <string name="ui_4dbd32bfaf" formatted="false">Home screen widgets</string>
-    <string name="ui_6890ecb87b" formatted="false">Web access</string>
-    <string name="ui_d052579c6a" formatted="false">This device</string>
-    <string name="ui_391e405152" formatted="false">Assistant</string>
-    <string name="ui_e52ac334c1" formatted="false">Let\'s set up HellFire</string>
-    <string name="ui_1c0fe2d047" formatted="false">about 1 minute</string>
-    <string name="ui_0be16ca9f4" formatted="false">Finish the nightly review</string>
-    <string name="ui_6fddf5bf12" formatted="false">Notification processing</string>
-    <string name="ui_2c4517af49" formatted="false">Resume processing</string>
-    <string name="ui_e8647e37c8" formatted="false">Sync SMS history</string>
-    <string name="ui_b1bbbbd540" formatted="false">Turn off SMS capture</string>
-    <string name="ui_2678e27d0d" formatted="false">Every accessible notification is kept. Turning an app off keeps its future notifications as capture only.</string>
-    <string name="ui_5cc57b8088" formatted="false">Testing and cleanup</string>
-    <string name="ui_1f7a6ec5ca" formatted="false">Test the assistant session</string>
-    <string name="ui_854337d439" formatted="false">Insert a synthetic test event</string>
-    <string name="ui_092d731328" formatted="false">Delete captured events…</string>
-    <string name="ui_b7297226fd" formatted="false">Save name</string>
-    <string name="ui_44fda95629" formatted="false">Open assistant settings</string>
-    <string name="ui_eec735c5d7" formatted="false">Choose HellFire as the digital assistant</string>
-    <string name="ui_a4fe65264e" formatted="false">Language</string>
-    <string name="ui_b3dda1bbc2" formatted="false">Interface and voice language</string>
-    <string name="ui_ba118bf7fc" formatted="false">English</string>
-    <string name="ui_a7a38d4353" formatted="false">Kiswahili</string>
-    <string name="ui_e970151b49" formatted="false">What to remember</string>
-    <string name="ui_71988c4d8e" formatted="false">Text</string>
-    <string name="ui_6897128384" formatted="false">Subject</string>
-    <string name="ui_2f77668a9d" formatted="false">Message</string>
-    <string name="ui_337a0c347e" formatted="false">To · email address</string>
-    <string name="ui_40770c3719" formatted="false">To · WhatsApp number with country code</string>
-    <string name="ui_cee28d2048" formatted="false">Person (optional)</string>
-    <string name="ui_6007db63e1" formatted="false">Person</string>
-    <string name="ui_e1ef9979ed" formatted="false">Due · East Africa Time</string>
-    <string name="ui_42d044abea" formatted="false">Date and time · East Africa Time</string>
-    <string name="ui_3c63a1af11" formatted="false">Balance as of · East Africa Time</string>
-    <string name="ui_954a073087" formatted="false">Balance shown by your provider · TZS</string>
-    <string name="ui_9f75e749b4" formatted="false">Amount TZS (optional, not added to Money)</string>
-    <string name="ui_ea0a75c1b1" formatted="false">Snooze minutes · 5–1440</string>
-    <string name="ui_ec90df3eb4" formatted="false">Source message</string>
-    <string name="ui_b3802b51c0" formatted="false">Your cash entry</string>
-    <string name="ui_e7e3f27048" formatted="false">Current balance TZS (optional)</string>
-    <string name="ui_fd5ad0b496" formatted="false">Account name, e.g. M-Pesa or CRDB Current</string>
-    <string name="ui_f2488fd4ef" formatted="false">Email address</string>
-    <string name="ui_32bd9cb2ce" formatted="false">App password / IMAP password</string>
-    <string name="ui_fe0534116f" formatted="false">New password (leave blank to keep)</string>
-    <string name="ui_4014732450" formatted="false">Read payment and message alerts. Security codes are hidden.</string>
-    <string name="ui_6a9e548360" formatted="false">Track M-Pesa and bank messages. Never sends SMS.</string>
-    <string name="ui_1f5053a8b8" formatted="false">Ask by voice and record when you choose. Always shows a notification.</string>
-    <string name="ui_cae0aa5360" formatted="false">Ring at the exact minute you set</string>
-    <string name="ui_5ba9cb1ad9" formatted="false">Open HellFire with your assistant gesture</string>
-    <string name="ui_2fc385cd20" formatted="false">Connected accounts</string>
-    <string name="ui_ee5ef73aae" formatted="false">Your data</string>
-    <string name="ui_11fb682be0" formatted="false">AI</string>
-    <string name="ui_a55c4ed2db" formatted="false">Confirm payment</string>
-    <string name="ui_86b862b544" formatted="false">Save and schedule</string>
-    <string name="ui_3de100106d" formatted="false">Save draft</string>
-    <string name="ui_78f5975a5d" formatted="false">New message</string>
-    <string name="ui_16d626ca5f" formatted="false">Save correction</string>
-    <string name="ui_a6bd489d95" formatted="false">Forget</string>
-    <string name="ui_a68cace66e" formatted="false">Add to memory</string>
-    <string name="ui_b5c120b316" formatted="false">Saved</string>
-    <string name="ui_c3963aedaa" formatted="false">Memory</string>
-    <string name="ui_76ea482f84" formatted="false">New note</string>
-    <string name="ui_db0d68b465" formatted="false">My note</string>
-    <string name="ui_d2095df584" formatted="false">Quote from a record</string>
-    <string name="ui_e7f30ce124" formatted="false">Guess to check</string>
-    <string name="ui_f9aee0e222" formatted="false">Choose contact</string>
-    <string name="ui_333d798fbf" formatted="false">Choose a person</string>
-    <string name="ui_3b7a8a380e" formatted="false">Name, number or email</string>
-    <string name="ui_fc457b8bc2" formatted="false">Use typed name</string>
-    <string name="ui_54a03bcd4e" formatted="false">Allow contacts</string>
-    <string name="ui_d43fb8a961" formatted="false">App settings</string>
-    <string name="ui_b16ecfd57f" formatted="false">Recovery readiness</string>
-    <string name="ui_327ff2e45d" formatted="false">Back up or restore</string>
-    <string name="ui_06cec1523c" formatted="false">What is included</string>
-    <string name="ui_27d770b30f" formatted="false">Verify an archive without restoring…</string>
-    <string name="ui_658cf7209a" formatted="false">Export encrypted backup…</string>
-    <string name="ui_0a13083b8c" formatted="false">Restore into empty local database…</string>
-    <string name="ui_9eb1939d74" formatted="false">Backup passphrase · at least 12 characters</string>
-    <string name="ui_bfe65c4dfd" formatted="false">Daily Google Drive backup and restore</string>
-    <string name="ui_310a3445e7" formatted="false">Import and analysis</string>
-    <string name="ui_3724061d8e" formatted="false">Conversation monitoring</string>
-    <string name="ui_cfe34edd38" formatted="false">Originals</string>
-    <string name="ui_0f4d8a4a00" formatted="false">Start monitoring</string>
-    <string name="ui_42608b8d42" formatted="false">Stop monitoring</string>
-    <string name="ui_1bd255624a" formatted="false">Import original</string>
-    <string name="ui_18f2619c41" formatted="false">Analyze locally</string>
-    <string name="ui_79b6a7c60a" formatted="false">Play from timestamp</string>
-    <string name="ui_19b81a94ee" formatted="false">Stop playback</string>
-    <string name="ui_fb85598359" formatted="false">Draft local summary and structured notes</string>
-    <string name="ui_7e8cc3dece" formatted="false">Mark summary reviewed</string>
-    <string name="ui_64e3a65805" formatted="false">Manual speaker label</string>
-    <string name="ui_888a6a9cae" formatted="false">Save speaker label</string>
-    <string name="ui_8ce17446ec" formatted="false">Export decrypted original…</string>
-    <string name="ui_6538629498" formatted="false">Delete original and transcript…</string>
-    <string name="ui_4131792896" formatted="false">AI skills</string>
-    <string name="ui_bc4db5d337" formatted="false">Add skill</string>
-    <string name="ui_20da5974bc" formatted="false">Edit skill</string>
-    <string name="ui_a8597db6f2" formatted="false">Remove skill</string>
-    <string name="ui_c07faeaa90" formatted="false">Remove skill?</string>
-    <string name="ui_d59b5e97bf" formatted="false">Why created</string>
-    <string name="ui_d18ee16647" formatted="false">When it applies</string>
-    <string name="ui_af537a5b7c" formatted="false">Original evidence</string>
-    <string name="ui_1e5f0e76e7" formatted="false">Approve and enable</string>
-    <string name="ui_b7e3e4aa42" formatted="false">Disable</string>
-    <string name="ui_460d21da0f" formatted="false">Usage history</string>
-    <string name="ui_65df5e8dd2" formatted="false">This skill has not been used.</string>
-    <string name="ui_4ec96d2f03" formatted="false">Open where used</string>
-    <string name="ui_9b5fbc2474" formatted="false">Load older uses</string>
-    <string name="ui_45d1a34591" formatted="false">Load more skills</string>
-    <string name="ui_76c02b7edd" formatted="false">Search skills</string>
-    <string name="ui_0fbb6f49b8" formatted="false">Skill name</string>
-    <string name="ui_bbdc102cf9" formatted="false">Skill type</string>
-    <string name="ui_73dca86695" formatted="false">Related words or topic</string>
-    <string name="ui_5519d0b203" formatted="false">What AI should learn</string>
-    <string name="ui_f81ab834de" formatted="false">Reason</string>
-    <string name="ui_a6f9121ea2" formatted="false">Save and enable</string>
-    <string name="ui_e633f7da3f" formatted="false">Exact text to recognize</string>
-    <string name="ui_4803a67097" formatted="false">Use sender or merchant from</string>
-    <string name="ui_2fc06a820b" formatted="false">Everyday help</string>
-    <string name="ui_8ef7823ca8" formatted="false">Guided setup</string>
-    <string name="ui_c1ebc78178" formatted="false">Needs attention</string>
-    <string name="ui_ad8428d836" formatted="false">Privacy and storage</string>
-    <string name="ui_dfca12ea3c" formatted="false">Choose what you want HellFire to help with</string>
-    <string name="ui_927bffdac1" formatted="false">Capture, connections, models and backups</string>
-    <string name="ui_ffaec44b07" formatted="false">Learned rules, reasons and usage history</string>
-    <string name="ui_594b837d22" formatted="false">Where your data lives</string>
-    <string name="ui_938c65250f" formatted="false">Track spending</string>
-    <string name="ui_534f1fbf20" formatted="false">Remember conversations</string>
-    <string name="ui_fabb14f177" formatted="false">Manage commitments</string>
-    <string name="ui_2e59be2356" formatted="false">Choose a starting goal. You can add the other features later.</string>
-    <string name="ui_0f62f89379" formatted="false">permissions enabled</string>
-    <string name="ui_92c1cdfdf4" formatted="false">Enabled</string>
-    <string name="ui_2b0e804836" formatted="false">Not enabled</string>
-    <string name="ui_e92292cdda" formatted="false">Needs your permission</string>
-    <string name="ui_06f1795b3e" formatted="false">Open setup</string>
-    <string name="ui_e9cd49a1ea" formatted="false">Add an account</string>
-    <string name="ui_afff2826a8" formatted="false">Choose speech and language models</string>
-    <string name="ui_2249f06fd3" formatted="false">Check it works</string>
-    <string name="ui_453769ff02" formatted="false">Open capture checks</string>
-    <string name="ui_fae2176e6d" formatted="false">Connections and recovery</string>
-    <string name="ui_27cb7a4bbd" formatted="false">Continue to HellFire</string>
-    <string name="ui_cb75f40522" formatted="false">Finish setup later</string>
-    <string name="ui_7930f26852" formatted="false">Your goal is saved. Resume from Settings › Guided setup.</string>
-    <string name="ui_04ac3ae673" formatted="false">Capture and permissions</string>
-    <string name="ui_3d0c373340" formatted="false">No delivery observed yet</string>
-    <string name="ui_61ad4c6b4a" formatted="false">No queued events</string>
-    <string name="ui_53b18f56c1" formatted="false">Open permissions and capture</string>
-    <string name="ui_de2167ec77" formatted="false">Retry failed processing</string>
-    <string name="ui_dc27311748" formatted="false">Connections</string>
-    <string name="ui_982891b385" formatted="false">No connection results recorded. Optional accounts can be configured below.</string>
-    <string name="ui_188947216a" formatted="false">Models and recordings</string>
-    <string name="ui_f1d7b951c4" formatted="false">No model download status recorded</string>
-    <string name="ui_151dfa41b4" formatted="false">recordings need attention</string>
-    <string name="ui_4cded1a3ac" formatted="false">Choose models</string>
-    <string name="ui_63c55b3a22" formatted="false">Backup and storage</string>
-    <string name="ui_539c7230a9" formatted="false">free on this device</string>
-    <string name="ui_353a35bf2f" formatted="false">Open backup and verification</string>
-    <string name="ui_c02afc1705" formatted="false">Original media</string>
-    <string name="ui_fa7fe67124" formatted="false">Database</string>
-    <string name="ui_64cd989efc" formatted="false">Free space</string>
-    <string name="ui_e17e251762" formatted="false">Manage recordings</string>
-    <string name="ui_0e62689615" formatted="false">Manage memory</string>
-    <string name="ui_231a352f9c" formatted="false">Manage AI skills</string>
-    <string name="ui_cd5990faeb" formatted="false">Outside this phone</string>
-    <string name="ui_b88f1c1c7d" formatted="false">Web copy</string>
-    <string name="ui_ef300be237" formatted="false">Enabled. Selected records are readable on your server.</string>
-    <string name="ui_92b543463e" formatted="false">Sync is off. An earlier server copy may still exist until you delete it.</string>
-    <string name="ui_3fe71c22cd" formatted="false">Review or delete web copy</string>
-    <string name="ui_e2f9f063d4" formatted="false">Drive backup</string>
-    <string name="ui_54d40cbf32" formatted="false">Enabled. Passphrase-encrypted archives are uploaded to your Google Drive.</string>
-    <string name="ui_57a5446077" formatted="false">Automatic Drive backup is off. Previously exported or uploaded archives may still exist.</string>
-    <string name="ui_663a4d4795" formatted="false">Manage backup archives</string>
-    <string name="ui_fa7053a6ea" formatted="false">Enabled for text you explicitly submit with a cloud model. Inspect your text before sending.</string>
-    <string name="ui_d6d46ab953" formatted="false">Off. Local answers do not use a cloud fallback.</string>
-    <string name="ui_55b3c01f53" formatted="false">Manage cloud AI</string>
-    <string name="ui_1b43e2d030" formatted="false">Model catalog</string>
-    <string name="ui_5e2c614c23" formatted="false">Model</string>
-    <string name="ui_4d342fc3e4" formatted="false">Choose a compatible format from a trusted publisher. No model name or download URL needs typing.</string>
-    <string name="ui_21822f8003" formatted="false">Publisher and model details</string>
-    <string name="ui_8904d029a9" formatted="false">Download and use selected model</string>
-    <string name="ui_13bbdede66" formatted="false">Pause download</string>
-    <string name="ui_4be2334779" formatted="false">Pause Gemma download</string>
-    <string name="ui_89d9aa25f5" formatted="false">Install published Gemma update</string>
-    <string name="ui_14ea131735" formatted="false">Check Gemma updates</string>
-    <string name="ui_d177cdc09a" formatted="false">Not installed</string>
-    <string name="ui_79532e47d2" formatted="false">Imported model</string>
-    <string name="ui_2ef51f84fc" formatted="false">Search memory</string>
-    <string name="ui_e153865a35" formatted="false">Load older memories</string>
-    <string name="ui_bf01a79e61" formatted="false">Save with provenance</string>
-    <string name="ui_5207b583f0" formatted="false">Could not save. Check storage and try again.</string>
-    <string name="ui_abfdc338b7" formatted="false">Skill settings saved.</string>
-    <string name="ui_fc755767f6" formatted="false">Draft could not be saved. Keep this screen open and check free storage.</string>
-    <string name="ui_5cd2821676" formatted="false">Draft could not be opened. Check storage and device unlock.</string>
-    <string name="ui_a386fb65bc" formatted="false">Remove authentication content.</string>
-    <string name="ui_20f3482084" formatted="false">Remove authentication content from this skill.</string>
-    <string name="ui_f140542e3c" formatted="false">Remove authentication content before saving.</string>
-    <string name="ui_b6d7a77f54" formatted="false">Correction saved; the original source stays available.</string>
-    <string name="ui_9e70db9e4f" formatted="false">Shared content saved locally.</string>
-    <string name="ui_3c4bf29b19" formatted="false">Skills guide suggestions and local answers. They cannot send messages, post money or grant permissions.</string>
-    <string name="ui_2bf9445a71" formatted="false">Everyday corrections create suggestions for review. Only active skills affect future decisions.</string>
-    <string name="ui_e63bdb19a9" formatted="false">No skills yet. Add one, or review suggestions after correcting a payment, task or memory.</string>
-    <string name="ui_d8a8ef7420" formatted="false">This removes the skill and its usage history. Original evidence stays saved.</string>
-    <string name="ui_32db5b80cb" formatted="false">Saved records stay on the phone. Retry capture or analysis here; sending always requires its separate approval.</string>
-    <string name="ui_185ae26f81" formatted="false">Permission enabled is not proof of delivery. Receive a real notification or SMS, then check Capture status and its saved source. Test recording and reminder delivery on this phone.</string>
-    <string name="ui_e24a009c9b" formatted="false">Captured sources, memories, skills and usage history are stored in the encrypted database. Originals and private drafts are encrypted locally.</string>
-    <string name="ui_845737ba44" formatted="false">Model weights and app code are separate from personal records. Original recordings remain until you explicitly delete them.</string>
-    <string name="ui_289403e4a5" formatted="false">Turning a connection off does not erase copies already exported. Deletion must be requested in the relevant destination.</string>
-    <string name="ui_69aecf26c6" formatted="false">Downloads wait for Wi-Fi and adequate battery/storage. Size and SHA-256 are checked, then the runtime loads the file before installation. Existing models remain until replacement succeeds.</string>
-    <string name="ui_b843ba2b33" formatted="false">Connections, models, backups and recovery</string>
-    <string name="ui_07297fa94a" formatted="false">Needs review</string>
-    <string name="ui_75081b593d" formatted="false">Disabled</string>
-    <string name="ui_4e64d26458" formatted="false">Personal guidance</string>
-    <string name="ui_baaf7cc51f" formatted="false">Payment choices</string>
-    <string name="ui_c2c5eeaa19" formatted="false">Repeated false task</string>
-    <string name="ui_949ef2618f" formatted="false">Repeated false payment</string>
-    <string name="ui_920e413c7d" formatted="false">Status</string>
-    <string name="ui_2e516d68f4" formatted="false">Revision</string>
-    <string name="ui_9e6151acb0" formatted="false">Uses</string>
-    <string name="ui_3a5ecca188" formatted="false">Updated</string>
-    <string name="ui_fd1c91bdd0" formatted="false">Language model</string>
-    <string name="ui_b2f052de67" formatted="false">Speech model</string>
-    <string name="ui_352d069b82" formatted="false">Meaning search</string>
-    <string name="ui_c7f937836f" formatted="false">Choose</string>
-    <string name="ui_e08cbb5672" formatted="false">All meaningful topic words must match. Skills cannot override source facts.</string>
-    <string name="ui_3e15db6f20" formatted="false">Exact repeated text from the original source app</string>
-    <string name="ui_fdcda827b6" formatted="false">This exact wording will not create the same task or payment suggestion again.</string>
-    <string name="ui_03eadbed8c" formatted="false">Choose a real reviewed or pending payment to identify the sender/merchant. The skill suggests choices; you still confirm each payment.</string>
-    <string name="ui_29970408cb" formatted="false">You chose Remember my account and category after reviewing a payment.</string>
-    <string name="ui_6ae97e82c4" formatted="false">You confirmed this account/category while reviewing a payment. Review before applying to later matches.</string>
-    <string name="ui_e92877010a" formatted="false">You marked this captured item as not a payment. An exact-match rule can avoid repeating this false suggestion.</string>
-    <string name="ui_efcb92495a" formatted="false">You marked this proposal as not a task. Review this exact-match rule before using it.</string>
-    <string name="ui_2d591076f6" formatted="false">You rejected this task in Daily review. Review this rule before using it.</string>
-    <string name="ui_17152bd73e" formatted="false">You corrected this memory. Review whether the correction should guide future related answers.</string>
-    <string name="ui_ecdea8e09e" formatted="false">You saved this source excerpt for future reference. Review whether it should guide related answers.</string>
-    <string name="ui_71e88d68b5" formatted="false">Review AI skills</string>
-    <string name="ui_2e15a130e9" formatted="false">Learned from your corrections</string>
-    <string name="ui_442c4b8939" formatted="false">Refresh status</string>
-    <string name="ui_7283040535" formatted="false">Account unavailable</string>
-    <string name="ui_401dc1a55c" formatted="false">Earlier versions</string>
-    <string name="ui_b7c60e8681" formatted="false">Choose meaningful topic words.</string>
-    <string name="ui_4aae80751d" formatted="false">Choose an existing account.</string>
-    <string name="ui_a4861b29ef" formatted="false">Could not save the complete share. Already saved items are retained; retry resumes this share and skips completed files. Re-share files if Android access expired.</string>
-    <string name="ui_bbace8ab59" formatted="false">Check file access and storage.</string>
-    <string name="ui_3c7092c624" formatted="false">Processing scheduled; check the updated queue. No messages were sent.</string>
-    <string name="ui_24b595f85f" formatted="false">Could not schedule processing. Saved records are retained.</string>
-    <string name="ui_eb5bb0e600" formatted="false">Privacy settings could not be read. Nothing has changed.</string>
-    <string name="ui_9f2467da31" formatted="false">Loading privacy settings…</string>
-    <string name="ui_942087cc2d" formatted="false">Retry</string>
-    <string name="ui_dc20b3d5d2" formatted="false">Library</string>
-    <string name="ui_1e6245009d" formatted="false">Pictures</string>
-    <string name="ui_c9a9639463" formatted="false">Videos</string>
-    <string name="ui_bc1b88907d" formatted="false">Audio</string>
-    <string name="ui_9f9feade76" formatted="false">Collections</string>
-    <string name="ui_7a1f2a83ac" formatted="false">Favorites</string>
-    <string name="ui_b8b1d894c6" formatted="false">Categories</string>
-    <string name="ui_93c28c3925" formatted="false">Duplicates</string>
-    <string name="ui_ea1c510d1d" formatted="false">Scan</string>
-    <string name="ui_5bbfc5a69b" formatted="false">Add folder</string>
-    <string name="ui_0d7d12ac62" formatted="false">Grid</string>
-    <string name="ui_6f202f54a7" formatted="false">List</string>
-    <string name="ui_d15efa178c" formatted="false">Newest</string>
-    <string name="ui_1af8519073" formatted="false">Size</string>
-    <string name="ui_452ec9f553" formatted="false">Recently played</string>
-    <string name="ui_66115948b1" formatted="false">Managed sync</string>
-    <string name="ui_d11d1aca95" formatted="false">Not selected for sync</string>
-    <string name="ui_0d41d27eca" formatted="false">Not analysed yet</string>
-    <string name="ui_436e61016e" formatted="false">Play</string>
-    <string name="ui_5b9aadad3f" formatted="false">Share with AI</string>
-    <string name="ui_55ecdf8652" formatted="false">Reprocess</string>
-    <string name="ui_d120fc6535" formatted="false">Original metadata</string>
-    <string name="ui_a7ed4b7a2e" formatted="false">AI metadata</string>
-    <string name="ui_bf3a2be349" formatted="false">Your description</string>
-    <string name="ui_3f63a3abbc" formatted="false">Similar</string>
-    <string name="ui_50a206ca76" formatted="false">Partial access</string>
-    <string name="ui_1b4c03a1d1" formatted="false">Media access needed</string>
-    <string name="ui_1d0c5be737" formatted="false">Slideshow</string>
-    <string name="ui_57bca6e1c6" formatted="false">Albums</string>
-    <string name="ui_dcd0a4d2c6" formatted="false">Playlists</string>
-    <string name="ui_c63eb6720c" formatted="false">Private</string>
-    <string name="ui_6e69959866" formatted="false">Merge into</string>
-    <string name="ui_5b76f62e1b" formatted="false">Exclude</string>
-    <string name="ui_8ece895c9b" formatted="false">Assign</string>
-    <string name="ui_1331275bc5" formatted="false">Tags</string>
-    <string name="ui_2a78025de6" formatted="false">Select</string>
-    <string name="ui_a74c5b7741" formatted="false">Indexed only</string>
-    <string name="ui_0f793aaea4" formatted="false">Not backed up</string>
-    <string name="ui_2f2ccea17e" formatted="false">Backed up</string>
-    <string name="ui_7e52b62ffb" formatted="false">Not queued</string>
-    <string name="ui_44671d1d1a" formatted="false">Selected for sync</string>
-    <string name="ui_9bbe98c2ab" formatted="false">Compare pictures</string>
-    <string name="ui_1ab1e121c0" formatted="false">New category</string>
-    <string name="ui_3064d79a29" formatted="false">Rename</string>
-    <string name="ui_488464ba45" formatted="false">Remove tag</string>
-    <string name="ui_52a8f32fd2" formatted="false">Queue processing</string>
-    <string name="ui_d0baec111c" formatted="false">Add to collection</string>
-    <string name="ui_5bf24037c6" formatted="false">Mark favorite</string>
-    <string name="ui_83b12c2216" formatted="false">Clear</string>
-    <string name="ui_ac8991ef01" formatted="false">Load more</string>
-    <string name="ui_6be36ca49e" formatted="false">Missing</string>
-    <string name="ui_d101686dfb" formatted="false">Permission revoked</string>
-    <string name="ui_2a6141e43b" formatted="false">Changed</string>
-    <string name="ui_e674447337" formatted="false">Available</string>
-    <string name="ui_326bbeaa91" formatted="false">Sync on</string>
-    <string name="ui_c8e3e92a62" formatted="false">Processing</string>
-    <string name="ui_838557924a" formatted="false">Backup</string>
-    <string name="ui_bec69036aa" formatted="false">Sort</string>
-    <string name="ui_638e249f4a" formatted="false">Filter</string>
-    <string name="ui_64aee8c6cb" formatted="false">Player</string>
-    <string name="ui_4ac709aa58" formatted="false">Unlock</string>
-    <string name="ui_f59d9abe42" formatted="false">Lock screen</string>
-    <string name="ui_d47f85a04c" formatted="false">Original is not available.</string>
-    <string name="ui_77d99701fc" formatted="false">Notifications are off, so lock-screen controls may be hidden by Android.</string>
-    <string name="ui_7f7739d908" formatted="false">Thumbnail unavailable</string>
-    <string name="ui_858e4ba7a2" formatted="false">Pause</string>
-    <string name="ui_2876c1f5c3" formatted="false">Skip back</string>
-    <string name="ui_3284049794" formatted="false">Skip forward</string>
-    <string name="ui_a57b08a480" formatted="false">Previous</string>
-    <string name="ui_1ff57a29d7" formatted="false">Next</string>
-    <string name="ui_897e0cf78b" formatted="false">Exit full screen</string>
-    <string name="ui_674fe2acd0" formatted="false">Full screen</string>
-    <string name="ui_3baa2d6ed4" formatted="false">Picture-in-picture</string>
-    <string name="ui_c372fee9b4" formatted="false">Speed</string>
-    <string name="ui_317cb3a7ef" formatted="false">Shuffle</string>
-    <string name="ui_5e87a7bd5a" formatted="false">Unfavorite</string>
-    <string name="ui_ea713ecd85" formatted="false">Favorite</string>
-    <string name="ui_336c84d8da" formatted="false">Sleep timer</string>
-    <string name="ui_bfb99f7ddb" formatted="false">End of item</string>
-    <string name="ui_7781d909b9" formatted="false">Set A</string>
-    <string name="ui_bf8f310bda" formatted="false">Set B</string>
-    <string name="ui_9d10c311ca" formatted="false">Clear loop</string>
-    <string name="ui_67eaebc39f" formatted="false">Save range</string>
-    <string name="ui_2bebdca31f" formatted="false">Previous chapter</string>
-    <string name="ui_4344dde797" formatted="false">Next chapter</string>
-    <string name="ui_b318882ba8" formatted="false">Search in this item</string>
-    <string name="ui_bf1b7b8a4c" formatted="false">Indexed search</string>
-    <string name="ui_1bac400788" formatted="false">Bookmark</string>
-    <string name="ui_67ae3405bc" formatted="false">Seek</string>
-    <string name="ui_ac20a57bfd" formatted="false">Hide</string>
-    <string name="ui_e2d0a54968" formatted="false">Delete</string>
-    <string name="ui_8bb41c4164" formatted="false">Convert to manual</string>
-    <string name="ui_c3812fc4ac" formatted="false">Remove</string>
-    <string name="ui_721164f0dc" formatted="false">Transcript</string>
-    <string name="ui_e21f935f11" formatted="false">Copy</string>
-    <string name="ui_aca01a1a3a" formatted="false">Correct</string>
-    <string name="ui_d34349bbcc" formatted="false">Playback history</string>
-    <string name="ui_5484a3a7f5" formatted="false">No playback history yet.</string>
-    <string name="ui_7e8cd2056d" formatted="false">Title</string>
-    <string name="ui_8a7525b149" formatted="false">Notes</string>
-    <string name="ui_b63ed49a38" formatted="false">Save bookmark</string>
-    <string name="ui_7d9eb7acb1" formatted="false">Close</string>
-    <string name="ui_b10fb966d7" formatted="false">Volume</string>
-    <string name="ui_ec811d30a8" formatted="false">Brightness</string>
-    <string name="ui_eeed1164fe" formatted="false">No extra audio or subtitle tracks reported.</string>
-    <string name="ui_e4a8479838" formatted="false">Audio track</string>
-    <string name="ui_6a5216300c" formatted="false">Subtitles off</string>
-    <string name="ui_b284a23c3c" formatted="false">No bookmarks or chapters yet.</string>
-    <string name="ui_ed077f3d81" formatted="false">Open</string>
-    <string name="ui_afd6047384" formatted="false">System overlay is not available. Picture-in-picture is the supported floating player.</string>
-    <string name="ui_db9061fce2" formatted="false">Playback session could not start.</string>
-    <string name="ui_fa1d54ecfb" formatted="false">Storage permission was not granted. The external file was not opened.</string>
-    <string name="ui_09da75e9c7" formatted="false">Picture-in-picture is not available on this device.</string>
-    <string name="ui_1198f84a2f" formatted="false">Picture-in-picture was refused by this device. Playback continues in the app.</string>
-    <string name="ui_e14509c412" formatted="false">Volume control was refused by this device.</string>
-    <string name="ui_554d3009ce" formatted="false">Waveform not available for this file. Playback can still continue.</string>
-    <string name="ui_ca416eb41e" formatted="false">No indexed match. Analysis was not started.</string>
-    <string name="ui_c730e1984e" formatted="false">This file cannot be played on this device. The codec or container is not supported. The original was not modified.</string>
-    <string name="ui_b84bfebce5" formatted="false">The original could not be read. Nothing was written out as a decrypted file.</string>
-    <string name="ui_2cb0daa2e0" formatted="false">Playback failed. The original was not modified.</string>
-    <string name="ui_1a00dd5a8a" formatted="false">This item is not audio or video.</string>
-    <string name="ui_f0828a29ee" formatted="false">This external item has no content URI.</string>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="ui_home" formatted="false">Home</string>
+    <string name="ui_money" formatted="false">Money</string>
+    <string name="ui_ask" formatted="false">Ask</string>
+    <string name="ui_tasks" formatted="false">Tasks</string>
+    <string name="ui_task" formatted="false">Task</string>
+    <string name="ui_inbox" formatted="false">Inbox</string>
+    <string name="ui_settings" formatted="false">Settings</string>
+    <string name="ui_review" formatted="false">Review</string>
+    <string name="ui_daily_review" formatted="false">Daily review</string>
+    <string name="ui_review_next" formatted="false">Review next</string>
+    <string name="ui_review_payment" formatted="false">Review payment</string>
+    <string name="ui_review_task" formatted="false">Review task</string>
+    <string name="ui_review_reply_in_inbox" formatted="false">Review reply in Inbox</string>
+    <string name="ui_review_pending_payments" formatted="false">Review pending payments</string>
+    <string name="ui_payments_tasks_and_replies_in_one_place" formatted="false">Payments, tasks and replies in one place. Nothing is posted, scheduled or sent without its own approval.</string>
+    <string name="ui_next_payment" formatted="false">Next · payment</string>
+    <string name="ui_next_task" formatted="false">Next · task</string>
+    <string name="ui_next_reply" formatted="false">Next · reply</string>
+    <string name="ui_youre_caught_up" formatted="false">You\'re caught up</string>
+    <string name="ui_there_are_no_payments_task_proposals_or" formatted="false">There are no payments, task proposals or drafts waiting for review.</string>
+    <string name="ui_cash_check_in" formatted="false">Cash check-in</string>
+    <string name="ui_i_have_finished_these_cash_check_ins" formatted="false">I have finished these cash check-ins</string>
+    <string name="ui_set_account_category_for_pending" formatted="false">Set account/category for pending payments…</string>
+    <string name="ui_suggest_account_and_category" formatted="false">Suggest account and category</string>
+    <string name="ui_choose_another_payment" formatted="false">Choose another payment</string>
+    <string name="ui_add_cash" formatted="false">Add cash</string>
+    <string name="ui_add_cash_spending" formatted="false">Add cash spending</string>
+    <string name="ui_add_task" formatted="false">Add task</string>
+    <string name="ui_new_task" formatted="false">New task</string>
+    <string name="ui_edit_task" formatted="false">Edit task</string>
+    <string name="ui_today" formatted="false">Today</string>
+    <string name="ui_upcoming" formatted="false">Upcoming</string>
+    <string name="ui_done" formatted="false">Done</string>
+    <string name="ui_not_done_yet" formatted="false">Not done yet</string>
+    <string name="ui_undo" formatted="false">Undo</string>
+    <string name="ui_reschedule" formatted="false">Reschedule</string>
+    <string name="ui_repeat" formatted="false">Repeat</string>
+    <string name="ui_daily" formatted="false">Daily</string>
+    <string name="ui_weekly" formatted="false">Weekly</string>
+    <string name="ui_monthly" formatted="false">Monthly</string>
+    <string name="ui_none" formatted="false">None</string>
+    <string name="ui_keep_reminding" formatted="false">Keep reminding</string>
+    <string name="ui_hourly" formatted="false">Hourly</string>
+    <string name="ui_overdue_reminder_intensity" formatted="false">Overdue reminder intensity</string>
+    <string name="ui_repeats_every_month" formatted="false">Repeats every month</string>
+    <string name="ui_repeating_tasks_schedule_the_next" formatted="false">Repeating tasks schedule the next occurrence when you mark this one done. Keep reminding uses your overdue interval in Settings.</string>
+    <string name="ui_reminders" formatted="false">Reminders</string>
+    <string name="ui_reminder" formatted="false">Reminder</string>
+    <string name="ui_overdue" formatted="false">Overdue</string>
+    <string name="ui_overdue_reminders" formatted="false">Overdue reminders</string>
+    <string name="ui_allow_reminder_notifications" formatted="false">Allow reminder notifications</string>
+    <string name="ui_manage_exact_alarm_access" formatted="false">Manage exact-alarm access</string>
+    <string name="ui_nightly_cash_review" formatted="false">Nightly cash review</string>
+    <string name="ui_morning_brief" formatted="false">Morning brief</string>
+    <string name="ui_evening_wrap_up" formatted="false">Evening wrap-up</string>
+    <string name="ui_capture_problem_alerts" formatted="false">Capture problem alerts</string>
+    <string name="ui_save_interval" formatted="false">Save interval</string>
+    <string name="ui_access" formatted="false">Access</string>
+    <string name="ui_kind" formatted="false">Kind</string>
+    <string name="ui_type" formatted="false">Type</string>
+    <string name="ui_promise" formatted="false">Promise</string>
+    <string name="ui_who_does_it" formatted="false">Who does it</string>
+    <string name="ui_me" formatted="false">Me</string>
+    <string name="ui_someone_else" formatted="false">Someone else</string>
+    <string name="ui_not_sure" formatted="false">Not sure</string>
+    <string name="ui_bill_to_pay" formatted="false">Bill to pay</string>
+    <string name="ui_i_owe" formatted="false">I owe</string>
+    <string name="ui_owed_to_me" formatted="false">Owed to me</string>
+    <string name="ui_neither" formatted="false">Neither</string>
+    <string name="ui_good_morning" formatted="false">Good morning</string>
+    <string name="ui_good_afternoon" formatted="false">Good afternoon</string>
+    <string name="ui_good_evening" formatted="false">Good evening</string>
+    <string name="ui_needs_you" formatted="false">Needs you</string>
+    <string name="ui_spent_today" formatted="false">Spent today</string>
+    <string name="ui_received_today" formatted="false">Received today</string>
+    <string name="ui_up_next" formatted="false">Up next</string>
+    <string name="ui_all_tasks" formatted="false">All tasks</string>
+    <string name="ui_only_payments_you_confirmed_count_here" formatted="false">Only payments you confirmed count here.</string>
+    <string name="ui_templates" formatted="false">Templates</string>
+    <string name="ui_use_a_template" formatted="false">Use a template</string>
+    <string name="ui_waiting_on" formatted="false">Waiting on</string>
+    <string name="ui_people" formatted="false">People</string>
+    <string name="ui_debts" formatted="false">Debts</string>
+    <string name="ui_bills" formatted="false">Bills</string>
+    <string name="ui_record" formatted="false">Record</string>
+    <string name="ui_recordings" formatted="false">Recordings</string>
+    <string name="ui_reports" formatted="false">Reports</string>
+    <string name="ui_report" formatted="false">Report</string>
+    <string name="ui_full_report" formatted="false">Full report</string>
+    <string name="ui_calendar" formatted="false">Calendar</string>
+    <string name="ui_add_to_calendar" formatted="false">Add to calendar…</string>
+    <string name="ui_source" formatted="false">Source</string>
+    <string name="ui_sources" formatted="false">Sources</string>
+    <string name="ui_show_source" formatted="false">Show source</string>
+    <string name="ui_remember_this" formatted="false">Remember this</string>
+    <string name="ui_save_memory" formatted="false">Save memory</string>
+    <string name="ui_create_task" formatted="false">Create task</string>
+    <string name="ui_choose_an_exact_passage_from_the_source" formatted="false">Choose an exact passage from the source. It stays linked to the original.</string>
+    <string name="ui_person_or_subject" formatted="false">Person or subject</string>
+    <string name="ui_source_excerpt" formatted="false">Source excerpt</string>
+    <string name="ui_ask_about_your_money_tasks_and_messages" formatted="false">Ask about your money, tasks and messages</string>
+    <string name="ui_ask_history" formatted="false">Ask history</string>
+    <string name="ui_history" formatted="false">History</string>
+    <string name="ui_keep_encrypted_history" formatted="false">Keep encrypted history</string>
+    <string name="ui_clear_history_and_conversation" formatted="false">Clear history and conversation</string>
+    <string name="ui_who_answers" formatted="false">Who answers</string>
+    <string name="ui_on_this_phone" formatted="false">On this phone</string>
+    <string name="ui_local_model_saved_sources" formatted="false">Local model + saved sources</string>
+    <string name="ui_ai_task" formatted="false">AI task</string>
+    <string name="ui_cloud_ai" formatted="false">Cloud AI</string>
+    <string name="ui_on_device_models" formatted="false">On-device models</string>
+    <string name="ui_monthly_ai_budget" formatted="false">Monthly AI budget</string>
+    <string name="ui_confirm" formatted="false">Confirm</string>
+    <string name="ui_completed" formatted="false">Completed</string>
+    <string name="ui_applying" formatted="false">Applying…</string>
+    <string name="ui_could_not_complete_check_the_result" formatted="false">Could not complete. Check the result below before trying again.</string>
+    <string name="ui_discard" formatted="false">Discard</string>
+    <string name="ui_discarded" formatted="false">Discarded</string>
+    <string name="ui_confirming_saves_a_draft_sending_still" formatted="false">Confirming saves a draft. Sending still needs Approve and send in Inbox.</string>
+    <string name="ui_only_confirmed_payments_are_counted_own" formatted="false">Only confirmed payments are counted. Own transfers are excluded.</string>
+    <string name="ui_the_saved_records_this_answer_used_tap" formatted="false">The saved records this answer used. Tap one to see the original.</string>
+    <string name="ui_working" formatted="false">Working…</string>
+    <string name="ui_cancel" formatted="false">Cancel</string>
+    <string name="ui_edit" formatted="false">Edit</string>
+    <string name="ui_save" formatted="false">Save</string>
+    <string name="ui_continue" formatted="false">Continue</string>
+    <string name="ui_skip_for_now" formatted="false">Skip for now</string>
+    <string name="ui_back" formatted="false">Back</string>
+    <string name="ui_turn_on" formatted="false">Turn on</string>
+    <string name="ui_turn_off" formatted="false">Turn off</string>
+    <string name="ui_on" formatted="false">On</string>
+    <string name="ui_off" formatted="false">Off</string>
+    <string name="ui_email" formatted="false">Email</string>
+    <string name="ui_whatsapp" formatted="false">WhatsApp</string>
+    <string name="ui_all" formatted="false">All</string>
+    <string name="ui_calls" formatted="false">Calls</string>
+    <string name="ui_sms" formatted="false">SMS</string>
+    <string name="ui_conversations" formatted="false">Conversations</string>
+    <string name="ui_all_items" formatted="false">All items</string>
+    <string name="ui_load_older_history" formatted="false">Load older history</string>
+    <string name="ui_search_all_saved_messages" formatted="false">Search all saved messages</string>
+    <string name="ui_search_checks_saved_message_bodies_and" formatted="false">Search checks saved message bodies and the full source-text index, including older captures.</string>
+    <string name="ui_approve_and_send" formatted="false">Approve and send</string>
+    <string name="ui_draft_ready" formatted="false">DRAFT READY</string>
+    <string name="ui_sent_and_failed_drafts" formatted="false">Sent and failed drafts</string>
+    <string name="ui_email_and_whatsapp_accounts_are_set_up" formatted="false">Email and WhatsApp accounts are set up in Settings. Nothing is sent without your approval.</string>
+    <string name="ui_no_reply_needed" formatted="false">No reply needed</string>
+    <string name="ui_tomorrow" formatted="false">Tomorrow</string>
+    <string name="ui_category" formatted="false">Category</string>
+    <string name="ui_account" formatted="false">Account</string>
+    <string name="ui_accounts" formatted="false">Accounts</string>
+    <string name="ui_amount_tzs" formatted="false">Amount TZS</string>
+    <string name="ui_fee_tzs" formatted="false">Fee TZS</string>
+    <string name="ui_description" formatted="false">Description</string>
+    <string name="ui_merchant" formatted="false">Merchant</string>
+    <string name="ui_name_this_merchant" formatted="false">Name this merchant</string>
+    <string name="ui_usual_category" formatted="false">Usual category</string>
+    <string name="ui_change_category" formatted="false">Change category</string>
+    <string name="ui_to_confirm" formatted="false">To confirm</string>
+    <string name="ui_recent" formatted="false">Recent</string>
+    <string name="ui_total_balance_tzs" formatted="false">Total balance · TZS</string>
+    <string name="ui_name" formatted="false">Name</string>
+    <string name="ui_food" formatted="false">Food</string>
+    <string name="ui_groceries" formatted="false">Groceries</string>
+    <string name="ui_transport" formatted="false">Transport</string>
+    <string name="ui_fuel" formatted="false">Fuel</string>
+    <string name="ui_utilities" formatted="false">Utilities</string>
+    <string name="ui_rent" formatted="false">Rent</string>
+    <string name="ui_business" formatted="false">Business</string>
+    <string name="ui_family" formatted="false">Family</string>
+    <string name="ui_airtime" formatted="false">Airtime</string>
+    <string name="ui_income" formatted="false">Income</string>
+    <string name="ui_fees" formatted="false">Fees</string>
+    <string name="ui_other" formatted="false">Other</string>
+    <string name="ui_expense" formatted="false">Expense</string>
+    <string name="ui_refund" formatted="false">Refund</string>
+    <string name="ui_transfer" formatted="false">Transfer</string>
+    <string name="ui_own_transfer" formatted="false">Own transfer</string>
+    <string name="ui_only_confirmed_payments_count_toward" formatted="false">Only confirmed payments count toward your totals.</string>
+    <string name="ui_not_a_payment" formatted="false">Not a payment</string>
+    <string name="ui_not_a_task" formatted="false">Not a task</string>
+    <string name="ui_remember_this_name_and_category" formatted="false">Remember this name and category</string>
+    <string name="ui_remember_my_account_and_category_for" formatted="false">Remember my account and category for this sender/merchant</string>
+    <string name="ui_account_category_suggested_from_your" formatted="false">Account/category suggested from your saved choice for this sender or merchant. Check them before confirming.</string>
+    <string name="ui_add_an_account_in_money_accounts_first" formatted="false">Add an account in Money › Accounts first.</string>
+    <string name="ui_add_an_account_in_money_accounts_to" formatted="false">Add an account in Money › Accounts to record spending.</string>
+    <string name="ui_add_your_m_pesa_bank_and_cash_accounts" formatted="false">Add your M-Pesa, bank and cash accounts to track balances.</string>
+    <string name="ui_check_account_balance" formatted="false">Check account balance</string>
+    <string name="ui_before_making_an_adjustment" formatted="false">Before making an adjustment</string>
+    <string name="ui_latest_observed_sms_balances" formatted="false">Latest observed SMS balances</string>
+    <string name="ui_the_two_balances_agree_at_this_time" formatted="false">The two balances agree at this time.</string>
+    <string name="ui_pick_a_receipt_only_if_it_belongs_to" formatted="false">Pick a receipt only if it belongs to this account. A provider name alone does not identify your account.</string>
+    <string name="ui_record_a_reviewed_balance_adjustment" formatted="false">Record a reviewed balance adjustment…</string>
+    <string name="ui_an_adjustment_records_the_difference" formatted="false">An adjustment records the difference with your approval and evidence. It never fabricates missing payments or counts as income/spending.</string>
+    <string name="ui_shared_with_hellfire" formatted="false">Shared with HellFire</string>
+    <string name="ui_share_text_a_screenshot_document_or" formatted="false">Share text, a screenshot, document or audio file to HellFire from another app.</string>
+    <string name="ui_review_this_share_before_saving_nothing" formatted="false">Review this share before saving. Nothing is sent or posted to your ledger.</string>
+    <string name="ui_shared_text" formatted="false">Shared text</string>
+    <string name="ui_save_note" formatted="false">Save note</string>
+    <string name="ui_create_reminder" formatted="false">Create reminder</string>
+    <string name="ui_review_expense" formatted="false">Review expense</string>
+    <string name="ui_save_shared_content" formatted="false">Save shared content</string>
+    <string name="ui_saving" formatted="false">Saving…</string>
+    <string name="ui_only_the_first_60_000_characters_are" formatted="false">Only the first 60,000 characters are shown and saved.</string>
+    <string name="ui_private_by_default" formatted="false">Private by default</string>
+    <string name="ui_permissions_and_capture" formatted="false">Permissions and capture</string>
+    <string name="ui_capture_status" formatted="false">Capture status</string>
+    <string name="ui_notifications" formatted="false">Notifications</string>
+    <string name="ui_microphone" formatted="false">Microphone</string>
+    <string name="ui_on_time_reminders" formatted="false">On-time reminders</string>
+    <string name="ui_phone_assistant" formatted="false">Phone assistant</string>
+    <string name="ui_run_in_background" formatted="false">Run in background</string>
+    <string name="ui_fingerprint_app_lock" formatted="false">Fingerprint app lock</string>
+    <string name="ui_encrypted_backup" formatted="false">Encrypted backup</string>
+    <string name="ui_memory_and_proposals" formatted="false">Memory and proposals</string>
+    <string name="ui_home_screen_widgets" formatted="false">Home screen widgets</string>
+    <string name="ui_web_access" formatted="false">Web access</string>
+    <string name="ui_this_device" formatted="false">This device</string>
+    <string name="ui_assistant" formatted="false">Assistant</string>
+    <string name="ui_lets_set_up_hellfire" formatted="false">Let\'s set up HellFire</string>
+    <string name="ui_about_1_minute" formatted="false">about 1 minute</string>
+    <string name="ui_finish_the_nightly_review" formatted="false">Finish the nightly review</string>
+    <string name="ui_notification_processing" formatted="false">Notification processing</string>
+    <string name="ui_resume_processing" formatted="false">Resume processing</string>
+    <string name="ui_sync_sms_history" formatted="false">Sync SMS history</string>
+    <string name="ui_turn_off_sms_capture" formatted="false">Turn off SMS capture</string>
+    <string name="ui_every_accessible_notification_is_kept" formatted="false">Every accessible notification is kept. Turning an app off keeps its future notifications as capture only.</string>
+    <string name="ui_testing_and_cleanup" formatted="false">Testing and cleanup</string>
+    <string name="ui_test_the_assistant_session" formatted="false">Test the assistant session</string>
+    <string name="ui_insert_a_synthetic_test_event" formatted="false">Insert a synthetic test event</string>
+    <string name="ui_delete_captured_events" formatted="false">Delete captured events…</string>
+    <string name="ui_save_name" formatted="false">Save name</string>
+    <string name="ui_open_assistant_settings" formatted="false">Open assistant settings</string>
+    <string name="ui_choose_hellfire_as_the_digital_assistant" formatted="false">Choose HellFire as the digital assistant</string>
+    <string name="ui_language" formatted="false">Language</string>
+    <string name="ui_interface_and_voice_language" formatted="false">Interface and voice language</string>
+    <string name="ui_english" formatted="false">English</string>
+    <string name="ui_kiswahili" formatted="false">Kiswahili</string>
+    <string name="ui_what_to_remember" formatted="false">What to remember</string>
+    <string name="ui_text" formatted="false">Text</string>
+    <string name="ui_subject" formatted="false">Subject</string>
+    <string name="ui_message" formatted="false">Message</string>
+    <string name="ui_to_email_address" formatted="false">To · email address</string>
+    <string name="ui_to_whatsapp_number_with_country_code" formatted="false">To · WhatsApp number with country code</string>
+    <string name="ui_person_optional" formatted="false">Person (optional)</string>
+    <string name="ui_person" formatted="false">Person</string>
+    <string name="ui_due_east_africa_time" formatted="false">Due · East Africa Time</string>
+    <string name="ui_date_and_time_east_africa_time" formatted="false">Date and time · East Africa Time</string>
+    <string name="ui_balance_as_of_east_africa_time" formatted="false">Balance as of · East Africa Time</string>
+    <string name="ui_balance_shown_by_your_provider_tzs" formatted="false">Balance shown by your provider · TZS</string>
+    <string name="ui_amount_tzs_optional_not_added_to_money" formatted="false">Amount TZS (optional, not added to Money)</string>
+    <string name="ui_snooze_minutes_5_1440" formatted="false">Snooze minutes · 5–1440</string>
+    <string name="ui_source_message" formatted="false">Source message</string>
+    <string name="ui_your_cash_entry" formatted="false">Your cash entry</string>
+    <string name="ui_current_balance_tzs_optional" formatted="false">Current balance TZS (optional)</string>
+    <string name="ui_account_name_e_g_m_pesa_or_crdb_current" formatted="false">Account name, e.g. M-Pesa or CRDB Current</string>
+    <string name="ui_email_address" formatted="false">Email address</string>
+    <string name="ui_app_password_imap_password" formatted="false">App password / IMAP password</string>
+    <string name="ui_new_password_leave_blank_to_keep" formatted="false">New password (leave blank to keep)</string>
+    <string name="ui_read_payment_and_message_alerts_security" formatted="false">Read payment and message alerts. Security codes are hidden.</string>
+    <string name="ui_track_m_pesa_and_bank_messages_never" formatted="false">Track M-Pesa and bank messages. Never sends SMS.</string>
+    <string name="ui_ask_by_voice_and_record_when_you_choose" formatted="false">Ask by voice and record when you choose. Always shows a notification.</string>
+    <string name="ui_ring_at_the_exact_minute_you_set" formatted="false">Ring at the exact minute you set</string>
+    <string name="ui_open_hellfire_with_your_assistant" formatted="false">Open HellFire with your assistant gesture</string>
+    <string name="ui_connected_accounts" formatted="false">Connected accounts</string>
+    <string name="ui_your_data" formatted="false">Your data</string>
+    <string name="ui_ai" formatted="false">AI</string>
+    <string name="ui_confirm_payment" formatted="false">Confirm payment</string>
+    <string name="ui_save_and_schedule" formatted="false">Save and schedule</string>
+    <string name="ui_save_draft" formatted="false">Save draft</string>
+    <string name="ui_new_message" formatted="false">New message</string>
+    <string name="ui_save_correction" formatted="false">Save correction</string>
+    <string name="ui_forget" formatted="false">Forget</string>
+    <string name="ui_add_to_memory" formatted="false">Add to memory</string>
+    <string name="ui_saved" formatted="false">Saved</string>
+    <string name="ui_memory" formatted="false">Memory</string>
+    <string name="ui_new_note" formatted="false">New note</string>
+    <string name="ui_my_note" formatted="false">My note</string>
+    <string name="ui_quote_from_a_record" formatted="false">Quote from a record</string>
+    <string name="ui_guess_to_check" formatted="false">Guess to check</string>
+    <string name="ui_choose_contact" formatted="false">Choose contact</string>
+    <string name="ui_choose_a_person" formatted="false">Choose a person</string>
+    <string name="ui_name_number_or_email" formatted="false">Name, number or email</string>
+    <string name="ui_use_typed_name" formatted="false">Use typed name</string>
+    <string name="ui_allow_contacts" formatted="false">Allow contacts</string>
+    <string name="ui_app_settings" formatted="false">App settings</string>
+    <string name="ui_recovery_readiness" formatted="false">Recovery readiness</string>
+    <string name="ui_back_up_or_restore" formatted="false">Back up or restore</string>
+    <string name="ui_what_is_included" formatted="false">What is included</string>
+    <string name="ui_verify_an_archive_without_restoring" formatted="false">Verify an archive without restoring…</string>
+    <string name="ui_export_encrypted_backup" formatted="false">Export encrypted backup…</string>
+    <string name="ui_restore_into_empty_local_database" formatted="false">Restore into empty local database…</string>
+    <string name="ui_backup_passphrase_at_least_12_characters" formatted="false">Backup passphrase · at least 12 characters</string>
+    <string name="ui_daily_google_drive_backup_and_restore" formatted="false">Daily Google Drive backup and restore</string>
+    <string name="ui_import_and_analysis" formatted="false">Import and analysis</string>
+    <string name="ui_conversation_monitoring" formatted="false">Conversation monitoring</string>
+    <string name="ui_originals" formatted="false">Originals</string>
+    <string name="ui_start_monitoring" formatted="false">Start monitoring</string>
+    <string name="ui_stop_monitoring" formatted="false">Stop monitoring</string>
+    <string name="ui_import_original" formatted="false">Import original</string>
+    <string name="ui_analyze_locally" formatted="false">Analyze locally</string>
+    <string name="ui_play_from_timestamp" formatted="false">Play from timestamp</string>
+    <string name="ui_stop_playback" formatted="false">Stop playback</string>
+    <string name="ui_draft_local_summary_and_structured_notes" formatted="false">Draft local summary and structured notes</string>
+    <string name="ui_mark_summary_reviewed" formatted="false">Mark summary reviewed</string>
+    <string name="ui_manual_speaker_label" formatted="false">Manual speaker label</string>
+    <string name="ui_save_speaker_label" formatted="false">Save speaker label</string>
+    <string name="ui_export_decrypted_original" formatted="false">Export decrypted original…</string>
+    <string name="ui_delete_original_and_transcript" formatted="false">Delete original and transcript…</string>
+    <string name="ui_ai_skills" formatted="false">AI skills</string>
+    <string name="ui_add_skill" formatted="false">Add skill</string>
+    <string name="ui_edit_skill" formatted="false">Edit skill</string>
+    <string name="ui_remove_skill" formatted="false">Remove skill</string>
+    <string name="ui_remove_skill_2" formatted="false">Remove skill?</string>
+    <string name="ui_why_created" formatted="false">Why created</string>
+    <string name="ui_when_it_applies" formatted="false">When it applies</string>
+    <string name="ui_original_evidence" formatted="false">Original evidence</string>
+    <string name="ui_approve_and_enable" formatted="false">Approve and enable</string>
+    <string name="ui_disable" formatted="false">Disable</string>
+    <string name="ui_usage_history" formatted="false">Usage history</string>
+    <string name="ui_this_skill_has_not_been_used" formatted="false">This skill has not been used.</string>
+    <string name="ui_open_where_used" formatted="false">Open where used</string>
+    <string name="ui_load_older_uses" formatted="false">Load older uses</string>
+    <string name="ui_load_more_skills" formatted="false">Load more skills</string>
+    <string name="ui_search_skills" formatted="false">Search skills</string>
+    <string name="ui_skill_name" formatted="false">Skill name</string>
+    <string name="ui_skill_type" formatted="false">Skill type</string>
+    <string name="ui_related_words_or_topic" formatted="false">Related words or topic</string>
+    <string name="ui_what_ai_should_learn" formatted="false">What AI should learn</string>
+    <string name="ui_reason" formatted="false">Reason</string>
+    <string name="ui_save_and_enable" formatted="false">Save and enable</string>
+    <string name="ui_exact_text_to_recognize" formatted="false">Exact text to recognize</string>
+    <string name="ui_use_sender_or_merchant_from" formatted="false">Use sender or merchant from</string>
+    <string name="ui_everyday_help" formatted="false">Everyday help</string>
+    <string name="ui_guided_setup" formatted="false">Guided setup</string>
+    <string name="ui_needs_attention" formatted="false">Needs attention</string>
+    <string name="ui_privacy_and_storage" formatted="false">Privacy and storage</string>
+    <string name="ui_choose_what_you_want_hellfire_to_help" formatted="false">Choose what you want HellFire to help with</string>
+    <string name="ui_capture_connections_models_and_backups" formatted="false">Capture, connections, models and backups</string>
+    <string name="ui_learned_rules_reasons_and_usage_history" formatted="false">Learned rules, reasons and usage history</string>
+    <string name="ui_where_your_data_lives" formatted="false">Where your data lives</string>
+    <string name="ui_track_spending" formatted="false">Track spending</string>
+    <string name="ui_remember_conversations" formatted="false">Remember conversations</string>
+    <string name="ui_manage_commitments" formatted="false">Manage commitments</string>
+    <string name="ui_choose_a_starting_goal_you_can_add_the" formatted="false">Choose a starting goal. You can add the other features later.</string>
+    <string name="ui_permissions_enabled" formatted="false">permissions enabled</string>
+    <string name="ui_enabled" formatted="false">Enabled</string>
+    <string name="ui_not_enabled" formatted="false">Not enabled</string>
+    <string name="ui_needs_your_permission" formatted="false">Needs your permission</string>
+    <string name="ui_open_setup" formatted="false">Open setup</string>
+    <string name="ui_add_an_account" formatted="false">Add an account</string>
+    <string name="ui_choose_speech_and_language_models" formatted="false">Choose speech and language models</string>
+    <string name="ui_check_it_works" formatted="false">Check it works</string>
+    <string name="ui_open_capture_checks" formatted="false">Open capture checks</string>
+    <string name="ui_connections_and_recovery" formatted="false">Connections and recovery</string>
+    <string name="ui_continue_to_hellfire" formatted="false">Continue to HellFire</string>
+    <string name="ui_finish_setup_later" formatted="false">Finish setup later</string>
+    <string name="ui_your_goal_is_saved_resume_from_settings" formatted="false">Your goal is saved. Resume from Settings › Guided setup.</string>
+    <string name="ui_capture_and_permissions" formatted="false">Capture and permissions</string>
+    <string name="ui_no_delivery_observed_yet" formatted="false">No delivery observed yet</string>
+    <string name="ui_no_queued_events" formatted="false">No queued events</string>
+    <string name="ui_open_permissions_and_capture" formatted="false">Open permissions and capture</string>
+    <string name="ui_retry_failed_processing" formatted="false">Retry failed processing</string>
+    <string name="ui_connections" formatted="false">Connections</string>
+    <string name="ui_no_connection_results_recorded_optional" formatted="false">No connection results recorded. Optional accounts can be configured below.</string>
+    <string name="ui_models_and_recordings" formatted="false">Models and recordings</string>
+    <string name="ui_no_model_download_status_recorded" formatted="false">No model download status recorded</string>
+    <string name="ui_recordings_need_attention" formatted="false">recordings need attention</string>
+    <string name="ui_choose_models" formatted="false">Choose models</string>
+    <string name="ui_backup_and_storage" formatted="false">Backup and storage</string>
+    <string name="ui_free_on_this_device" formatted="false">free on this device</string>
+    <string name="ui_open_backup_and_verification" formatted="false">Open backup and verification</string>
+    <string name="ui_original_media" formatted="false">Original media</string>
+    <string name="ui_database" formatted="false">Database</string>
+    <string name="ui_free_space" formatted="false">Free space</string>
+    <string name="ui_manage_recordings" formatted="false">Manage recordings</string>
+    <string name="ui_manage_memory" formatted="false">Manage memory</string>
+    <string name="ui_manage_ai_skills" formatted="false">Manage AI skills</string>
+    <string name="ui_outside_this_phone" formatted="false">Outside this phone</string>
+    <string name="ui_web_copy" formatted="false">Web copy</string>
+    <string name="ui_enabled_selected_records_are_readable_on" formatted="false">Enabled. Selected records are readable on your server.</string>
+    <string name="ui_sync_is_off_an_earlier_server_copy_may" formatted="false">Sync is off. An earlier server copy may still exist until you delete it.</string>
+    <string name="ui_review_or_delete_web_copy" formatted="false">Review or delete web copy</string>
+    <string name="ui_drive_backup" formatted="false">Drive backup</string>
+    <string name="ui_enabled_passphrase_encrypted_archives" formatted="false">Enabled. Passphrase-encrypted archives are uploaded to your Google Drive.</string>
+    <string name="ui_automatic_drive_backup_is_off_previously" formatted="false">Automatic Drive backup is off. Previously exported or uploaded archives may still exist.</string>
+    <string name="ui_manage_backup_archives" formatted="false">Manage backup archives</string>
+    <string name="ui_enabled_for_text_you_explicitly_submit" formatted="false">Enabled for text you explicitly submit with a cloud model. Inspect your text before sending.</string>
+    <string name="ui_off_local_answers_do_not_use_a_cloud" formatted="false">Off. Local answers do not use a cloud fallback.</string>
+    <string name="ui_manage_cloud_ai" formatted="false">Manage cloud AI</string>
+    <string name="ui_model_catalog" formatted="false">Model catalog</string>
+    <string name="ui_model" formatted="false">Model</string>
+    <string name="ui_choose_a_compatible_format_from_a" formatted="false">Choose a compatible format from a trusted publisher. No model name or download URL needs typing.</string>
+    <string name="ui_publisher_and_model_details" formatted="false">Publisher and model details</string>
+    <string name="ui_download_and_use_selected_model" formatted="false">Download and use selected model</string>
+    <string name="ui_pause_download" formatted="false">Pause download</string>
+    <string name="ui_pause_gemma_download" formatted="false">Pause Gemma download</string>
+    <string name="ui_install_published_gemma_update" formatted="false">Install published Gemma update</string>
+    <string name="ui_check_gemma_updates" formatted="false">Check Gemma updates</string>
+    <string name="ui_not_installed" formatted="false">Not installed</string>
+    <string name="ui_imported_model" formatted="false">Imported model</string>
+    <string name="ui_search_memory" formatted="false">Search memory</string>
+    <string name="ui_load_older_memories" formatted="false">Load older memories</string>
+    <string name="ui_save_with_provenance" formatted="false">Save with provenance</string>
+    <string name="ui_could_not_save_check_storage_and_try" formatted="false">Could not save. Check storage and try again.</string>
+    <string name="ui_skill_settings_saved" formatted="false">Skill settings saved.</string>
+    <string name="ui_draft_could_not_be_saved_keep_this" formatted="false">Draft could not be saved. Keep this screen open and check free storage.</string>
+    <string name="ui_draft_could_not_be_opened_check_storage" formatted="false">Draft could not be opened. Check storage and device unlock.</string>
+    <string name="ui_remove_authentication_content" formatted="false">Remove authentication content.</string>
+    <string name="ui_remove_authentication_content_from_this" formatted="false">Remove authentication content from this skill.</string>
+    <string name="ui_remove_authentication_content_before" formatted="false">Remove authentication content before saving.</string>
+    <string name="ui_correction_saved_the_original_source" formatted="false">Correction saved; the original source stays available.</string>
+    <string name="ui_shared_content_saved_locally" formatted="false">Shared content saved locally.</string>
+    <string name="ui_skills_guide_suggestions_and_local" formatted="false">Skills guide suggestions and local answers. They cannot send messages, post money or grant permissions.</string>
+    <string name="ui_everyday_corrections_create_suggestions" formatted="false">Everyday corrections create suggestions for review. Only active skills affect future decisions.</string>
+    <string name="ui_no_skills_yet_add_one_or_review" formatted="false">No skills yet. Add one, or review suggestions after correcting a payment, task or memory.</string>
+    <string name="ui_this_removes_the_skill_and_its_usage" formatted="false">This removes the skill and its usage history. Original evidence stays saved.</string>
+    <string name="ui_saved_records_stay_on_the_phone_retry" formatted="false">Saved records stay on the phone. Retry capture or analysis here; sending always requires its separate approval.</string>
+    <string name="ui_permission_enabled_is_not_proof_of" formatted="false">Permission enabled is not proof of delivery. Receive a real notification or SMS, then check Capture status and its saved source. Test recording and reminder delivery on this phone.</string>
+    <string name="ui_captured_sources_memories_skills_and" formatted="false">Captured sources, memories, skills and usage history are stored in the encrypted database. Originals and private drafts are encrypted locally.</string>
+    <string name="ui_model_weights_and_app_code_are_separate" formatted="false">Model weights and app code are separate from personal records. Original recordings remain until you explicitly delete them.</string>
+    <string name="ui_turning_a_connection_off_does_not_erase" formatted="false">Turning a connection off does not erase copies already exported. Deletion must be requested in the relevant destination.</string>
+    <string name="ui_downloads_wait_for_wi_fi_and_adequate" formatted="false">Downloads wait for Wi-Fi and adequate battery/storage. Size and SHA-256 are checked, then the runtime loads the file before installation. Existing models remain until replacement succeeds.</string>
+    <string name="ui_connections_models_backups_and_recovery" formatted="false">Connections, models, backups and recovery</string>
+    <string name="ui_needs_review" formatted="false">Needs review</string>
+    <string name="ui_disabled" formatted="false">Disabled</string>
+    <string name="ui_personal_guidance" formatted="false">Personal guidance</string>
+    <string name="ui_payment_choices" formatted="false">Payment choices</string>
+    <string name="ui_repeated_false_task" formatted="false">Repeated false task</string>
+    <string name="ui_repeated_false_payment" formatted="false">Repeated false payment</string>
+    <string name="ui_status" formatted="false">Status</string>
+    <string name="ui_revision" formatted="false">Revision</string>
+    <string name="ui_uses" formatted="false">Uses</string>
+    <string name="ui_updated" formatted="false">Updated</string>
+    <string name="ui_language_model" formatted="false">Language model</string>
+    <string name="ui_speech_model" formatted="false">Speech model</string>
+    <string name="ui_meaning_search" formatted="false">Meaning search</string>
+    <string name="ui_choose" formatted="false">Choose</string>
+    <string name="ui_all_meaningful_topic_words_must_match" formatted="false">All meaningful topic words must match. Skills cannot override source facts.</string>
+    <string name="ui_exact_repeated_text_from_the_original" formatted="false">Exact repeated text from the original source app</string>
+    <string name="ui_this_exact_wording_will_not_create_the" formatted="false">This exact wording will not create the same task or payment suggestion again.</string>
+    <string name="ui_choose_a_real_reviewed_or_pending" formatted="false">Choose a real reviewed or pending payment to identify the sender/merchant. The skill suggests choices; you still confirm each payment.</string>
+    <string name="ui_you_chose_remember_my_account_and" formatted="false">You chose Remember my account and category after reviewing a payment.</string>
+    <string name="ui_you_confirmed_this_account_category" formatted="false">You confirmed this account/category while reviewing a payment. Review before applying to later matches.</string>
+    <string name="ui_you_marked_this_captured_item_as_not_a" formatted="false">You marked this captured item as not a payment. An exact-match rule can avoid repeating this false suggestion.</string>
+    <string name="ui_you_marked_this_proposal_as_not_a_task" formatted="false">You marked this proposal as not a task. Review this exact-match rule before using it.</string>
+    <string name="ui_you_rejected_this_task_in_daily_review" formatted="false">You rejected this task in Daily review. Review this rule before using it.</string>
+    <string name="ui_you_corrected_this_memory_review_whether" formatted="false">You corrected this memory. Review whether the correction should guide future related answers.</string>
+    <string name="ui_you_saved_this_source_excerpt_for_future" formatted="false">You saved this source excerpt for future reference. Review whether it should guide related answers.</string>
+    <string name="ui_review_ai_skills" formatted="false">Review AI skills</string>
+    <string name="ui_learned_from_your_corrections" formatted="false">Learned from your corrections</string>
+    <string name="ui_refresh_status" formatted="false">Refresh status</string>
+    <string name="ui_account_unavailable" formatted="false">Account unavailable</string>
+    <string name="ui_earlier_versions" formatted="false">Earlier versions</string>
+    <string name="ui_choose_meaningful_topic_words" formatted="false">Choose meaningful topic words.</string>
+    <string name="ui_choose_an_existing_account" formatted="false">Choose an existing account.</string>
+    <string name="ui_could_not_save_the_complete_share" formatted="false">Could not save the complete share. Already saved items are retained; retry resumes this share and skips completed files. Re-share files if Android access expired.</string>
+    <string name="ui_check_file_access_and_storage" formatted="false">Check file access and storage.</string>
+    <string name="ui_processing_scheduled_check_the_updated" formatted="false">Processing scheduled; check the updated queue. No messages were sent.</string>
+    <string name="ui_could_not_schedule_processing_saved" formatted="false">Could not schedule processing. Saved records are retained.</string>
+    <string name="ui_privacy_settings_could_not_be_read" formatted="false">Privacy settings could not be read. Nothing has changed.</string>
+    <string name="ui_loading_privacy_settings" formatted="false">Loading privacy settings…</string>
+    <string name="ui_retry" formatted="false">Retry</string>
+    <string name="ui_library" formatted="false">Library</string>
+    <string name="ui_pictures" formatted="false">Pictures</string>
+    <string name="ui_videos" formatted="false">Videos</string>
+    <string name="ui_audio" formatted="false">Audio</string>
+    <string name="ui_collections" formatted="false">Collections</string>
+    <string name="ui_favorites" formatted="false">Favorites</string>
+    <string name="ui_categories" formatted="false">Categories</string>
+    <string name="ui_duplicates" formatted="false">Duplicates</string>
+    <string name="ui_scan" formatted="false">Scan</string>
+    <string name="ui_add_folder" formatted="false">Add folder</string>
+    <string name="ui_grid" formatted="false">Grid</string>
+    <string name="ui_list" formatted="false">List</string>
+    <string name="ui_newest" formatted="false">Newest</string>
+    <string name="ui_size" formatted="false">Size</string>
+    <string name="ui_recently_played" formatted="false">Recently played</string>
+    <string name="ui_managed_sync" formatted="false">Managed sync</string>
+    <string name="ui_not_selected_for_sync" formatted="false">Not selected for sync</string>
+    <string name="ui_not_analysed_yet" formatted="false">Not analysed yet</string>
+    <string name="ui_play" formatted="false">Play</string>
+    <string name="ui_share_with_ai" formatted="false">Share with AI</string>
+    <string name="ui_reprocess" formatted="false">Reprocess</string>
+    <string name="ui_original_metadata" formatted="false">Original metadata</string>
+    <string name="ui_ai_metadata" formatted="false">AI metadata</string>
+    <string name="ui_your_description" formatted="false">Your description</string>
+    <string name="ui_similar" formatted="false">Similar</string>
+    <string name="ui_partial_access" formatted="false">Partial access</string>
+    <string name="ui_media_access_needed" formatted="false">Media access needed</string>
+    <string name="ui_slideshow" formatted="false">Slideshow</string>
+    <string name="ui_albums" formatted="false">Albums</string>
+    <string name="ui_playlists" formatted="false">Playlists</string>
+    <string name="ui_private" formatted="false">Private</string>
+    <string name="ui_merge_into" formatted="false">Merge into</string>
+    <string name="ui_exclude" formatted="false">Exclude</string>
+    <string name="ui_assign" formatted="false">Assign</string>
+    <string name="ui_tags" formatted="false">Tags</string>
+    <string name="ui_select" formatted="false">Select</string>
+    <string name="ui_indexed_only" formatted="false">Indexed only</string>
+    <string name="ui_not_backed_up" formatted="false">Not backed up</string>
+    <string name="ui_backed_up" formatted="false">Backed up</string>
+    <string name="ui_not_queued" formatted="false">Not queued</string>
+    <string name="ui_selected_for_sync" formatted="false">Selected for sync</string>
+    <string name="ui_compare_pictures" formatted="false">Compare pictures</string>
+    <string name="ui_new_category" formatted="false">New category</string>
+    <string name="ui_rename" formatted="false">Rename</string>
+    <string name="ui_remove_tag" formatted="false">Remove tag</string>
+    <string name="ui_queue_processing" formatted="false">Queue processing</string>
+    <string name="ui_add_to_collection" formatted="false">Add to collection</string>
+    <string name="ui_mark_favorite" formatted="false">Mark favorite</string>
+    <string name="ui_clear" formatted="false">Clear</string>
+    <string name="ui_load_more" formatted="false">Load more</string>
+    <string name="ui_missing" formatted="false">Missing</string>
+    <string name="ui_permission_revoked" formatted="false">Permission revoked</string>
+    <string name="ui_changed" formatted="false">Changed</string>
+    <string name="ui_available" formatted="false">Available</string>
+    <string name="ui_sync_on" formatted="false">Sync on</string>
+    <string name="ui_processing" formatted="false">Processing</string>
+    <string name="ui_backup" formatted="false">Backup</string>
+    <string name="ui_sort" formatted="false">Sort</string>
+    <string name="ui_filter" formatted="false">Filter</string>
+    <string name="ui_player" formatted="false">Player</string>
+    <string name="ui_unlock" formatted="false">Unlock</string>
+    <string name="ui_lock_screen" formatted="false">Lock screen</string>
+    <string name="ui_original_is_not_available" formatted="false">Original is not available.</string>
+    <string name="ui_notifications_are_off_so_lock_screen" formatted="false">Notifications are off, so lock-screen controls may be hidden by Android.</string>
+    <string name="ui_thumbnail_unavailable" formatted="false">Thumbnail unavailable</string>
+    <string name="ui_pause" formatted="false">Pause</string>
+    <string name="ui_skip_back" formatted="false">Skip back</string>
+    <string name="ui_skip_forward" formatted="false">Skip forward</string>
+    <string name="ui_previous" formatted="false">Previous</string>
+    <string name="ui_next" formatted="false">Next</string>
+    <string name="ui_exit_full_screen" formatted="false">Exit full screen</string>
+    <string name="ui_full_screen" formatted="false">Full screen</string>
+    <string name="ui_picture_in_picture" formatted="false">Picture-in-picture</string>
+    <string name="ui_speed" formatted="false">Speed</string>
+    <string name="ui_shuffle" formatted="false">Shuffle</string>
+    <string name="ui_unfavorite" formatted="false">Unfavorite</string>
+    <string name="ui_favorite" formatted="false">Favorite</string>
+    <string name="ui_sleep_timer" formatted="false">Sleep timer</string>
+    <string name="ui_end_of_item" formatted="false">End of item</string>
+    <string name="ui_set_a" formatted="false">Set A</string>
+    <string name="ui_set_b" formatted="false">Set B</string>
+    <string name="ui_clear_loop" formatted="false">Clear loop</string>
+    <string name="ui_save_range" formatted="false">Save range</string>
+    <string name="ui_previous_chapter" formatted="false">Previous chapter</string>
+    <string name="ui_next_chapter" formatted="false">Next chapter</string>
+    <string name="ui_search_in_this_item" formatted="false">Search in this item</string>
+    <string name="ui_indexed_search" formatted="false">Indexed search</string>
+    <string name="ui_bookmark" formatted="false">Bookmark</string>
+    <string name="ui_seek" formatted="false">Seek</string>
+    <string name="ui_hide" formatted="false">Hide</string>
+    <string name="ui_delete" formatted="false">Delete</string>
+    <string name="ui_convert_to_manual" formatted="false">Convert to manual</string>
+    <string name="ui_remove" formatted="false">Remove</string>
+    <string name="ui_transcript" formatted="false">Transcript</string>
+    <string name="ui_copy" formatted="false">Copy</string>
+    <string name="ui_correct" formatted="false">Correct</string>
+    <string name="ui_playback_history" formatted="false">Playback history</string>
+    <string name="ui_no_playback_history_yet" formatted="false">No playback history yet.</string>
+    <string name="ui_title" formatted="false">Title</string>
+    <string name="ui_notes" formatted="false">Notes</string>
+    <string name="ui_save_bookmark" formatted="false">Save bookmark</string>
+    <string name="ui_close" formatted="false">Close</string>
+    <string name="ui_volume" formatted="false">Volume</string>
+    <string name="ui_brightness" formatted="false">Brightness</string>
+    <string name="ui_no_extra_audio_or_subtitle_tracks" formatted="false">No extra audio or subtitle tracks reported.</string>
+    <string name="ui_audio_track" formatted="false">Audio track</string>
+    <string name="ui_subtitles_off" formatted="false">Subtitles off</string>
+    <string name="ui_no_bookmarks_or_chapters_yet" formatted="false">No bookmarks or chapters yet.</string>
+    <string name="ui_open" formatted="false">Open</string>
+    <string name="ui_system_overlay_is_not_available_picture" formatted="false">System overlay is not available. Picture-in-picture is the supported floating player.</string>
+    <string name="ui_playback_session_could_not_start" formatted="false">Playback session could not start.</string>
+    <string name="ui_storage_permission_was_not_granted_the" formatted="false">Storage permission was not granted. The external file was not opened.</string>
+    <string name="ui_picture_in_picture_is_not_available_on" formatted="false">Picture-in-picture is not available on this device.</string>
+    <string name="ui_picture_in_picture_was_refused_by_this" formatted="false">Picture-in-picture was refused by this device. Playback continues in the app.</string>
+    <string name="ui_volume_control_was_refused_by_this" formatted="false">Volume control was refused by this device.</string>
+    <string name="ui_waveform_not_available_for_this_file" formatted="false">Waveform not available for this file. Playback can still continue.</string>
+    <string name="ui_no_indexed_match_analysis_was_not" formatted="false">No indexed match. Analysis was not started.</string>
+    <string name="ui_this_file_cannot_be_played_on_this" formatted="false">This file cannot be played on this device. The codec or container is not supported. The original was not modified.</string>
+    <string name="ui_the_original_could_not_be_read_nothing" formatted="false">The original could not be read. Nothing was written out as a decrypted file.</string>
+    <string name="ui_playback_failed_the_original_was_not" formatted="false">Playback failed. The original was not modified.</string>
+    <string name="ui_this_item_is_not_audio_or_video" formatted="false">This item is not audio or video.</string>
+    <string name="ui_this_external_item_has_no_content_uri" formatted="false">This external item has no content URI.</string>
     <string name="ui_intel_search" formatted="false">Search</string>
     <string name="ui_intel_queue" formatted="false">Processing queue</string>
     <string name="ui_intel_settings" formatted="false">Media intelligence</string>
@@ -595,21 +595,21 @@
     <string name="ui_intel_balanced" formatted="false">Balanced</string>
     <string name="ui_intel_deep" formatted="false">Deep</string>
     <string name="ui_intel_absent" formatted="false">classifier not installed</string>
-    <string name="ui_0e81c52de2" formatted="false">Backup dashboard</string>
-    <string name="ui_452233847f" formatted="false">Status dashboard</string>
-    <string name="ui_6d46697086" formatted="false">Storage usage</string>
-    <string name="ui_1a29a43bc9" formatted="false">Verify backups</string>
-    <string name="ui_bee9dcc44e" formatted="false">Request backup</string>
-    <string name="ui_4f5d99b422" formatted="false">Pause analysis</string>
-    <string name="ui_905dccea41" formatted="false">Resume analysis</string>
-    <string name="ui_1e96a60ec9" formatted="false">Retry failures</string>
-    <string name="ui_bf0066107e" formatted="false">Reindex</string>
-    <string name="ui_430a5aaa1e" formatted="false">Pause sync</string>
-    <string name="ui_41b7c8f0bf" formatted="false">Resume sync</string>
-    <string name="ui_d33461e6c0" formatted="false">Clear cache</string>
-    <string name="ui_464b6e0507" formatted="false">Backup blocked</string>
-    <string name="ui_4159a74294" formatted="false">Thermal state</string>
-    <string name="ui_a748b5aa8c" formatted="false">Model availability</string>
+    <string name="ui_backup_dashboard" formatted="false">Backup dashboard</string>
+    <string name="ui_status_dashboard" formatted="false">Status dashboard</string>
+    <string name="ui_storage_usage" formatted="false">Storage usage</string>
+    <string name="ui_verify_backups" formatted="false">Verify backups</string>
+    <string name="ui_request_backup" formatted="false">Request backup</string>
+    <string name="ui_pause_analysis" formatted="false">Pause analysis</string>
+    <string name="ui_resume_analysis" formatted="false">Resume analysis</string>
+    <string name="ui_retry_failures" formatted="false">Retry failures</string>
+    <string name="ui_reindex" formatted="false">Reindex</string>
+    <string name="ui_pause_sync" formatted="false">Pause sync</string>
+    <string name="ui_resume_sync" formatted="false">Resume sync</string>
+    <string name="ui_clear_cache" formatted="false">Clear cache</string>
+    <string name="ui_backup_blocked" formatted="false">Backup blocked</string>
+    <string name="ui_thermal_state" formatted="false">Thermal state</string>
+    <string name="ui_model_availability" formatted="false">Model availability</string>
     <string name="share_with_ai" formatted="false">Share with AI</string>
     <string name="share_prepare" formatted="false">Prepare sanitized copy</string>
     <string name="share_open_sheet" formatted="false">Open share sheet</string>
@@ -658,4 +658,6 @@
     <string name="drawer_copy" formatted="false">Copy address</string>
     <string name="drawer_float" formatted="false">Open floating player</string>
     <string name="drawer_close_word" formatted="false">Close</string>
+    <!-- Not yet translated; shown in English in both languages, as before. -->
+    <string name="ui_run_in_background_detail" formatted="false" tools:ignore="MissingTranslation">Stop the phone pausing capture overnight. On OPPO/ColorOS also allow auto-launch and background activity in phone settings; check it on the phone.</string>
 </resources>

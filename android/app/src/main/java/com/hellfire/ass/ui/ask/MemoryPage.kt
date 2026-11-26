@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.ask
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.layout.*
 import androidx.room.withTransaction
 import androidx.compose.material3.Text
@@ -44,20 +47,21 @@ fun MemoryPage(arg: String) {
     var confirmProposal by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
     fun run(block: suspend () -> String) { scope.launch {
         busy = true
         result = try { withContext(Dispatchers.IO) { block() } } catch (e: CancellationException) { throw e }
-            catch (e: IllegalArgumentException) { e.message ?: "Not saved." } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Not saved. Check the source ID and remove security codes." }
+            catch (e: com.hellfire.ass.OwnerError) { context.getString(e.text) } catch (e: IllegalArgumentException) { e.message ?: "Not saved." } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Not saved. Check the source ID and remove security codes." }
         busy = false
     } }
     PushedPage(if (arg == "new") "New note" else "Memory", breadcrumb = "Settings") {
         result?.let { Banner(it, Tone.Info, null) }
-        SectionCard(com.hellfire.ass.ui.tr("Add to memory")) {
-            ChipPicker(if (advanced) listOf("OWNER_NOTE", "SOURCE_EXCERPT", "INFERENCE") else listOf("OWNER_NOTE"), kind, { when (it) { "OWNER_NOTE" -> "My note"; "SOURCE_EXCERPT" -> "Quote from a record"; else -> "Guess to check" } }) { kind = it }
-            HfTextField(subject, { subject = it }, "Person or subject", enabled = !busy)
-            HfTextField(text, { text = it }, "What to remember", singleLine = false, minLines = 2, enabled = !busy)
+        SectionCard(stringResource(R.string.ui_add_to_memory)) {
+            ChipPicker(if (advanced) listOf("OWNER_NOTE", "SOURCE_EXCERPT", "INFERENCE") else listOf("OWNER_NOTE"), kind, { when (it) { "OWNER_NOTE" -> stringResource(R.string.ui_my_note); "SOURCE_EXCERPT" -> stringResource(R.string.ui_quote_from_a_record); else -> stringResource(R.string.ui_guess_to_check) } }) { kind = it }
+            HfTextField(subject, { subject = it }, stringResource(R.string.ui_person_or_subject), enabled = !busy)
+            HfTextField(text, { text = it }, stringResource(R.string.ui_what_to_remember), singleLine = false, minLines = 2, enabled = !busy)
             if (kind != "OWNER_NOTE") HfTextField(sourceId, { sourceId = it }, "Source record ID", enabled = !busy)
-            PrimaryButton(com.hellfire.ass.ui.tr("Save with provenance"), { run {
+            PrimaryButton(stringResource(R.string.ui_save_with_provenance), { run {
                 require(subject.length in 1..200 && text.length in 1..4000)
                 val now = System.currentTimeMillis()
                 val id = if (kind == "OWNER_NOTE") {
@@ -76,9 +80,9 @@ fun MemoryPage(arg: String) {
                 text = ""; "Saved with its source. Confidence describes where it came from, not whether it is true."
             } }, Modifier.fillMaxWidth(), enabled = !busy && subject.isNotBlank() && text.isNotBlank())
         }
-        if (memories.isNotEmpty()) SectionHeader(com.hellfire.ass.ui.tr("Saved"), trailing = "${memories.size}")
-        HfTextField(search, { search = it }, "Search memory")
-        ChipPicker(listOf("", "OWNER_NOTE", "OWNER_CORRECTION", "SOURCE_EXCERPT", "INFERENCE"), filter, { if (it.isEmpty()) "All" else it.lowercase().replace('_', ' ') }) { filter = it }
+        if (memories.isNotEmpty()) SectionHeader(stringResource(R.string.ui_saved), trailing = "${memories.size}")
+        HfTextField(search, { search = it }, stringResource(R.string.ui_search_memory))
+        ChipPicker(listOf("", "OWNER_NOTE", "OWNER_CORRECTION", "SOURCE_EXCERPT", "INFERENCE"), filter, { if (it.isEmpty()) stringResource(R.string.ui_all) else it.lowercase().replace('_', ' ') }) { filter = it }
         memories.forEach { m -> key(m.id, m.confirmedAt) {
             var correction by rememberPrivateDraft("memory-edit-${m.id}", m.text)
             val history by remember(m.id) { app.database.memory().revisions(m.id) }.collectAsStateWithLifecycle(emptyList())
@@ -87,12 +91,12 @@ fun MemoryPage(arg: String) {
                 Text("${when (m.kind) { "OWNER_NOTE" -> "Your note"; "SOURCE_EXCERPT" -> "Quote"; else -> "Guess" }} · ${m.confidence}% · ${m.confirmedAt?.let(Fmt::dayTime) ?: "not confirmed"}",
                     style = Hf.type.rowSubtitle, color = Hf.colors.muted)
                 if (history.isNotEmpty()) {
-                    QuietButton(tr("Earlier versions") + " (${history.size})", { expandedHistory = !expandedHistory })
+                    QuietButton(stringResource(R.string.ui_earlier_versions) + " (${history.size})", { expandedHistory = !expandedHistory })
                     if (expandedHistory) history.forEach { Note("${Fmt.full(it.changedAt)} · ${it.text}") }
                 }
-                HfTextField(correction, { correction = it }, "Text", singleLine = false, enabled = !busy)
+                HfTextField(correction, { correction = it }, stringResource(R.string.ui_text), singleLine = false, enabled = !busy)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SecondaryButton(com.hellfire.ass.ui.tr("Save correction"), { run {
+                    SecondaryButton(stringResource(R.string.ui_save_correction), { run {
                         require(correction.isNotBlank() && correction.length <= 4000)
                         val safe = NotificationNormalizer.normalize(NotificationSnapshot("correction", "owner.memory", 0, 0, fields = mapOf("text" to listOf(correction))), app.packageName)!!
                         require(!safe.securitySensitive && !safe.contentRedacted) { "Remove authentication content" }
@@ -102,14 +106,14 @@ fun MemoryPage(arg: String) {
                         app.database.communications().audit(ActionAudit(UUID.randomUUID().toString(), m.id, "OWNER_MEMORY_CORRECTION", "CONFIRMED", System.currentTimeMillis()))
                         }
                         PrivateDrafts.write(app, "memory-edit-${m.id}", "")
-                        "Correction saved; the original source stays available."
+                        context.getString(R.string.ui_correction_saved_the_original_source)
                     } }, enabled = !busy && correction != m.text)
-                    SecondaryButton(com.hellfire.ass.ui.tr("Source"), { nav.push(Screen.Source, m.sourceId) })
-                    QuietButton(com.hellfire.ass.ui.tr("Forget"), { run { app.database.memory().forget(m.id); "Removed from memory. The original record stays in capture history." } })
+                    SecondaryButton(stringResource(R.string.ui_source), { nav.push(Screen.Source, m.sourceId) })
+                    QuietButton(stringResource(R.string.ui_forget), { run { app.database.memory().forget(m.id); "Removed from memory. The original record stays in capture history." } })
                 }
             }
         } }
-        if (memories.size >= limit) SecondaryButton(com.hellfire.ass.ui.tr("Load older memories"), { limit += 50 })
+        if (memories.size >= limit) SecondaryButton(stringResource(R.string.ui_load_older_memories), { limit += 50 })
         QuietButton("Advanced source/proposal tools", { advanced = !advanced; if (!advanced) kind = "OWNER_NOTE" })
         if (advanced) SectionCard("Review a typed proposal") {
             Note("Only create_task and prepare_reply JSON (schema_version 1) with an existing source ID and word-for-word evidence are accepted. Saving creates a review item; scheduling and sending still need your approval.")

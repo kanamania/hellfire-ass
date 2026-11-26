@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.money
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -98,8 +101,8 @@ fun AccountsPage(focusAdd: Boolean = false) {
     var confirmAdd by remember { mutableStateOf(false) }
     @Composable fun AddAccountCard() {
         SectionCard("Add an account") {
-            HfTextField(label, { label = it }, "Account name, e.g. M-Pesa or CRDB Current")
-            HfTextField(opening, { opening = it.filter { c -> c.isDigit() } }, "Current balance TZS (optional)", number = true,
+            HfTextField(label, { label = it }, stringResource(R.string.ui_account_name_e_g_m_pesa_or_crdb_current))
+            HfTextField(opening, { opening = it.filter { c -> c.isDigit() } }, stringResource(R.string.ui_current_balance_tzs_optional), number = true,
                 supporting = "Leave empty to start at zero. You can set it later.")
             PrimaryButton("Add account", { if (opening.isBlank()) scope.launch {
                 message = try { withContext(Dispatchers.IO) { dao.addAccount(FinanceAccount(label = label.trim())) }; label = ""; "Account added." }
@@ -107,7 +110,7 @@ fun AccountsPage(focusAdd: Boolean = false) {
             } else confirmAdd = true }, Modifier.fillMaxWidth(), enabled = label.isNotBlank())
         }
     }
-    PushedPage(com.hellfire.ass.ui.tr("Accounts"), breadcrumb = "Money") {
+    PushedPage(stringResource(R.string.ui_accounts), breadcrumb = "Money") {
         message?.let { Banner(it) }
         val formFirst = focusAdd || accounts.isEmpty()
         if (formFirst) AddAccountCard()
@@ -126,7 +129,7 @@ fun AccountsPage(focusAdd: Boolean = false) {
         }
         Note("Balances come from confirmed ledger entries only. An opening balance needs its own evidence and review.")
         ListCard {
-            ListRow(com.hellfire.ass.ui.tr("Check account balance"), subtitle = "Compare evidence before adjusting", chevron = true, onClick = { nav.push(Screen.Reconcile) })
+            ListRow(stringResource(R.string.ui_check_account_balance), subtitle = "Compare evidence before adjusting", chevron = true, onClick = { nav.push(Screen.Reconcile) })
             ListDivider()
             ListRow("Monthly budgets", subtitle = "Limits per category for the Budget widget", icon = HfIcons.Reports, tone = Tone.Primary, chevron = true,
                 onClick = { nav.push(Screen.Budgets) })
@@ -210,8 +213,8 @@ fun TransactionPage(id: String) {
             "Confirmed by you" to Fmt.dayTime(e.createdAt),
             "Ledger" to when { e.reversesId != null -> "Correction entry"; reversed -> "Reversed"; else -> "1 entry · not reversed" },
         ))
-        SectionCard(com.hellfire.ass.ui.tr("Person")) {
-            if (personLoaded) ContactPersonField(person, { person = it; pickedPerson = null }, "Person (optional)", onPick = { pickedPerson = it; person = it.displayName })
+        SectionCard(stringResource(R.string.ui_person)) {
+            if (personLoaded) ContactPersonField(person, { person = it; pickedPerson = null }, stringResource(R.string.ui_person_optional), onPick = { pickedPerson = it; person = it.displayName })
             SavedContactStatus(e.personKey)
             PrimaryButton("Save person", {
                 scope.launch {
@@ -230,7 +233,7 @@ fun TransactionPage(id: String) {
             EvidenceCard("Source · ${EventText.sourceLabel(s)} · ${Fmt.dayTime(s.occurredAt)}", sourceText.ifBlank { "No readable text in the source." }.take(1200))
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (e.reversesId == null && e.kind != "FEE") SecondaryButton(com.hellfire.ass.ui.tr("Change category"), { pickCategory = true })
+            if (e.reversesId == null && e.kind != "FEE") SecondaryButton(stringResource(R.string.ui_change_category), { pickCategory = true })
             source?.let { s -> SecondaryButton("Full source", { nav.push(Screen.Source, s.id) }) }
             if (e.reversesId == null && e.id == e.groupId && e.kind in setOf("EXPENSE", "INCOME")) SecondaryButton("Record as debt", {
                 debt = com.hellfire.ass.ui.insights.DebtPrefill(kind = if (e.amount < 0) "LENT" else "REPAID_TO_ME", amount = kotlin.math.abs(e.amount), occurredAt = e.occurredAt, ledgerId = e.id)
@@ -246,9 +249,9 @@ fun TransactionPage(id: String) {
             scope.launch { message = try { withContext(Dispatchers.IO) { app.finances.reverse(id) }; "Reversal entries posted." } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Reversal rejected: already corrected or a correction entry." } }
         }, onDismiss = { confirmReverse = false }, destructive = true)
     if (pickCategory && e != null) HfBottomSheet({ pickCategory = false }) {
-        Text(com.hellfire.ass.ui.tr("Change category"), style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
+        Text(stringResource(R.string.ui_change_category), style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
         Note("Only the label changes. The amount, account and balances stay the same.")
-        ChipPicker(Categories, e.category) { chosen ->
+        ChipPicker(Categories, e.category, { categoryLabel(it) }) { chosen ->
             pickCategory = false
             scope.launch { message = try { withContext(Dispatchers.IO) { app.finances.recategorize(id, chosen) }; "Category changed to $chosen." } catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Category could not be changed." } }
         }
@@ -276,7 +279,7 @@ fun SourcePage(id: String) {
         }
     }
     val e = event
-    PushedPage(com.hellfire.ass.ui.tr("Source"), breadcrumb = e?.let { EventText.sourceLabel(it) + " · " + Fmt.day(it.occurredAt) }) {
+    PushedPage(stringResource(R.string.ui_source), breadcrumb = e?.let { EventText.sourceLabel(it) + " · " + Fmt.day(it.occurredAt) }) {
         if (e == null) { Note("This source record is no longer available."); return@PushedPage }
         EvidenceCard("${EventText.sourceLabel(e)} · ${sender ?: e.packageName} · ${Fmt.dayTime(e.occurredAt)}", text.ifBlank { "No readable text." }.take(4000))
         KvList(listOf("Source" to EventText.sourceLabel(e), "From" to (sender ?: e.packageName), "Received" to Fmt.full(e.receivedAt),

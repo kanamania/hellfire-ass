@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.player
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import android.Manifest
 import android.app.Activity
 import android.content.Context
@@ -57,7 +60,6 @@ import com.hellfire.ass.ui.components.Note
 import com.hellfire.ass.ui.components.SecondaryButton
 import com.hellfire.ass.ui.components.SectionCard
 import com.hellfire.ass.ui.theme.Hf
-import com.hellfire.ass.ui.tr
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -114,14 +116,14 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
         val media = item
         if (media != null && MediaReadAccess.granted(granted)) scope.launch { open(app, controller, media, startMs) { started = true } }
-        else connectError = "Storage permission was not granted. The external file was not opened."
+        else connectError = context.getString(R.string.ui_storage_permission_was_not_granted_the)
     }
     /** Live position for actions; the published flow can lag by one tick. */
     fun now(): Long = controller?.currentPosition?.coerceAtLeast(0) ?: position
 
     LaunchedEffect(Unit) { PlaybackFlags.skipMs.value = skip }
     LaunchedEffect(itemId) {
-        controller = runCatching { PlaybackHub.controller(context) }.onFailure { connectError = "Playback session could not start." }.getOrNull()
+        controller = runCatching { PlaybackHub.controller(context) }.onFailure { connectError = context.getString(R.string.ui_playback_session_could_not_start) }.getOrNull()
         edits = PlayerStore.transcriptEdits(app, itemId)
         FrameScrubber.purgeOrphans(app)
     }
@@ -213,16 +215,16 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton({ if (fullscreen) fullscreen = false else nav.pop() }) { Text(tr("Back")) }
-                Text(item?.name ?: tr("Player"), Modifier.weight(1f), style = Hf.type.cardTitle, color = Hf.colors.onSurface, maxLines = 1)
-                TextButton({ locked = !locked }) { Text(if (locked) tr("Unlock") else tr("Lock screen")) }
+                TextButton({ if (fullscreen) fullscreen = false else nav.pop() }) { Text(stringResource(R.string.ui_back)) }
+                Text(item?.name ?: stringResource(R.string.ui_player), Modifier.weight(1f), style = Hf.type.cardTitle, color = Hf.colors.onSurface, maxLines = 1)
+                TextButton({ locked = !locked }) { Text(if (locked) stringResource(R.string.ui_unlock) else stringResource(R.string.ui_lock_screen)) }
             }
-            if (item == null && connectError == null) Note(tr("Original is not available."))
-            connectError?.let { Note(tr(it)) }
-            playbackError?.let { Note(tr(it)) }
-            pipNote?.let { Note(tr(it)) }
-            if (!env.permissions.notificationPosting) Note(tr("Notifications are off, so lock-screen controls may be hidden by Android."))
-            Note(tr(OverlayEvaluation.SUMMARY))
+            if (item == null && connectError == null) Note(stringResource(R.string.ui_original_is_not_available))
+            connectError?.let { Note(it) }
+            playbackError?.let { Note(it) }
+            pipNote?.let { Note(it) }
+            if (!env.permissions.notificationPosting) Note(stringResource(R.string.ui_notifications_are_off_so_lock_screen))
+            Note(stringResource(OverlayEvaluation.SUMMARY))
             if (video) {
                 AndroidView(
                     factory = { ctx -> PlayerView(ctx).apply { useController = false; setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING) } },
@@ -232,7 +234,7 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
             }
             waveform?.let { result ->
                 when (result) {
-                    is WaveformResult.Unavailable -> Note(tr(result.reason))
+                    is WaveformResult.Unavailable -> Note(stringResource(result.reason))
                     is WaveformResult.Ready -> Waveform(result.peaks, position, duration) { controller?.seekTo(it) }
                 }
             }
@@ -247,25 +249,25 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
                 scrub = null
             })
             thumb?.let { androidx.compose.foundation.Image(it.asImageBitmap(), null, Modifier.height(48.dp)) }
-            if (scrub != null && thumb == null && video) Note(tr("Thumbnail unavailable"))
+            if (scrub != null && thumb == null && video) Note(stringResource(R.string.ui_thumbnail_unavailable))
             Text("${PlaybackLogic.formatTimestamp(scrub ?: position)} / ${PlaybackLogic.formatTimestamp(duration)}", style = Hf.type.caption, color = Hf.colors.muted)
             Timeline(drawn, markers.size, ab, position, duration) { controller?.seekTo(it) }
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                SecondaryButton(if (playing) tr("Pause") else tr("Play"), { controller?.let { if (it.isPlaying) it.pause() else it.play() } })
-                SecondaryButton(tr("Skip back"), { controller?.seekTo(PlaybackLogic.skip(now(), -PlaybackFlags.skipMs.value, duration)) })
-                SecondaryButton(tr("Skip forward"), { controller?.seekTo(PlaybackLogic.skip(now(), PlaybackFlags.skipMs.value, duration)) })
-                SecondaryButton(tr("Previous"), { if (controller?.hasPreviousMediaItem() == true) controller?.seekToPreviousMediaItem() })
-                SecondaryButton(tr("Next"), { if (controller?.hasNextMediaItem() == true) controller?.seekToNextMediaItem() })
-                SecondaryButton(if (fullscreen) tr("Exit full screen") else tr("Full screen"), { fullscreen = !fullscreen })
-                SecondaryButton(tr("Picture-in-picture"), {
+                SecondaryButton(if (playing) stringResource(R.string.ui_pause) else stringResource(R.string.ui_play), { controller?.let { if (it.isPlaying) it.pause() else it.play() } })
+                SecondaryButton(stringResource(R.string.ui_skip_back), { controller?.seekTo(PlaybackLogic.skip(now(), -PlaybackFlags.skipMs.value, duration)) })
+                SecondaryButton(stringResource(R.string.ui_skip_forward), { controller?.seekTo(PlaybackLogic.skip(now(), PlaybackFlags.skipMs.value, duration)) })
+                SecondaryButton(stringResource(R.string.ui_previous), { if (controller?.hasPreviousMediaItem() == true) controller?.seekToPreviousMediaItem() })
+                SecondaryButton(stringResource(R.string.ui_next), { if (controller?.hasNextMediaItem() == true) controller?.seekToNextMediaItem() })
+                SecondaryButton(if (fullscreen) stringResource(R.string.ui_exit_full_screen) else stringResource(R.string.ui_full_screen), { fullscreen = !fullscreen })
+                SecondaryButton(stringResource(R.string.ui_picture_in_picture), {
                     val host = activity
                     if (host == null || !host.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
-                        pipNote = "Picture-in-picture is not available on this device."
+                        pipNote = context.getString(R.string.ui_picture_in_picture_is_not_available_on)
                     } else {
                         val entered = host.enterPictureInPictureMode(PipControls.params(host, false, playing))
                         if (entered) PlaybackFlags.present(PresentationEvent.ENTER_PIP) else {
                             PlaybackFlags.present(PresentationEvent.PIP_REFUSED)
-                            pipNote = "Picture-in-picture was refused by this device. Playback continues in the app."
+                            pipNote = context.getString(R.string.ui_picture_in_picture_was_refused_by_this)
                         }
                     }
                 })
@@ -279,7 +281,7 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
                     }) { Text(if (skipNow == choice) "·${choice / 1000}s" else "${choice / 1000}s") }
                 }
             }
-            Text(tr("Speed"), style = Hf.type.caption, color = Hf.colors.muted)
+            Text(stringResource(R.string.ui_speed), style = Hf.type.caption, color = Hf.colors.muted)
             Row(Modifier.horizontalScroll(rememberScrollState())) {
                 for (value in PlaybackLogic.SPEEDS) {
                     TextButton({
@@ -292,15 +294,15 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
             VolumeBrightness(activity)
             TrackRow(controller, tracks, scope, app, itemId)
             if (queue.size > 1) {
-                Text(tr("Queue"), style = Hf.type.caption, color = Hf.colors.muted)
+                Text("Queue", style = Hf.type.caption, color = Hf.colors.muted)
                 queue.forEachIndexed { index, name ->
-                    val label = "${index + 1}. ${name.ifBlank { tr("Untitled") }}"
+                    val label = "${index + 1}. ${name.ifBlank { "Untitled" }}"
                     Text(if (index == queueIndex) "· $label" else label, Modifier.fillMaxWidth().clickable { controller?.seekTo(index, C.TIME_UNSET) },
                         color = if (index == queueIndex) Hf.colors.primary else Hf.colors.onSurface, maxLines = 1)
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                SecondaryButton(tr("Repeat"), {
+                SecondaryButton(stringResource(R.string.ui_repeat), {
                     val next = when (controller?.repeatMode) {
                         Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_ALL
                         Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_OFF
@@ -308,8 +310,8 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
                     }
                     controller?.repeatMode = next
                 })
-                SecondaryButton(tr("Shuffle"), { controller?.shuffleModeEnabled = controller?.shuffleModeEnabled != true })
-                SecondaryButton(if (item?.favorite == true) tr("Unfavorite") else tr("Favorite"), {
+                SecondaryButton(stringResource(R.string.ui_shuffle), { controller?.shuffleModeEnabled = controller?.shuffleModeEnabled != true })
+                SecondaryButton(if (item?.favorite == true) stringResource(R.string.ui_unfavorite) else stringResource(R.string.ui_favorite), {
                     scope.launch {
                         val next = item?.favorite != true
                         app.database.library().setFavorite(itemId, next)
@@ -317,26 +319,26 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
                     }
                 })
             }
-            Text(tr("Sleep timer"), style = Hf.type.caption, color = Hf.colors.muted)
+            Text(stringResource(R.string.ui_sleep_timer), style = Hf.type.caption, color = Hf.colors.muted)
             Row(Modifier.horizontalScroll(rememberScrollState())) {
-                TextButton({ PlaybackFlags.sleepUntil.value = null; PlaybackFlags.sleepAtEnd.value = false }) { Text(tr("Off")) }
+                TextButton({ PlaybackFlags.sleepUntil.value = null; PlaybackFlags.sleepAtEnd.value = false }) { Text(stringResource(R.string.ui_off)) }
                 for (minutes in PlaybackLogic.SLEEP_CHOICES_MIN) {
                     TextButton({
                         PlaybackFlags.sleepAtEnd.value = false
                         PlaybackFlags.sleepUntil.value = PlaybackLogic.sleepDeadline(System.currentTimeMillis(), minutes)
                     }) { Text("${minutes}m") }
                 }
-                TextButton({ PlaybackFlags.sleepUntil.value = null; PlaybackFlags.sleepAtEnd.value = true }) { Text(tr("End of item")) }
+                TextButton({ PlaybackFlags.sleepUntil.value = null; PlaybackFlags.sleepAtEnd.value = true }) { Text(stringResource(R.string.ui_end_of_item)) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                SecondaryButton(tr("Set A"), { pointA = now() })
-                SecondaryButton(tr("Set B"), {
+                SecondaryButton(stringResource(R.string.ui_set_a), { pointA = now() })
+                SecondaryButton(stringResource(R.string.ui_set_b), {
                     val start = pointA
                     val end = now()
                     if (start != null && end > start) PlaybackFlags.ab.value = AbRange(start, end)
                 })
-                SecondaryButton(tr("Clear loop"), { PlaybackFlags.ab.value = null })
-                SecondaryButton(tr("Save range"), {
+                SecondaryButton(stringResource(R.string.ui_clear_loop), { PlaybackFlags.ab.value = null })
+                SecondaryButton(stringResource(R.string.ui_save_range), {
                     val range = PlaybackFlags.ab.value ?: return@SecondaryButton
                     scope.launch {
                         val now = System.currentTimeMillis()
@@ -346,17 +348,17 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
             }
             ab?.let { range ->
                 Note("A–B ${PlaybackLogic.formatTimestamp(range.startMs)}–${PlaybackLogic.formatTimestamp(range.endMs)}")
-                SecondaryButton(tr("Share A–B clip"), { shareClip(range.startMs, range.endMs) })
+                SecondaryButton("Share A–B clip", { shareClip(range.startMs, range.endMs) })
             }
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                SecondaryButton(tr("Previous chapter"), {
+                SecondaryButton(stringResource(R.string.ui_previous_chapter), {
                     PlaybackLogic.neighbor(markers.filter { it.kind == MarkerKind.CHAPTER || it.kind == MarkerKind.SCENE }, now(), false)?.let { controller?.seekTo(it.startMs) }
                 })
-                SecondaryButton(tr("Next chapter"), {
+                SecondaryButton(stringResource(R.string.ui_next_chapter), {
                     PlaybackLogic.neighbor(markers.filter { it.kind == MarkerKind.CHAPTER || it.kind == MarkerKind.SCENE }, now(), true)?.let { controller?.seekTo(it.startMs) }
                 })
                 val scene = PlaybackLogic.markerAt(markers.filter { it.kind != MarkerKind.BOOKMARK }, position)
-                SecondaryButton(tr("Share current scene"), {
+                SecondaryButton("Share current scene", {
                     val current = PlaybackLogic.markerAt(markers.filter { it.kind != MarkerKind.BOOKMARK }, now())
                     current?.endMs?.let { shareClip(current.startMs, it) }
                 }, enabled = scene != null)
@@ -367,18 +369,18 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
                 }
             }
             if (markers.size > drawn.size) Note("Showing ${drawn.size} of ${markers.size} markers.")
-            HfTextField(query, { query = it }, tr("Search in this item"))
-            SecondaryButton(tr("Indexed search"), {
+            HfTextField(query, { query = it }, stringResource(R.string.ui_search_in_this_item))
+            SecondaryButton(stringResource(R.string.ui_indexed_search), {
                 scope.launch {
                     hits = LibrarySearchWithin(app.database).searchWithin(itemId, query)
-                    searchNote = if (hits.isEmpty()) "No indexed match. Analysis was not started." else null
+                    searchNote = if (hits.isEmpty()) context.getString(R.string.ui_no_indexed_match_analysis_was_not) else null
                 }
             })
-            searchNote?.let { Note(tr(it)) }
+            searchNote?.let { Note(it) }
             for (hit in hits) {
                 Text("${PlaybackLogic.formatTimestamp(hit.startMs)} ${hit.text}", Modifier.clickable { controller?.seekTo(hit.startMs) }, color = Hf.colors.onSurface)
             }
-            SecondaryButton(tr("Bookmark"), {
+            SecondaryButton(stringResource(R.string.ui_bookmark), {
                 title = ""
                 note = ""
                 editor = MediaBookmark(UUID.randomUUID().toString(), itemId, scrub ?: now(), null, createdAt = System.currentTimeMillis(), updatedAt = System.currentTimeMillis())
@@ -388,15 +390,15 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             BookmarkThumb(app, bookmark.thumbnailPath)
-                            Text("${PlaybackLogic.formatTimestamp(bookmark.startMs)} ${bookmark.title.ifBlank { tr("Bookmark") }} · ${bookmark.origin}", Modifier.clickable { controller?.seekTo(bookmark.startMs) }, color = Hf.colors.onSurface)
+                            Text("${PlaybackLogic.formatTimestamp(bookmark.startMs)} ${bookmark.title.ifBlank { stringResource(R.string.ui_bookmark) }} · ${bookmark.origin}", Modifier.clickable { controller?.seekTo(bookmark.startMs) }, color = Hf.colors.onSurface)
                         }
                         Row(Modifier.horizontalScroll(rememberScrollState())) {
-                            TextButton({ controller?.seekTo(bookmark.startMs) }) { Text(tr("Seek")) }
-                            TextButton({ editor = bookmark; title = bookmark.title; note = bookmark.note }) { Text(tr("Edit")) }
-                            bookmark.endMs?.takeIf { it > bookmark.startMs }?.let { end -> TextButton({ shareClip(bookmark.startMs, end) }) { Text(tr("Share clip")) } }
-                            TextButton({ scope.launch { PlayerStore.setHidden(app, bookmark.id, true, System.currentTimeMillis()) } }) { Text(tr("Hide")) }
-                            TextButton({ scope.launch { PlayerStore.deleteBookmark(app, bookmark.id, System.currentTimeMillis()) } }) { Text(tr("Delete")) }
-                            if (bookmark.origin == Origin.AI.name) TextButton({ scope.launch { PlayerStore.convertToManual(app, bookmark.id, System.currentTimeMillis()) } }) { Text(tr("Convert to manual")) }
+                            TextButton({ controller?.seekTo(bookmark.startMs) }) { Text(stringResource(R.string.ui_seek)) }
+                            TextButton({ editor = bookmark; title = bookmark.title; note = bookmark.note }) { Text(stringResource(R.string.ui_edit)) }
+                            bookmark.endMs?.takeIf { it > bookmark.startMs }?.let { end -> TextButton({ shareClip(bookmark.startMs, end) }) { Text("Share clip") } }
+                            TextButton({ scope.launch { PlayerStore.setHidden(app, bookmark.id, true, System.currentTimeMillis()) } }) { Text(stringResource(R.string.ui_hide)) }
+                            TextButton({ scope.launch { PlayerStore.deleteBookmark(app, bookmark.id, System.currentTimeMillis()) } }) { Text(stringResource(R.string.ui_delete)) }
+                            if (bookmark.origin == Origin.AI.name) TextButton({ scope.launch { PlayerStore.convertToManual(app, bookmark.id, System.currentTimeMillis()) } }) { Text(stringResource(R.string.ui_convert_to_manual)) }
                         }
                     }
                 }
@@ -408,53 +410,53 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
                                 val now = System.currentTimeMillis()
                                 PlayerStore.saveBookmark(app, MediaBookmark(UUID.randomUUID().toString(), itemId, segment.startMs, segment.endMs, segment.title.ifBlank { segment.description }, origin = Origin.USER.name, segmentId = segment.id, createdAt = now, updatedAt = now))
                             }
-                        }) { Text(tr("Convert to manual")) }
-                        TextButton({ scope.launch { PlayerStore.dismissSegment(app, itemId, segment, System.currentTimeMillis()) } }) { Text(tr("Remove")) }
+                        }) { Text(stringResource(R.string.ui_convert_to_manual)) }
+                        TextButton({ scope.launch { PlayerStore.dismissSegment(app, itemId, segment, System.currentTimeMillis()) } }) { Text(stringResource(R.string.ui_remove)) }
                     }
                 }
-                item { Text(tr("Transcript"), style = Hf.type.cardTitle, color = Hf.colors.onSurface) }
+                item { Text(stringResource(R.string.ui_transcript), style = Hf.type.cardTitle, color = Hf.colors.onSurface) }
                 items(shownLines, key = { it.id }) { line ->
                     val on = line.id == lines.getOrNull(active)?.id
                     Column(Modifier.background(if (on) Hf.colors.primaryContainer else Color.Transparent).clickable { controller?.seekTo(line.startMs) }.padding(4.dp)) {
                         Text("${line.speaker} ${PlaybackLogic.formatTimestamp(line.startMs)}", style = Hf.type.caption, color = Hf.colors.muted)
                         Text(line.text, color = Hf.colors.onSurface)
                         Row {
-                            TextButton({ copy(context, line.text) }) { Text(tr("Copy")) }
+                            TextButton({ copy(context, line.text) }) { Text(stringResource(R.string.ui_copy)) }
                             TextButton({
                                 correct = transcript.firstOrNull { it.id == line.id }
                                 correctText = line.text
-                            }) { Text(tr("Correct")) }
+                            }) { Text(stringResource(R.string.ui_correct)) }
                             TextButton({
                                 scope.launch {
                                     val now = System.currentTimeMillis()
                                     PlayerStore.saveBookmark(app, MediaBookmark(UUID.randomUUID().toString(), itemId, line.startMs, line.endMs, line.text.take(80), origin = Origin.USER.name, createdAt = now, updatedAt = now))
                                 }
-                            }) { Text(tr("Bookmark")) }
+                            }) { Text(stringResource(R.string.ui_bookmark)) }
                         }
                     }
                 }
                 item {
-                    SectionCard(tr("Playback history")) {
+                    SectionCard(stringResource(R.string.ui_playback_history)) {
                         for (entry in history.filter { it.mediaId == itemId }.take(8)) {
                             Text("${PlaybackLogic.formatTimestamp(entry.fromMs)} → ${entry.toMs?.let(PlaybackLogic::formatTimestamp) ?: "…"}", color = Hf.colors.onSurface)
                         }
-                        if (history.none { it.mediaId == itemId }) Note(tr("No playback history yet."))
+                        if (history.none { it.mediaId == itemId }) Note(stringResource(R.string.ui_no_playback_history_yet))
                     }
                 }
             }
         }
         if (locked) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)).clickable { }, contentAlignment = Alignment.Center) {
-            SecondaryButton(tr("Unlock"), { locked = false })
+            SecondaryButton(stringResource(R.string.ui_unlock), { locked = false })
         }
     }
     editor?.let { draft ->
         AlertDialog(
             onDismissRequest = { editor = null },
-            title = { Text(tr("Bookmark")) },
+            title = { Text(stringResource(R.string.ui_bookmark)) },
             text = {
                 Column {
-                    HfTextField(title, { title = it }, tr("Title"))
-                    HfTextField(note, { note = it }, tr("Notes"))
+                    HfTextField(title, { title = it }, stringResource(R.string.ui_title))
+                    HfTextField(note, { note = it }, stringResource(R.string.ui_notes))
                     for (category in categories.take(12)) {
                         Text(category.name, Modifier.clickable { editor = draft.copy(categoryId = category.id) }, color = if (draft.categoryId == category.id) Hf.colors.primary else Hf.colors.onSurface)
                     }
@@ -469,16 +471,16 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
                         PlayerStore.saveBookmark(app, draft.copy(title = title, note = note, thumbnailPath = path ?: draft.thumbnailPath, updatedAt = now, origin = Origin.USER.name))
                         editor = null
                     }
-                }) { Text(tr("Save bookmark")) }
+                }) { Text(stringResource(R.string.ui_save_bookmark)) }
             },
-            dismissButton = { TextButton({ editor = null }) { Text(tr("Close")) } },
+            dismissButton = { TextButton({ editor = null }) { Text(stringResource(R.string.ui_close)) } },
         )
     }
     correct?.let { segment ->
         AlertDialog(
             onDismissRequest = { correct = null },
-            title = { Text(tr("Correct")) },
-            text = { HfTextField(correctText, { correctText = it }, tr("Transcript"), singleLine = false) },
+            title = { Text(stringResource(R.string.ui_correct)) },
+            text = { HfTextField(correctText, { correctText = it }, stringResource(R.string.ui_transcript), singleLine = false) },
             confirmButton = {
                 TextButton({
                     scope.launch {
@@ -486,9 +488,9 @@ fun PlayerScreen(itemId: String, startMs: Long?) {
                         edits = PlayerStore.transcriptEdits(app, itemId)
                         correct = null
                     }
-                }) { Text(tr("Save")) }
+                }) { Text(stringResource(R.string.ui_save)) }
             },
-            dismissButton = { TextButton({ correct = null }) { Text(tr("Close")) } },
+            dismissButton = { TextButton({ correct = null }) { Text(stringResource(R.string.ui_close)) } },
         )
     }
 }
@@ -515,14 +517,14 @@ private fun VolumeBrightness(activity: Activity?) {
     var volume by remember { mutableFloatStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC) / max.toFloat()) }
     var brightness by remember { mutableFloatStateOf(0f) }
     var volumeNote by remember { mutableStateOf<String?>(null) }
-    Text(tr("Volume"), style = Hf.type.caption, color = Hf.colors.muted)
+    Text(stringResource(R.string.ui_volume), style = Hf.type.caption, color = Hf.colors.muted)
     Slider(volume, {
         volume = it
         val set = runCatching { audio.setStreamVolume(AudioManager.STREAM_MUSIC, (it * max).toInt().coerceIn(0, max), 0) }
-        if (set.isFailure) volumeNote = "Volume control was refused by this device."
+        if (set.isFailure) volumeNote = context.getString(R.string.ui_volume_control_was_refused_by_this)
     }, valueRange = 0f..1f)
-    volumeNote?.let { Note(tr(it)) }
-    Text(tr("Brightness"), style = Hf.type.caption, color = Hf.colors.muted)
+    volumeNote?.let { Note(it) }
+    Text(stringResource(R.string.ui_brightness), style = Hf.type.caption, color = Hf.colors.muted)
     Slider(brightness, {
         brightness = it
         val window = activity?.window ?: return@Slider
@@ -538,7 +540,7 @@ private fun TrackRow(controller: MediaController?, tracks: Tracks, scope: kotlin
     val audio = tracks.groups.withIndex().filter { it.value.type == C.TRACK_TYPE_AUDIO }
     val text = tracks.groups.withIndex().filter { it.value.type == C.TRACK_TYPE_TEXT }
     if (player == null || (audio.isEmpty() && text.isEmpty())) {
-        Note(tr("No extra audio or subtitle tracks reported."))
+        Note(stringResource(R.string.ui_no_extra_audio_or_subtitle_tracks))
         return
     }
     @Composable
@@ -567,18 +569,18 @@ private fun TrackRow(controller: MediaController?, tracks: Tracks, scope: kotlin
         }
     }
     if (audio.isNotEmpty()) {
-        Text(tr("Audio track"), style = Hf.type.caption, color = Hf.colors.muted)
+        Text(stringResource(R.string.ui_audio_track), style = Hf.type.caption, color = Hf.colors.muted)
         choices(audio)
     }
     if (text.isNotEmpty()) {
-        Text(tr("Subtitles"), style = Hf.type.caption, color = Hf.colors.muted)
+        Text("Subtitles", style = Hf.type.caption, color = Hf.colors.muted)
         choices(text)
         TextButton({
             player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
                 .clearOverridesOfType(C.TRACK_TYPE_TEXT).setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build()
             PlaybackFlags.subtitleTrack = "off"
             scope.launch { persistChoice(app, itemId) { it.copy(subtitleTrack = "off") } }
-        }) { Text(tr("Subtitles off")) }
+        }) { Text(stringResource(R.string.ui_subtitles_off)) }
     }
 }
 
@@ -619,7 +621,7 @@ private fun Timeline(drawn: List<TimelineMarker>, total: Int, ab: AbRange?, posi
         val head = position / length * width
         drawLine(Color.White, androidx.compose.ui.geometry.Offset(head, 0f), androidx.compose.ui.geometry.Offset(head, size.height), 2f)
     }
-    if (total == 0) Note(tr("No bookmarks or chapters yet."))
+    if (total == 0) Note(stringResource(R.string.ui_no_bookmarks_or_chapters_yet))
 }
 
 @Composable

@@ -173,12 +173,14 @@ object PlaybackLogic {
 
     fun sleepRemainingMs(nowMs: Long, untilMs: Long?): Long? = untilMs?.let { (it - nowMs).coerceAtLeast(0) }
 
-    fun playbackError(codeName: String): String = when {
+    /** Owner-facing text for a Media3 error code; null for other codes, which are shown with the code name. */
+    @androidx.annotation.StringRes
+    fun playbackError(codeName: String): Int? = when {
         codeName.contains("DECODER") || codeName.contains("DECODING") || codeName.contains("PARSING") || codeName.contains("FORMAT") ->
-            "This file cannot be played on this device. The codec or container is not supported. The original was not modified."
+            com.hellfire.ass.R.string.ui_this_file_cannot_be_played_on_this
         codeName.contains("IO") || codeName.contains("FILE") || codeName.contains("TIMEOUT") ->
-            "The original could not be read. Nothing was written out as a decrypted file."
-        else -> "Playback failed ($codeName). The original was not modified."
+            com.hellfire.ass.R.string.ui_the_original_could_not_be_read_nothing
+        else -> null
     }
 
     fun trackKey(type: Int, group: Int, track: Int) = "$type:$group:$track"

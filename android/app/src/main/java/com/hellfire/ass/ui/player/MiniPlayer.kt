@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.player
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
@@ -23,7 +26,6 @@ import com.hellfire.ass.ui.LocalNav
 import com.hellfire.ass.ui.Screen
 import com.hellfire.ass.ui.components.SecondaryButton
 import com.hellfire.ass.ui.theme.Hf
-import com.hellfire.ass.ui.tr
 import kotlin.math.roundToInt
 
 /** Persistent in-app presentation of the shared session. Hidden on the full player page. */
@@ -56,7 +58,7 @@ fun MiniPlayerOverlay(modifier: Modifier = Modifier) {
             }
             .padding(10.dp),
     ) {
-        Text(title.ifBlank { tr("Player") }, style = Hf.type.cardTitle, color = Hf.colors.onSurface, maxLines = 1)
+        Text(title.ifBlank { stringResource(R.string.ui_player) }, style = Hf.type.cardTitle, color = Hf.colors.onSurface, maxLines = 1)
         val max = duration.coerceAtLeast(1).toFloat()
         Slider(
             value = position.coerceIn(0, duration.coerceAtLeast(0)).toFloat().coerceIn(0f, max),
@@ -64,13 +66,13 @@ fun MiniPlayerOverlay(modifier: Modifier = Modifier) {
             valueRange = 0f..max,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            SecondaryButton(if (playing) tr("Pause") else tr("Play"), { PlaybackHub.toggle(context) })
-            SecondaryButton(tr("Seek"), { controller?.seekTo(PlaybackLogic.skip(position, PlaybackFlags.skipMs.value, duration)) })
-            SecondaryButton(tr("Open"), {
+            SecondaryButton(if (playing) stringResource(R.string.ui_pause) else stringResource(R.string.ui_play), { PlaybackHub.toggle(context) })
+            SecondaryButton(stringResource(R.string.ui_seek), { controller?.seekTo(PlaybackLogic.skip(position, PlaybackFlags.skipMs.value, duration)) })
+            SecondaryButton(stringResource(R.string.ui_open), {
                 PlaybackFlags.present(PresentationEvent.MAXIMIZE)
                 nav.push(LibraryRoutes.player(itemId!!))
             })
-            SecondaryButton(tr("Close"), { controller?.let { PlaybackHub.close(it) } })
+            SecondaryButton(stringResource(R.string.ui_close), { controller?.let { PlaybackHub.close(it) } })
         }
     }
 }

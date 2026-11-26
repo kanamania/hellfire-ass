@@ -33,3 +33,6 @@ object Diagnostics {
         }
     }
 }
+
+/** A refusal shown to the owner in the interface language; [text] is its string resource. */
+class OwnerError(@androidx.annotation.StringRes val text: Int) : IllegalArgumentException()

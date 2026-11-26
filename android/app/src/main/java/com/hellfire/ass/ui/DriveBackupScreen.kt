@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import android.accounts.AccountManager
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -208,6 +211,6 @@ fun DriveBackupScreen(app: HellFireApp) {
                     finally { password.fill('\u0000'); file.delete(); extra.forEach { it.delete() }; busy = false }
                 }
             }) { Text("Download and restore") } },
-            dismissButton = { TextButton(onClick = { restore = null }) { Text(com.hellfire.ass.ui.tr("Cancel")) } })
+            dismissButton = { TextButton(onClick = { restore = null }) { Text(stringResource(R.string.ui_cancel)) } })
     }
 }

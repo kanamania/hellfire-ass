@@ -46,9 +46,9 @@ class AiSkills(private val db: com.hellfire.ass.data.EventDatabase) {
             require(skill.name.trim().length in 1..120 && skill.trigger.trim().length in 2..300 && skill.advice.trim().length in 1..2000 && skill.reason.trim().length in 1..1000)
             require(skill.kind in kinds && skill.state in setOf("ACTIVE", "PENDING", "DISABLED"))
             if (skill.kind == "GUIDANCE") {
-                require(com.hellfire.ass.data.SearchText.keywords(skill.trigger).isNotEmpty()) { "Choose meaningful topic words." }
+                if (com.hellfire.ass.data.SearchText.keywords(skill.trigger).isEmpty()) throw com.hellfire.ass.OwnerError(com.hellfire.ass.R.string.ui_choose_meaningful_topic_words)
                 val safe = com.hellfire.ass.events.NotificationNormalizer.normalize(com.hellfire.ass.events.NotificationSnapshot("skill", "owner.skill", 0, 0, fields = mapOf("text" to listOf(skill.name, skill.trigger, skill.advice, skill.reason))), "com.hellfire.ass")!!
-                require(!safe.securitySensitive && !safe.contentRedacted) { "Remove authentication content from this skill." }
+                if (safe.securitySensitive || safe.contentRedacted) throw com.hellfire.ass.OwnerError(com.hellfire.ass.R.string.ui_remove_authentication_content_from_this)
             }
             if (skill.kind == "PAYMENT_DEFAULT") { val j = JSONObject(skill.advice); require(j.getString("account").isNotBlank() && j.getString("category").isNotBlank()) }
         }
@@ -62,7 +62,7 @@ class AiSkills(private val db: com.hellfire.ass.data.EventDatabase) {
     }
     suspend fun save(skill: AiSkill) = db.withTransaction {
         validate(skill)
-        if (skill.kind == "PAYMENT_DEFAULT") require(db.finances().account(JSONObject(skill.advice).getString("account")) != null) { "Choose an existing account." }
+        if (skill.kind == "PAYMENT_DEFAULT" && db.finances().account(JSONObject(skill.advice).getString("account")) == null) throw com.hellfire.ass.OwnerError(com.hellfire.ass.R.string.ui_choose_an_existing_account)
         val old = db.skills().find(skill.id)
         if (skill.state == "ACTIVE") db.skills().replaceActive(skill.kind, skill.trigger, skill.id, System.currentTimeMillis())
         db.skills().save(skill.copy(revision = (old?.revision ?: 0) + 1, updatedAt = System.currentTimeMillis()))

@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.insights
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
@@ -87,21 +90,21 @@ fun WaitingPage() {
                 if (i > 0) ListDivider()
                 ListRow(item.name, subtitle = "${item.channel} · ${Fmt.age(item.at)} ago · ${item.preview.take(90)}", icon = channelIcon(item.channel), tone = Tone.Neutral,
                     trailing = { Column {
-                        QuietButton(com.hellfire.ass.ui.tr("No reply needed"), { WaitingPrefs.dismiss(app, item.reviewKey, item.at); version++ })
-                        QuietButton(com.hellfire.ass.ui.tr("Tomorrow"), { WaitingPrefs.snooze(app, item.reviewKey, System.currentTimeMillis() + 86_400_000); version++ })
+                        QuietButton(stringResource(R.string.ui_no_reply_needed), { WaitingPrefs.dismiss(app, item.reviewKey, item.at); version++ })
+                        QuietButton(stringResource(R.string.ui_tomorrow), { WaitingPrefs.snooze(app, item.reviewKey, System.currentTimeMillis() + 86_400_000); version++ })
                     } },
                     onClick = { item.messageId?.let { nav.push(Screen.Message, it) } ?: nav.push(Screen.Source, item.sourceId) })
             }
         }
     }
-    PushedPage(com.hellfire.ass.ui.tr("Waiting on"), breadcrumb = "Inbox") {
+    PushedPage(stringResource(R.string.ui_waiting_on), breadcrumb = "Inbox") {
         val w = waiting
         if (w == null) { Note("Reading your recent messages…"); return@PushedPage }
         SectionHeader("You owe a reply", trailing = w.iOwe.size.toString())
         rows(w.iOwe.sortedByDescending { it.at }, "Nobody is waiting on you.")
         SectionHeader("Waiting to hear back", trailing = w.theyOwe.size.toString())
         rows(w.theyOwe.sortedByDescending { it.at }, "Nothing you asked is unanswered.")
-        ListCard { ListRow(com.hellfire.ass.ui.tr("People"), subtitle = "Everything with one person in one place", icon = HfIcons.Chat, chevron = true, onClick = { nav.push(Screen.People) }) }
+        ListCard { ListRow(stringResource(R.string.ui_people), subtitle = "Everything with one person in one place", icon = HfIcons.Chat, chevron = true, onClick = { nav.push(Screen.People) }) }
         Note("From the last 14 days. An unanswered request appears after 4 hours; \"waiting\" means you asked something a day ago and got no answer. " +
             "Groups, short codes and automated senders are left out. No reply needed clears that request. Tomorrow snoozes the thread; separate email threads stay independent.")
     }
@@ -121,7 +124,7 @@ fun PeoplePage() {
             conversations + saved
         } ?: emptyList()
     }
-    PushedPage(com.hellfire.ass.ui.tr("People"), breadcrumb = "Home") {
+    PushedPage(stringResource(R.string.ui_people), breadcrumb = "Home") {
         val all = people
         if (all == null) { Note("Reading your messages from the last 6 months…"); return@PushedPage }
         HfTextField(query, { query = it }, "Search a name, number or address")
@@ -201,9 +204,9 @@ fun PersonPage(key: String) {
         ))
         SavedContactStatus(key)
         SectionCard(if (p.named) "Name" else "Give this person a name") {
-            ContactPersonField(name, { name = it; picked = null }, "Name", onPick = { picked = it; name = it.displayName })
+            ContactPersonField(name, { name = it; picked = null }, stringResource(R.string.ui_name), onPick = { picked = it; name = it.displayName })
             Note("A contact joins all its numbers and email addresses into this person. Choose the correct saved person when names repeat.")
-            PrimaryButton(com.hellfire.ass.ui.tr("Save name"), {
+            PrimaryButton(stringResource(R.string.ui_save_name), {
                 val chosen = name.trim()
                 scope.launch {
                     val saved = io { com.hellfire.ass.contacts.ContactLinks(app.database).namePerson(key,
@@ -215,7 +218,7 @@ fun PersonPage(key: String) {
         }
         SecondaryButton("Manage linked identities…", { managing = true })
         if (v.tasks.isNotEmpty()) {
-            SectionHeader(com.hellfire.ass.ui.tr("Tasks"), trailing = v.tasks.size.toString())
+            SectionHeader(stringResource(R.string.ui_tasks), trailing = v.tasks.size.toString())
             ListCard { v.tasks.forEachIndexed { i, t ->
                 if (i > 0) ListDivider()
                 ListRow(t.title.take(100), subtitle = (when (t.state) { "REVIEW" -> "Found in a message · not added yet"; "DONE" -> "Done"; "DISMISSED" -> "Dismissed"; else -> "Due ${Fmt.dayTime(t.dueAt)}" }) +
@@ -241,7 +244,7 @@ fun PersonPage(key: String) {
         }
         if (v.debt != null) ListCard { ListRow("Loans and repayments", subtitle = "Open the debt record", icon = HfIcons.Money, chevron = true, onClick = { nav.push(Screen.Debts) }) }
         if (v.media.isNotEmpty()) {
-            SectionHeader(com.hellfire.ass.ui.tr("Recordings"), trailing = v.media.size.toString())
+            SectionHeader(stringResource(R.string.ui_recordings), trailing = v.media.size.toString())
             ListCard { v.media.forEachIndexed { i, m ->
                 if (i > 0) ListDivider()
                 ListRow(m.name.take(80), subtitle = Fmt.dayTime(m.recordedAt ?: m.importedAt) + (m.summary.takeIf { it.isNotBlank() }?.let { " · ${it.take(80)}" } ?: ""),

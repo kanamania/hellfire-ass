@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.inbox
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -53,15 +56,15 @@ fun ReplySheet(initial: ReplyDraft, onDone: (String?) -> Unit) {
     HfBottomSheet({ onDone(null) }) {
         Text(when { initial.draftId != null -> "Edit draft"; initial.replyTo != null || initial.recipient.isNotBlank() -> "Reply"; else -> "New message" },
             style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
-        ChipPicker(listOf("EMAIL_IMAP", "WHATSAPP_BUSINESS"), channel, Fmt::channel) { channel = it; replyTo = null }
+        ChipPicker(listOf("EMAIL_IMAP", "WHATSAPP_BUSINESS"), channel, { when (it) { "EMAIL_IMAP" -> stringResource(R.string.ui_email); "WHATSAPP_BUSINESS" -> stringResource(R.string.ui_whatsapp); else -> Fmt.channel(it) } }) { channel = it; replyTo = null }
         if (accounts.size > 1) {
             GroupLabel("Send from")
             ChipPicker(accounts.map { it.first }, account ?: accounts.first().first, { id -> accounts.firstOrNull { it.first == id }?.second ?: id }) { account = it }
         } else if (accounts.isEmpty()) Note(if (channel == "EMAIL_IMAP") "No email account is connected. Add one in Settings › Email."
             else "No WhatsApp account can send. Sending needs a Business API connection; WhatsApp Web is capture-only.")
-        HfTextField(recipient, { recipient = it; replyTo = null }, if (channel == "EMAIL_IMAP") "To · email address" else "To · WhatsApp number with country code")
-        if (channel == "EMAIL_IMAP") HfTextField(subject, { subject = it }, "Subject")
-        HfTextField(body, { body = it }, "Message", singleLine = false, minLines = 4)
+        HfTextField(recipient, { recipient = it; replyTo = null }, if (channel == "EMAIL_IMAP") stringResource(R.string.ui_to_email_address) else stringResource(R.string.ui_to_whatsapp_number_with_country_code))
+        if (channel == "EMAIL_IMAP") HfTextField(subject, { subject = it }, stringResource(R.string.ui_subject))
+        HfTextField(body, { body = it }, stringResource(R.string.ui_message), singleLine = false, minLines = 4)
         status?.let { Banner(it, Tone.Info, null) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SecondaryButton("Improve on this phone", {
@@ -71,7 +74,7 @@ fun ReplySheet(initial: ReplyDraft, onDone: (String?) -> Unit) {
                 }
             }, enabled = body.isNotBlank() && app.localModel.configured)
         }
-        PrimaryButton(com.hellfire.ass.ui.tr("Save draft"), {
+        PrimaryButton(stringResource(R.string.ui_save_draft), {
             scope.launch {
                 try {
                     withContext(Dispatchers.IO) {
@@ -151,7 +154,7 @@ fun EmailPage() {
         port = account?.optInt("smtp_port", 465)?.toString() ?: "465"
     }
     LaunchedEffect(Unit) { reload() }
-    PushedPage(com.hellfire.ass.ui.tr("Email"), breadcrumb = "Settings") {
+    PushedPage(stringResource(R.string.ui_email), breadcrumb = "Settings") {
         status?.let { Banner(it, Tone.Info, null) }
         Note("Incoming email uses IMAP; sending uses SMTP. Gmail needs an app password where Google allows it. Passwords are encrypted on this phone. Up to ${Accounts.MAX} inboxes.")
         if (accounts.isNotEmpty()) ListCard {
@@ -168,8 +171,8 @@ fun EmailPage() {
             enabled = accounts.size < Accounts.MAX)
         editing?.let { editingId ->
             SectionCard(if (editingId.isEmpty()) "New inbox" else "Edit ${email}") {
-                HfTextField(email, { email = it }, "Email address")
-                HfTextField(password, { password = it }, if (editingId.isEmpty()) "App password / IMAP password" else "New password (leave blank to keep)", password = true)
+                HfTextField(email, { email = it }, stringResource(R.string.ui_email_address))
+                HfTextField(password, { password = it }, if (editingId.isEmpty()) stringResource(R.string.ui_app_password_imap_password) else stringResource(R.string.ui_new_password_leave_blank_to_keep), password = true)
                 HfTextField(imap, { imap = it }, "IMAP TLS host · port 993")
                 HfTextField(smtp, { smtp = it }, "SMTP host")
                 GroupLabel("SMTP TLS port")
@@ -195,7 +198,7 @@ fun EmailPage() {
                     }
                 }, Modifier.fillMaxWidth(), enabled = email.isNotBlank() && (password.isNotBlank() || editingId.isNotEmpty()))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    QuietButton(com.hellfire.ass.ui.tr("Cancel"), { editing = null; password = "" })
+                    QuietButton(stringResource(R.string.ui_cancel), { editing = null; password = "" })
                     if (editingId.isNotEmpty()) QuietButton("Disconnect this inbox", { removing = accounts.firstOrNull { it.getString("id") == editingId } })
                 }
             }
@@ -259,7 +262,7 @@ fun WhatsAppPage() {
                 catch (caught: Exception) { com.hellfire.ass.Diagnostics.warn(caught); "Public key export failed." }
         }
     }
-    PushedPage(com.hellfire.ass.ui.tr("WhatsApp"), breadcrumb = "Settings") {
+    PushedPage(stringResource(R.string.ui_whatsapp), breadcrumb = "Settings") {
         status?.let { Banner(it, Tone.Info, null) }
         Note("Each WhatsApp account needs its own self-hosted gateway (relay URL and device token). All gateways use this phone's public key. Up to ${Accounts.MAX} accounts.")
         if (accounts.isNotEmpty()) ListCard {
@@ -308,7 +311,7 @@ fun WhatsAppPage() {
                     }
                 }, Modifier.fillMaxWidth(), enabled = gateway.isNotBlank() && (token.length >= 32 || (editingId.isNotEmpty() && token.isEmpty())))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    QuietButton(com.hellfire.ass.ui.tr("Cancel"), { editing = null; token = "" })
+                    QuietButton(stringResource(R.string.ui_cancel), { editing = null; token = "" })
                     if (editingId.isNotEmpty()) QuietButton("Disconnect this account", { removing = accounts.firstOrNull { it.getString("id") == editingId } })
                 }
             }

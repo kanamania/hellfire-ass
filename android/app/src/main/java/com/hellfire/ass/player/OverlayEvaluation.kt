@@ -9,5 +9,5 @@ package com.hellfire.ass.player
  */
 object OverlayEvaluation {
     const val IMPLEMENTED = false
-    const val SUMMARY = "System overlay is not available. Picture-in-picture is the supported floating player."
+    val SUMMARY = com.hellfire.ass.R.string.ui_system_overlay_is_not_available_picture
 }

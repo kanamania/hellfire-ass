@@ -52,13 +52,13 @@ object PlaybackHub {
     suspend fun open(app: HellFireApp, controller: MediaController, itemId: String, requestedStartMs: Long?) {
         val item = app.database.library().item(itemId)
         if (item == null) {
-            PlaybackFlags.error.value = "Original is not available."
+            PlaybackFlags.error.value = com.hellfire.ass.ui.UiLanguage.context(app).getString(com.hellfire.ass.R.string.ui_original_is_not_available)
             return
         }
         val playable = item.contentKind == ContentKind.AUDIO.name || item.contentKind == ContentKind.VIDEO.name ||
             item.mime.startsWith("audio/") || item.mime.startsWith("video/")
         if (!playable) {
-            PlaybackFlags.error.value = "This item is not audio or video."
+            PlaybackFlags.error.value = com.hellfire.ass.ui.UiLanguage.context(app).getString(com.hellfire.ass.R.string.ui_this_item_is_not_audio_or_video)
             return
         }
         if (item.availability == Availability.MISSING.name || item.availability == Availability.PERMISSION_REVOKED.name) {
@@ -66,7 +66,7 @@ object PlaybackHub {
             return
         }
         if (item.storage == StorageMode.EXTERNAL.name && item.externalUri.isNullOrBlank()) {
-            PlaybackFlags.error.value = "This external item has no content URI."
+            PlaybackFlags.error.value = com.hellfire.ass.ui.UiLanguage.context(app).getString(com.hellfire.ass.R.string.ui_this_external_item_has_no_content_uri)
             return
         }
         val saved = app.database.playback().playback(itemId)

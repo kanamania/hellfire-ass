@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.settings
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.dp
@@ -26,7 +29,7 @@ fun WidgetsPage() {
     var hideAll by remember { mutableStateOf(WidgetPrefs.hideAll(app)) }
     val shows = remember { mutableStateMapOf<String, Boolean>().apply { WidgetPrefs.widgets.forEach { (id, _) -> put(id, WidgetPrefs.shows(app, id)) } } }
     var budget by remember { mutableStateOf(WidgetPrefs.budgetCategory(app)) }
-    PushedPage(com.hellfire.ass.ui.tr("Home screen widgets"), breadcrumb = "Settings") {
+    PushedPage(stringResource(R.string.ui_home_screen_widgets), breadcrumb = "Settings") {
         Note("Anyone holding your unlocked phone can see the home screen. Amounts and message previews start hidden (•••••). Widgets never send or post anything; replies, names and reviews open here for your approval.")
         HfCard {
             SwitchRow("Hide all amounts", hideAll, { hideAll = it; WidgetPrefs.setHideAll(app, it); app.requestWidgetRefresh() },
@@ -42,7 +45,7 @@ fun WidgetsPage() {
         }
         SectionCard("Budget widget") {
             Note("Category shown on the Budget widget. Set limits in Money › Budgets.")
-            ChipPicker(Categories.filter { it != "Income" }, budget) { budget = it; WidgetPrefs.setBudgetCategory(app, it); app.requestWidgetRefresh() }
+            ChipPicker(Categories.filter { it != "Income" }, budget, { categoryLabel(it) }) { budget = it; WidgetPrefs.setBudgetCategory(app, it); app.requestWidgetRefresh() }
         }
         GroupLabel("Add to home screen")
         val manager = remember { android.appwidget.AppWidgetManager.getInstance(app) }

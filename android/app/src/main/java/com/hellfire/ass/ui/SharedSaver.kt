@@ -1,5 +1,7 @@
 package com.hellfire.ass.ui
 
+import com.hellfire.ass.R
+
 import android.net.Uri
 import androidx.room.withTransaction
 import com.hellfire.ass.HellFireApp
@@ -43,7 +45,7 @@ object SharedSaver {
         require(action in setOf("Save note", "Create reminder", "Review expense") && text.length <= 60000 && subject.length <= 200)
         val raw = NotificationSnapshot("share:$key", "owner.share", now, now, source = "owner_share", fields = mapOf("text" to listOf(text), "title" to listOf(subject)))
         val safe = requireNotNull(NotificationNormalizer.normalize(raw, packageName))
-        require(!safe.securitySensitive) { "Remove authentication content before saving." }
+        if (safe.securitySensitive) throw com.hellfire.ass.OwnerError(R.string.ui_remove_authentication_content_before)
         val sanitized = safe.snapshot.fields["text"].orEmpty().joinToString("\n")
         val recordId = UUID.nameUUIDFromBytes(key.toByteArray()).toString()
         db.withTransaction {

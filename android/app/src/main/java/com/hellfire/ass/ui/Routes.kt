@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.runtime.Composable
 import com.hellfire.ass.ui.ask.AskTab
 import com.hellfire.ass.ui.ask.MemoryPage
@@ -38,13 +41,13 @@ fun RouteContent(route: Route) {
         Screen.Settings -> com.hellfire.ass.ui.settings.SettingsHub()
         Screen.Permissions -> com.hellfire.ass.ui.settings.PermissionsPage()
         Screen.CloudAi -> PushedPage(if (route.arg == "budget") "Monthly AI budget" else "Cloud AI", breadcrumb = "Settings") { AiSettingsScreen(env.app, budgetOnly = route.arg == "budget") }
-        Screen.LocalModels -> PushedPage(com.hellfire.ass.ui.tr("On-device models"), breadcrumb = "Settings") { SectionCard("Language model and offline reading") { LocalAiScreen(env.app) }; ModelExtractionSection() }
-        Screen.Recordings -> PushedPage(com.hellfire.ass.ui.tr("Recordings"), breadcrumb = "Settings") {
+        Screen.LocalModels -> PushedPage(stringResource(R.string.ui_on_device_models), breadcrumb = "Settings") { SectionCard("Language model and offline reading") { LocalAiScreen(env.app) }; ModelExtractionSection() }
+        Screen.Recordings -> PushedPage(stringResource(R.string.ui_recordings), breadcrumb = "Settings") {
             MediaScreen(env.app, env.permissions, a.onMicrophone)
             SectionCard("60-second microphone test") { MicTestSection(env.app, env.permissions, a.onMicrophone, a.onSettings) }
         }
         Screen.MediaItem -> PushedPage("Recording", breadcrumb = "Inbox") { MediaScreen(env.app, env.permissions, a.onMicrophone, route.arg) }
-        Screen.Backup -> PushedPage(com.hellfire.ass.ui.tr("Encrypted backup"), breadcrumb = "Settings") { BackupScreen(env.app) }
+        Screen.Backup -> PushedPage(stringResource(R.string.ui_encrypted_backup), breadcrumb = "Settings") { BackupScreen(env.app) }
         Screen.Device -> com.hellfire.ass.ui.settings.DevicePage()
         Screen.Performance -> com.hellfire.ass.ui.PerfScreen()
         Screen.WebAccess -> com.hellfire.ass.ui.settings.WebAccessPage()
@@ -91,8 +94,8 @@ fun RouteContent(route: Route) {
         Screen.ShareWithAi -> com.hellfire.ass.ui.sharing.ShareWithAiPage(route)
         Screen.ProcessingQueue -> com.hellfire.ass.ui.intelligence.ProcessingQueueScreen()
         Screen.SyncDashboard -> com.hellfire.ass.ui.sync.SyncDashboardPage()
-        Screen.BackupDashboard -> PushedPage(com.hellfire.ass.ui.tr("Backup dashboard"), breadcrumb = "Settings") { BackupDashboardScreen(env.app) }
-        Screen.StatusDashboard -> PushedPage(com.hellfire.ass.ui.tr("Status dashboard"), breadcrumb = "Settings") { StatusDashboardScreen(env.app) }
+        Screen.BackupDashboard -> PushedPage(stringResource(R.string.ui_backup_dashboard), breadcrumb = "Settings") { BackupDashboardScreen(env.app) }
+        Screen.StatusDashboard -> PushedPage(stringResource(R.string.ui_status_dashboard), breadcrumb = "Settings") { StatusDashboardScreen(env.app) }
         Screen.MediaSettings -> com.hellfire.ass.ui.intelligence.MediaSettingsScreen()
         Screen.News -> com.hellfire.ass.ui.news.NewsScreen()
         Screen.NewsReader -> com.hellfire.ass.ui.news.NewsReaderPage(route.arg)

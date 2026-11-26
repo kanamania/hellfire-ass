@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -113,21 +116,21 @@ fun BackupScreen(app: HellFireApp) {
                 "Backup verification" to if (verified == 0L) "No archive verified on this installation" else Fmt.full(verified))
         }
     }
-    SectionCard(com.hellfire.ass.ui.tr("Recovery readiness")) { KvList(readiness); Note("A backup includes registered originals. Archives are streamed with bounded memory, up to 500 GiB of originals; free storage and destination limits still apply.") }
-    SectionCard(com.hellfire.ass.ui.tr("Daily Google Drive backup and restore")) { DriveBackupScreen(app) }
+    SectionCard(stringResource(R.string.ui_recovery_readiness)) { KvList(readiness); Note("A backup includes registered originals. Archives are streamed with bounded memory, up to 500 GiB of originals; free storage and destination limits still apply.") }
+    SectionCard(stringResource(R.string.ui_daily_google_drive_backup_and_restore)) { DriveBackupScreen(app) }
     result?.let { Banner(it, Tone.Info, null) }
-    SectionCard(com.hellfire.ass.ui.tr("Back up or restore")) {
-        HfTextField(password, { password = it }, "Backup passphrase · at least 12 characters", password = true)
-        PrimaryButton(com.hellfire.ass.ui.tr("Export encrypted backup…"), { pending.set(password); password = ""; exporter.launch("HellFire-Ass-backup.hfb") }, Modifier.fillMaxWidth(), enabled = !busy && password.length >= 12)
+    SectionCard(stringResource(R.string.ui_back_up_or_restore)) {
+        HfTextField(password, { password = it }, stringResource(R.string.ui_backup_passphrase_at_least_12_characters), password = true)
+        PrimaryButton(stringResource(R.string.ui_export_encrypted_backup), { pending.set(password); password = ""; exporter.launch("HellFire-Ass-backup.hfb") }, Modifier.fillMaxWidth(), enabled = !busy && password.length >= 12)
         QuietButton(if (incremental) "Incremental export on" else "Incremental export off", { incremental = !incremental }, enabled = !busy)
         if (incremental) Note("Incremental archives omit originals already verified in a retained backup. Keep those older archives; to restore, select the incremental archive together with them. A full export is one file and restores alone.")
-        SecondaryButton(com.hellfire.ass.ui.tr("Restore into empty local database…"), { confirmRestore = true }, Modifier.fillMaxWidth(), enabled = !busy && password.length >= 12)
-        SecondaryButton(com.hellfire.ass.ui.tr("Verify an archive without restoring…"), { pending.set(password); password = ""; verifier.launch(arrayOf("*/*")) }, Modifier.fillMaxWidth(), enabled = !busy && password.length >= 12)
-        SecondaryButton(com.hellfire.ass.ui.tr("Restore selected items…"), { pending.set(password); password = ""; inspector.launch(arrayOf("*/*")) }, Modifier.fillMaxWidth(), enabled = !busy && password.length >= 12)
+        SecondaryButton(stringResource(R.string.ui_restore_into_empty_local_database), { confirmRestore = true }, Modifier.fillMaxWidth(), enabled = !busy && password.length >= 12)
+        SecondaryButton(stringResource(R.string.ui_verify_an_archive_without_restoring), { pending.set(password); password = ""; verifier.launch(arrayOf("*/*")) }, Modifier.fillMaxWidth(), enabled = !busy && password.length >= 12)
+        SecondaryButton("Restore selected items…", { pending.set(password); password = ""; inspector.launch(arrayOf("*/*")) }, Modifier.fillMaxWidth(), enabled = !busy && password.length >= 12)
         if (busy) { LinearProgressIndicator(Modifier.fillMaxWidth(), color = Hf.colors.primary); Note("Working with encrypted storage. Keep this screen open until finished.") }
     }
     inspected?.let { report ->
-        SectionCard(com.hellfire.ass.ui.tr("Restore selected items")) {
+        SectionCard("Restore selected items") {
             Note("Selected items are added to this phone with their bookmarks, categories, transcripts, scenes and drawer records. Existing items are kept. Choose by kind, collection or item.")
             if (report.kinds.isNotEmpty()) Text("Kinds", style = Hf.type.label, color = Hf.colors.muted)
             report.kinds.forEach { (kind, count) -> SelectRow("$kind · $count", kind in pickKinds) { pickKinds = pickKinds.toggle(kind) } }
@@ -137,7 +140,7 @@ fun BackupScreen(app: HellFireApp) {
             report.items.forEach { (id, name) -> SelectRow(name, id in pickItems) { pickItems = pickItems.toggle(id) } }
             if (report.missing.isNotEmpty()) Note("${report.missing.size} item(s) have no original in this archive and cannot be restored selectively.")
             val chosen = pickKinds.isNotEmpty() || pickCollections.isNotEmpty() || pickItems.isNotEmpty()
-            PrimaryButton(com.hellfire.ass.ui.tr("Restore selected"), {
+            PrimaryButton("Restore selected", {
                 val secret = password.toCharArray(); password = ""
                 val selection = com.hellfire.ass.security.BackupSelection(pickItems, pickKinds, pickCollections)
                 scope.launch {
@@ -149,10 +152,10 @@ fun BackupScreen(app: HellFireApp) {
                 }
             }, Modifier.fillMaxWidth(), enabled = !busy && chosen && password.length >= 12)
             if (chosen && password.length < 12) Note("Enter the backup passphrase above to restore.")
-            QuietButton(com.hellfire.ass.ui.tr("Cancel"), { inspected = null })
+            QuietButton(stringResource(R.string.ui_cancel), { inspected = null })
         }
     }
-    SectionCard(com.hellfire.ass.ui.tr("What is included")) {
+    SectionCard(stringResource(R.string.ui_what_is_included)) {
         Note("Portable backups include source events, finance, tasks, messages and drafts, memory, transcripts, library records and managed originals. The archive is encrypted with your passphrase. The passphrase and derived key are not stored in the archive or beside it. Restore re-encrypts originals with this phone's key. An incremental archive restores only together with the older archives it omitted.")
         Note("Account passwords and tokens, Android permissions, the gateway private key, model weights, folder grants and microphone test samples are left out. Restore needs an empty database. It clears stale send approvals and marks interrupted sends unconfirmed.")
         Note("Choose any Android document destination you trust. Manual export is separate from the daily Google Drive option above. Stop recording before export; turn off notification and SMS capture and disconnect mail and gateway accounts before restore.")

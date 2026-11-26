@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.inbox
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -109,25 +112,26 @@ fun InboxTab() {
 
     val pending = drafts.filter { it.state == "DRAFT" }.let { list -> focusDraft?.let { id -> list.sortedByDescending { it.id == id } } ?: list }
     ScrollPage(gap = 14.dp) {
-        ScreenHeader(com.hellfire.ass.ui.tr("Inbox")) {
+        ScreenHeader(stringResource(R.string.ui_inbox)) {
             IconCircleButton(HfIcons.Alarm, "Waiting on", { nav.push(Screen.Waiting) })
             IconCircleButton(HfIcons.Search, "Search", { search = if (search == null) "" else null })
             IconCircleButton(HfIcons.Plus, "New message", { editing = ReplyDraft() })
         }
-        ListRow(com.hellfire.ass.ui.tr("Universal inbox"), subtitle = com.hellfire.ass.ui.tr("Saved drops, files and shares"), chevron = true) {
+        ListRow(stringResource(R.string.drawer_inbox), subtitle = stringResource(R.string.drawer_saved), chevron = true) {
             nav.push(com.hellfire.ass.library.LibraryRoutes.universalInbox())
         }
-        if (search != null) HfTextField(search!!, { search = it }, "Search all saved messages")
+        if (search != null) HfTextField(search!!, { search = it }, stringResource(R.string.ui_search_all_saved_messages))
         FilterChips(filter) { filter = it }
-        SegmentedControl(listOf("Conversations", "All items"), if (conversations) "Conversations" else "All items", { conversations = it == "Conversations" })
+        SegmentedControl(listOf("Conversations", "All items"), if (conversations) "Conversations" else "All items", { conversations = it == "Conversations" },
+            label = { if (it == "Conversations") stringResource(R.string.ui_conversations) else stringResource(R.string.ui_all_items) })
         sent?.let { Banner(it, modifier = Modifier.clickableRow { sent = null }) }
         pending.forEach { d ->
             ActionCard(highlighted = true, actions = {
-                PrimaryButton(com.hellfire.ass.ui.tr("Approve and send"), { sending = d }, icon = HfIcons.Check)
-                SecondaryButton(com.hellfire.ass.ui.tr("Edit"), { editing = ReplyDraft(d.channel, d.recipient, d.subject, d.body, d.replyToMessageId, d.accountId, d.id) })
+                PrimaryButton(stringResource(R.string.ui_approve_and_send), { sending = d }, icon = HfIcons.Check)
+                SecondaryButton(stringResource(R.string.ui_edit), { editing = ReplyDraft(d.channel, d.recipient, d.subject, d.body, d.replyToMessageId, d.accountId, d.id) })
             }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(com.hellfire.ass.ui.tr("DRAFT READY"), Modifier.weight(1f), style = Hf.type.rowSubtitle.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.25.sp), color = Hf.colors.primary)
+                    Text(stringResource(R.string.ui_draft_ready), Modifier.weight(1f), style = Hf.type.rowSubtitle.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.25.sp), color = Hf.colors.primary)
                     Text("To ${d.recipient} · ${Fmt.channel(d.channel)}" + (accountLabels[d.accountId]?.let { " · from $it" } ?: ""), style = Hf.type.rowSubtitle, color = Hf.colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (d.subject.isNotBlank()) Text(d.subject, style = Hf.type.rowTitle, color = Hf.colors.onSurface)
@@ -152,11 +156,11 @@ fun InboxTab() {
                 }
             } else shown.forEach { item -> MessageRow(item) { item.open?.let(nav::push) } }
         }
-        if (messages.size >= limit || events.size >= limit) SecondaryButton(com.hellfire.ass.ui.tr("Load older history"), { limit += 100 }, Modifier.fillMaxWidth())
-        Note(com.hellfire.ass.ui.tr("Search checks saved message bodies and the full source-text index, including older captures."))
+        if (messages.size >= limit || events.size >= limit) SecondaryButton(stringResource(R.string.ui_load_older_history), { limit += 100 }, Modifier.fillMaxWidth())
+        Note(stringResource(R.string.ui_search_checks_saved_message_bodies_and))
         val history = drafts.filter { it.state != "DRAFT" }.take(10)
         if (history.isNotEmpty()) {
-            SectionHeader(com.hellfire.ass.ui.tr("Sent and failed drafts"))
+            SectionHeader(stringResource(R.string.ui_sent_and_failed_drafts))
             ListCard {
                 history.forEachIndexed { i, d ->
                     if (i > 0) ListDivider(16.dp)
@@ -166,7 +170,7 @@ fun InboxTab() {
                 }
             }
         }
-        Note(com.hellfire.ass.ui.tr("Email and WhatsApp accounts are set up in Settings. Nothing is sent without your approval."))
+        Note(stringResource(R.string.ui_email_and_whatsapp_accounts_are_set_up))
     }
     sending?.let { d ->
         ConfirmDialog("Approve and send?", "${Fmt.channel(d.channel)} to ${d.recipient}" + (accountLabels[d.accountId]?.let { "\nFrom $it" } ?: "") + "\n${d.subject}\n\n${d.body.take(1500)}", "Approve and send once", onConfirm = {

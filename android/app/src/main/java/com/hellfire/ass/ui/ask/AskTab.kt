@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.ask
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import android.content.Intent
 import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -119,8 +122,8 @@ fun AskTab() {
 
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(start = ScreenPadding, end = ScreenPadding, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(com.hellfire.ass.ui.tr("Ask"), Modifier.weight(1f), style = Hf.type.screenTitle, color = Hf.colors.onSurface)
-            QuietButton(com.hellfire.ass.ui.tr("History"), { historySheet = true })
+            Text(stringResource(R.string.ui_ask), Modifier.weight(1f), style = Hf.type.screenTitle, color = Hf.colors.onSurface)
+            QuietButton(stringResource(R.string.ui_history), { historySheet = true })
             Row(
                 Modifier.height(36.dp).clip(CircleShape).background(Hf.colors.surface).border(1.dp, Hf.colors.outline, CircleShape)
                     .clickableRow { picker = true }.padding(horizontal = 12.dp),
@@ -129,7 +132,7 @@ fun AskTab() {
                 val r = AskSession.route
                 val local = r == null || r.model?.provider == ProviderId.LOCAL
                 Icon(if (local) HfIcons.Chip else HfIcons.Cloud, null, Modifier.size(16.dp), tint = if (local) Hf.colors.success else Hf.colors.info)
-                Text(if (r?.model?.model == "grounded-local") tr("Local model + saved sources") else r?.let { it.model?.label() ?: it.task.label } ?: tr("On this phone"), style = Hf.type.label, color = Hf.colors.onSurface, maxLines = 1)
+                Text(if (r?.model?.model == "grounded-local") stringResource(R.string.ui_local_model_saved_sources) else r?.let { it.model?.label() ?: it.task.label } ?: stringResource(R.string.ui_on_this_phone), style = Hf.type.label, color = Hf.colors.onSurface, maxLines = 1)
                 Icon(HfIcons.ChevronDown, null, Modifier.size(14.dp), tint = Hf.colors.muted)
             }
         }
@@ -137,7 +140,7 @@ fun AskTab() {
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (items.isEmpty()) item {
                 HfCard(padding = PaddingValues(16.dp)) {
-                    Text(com.hellfire.ass.ui.tr("Ask about your money, tasks and messages"), style = Hf.type.cardTitle, color = Hf.colors.onSurface)
+                    Text(stringResource(R.string.ui_ask_about_your_money_tasks_and_messages), style = Hf.type.cardTitle, color = Hf.colors.onSurface)
                     Spacer(Modifier.height(6.dp))
                     Text("Answers come from what's saved on this phone. Commands like \"remind me to pay rent on the 1st at 9:00\" or \"log cash chakula 7000\" are proposals until you confirm. Type help for the full list.",
                         style = Hf.type.rowSubtitle.copy(fontSize = 13.sp), color = Hf.colors.muted)
@@ -171,8 +174,8 @@ fun AskTab() {
             }
             if (running != null) item {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(com.hellfire.ass.ui.tr("Working…"), style = Hf.type.rowSubtitle, color = Hf.colors.muted)
-                    QuietButton(com.hellfire.ass.ui.tr("Cancel"), { running?.cancel() })
+                    Text(stringResource(R.string.ui_working), style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+                    QuietButton(stringResource(R.string.ui_cancel), { running?.cancel() })
                 }
             }
         }
@@ -184,15 +187,15 @@ fun AskTab() {
         }
     }
     if (historySheet) HfBottomSheet({ historySheet = false }) {
-        Text(com.hellfire.ass.ui.tr("Ask history"), style = Hf.type.cardTitle, color = Hf.colors.onSurface)
-        SwitchRow(com.hellfire.ass.ui.tr("Keep encrypted history"), historyEnabled, { value -> historyEnabled = value; app.getSharedPreferences("ui", 0).edit().putBoolean(com.hellfire.ass.assistant.AskHistory.KEY, value).apply() })
+        Text(stringResource(R.string.ui_ask_history), style = Hf.type.cardTitle, color = Hf.colors.onSurface)
+        SwitchRow(stringResource(R.string.ui_keep_encrypted_history), historyEnabled, { value -> historyEnabled = value; app.getSharedPreferences("ui", 0).edit().putBoolean(com.hellfire.ass.assistant.AskHistory.KEY, value).apply() })
         Note("Keeps the last 40 question/answer pairs on this phone. Commands and approvals are never restored. Turning this off stops new saves; use Clear to delete saved history.")
-        SecondaryButton(com.hellfire.ass.ui.tr("Clear history and conversation"), { scope.launch { withContext(Dispatchers.IO) { app.secrets.remove(com.hellfire.ass.assistant.AskHistory.KEY) }; app.assistant.clearContext(); items.clear(); historySheet = false } })
+        SecondaryButton(stringResource(R.string.ui_clear_history_and_conversation), { scope.launch { withContext(Dispatchers.IO) { app.secrets.remove(com.hellfire.ass.assistant.AskHistory.KEY) }; app.assistant.clearContext(); items.clear(); historySheet = false } })
     }
     if (picker) RoutePicker { picker = false }
     sources?.let { ids -> HfBottomSheet({ sources = null }) {
-        Text(com.hellfire.ass.ui.tr("Sources"), style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
-        Note(com.hellfire.ass.ui.tr("The saved records this answer used. Tap one to see the original."))
+        Text(stringResource(R.string.ui_sources), style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
+        Note(stringResource(R.string.ui_the_saved_records_this_answer_used_tap))
         ListCard {
             ids.take(50).forEachIndexed { i, id -> if (i > 0) ListDivider(16.dp)
                 ListRow(sourceNames[id] ?: "Reading source…", chevron = true, onClick = { sources = null; if (id.startsWith("news:")) nav.push(Screen.NewsStory, id.removePrefix("news:")) else nav.push(Screen.Source, id) }) }
@@ -229,7 +232,7 @@ private fun AnswerCard(item: ChatItem.Reply, onSources: (List<String>) -> Unit, 
                 Text("Top ${minOf(3, a.breakdown.size)} categories · see all", style = Hf.type.label.copy(fontWeight = FontWeight.SemiBold), color = Hf.colors.primary)
                 Icon(HfIcons.ChevronRight, null, Modifier.size(14.dp), tint = Hf.colors.primary)
             }
-            Text(com.hellfire.ass.ui.tr("Only confirmed payments are counted. Own transfers are excluded."), style = Hf.type.rowSubtitle, color = Hf.colors.muted)
+            Text(stringResource(R.string.ui_only_confirmed_payments_are_counted_own), style = Hf.type.rowSubtitle, color = Hf.colors.muted)
         } else Text(a.text, style = Hf.type.body.copy(lineHeight = 21.sp), color = Hf.colors.onSurface)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(item.via, Modifier.weight(1f), style = Hf.type.caption.copy(fontWeight = FontWeight.Normal), color = Hf.colors.muted)
@@ -271,15 +274,15 @@ private fun ProposalCard(item: ChatItem.Proposal, onConfirm: () -> Unit, onEdit:
                     textAlign = androidx.compose.ui.text.style.TextAlign.End)
             } }
         }
-        if (item.command is OwnerCommand.Draft) Note(com.hellfire.ass.ui.tr("Confirming saves a draft. Sending still needs Approve and send in Inbox."))
+        if (item.command is OwnerCommand.Draft) Note(stringResource(R.string.ui_confirming_saves_a_draft_sending_still))
         when (item.state) {
             "OPEN" -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PrimaryButton(com.hellfire.ass.ui.tr("Confirm"), onConfirm); SecondaryButton(com.hellfire.ass.ui.tr("Edit"), onEdit); QuietButton(com.hellfire.ass.ui.tr("Discard"), onDiscard)
+                PrimaryButton(stringResource(R.string.ui_confirm), onConfirm); SecondaryButton(stringResource(R.string.ui_edit), onEdit); QuietButton(stringResource(R.string.ui_discard), onDiscard)
             }
-            "APPLYING" -> StatusPill(com.hellfire.ass.ui.tr("Applying…"), Tone.Neutral)
-            "DONE" -> StatusPill(com.hellfire.ass.ui.tr("Completed"), Tone.Success)
-            "FAILED" -> Note(com.hellfire.ass.ui.tr("Could not complete. Check the result below before trying again."), color = Hf.colors.danger)
-            else -> StatusPill(com.hellfire.ass.ui.tr("Discarded"), Tone.Neutral)
+            "APPLYING" -> StatusPill(stringResource(R.string.ui_applying), Tone.Neutral)
+            "DONE" -> StatusPill(stringResource(R.string.ui_completed), Tone.Success)
+            "FAILED" -> Note(stringResource(R.string.ui_could_not_complete_check_the_result), color = Hf.colors.danger)
+            else -> StatusPill(stringResource(R.string.ui_discarded), Tone.Neutral)
         }
     }
 }
@@ -292,12 +295,12 @@ private fun RoutePicker(onDone: () -> Unit) {
     LaunchedEffect(Unit) { state = runCatching { withContext(Dispatchers.IO) { app.ai.store.read() } }.getOrNull() }
     var task by remember { mutableStateOf(AskSession.route?.task ?: AiTask.CHAT) }
     HfBottomSheet(onDone) {
-        Text(com.hellfire.ass.ui.tr("Who answers"), style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
-        OptionCard(com.hellfire.ass.ui.tr("Local model + saved sources"), "Read-only explanations from evidence on this phone. Finance still uses the ledger.", AskSession.route?.model?.model == "grounded-local", { AskSession.route = AskRoute(AiTask.CHAT, ModelRef(ProviderId.LOCAL, "grounded-local")); onDone() })
-        OptionCard(com.hellfire.ass.ui.tr("On this phone"), "Answers from your saved records, plus commands. Works offline.", AskSession.route == null, { AskSession.route = null; onDone() })
+        Text(stringResource(R.string.ui_who_answers), style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
+        OptionCard(stringResource(R.string.ui_local_model_saved_sources), "Read-only explanations from evidence on this phone. Finance still uses the ledger.", AskSession.route?.model?.model == "grounded-local", { AskSession.route = AskRoute(AiTask.CHAT, ModelRef(ProviderId.LOCAL, "grounded-local")); onDone() })
+        OptionCard(stringResource(R.string.ui_on_this_phone), "Answers from your saved records, plus commands. Works offline.", AskSession.route == null, { AskSession.route = null; onDone() })
         val s = state
         if (s != null) {
-            GroupLabel(com.hellfire.ass.ui.tr("AI task"))
+            GroupLabel(stringResource(R.string.ui_ai_task))
             com.hellfire.ass.ui.money.ChipPicker(AiTask.entries.map { it.name }, task.name, { AiTask.valueOf(it).label }) { task = AiTask.valueOf(it) }
             OptionCard("Saved route for ${task.label}", s.route(task).joinToString(" → ") { it.label() },
                 AskSession.route?.let { it.task == task && it.model == null } == true, { AskSession.route = AskRoute(task, null); onDone() })

@@ -120,7 +120,7 @@ class PlayerLogicTest {
         assertEquals("1:0:2", PlaybackLogic.trackKey(1, 0, 2))
         assertEquals(Triple(1, 0, 2), PlaybackLogic.parseTrackKey("1:0:2"))
         assertNull(PlaybackLogic.parseTrackKey("off"))
-        assertEquals("This file cannot be played on this device. The codec or container is not supported. The original was not modified.",
-            PlaybackLogic.playbackError("ERROR_CODE_DECODER_INIT_FAILED"))
+        assertEquals(com.hellfire.ass.R.string.ui_this_file_cannot_be_played_on_this, PlaybackLogic.playbackError("ERROR_CODE_DECODER_INIT_FAILED"))
+        assertNull(PlaybackLogic.playbackError("ERROR_CODE_UNSPECIFIED"))
     }
 }

@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.home
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -52,10 +55,10 @@ fun HomeScreen() {
     var brief by remember { mutableStateOf<com.hellfire.ass.insights.Brief?>(null) }
     LaunchedEffect(Unit) { brief = com.hellfire.ass.ui.insights.io { com.hellfire.ass.insights.Briefs.load(app) } }
     val now = remember { java.time.ZonedDateTime.now(com.hellfire.ass.tasks.TaskTime.zone) }
-    val greeting = when (now.hour) { in 5..11 -> "Good morning"; in 12..16 -> "Good afternoon"; else -> "Good evening" }
+    val greeting = stringResource(when (now.hour) { in 5..11 -> R.string.ui_good_morning; in 12..16 -> R.string.ui_good_afternoon; else -> R.string.ui_good_evening })
 
     ScrollPage(gap = 18.dp) {
-        ScreenHeader(tr(greeting), overline = DateTimeFormatter.ofPattern("EEEE, d MMMM", UiLanguage.locale).format(now)) {
+        ScreenHeader(greeting, overline = DateTimeFormatter.ofPattern("EEEE, d MMMM", UiLanguage.locale).format(now)) {
             IconCircleButton(HfIcons.Reports, "Reports", { nav.push(Screen.Reports) })
             IconCircleButton(HfIcons.Settings, "Settings", { nav.push(Screen.Settings) })
         }
@@ -67,7 +70,7 @@ fun HomeScreen() {
         }
 
         ListCard {
-            ListRow(tr("Needs attention"), subtitle = tr("Connections, models, backups and recovery"), chevron = true, onClick = { nav.push(Screen.Recovery) })
+            ListRow(stringResource(R.string.ui_needs_attention), subtitle = stringResource(R.string.ui_connections_models_backups_and_recovery), chevron = true, onClick = { nav.push(Screen.Recovery) })
         }
         val gaps = brief?.sections?.firstOrNull { it.title == "Capture" }?.lines.orEmpty()
         if (gaps.isNotEmpty()) Banner(gaps.first().text + (if (gaps.size > 1) " · and ${gaps.size - 1} more" else "") + ". Tap to fix.", Tone.Warning, HfIcons.Info,
@@ -78,29 +81,29 @@ fun HomeScreen() {
                 onClick = { nav.push(Screen.Brief) })
         }
         FlowRow(Modifier.offset(y = (-6).dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            HfChip(com.hellfire.ass.ui.tr("Search"), { nav.push(com.hellfire.ass.library.LibraryRoutes.search()) })
-            HfChip(com.hellfire.ass.ui.tr("Library"), { nav.push(com.hellfire.ass.library.LibraryRoutes.library()) })
-            HfChip(com.hellfire.ass.ui.tr("Pictures"), { nav.push(com.hellfire.ass.library.LibraryRoutes.library(com.hellfire.ass.library.ContentKind.IMAGE)) })
-            HfChip(com.hellfire.ass.ui.tr("Videos"), { nav.push(com.hellfire.ass.library.LibraryRoutes.library(com.hellfire.ass.library.ContentKind.VIDEO)) })
-            HfChip(com.hellfire.ass.ui.tr("Audio"), { nav.push(com.hellfire.ass.library.LibraryRoutes.library(com.hellfire.ass.library.ContentKind.AUDIO)) })
-            HfChip(com.hellfire.ass.ui.tr("Collections"), { nav.push(com.hellfire.ass.library.LibraryRoutes.library()); nav.action = "collections" })
-            HfChip(com.hellfire.ass.ui.tr("Record"), { nav.push(Screen.Recordings) })
-            HfChip(com.hellfire.ass.ui.tr("Review"), { nav.push(Screen.Review) })
-            HfChip(com.hellfire.ass.ui.tr("Templates"), { nav.push(Screen.Templates) })
-            HfChip(com.hellfire.ass.ui.tr("Waiting on"), { nav.push(Screen.Waiting) })
-            HfChip(com.hellfire.ass.ui.tr("People"), { nav.push(Screen.People) })
-            HfChip(com.hellfire.ass.ui.tr("Debts"), { nav.push(Screen.Debts) })
-            HfChip(com.hellfire.ass.ui.tr("Bills"), { nav.push(Screen.Bills) })
-            HfChip(com.hellfire.ass.ui.tr("News"), { nav.push(Screen.News) })
+            HfChip(stringResource(R.string.ui_intel_search), { nav.push(com.hellfire.ass.library.LibraryRoutes.search()) })
+            HfChip(stringResource(R.string.ui_library), { nav.push(com.hellfire.ass.library.LibraryRoutes.library()) })
+            HfChip(stringResource(R.string.ui_pictures), { nav.push(com.hellfire.ass.library.LibraryRoutes.library(com.hellfire.ass.library.ContentKind.IMAGE)) })
+            HfChip(stringResource(R.string.ui_videos), { nav.push(com.hellfire.ass.library.LibraryRoutes.library(com.hellfire.ass.library.ContentKind.VIDEO)) })
+            HfChip(stringResource(R.string.ui_audio), { nav.push(com.hellfire.ass.library.LibraryRoutes.library(com.hellfire.ass.library.ContentKind.AUDIO)) })
+            HfChip(stringResource(R.string.ui_collections), { nav.push(com.hellfire.ass.library.LibraryRoutes.library()); nav.action = "collections" })
+            HfChip(stringResource(R.string.ui_record), { nav.push(Screen.Recordings) })
+            HfChip(stringResource(R.string.ui_review), { nav.push(Screen.Review) })
+            HfChip(stringResource(R.string.ui_templates), { nav.push(Screen.Templates) })
+            HfChip(stringResource(R.string.ui_waiting_on), { nav.push(Screen.Waiting) })
+            HfChip(stringResource(R.string.ui_people), { nav.push(Screen.People) })
+            HfChip(stringResource(R.string.ui_debts), { nav.push(Screen.Debts) })
+            HfChip(stringResource(R.string.ui_bills), { nav.push(Screen.Bills) })
+            HfChip("News", { nav.push(Screen.News) })
         }
 
         val pendingDrafts = drafts.filter { it.state == "DRAFT" }
         val proposals = tasks.filter { it.state == "REVIEW" }
         val needs = candidates.size + pendingDrafts.size + proposals.size + reviews.size + skillCount
         if (needs > 0) ListCard(title = "Needs you", count = needs) {
-            ListRow(com.hellfire.ass.ui.tr("Review next"), subtitle = "One queue for payments, tasks and replies", chevron = true, onClick = { nav.push(Screen.Review) })
+            ListRow(stringResource(R.string.ui_review_next), subtitle = "One queue for payments, tasks and replies", chevron = true, onClick = { nav.push(Screen.Review) })
             ListDivider()
-            if (skillCount > 0) ListRow(tr("Review AI skills") + " ($skillCount)", subtitle = tr("Learned from your corrections"), chevron = true, onClick = { nav.push(Screen.Skills) })
+            if (skillCount > 0) ListRow(stringResource(R.string.ui_review_ai_skills) + " ($skillCount)", subtitle = stringResource(R.string.ui_learned_from_your_corrections), chevron = true, onClick = { nav.push(Screen.Skills) })
             var first = true
             @Composable fun divider() { if (!first) ListDivider(); first = false }
             if (candidates.isNotEmpty()) {
@@ -124,7 +127,7 @@ fun HomeScreen() {
             }
             if (reviews.isNotEmpty()) {
                 divider()
-                ListRow(com.hellfire.ass.ui.tr("Finish the nightly review"), subtitle = reviews.joinToString { it.day } + " · not reviewed yet",
+                ListRow(stringResource(R.string.ui_finish_the_nightly_review), subtitle = reviews.joinToString { it.day } + " · not reviewed yet",
                     icon = HfIcons.Alarm, tone = Tone.Warning, chevron = true, onClick = { nav.tab(MainTab.Money, "review") })
             }
             Spacer(Modifier.height(6.dp))
@@ -138,14 +141,14 @@ fun HomeScreen() {
                 "TZS · " + todayEntries.count { it.kind == "INCOME" && it.reversesId == null }.let { if (it == 1) "1 transfer" else "$it transfers" },
                 Hf.colors.success.takeIf { (received ?: 0) > 0 }, m) { nav.tab(MainTab.Money) } },
         ))
-        Note(com.hellfire.ass.ui.tr("Only payments you confirmed count here."), Modifier.offset(y = (-8).dp))
+        Note(stringResource(R.string.ui_only_payments_you_confirmed_count_here), Modifier.offset(y = (-8).dp))
 
         val nowMs = System.currentTimeMillis()
         val horizon = Fmt.startOf(today.plusDays(2))
         val upNext = tasks.filter { it.state == "ACTIVE" && it.dueAt < horizon }.sortedBy { it.dueAt }.take(4)
         val nightly = app.getSharedPreferences("capture", 0).getBoolean("nightly_review", true)
         if (upNext.isNotEmpty() || nightly) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SectionHeader(com.hellfire.ass.ui.tr("Up next"), action = "All tasks", onAction = { nav.tab(MainTab.Tasks) })
+            SectionHeader(stringResource(R.string.ui_up_next), action = "All tasks", onAction = { nav.tab(MainTab.Tasks) })
             HfCard {
                 upNext.forEachIndexed { i, t ->
                     if (i > 0) ListDivider(72.dp)

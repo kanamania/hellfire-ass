@@ -1,5 +1,10 @@
 package com.hellfire.ass.ui.money
 
+import com.hellfire.ass.ui.categoryLabel
+
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -25,9 +30,9 @@ import java.util.UUID
 
 /** Chip picker for one value. */
 @Composable
-fun ChipPicker(options: List<String>, selected: String?, display: (String) -> String = { it }, onSelect: (String) -> Unit) {
+fun ChipPicker(options: List<String>, selected: String?, display: @Composable (String) -> String = { it }, onSelect: (String) -> Unit) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        options.forEach { HfChip(com.hellfire.ass.ui.tr(display(it)), { onSelect(it) }, style = if (it == selected) ChipStyle.Selected else ChipStyle.Outline) }
+        options.forEach { HfChip(display(it), { onSelect(it) }, style = if (it == selected) ChipStyle.Selected else ChipStyle.Outline) }
     }
 }
 
@@ -82,29 +87,29 @@ fun CandidateReviewSheet(c: FinanceCandidate, accounts: List<FinanceAccount>, al
         if (c.reference == null && c.provider != "MANUAL") Note("No reference in this message, so duplicates from other sources can't be detected automatically.")
         Note("Why suggested: a payment parser recognized ${c.provider} ${c.kind.lowercase()} wording and kept this source for review. Parsed fields can be wrong.")
         choiceKey?.let { Note("Sender/merchant key: $it") }
-        GroupLabel(com.hellfire.ass.ui.tr("Category"))
-        ChipPicker(Categories, category) { category = it }
-        GroupLabel(com.hellfire.ass.ui.tr("Type"))
-        ChipPicker(listOf("EXPENSE", "INCOME", "OWN_TRANSFER", "REFUND"), kind, Fmt::kind) { kind = it }
-        if (eligible.isEmpty()) Banner("Add an account in Money › Accounts first.", Tone.Warning, null)
-        ChoiceField("Account", eligible.firstOrNull { it.id == accountId }, eligible, { it.label }, { accountId = it.id })
+        GroupLabel(stringResource(R.string.ui_category))
+        ChipPicker(Categories, category, { categoryLabel(it) }) { category = it }
+        GroupLabel(stringResource(R.string.ui_type))
+        ChipPicker(listOf("EXPENSE", "INCOME", "OWN_TRANSFER", "REFUND"), kind, { when (it) { "EXPENSE" -> stringResource(R.string.ui_expense); "INCOME" -> stringResource(R.string.ui_income); "OWN_TRANSFER" -> stringResource(R.string.ui_transfer); "REFUND" -> stringResource(R.string.ui_refund); else -> Fmt.kind(it) } }) { kind = it }
+        if (eligible.isEmpty()) Banner(stringResource(R.string.ui_add_an_account_in_money_accounts_first), Tone.Warning, null)
+        ChoiceField(stringResource(R.string.ui_account), eligible.firstOrNull { it.id == accountId }, eligible, { it.label }, { accountId = it.id })
         if (kind == "OWN_TRANSFER") ChoiceField("Transfer to", accounts.firstOrNull { it.id == transferId }, accounts.filter { it.id != accountId }, { it.label }, { transferId = it.id })
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            HfTextField(amount, { amount = it }, "Amount TZS", Modifier.weight(1f), number = true)
-            HfTextField(fee, { fee = it }, "Fee TZS", Modifier.weight(1f), number = true)
+            HfTextField(amount, { amount = it }, stringResource(R.string.ui_amount_tzs), Modifier.weight(1f), number = true)
+            HfTextField(fee, { fee = it }, stringResource(R.string.ui_fee_tzs), Modifier.weight(1f), number = true)
         }
         DateTimeField(occurred, { occurred = it })
-        HfTextField(description, { description = it }, "Description")
+        HfTextField(description, { description = it }, stringResource(R.string.ui_description))
         if (c.merchant != null) {
             ContactPersonField(merchantName, { merchantName = it; picked = null; rememberName = it.isNotBlank()
                 aliases.firstOrNull { a -> a.name == it }?.let { a -> category = a.category; description = a.name } }, "Name for Lipa namba ${c.merchant}", aliases.map { it.name }, onPick = {
                 picked = it; merchantName = it.displayName; rememberName = true
             })
             SavedContactStatus(com.hellfire.ass.insights.People.namedKey(merchantName))
-            CheckRow(com.hellfire.ass.ui.tr("Remember this name and category"), rememberName, onChange = { rememberName = it })
+            CheckRow(stringResource(R.string.ui_remember_this_name_and_category), rememberName, onChange = { rememberName = it })
         }
-        if (suggestion) Note(com.hellfire.ass.ui.tr("Account/category suggested from your saved choice for this sender or merchant. Check them before confirming."))
-        CheckRow(com.hellfire.ass.ui.tr("Remember my account and category for this sender/merchant"), rememberChoice, { rememberChoice = it })
+        if (suggestion) Note(stringResource(R.string.ui_account_category_suggested_from_your))
+        CheckRow(stringResource(R.string.ui_remember_my_account_and_category_for), rememberChoice, { rememberChoice = it })
         error?.let { Banner(it, Tone.Danger, null) }
         val ready = accountId != null && (kind != "OWN_TRANSFER" || transferId != null) && !busy && defaultsLoaded
         PrimaryButton("Confirm · post TZS ${amount.trim()}", {
@@ -135,13 +140,13 @@ fun CandidateReviewSheet(c: FinanceCandidate, accounts: List<FinanceAccount>, al
                 finally { busy = false }
             }
         }, Modifier.fillMaxWidth(), enabled = ready, height = 52.dp)
-        QuietButton(com.hellfire.ass.ui.tr("Not a payment"), {
+        QuietButton(stringResource(R.string.ui_not_a_payment), {
             scope.launch { withContext(Dispatchers.IO) {
                 app.finances.reject(c.id)
                 app.skills.feedbackFor(app, "IGNORE_FINANCE", c.sourceId, "You marked this captured item as not a payment. An exact-match rule can avoid repeating this false suggestion.")
             }; onDone("Marked as not a payment. Nothing was posted.") }
         }, Modifier.fillMaxWidth())
-        Note(com.hellfire.ass.ui.tr("Only confirmed payments count toward your totals."))
+        Note(stringResource(R.string.ui_only_confirmed_payments_count_toward))
     }
 }
 
@@ -155,14 +160,14 @@ fun MerchantSheet(provider: String, number: String, alias: MerchantAlias?, onDon
     var category by remember { mutableStateOf(alias?.category ?: "Other") }
     val known by remember { app.database.finances().aliases() }.collectAsStateWithLifecycle(emptyList())
     HfBottomSheet(onDismiss = { onDone(null) }) {
-        Text(com.hellfire.ass.ui.tr("Name this merchant"), style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
+        Text(stringResource(R.string.ui_name_this_merchant), style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
         Text("Lipa namba $number", style = Hf.type.rowSubtitle, color = Hf.colors.muted)
         ContactPersonField(name, { name = it; picked = null; known.firstOrNull { alias -> alias.name == it }?.let { category = it.category } }, "Merchant name", known.map { it.name }, onPick = { picked = it; name = it.displayName })
         SavedContactStatus(com.hellfire.ass.insights.People.namedKey(name))
-        GroupLabel(com.hellfire.ass.ui.tr("Usual category"))
-        ChipPicker(Categories, category) { category = it }
+        GroupLabel(stringResource(R.string.ui_usual_category))
+        ChipPicker(Categories, category, { categoryLabel(it) }) { category = it }
         Note("Future payments to this number use this name and category. You still confirm each payment.")
-        PrimaryButton(com.hellfire.ass.ui.tr("Save name"), {
+        PrimaryButton(stringResource(R.string.ui_save_name), {
             scope.launch {
                 withContext(Dispatchers.IO) { app.database.withTransaction {
                     com.hellfire.ass.contacts.ContactLinks(app.database).save(picked ?: com.hellfire.ass.contacts.ContactChoice(name))
@@ -191,12 +196,12 @@ fun CashSheet(onDone: (String?) -> Unit) {
     val preview = remember(text) { if (text.isBlank()) null else runCatching { CashParser.parse(text) }.getOrNull() }
     var error by remember { mutableStateOf<String?>(null) }
     HfBottomSheet(onDismiss = { onDone(null) }) {
-        Text(com.hellfire.ass.ui.tr("Add cash spending"), style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
+        Text(stringResource(R.string.ui_add_cash_spending), style = Hf.type.cardTitle.copy(fontSize = 18.sp), color = Hf.colors.onSurface)
         HfTextField(text, { text = it }, "e.g. bodaboda elfu tatu na chakula elfu saba", singleLine = false, minLines = 2)
         DateTimeField(date, { date = it }, "When · East Africa Time")
-        ChoiceField("Category", category, Categories, { it }, { category = it })
-        ChoiceField("Account", accounts.firstOrNull { it.id == accountId }, accounts, { it.label }, { accountId = it.id })
-        if (accounts.isEmpty()) Note(com.hellfire.ass.ui.tr("Add an account in Money › Accounts to record spending."))
+        ChoiceField(stringResource(R.string.ui_category), category, Categories, { it }, { category = it })
+        ChoiceField(stringResource(R.string.ui_account), accounts.firstOrNull { it.id == accountId }, accounts, { it.label }, { accountId = it.id })
+        if (accounts.isEmpty()) Note(stringResource(R.string.ui_add_an_account_in_money_accounts_to))
         if (preview != null) KvList(preview.map { it.first to "TZS " + Fmt.amount(it.second) })
         else if (text.isNotBlank()) Note("Write each item as a description and an amount: 15000, 15,000 or elfu tatu. Separate items with na or ;")
         error?.let { Banner(it, Tone.Danger, null) }

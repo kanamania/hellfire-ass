@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -36,9 +39,9 @@ import com.hellfire.ass.ui.theme.HellFireTheme
 import com.hellfire.ass.ui.theme.Hf
 import com.hellfire.ass.ui.theme.HfIcons
 
-enum class MainTab(val label: String, val icon: ImageVector) {
-    Home("Home", HfIcons.Home), Money("Money", HfIcons.Money), Ask("Ask", HfIcons.Spark),
-    Tasks("Tasks", HfIcons.Task), Inbox("Inbox", HfIcons.Inbox),
+enum class MainTab(@androidx.annotation.StringRes val label: Int, val icon: ImageVector) {
+    Home(R.string.ui_home, HfIcons.Home), Money(R.string.ui_money, HfIcons.Money), Ask(R.string.ui_ask, HfIcons.Spark),
+    Tasks(R.string.ui_tasks, HfIcons.Task), Inbox(R.string.ui_inbox, HfIcons.Inbox),
 }
 
 /** Screens pushed over the tabs: back arrow, no bottom bar. */
@@ -248,7 +251,7 @@ private fun HellFireBottomBar(current: MainTab, onSelect: (MainTab) -> Unit) {
                         Modifier.size(width = 56.dp, height = 30.dp).clip(CircleShape).background(if (on) c.primaryContainer else Color.Transparent),
                         contentAlignment = Alignment.Center,
                     ) { Icon(t.icon, null, Modifier.size(22.dp), tint = tint) }
-                    Text(tr(t.label), style = Hf.type.caption, color = tint)
+                    Text(stringResource(t.label), style = Hf.type.caption, color = tint)
                 }
             }
         }

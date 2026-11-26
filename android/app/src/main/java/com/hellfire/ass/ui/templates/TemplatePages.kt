@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui.templates
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -24,7 +27,8 @@ import com.hellfire.ass.ui.theme.HfIcons
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-private fun typeLabel(type: String) = when (type) { "TASK" -> "Task"; "INCOME" -> "Income"; else -> "Expense" }
+@Composable
+private fun typeLabel(type: String) = when (type) { "TASK" -> stringResource(R.string.ui_task); "INCOME" -> stringResource(R.string.ui_income); else -> stringResource(R.string.ui_expense) }
 
 private fun typeStyle(type: String) = when (type) {
     "TASK" -> HfIcons.Task to Tone.Primary; "INCOME" -> HfIcons.ArrowIn to Tone.Success; else -> HfIcons.ArrowOut to Tone.Neutral
@@ -51,7 +55,7 @@ fun TemplatesPage() {
     val accounts by remember { app.database.finances().accounts() }.collectAsStateWithLifecycle(emptyList())
     var using by remember { mutableStateOf<ActionTemplate?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
-    PushedPage(com.hellfire.ass.ui.tr("Templates"), breadcrumb = "Home") {
+    PushedPage(stringResource(R.string.ui_templates), breadcrumb = "Home") {
         message?.let { Banner(it, modifier = Modifier.clickableRow { message = null }) }
         PrimaryButton("New template", { nav.push(Screen.TemplateEdit, "new") }, Modifier.fillMaxWidth(), icon = HfIcons.Plus, height = 52.dp)
         if (templates.isEmpty()) HfCard(padding = PaddingValues(16.dp)) {
@@ -67,7 +71,7 @@ fun TemplatesPage() {
             val income = items.filter { it.type == "INCOME" }.sumOf { it.amount ?: 0 }
             ActionCard(context = counts(items) + (t.lastUsedAt?.let { " · used ${Fmt.relativeDay(it)}" } ?: ""), contextIcon = HfIcons.Bolt, contextTone = Tone.Primary, actions = {
                 PrimaryButton("Use", { using = t }, enabled = items.isNotEmpty())
-                SecondaryButton(com.hellfire.ass.ui.tr("Edit"), { nav.push(Screen.TemplateEdit, t.id) })
+                SecondaryButton(stringResource(R.string.ui_edit), { nav.push(Screen.TemplateEdit, t.id) })
             }) {
                 Text(t.name, style = Hf.type.cardTitle.copy(fontSize = 16.sp), color = Hf.colors.onSurface)
                 val totals = listOfNotNull(out.takeIf { it > 0 }?.let { "Out TZS ${Fmt.amount(it)}" }, income.takeIf { it > 0 }?.let { "In TZS ${Fmt.amount(it)}" }).joinToString(" · ")
@@ -122,7 +126,7 @@ fun TemplateEditPage(id: String) {
             Spacer(Modifier.height(6.dp))
         }
         SectionCard(if (items.isEmpty()) "First line" else "Add a line") {
-            ChipPicker(TemplateItems.types, type, ::typeLabel) { type = it; if (it == "INCOME") category = "Income" else if (category == "Income") category = "Other" }
+            ChipPicker(TemplateItems.types, type, { typeLabel(it) }) { type = it; if (it == "INCOME") category = "Income" else if (category == "Income") category = "Other" }
             HfTextField(title, { title = it.take(200) }, if (type == "TASK") "Task, e.g. Pay the water bill" else "Description, e.g. Rent")
             HfTextField(amount, { amount = it.filter(Char::isDigit) }, if (type == "TASK") "Amount TZS (optional, shown on the task)" else "Amount TZS (leave empty to enter each time)", number = true)
             if (type == "TASK") {
@@ -130,11 +134,11 @@ fun TemplateEditPage(id: String) {
                     HfTextField(days, { days = it.filter(Char::isDigit).take(4) }, "Due after days", Modifier.weight(1f), number = true)
                     HfTextField(time, { time = it.take(5) }, "At HH:mm", Modifier.weight(1f))
                 }
-                CheckRow(com.hellfire.ass.ui.tr("Bill to pay"), bill, onChange = { bill = it })
+                CheckRow(stringResource(R.string.ui_bill_to_pay), bill, onChange = { bill = it })
                 Note("0 days means the day you use the template.")
             } else {
-                ChoiceField("Category", category, Categories, { it }, { category = it })
-                ChoiceField("Account", accounts.firstOrNull { it.id == accountId }, accounts, { it.label }, { accountId = it.id }, placeholder = "None · confirm later")
+                ChoiceField(stringResource(R.string.ui_category), category, Categories, { it }, { category = it })
+                ChoiceField(stringResource(R.string.ui_account), accounts.firstOrNull { it.id == accountId }, accounts, { it.label }, { accountId = it.id }, placeholder = "None · confirm later")
                 if (accountId == null) Note("Without an account the line waits in Money › To confirm each time.")
                 else QuietButton("Use no account", { accountId = null })
             }
@@ -189,7 +193,7 @@ fun TemplateRunSheet(template: ActionTemplate, accounts: List<FinanceAccount>, o
                 if (selected[i]) {
                     if (item.type == "TASK") Note("Due ${at?.let { Fmt.weekdayDayTime(TemplateItems.dueAt(item, it)) } ?: "—"}" + (item.amount?.let { " · TZS ${Fmt.amount(it)}" } ?: ""))
                     else {
-                        HfTextField(amounts[i], { amounts[i] = it.filter(Char::isDigit) }, "Amount TZS", number = true)
+                        HfTextField(amounts[i], { amounts[i] = it.filter(Char::isDigit) }, stringResource(R.string.ui_amount_tzs), number = true)
                         Note(listOfNotNull(item.category, accounts.firstOrNull { it.id == item.accountId }?.label ?: "no account · will wait in To confirm").joinToString(" · "))
                     }
                 }

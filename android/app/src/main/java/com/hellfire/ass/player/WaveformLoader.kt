@@ -16,11 +16,11 @@ import java.nio.ByteOrder
 
 sealed class WaveformResult {
     data class Ready(val peaks: FloatArray) : WaveformResult()
-    data class Unavailable(val reason: String) : WaveformResult()
+    data class Unavailable(@androidx.annotation.StringRes val reason: Int) : WaveformResult()
 }
 
 object WaveformLoader {
-    private const val REASON = "Waveform not available for this file. Playback can still continue."
+    private val REASON = com.hellfire.ass.R.string.ui_waveform_not_available_for_this_file
 
     suspend fun load(app: HellFireApp, item: MediaItem): WaveformResult = withContext(Dispatchers.IO) {
         val cache = cacheFile(app, item)

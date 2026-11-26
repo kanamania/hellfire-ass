@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -37,44 +40,44 @@ fun ReviewPage() {
     var batch by remember { mutableStateOf(false) }
     var account by remember { mutableStateOf<String?>(null) }
     var category by remember { mutableStateOf<String?>(null) }
-    PushedPage(com.hellfire.ass.ui.tr("Daily review"), breadcrumb = "Home") {
+    PushedPage(stringResource(R.string.ui_daily_review), breadcrumb = "Home") {
         Text("$total left · ${reviewed} reviewed this visit", style = Hf.type.cardTitle, color = Hf.colors.onSurface)
         message?.let { Banner(it) }
-        Note(com.hellfire.ass.ui.tr("Payments, tasks and replies in one place. Nothing is posted, scheduled or sent without its own approval."))
+        Note(stringResource(R.string.ui_payments_tasks_and_replies_in_one_place))
         when {
             payments.isNotEmpty() && (proposed.minOfOrNull { it.dueAt } ?: Long.MAX_VALUE) > System.currentTimeMillis() + 86_400_000L -> {
                 val next = payments.minBy { it.occurredAt }
-                SectionCard(com.hellfire.ass.ui.tr("Next · payment")) {
+                SectionCard(stringResource(R.string.ui_next_payment)) {
                     Text(candidateTitle(next, aliases.firstOrNull { it.provider == next.provider && it.number == next.merchant }), style = Hf.type.rowTitle, color = Hf.colors.onSurface)
                     EvidenceCard("Source message", next.evidence.take(800))
-                    PrimaryButton(com.hellfire.ass.ui.tr("Review payment"), { paymentId = next.id })
-                    QuietButton(com.hellfire.ass.ui.tr("Choose another payment"), { nav.tab(MainTab.Money, "review") })
+                    PrimaryButton(stringResource(R.string.ui_review_payment), { paymentId = next.id })
+                    QuietButton(stringResource(R.string.ui_choose_another_payment), { nav.tab(MainTab.Money, "review") })
                 }
             }
-            proposed.isNotEmpty() -> SectionCard(com.hellfire.ass.ui.tr("Next · task")) {
+            proposed.isNotEmpty() -> SectionCard(stringResource(R.string.ui_next_task)) {
                 val next = proposed.minBy { it.dueAt }
                 Text(next.title, color = Hf.colors.onSurface)
                 Note("Suggested: ${Fmt.full(next.dueAt)}")
-                PrimaryButton(com.hellfire.ass.ui.tr("Review task"), { task = TaskDraft.of(next) })
-                QuietButton(com.hellfire.ass.ui.tr("Not a task"), { scope.launch { withContext(Dispatchers.IO) { com.hellfire.ass.tasks.TaskScheduler.action(app, next.id, "REJECTED"); app.skills.feedbackFor(app, "IGNORE_TASK", next.sourceId, "You rejected this task in Daily review. Review this rule before using it.") }; reviewed++ } })
+                PrimaryButton(stringResource(R.string.ui_review_task), { task = TaskDraft.of(next) })
+                QuietButton(stringResource(R.string.ui_not_a_task), { scope.launch { withContext(Dispatchers.IO) { com.hellfire.ass.tasks.TaskScheduler.action(app, next.id, "REJECTED"); app.skills.feedbackFor(app, "IGNORE_TASK", next.sourceId, "You rejected this task in Daily review. Review this rule before using it.") }; reviewed++ } })
             }
-            pendingDrafts.isNotEmpty() -> SectionCard(com.hellfire.ass.ui.tr("Next · reply")) {
+            pendingDrafts.isNotEmpty() -> SectionCard(stringResource(R.string.ui_next_reply)) {
                 val next = pendingDrafts.minBy { it.createdAt }
                 Text("To ${next.recipient}", color = Hf.colors.onSurface)
                 Note(next.body.take(400))
-                PrimaryButton(com.hellfire.ass.ui.tr("Review reply in Inbox"), { nav.tab(MainTab.Inbox, "draft:${next.id}") })
+                PrimaryButton(stringResource(R.string.ui_review_reply_in_inbox), { nav.tab(MainTab.Inbox, "draft:${next.id}") })
             }
-            skillCount > 0 -> SectionCard(tr("Review AI skills")) {
-                Note(tr("Learned from your corrections") + " · $skillCount")
-                PrimaryButton(tr("Review AI skills"), { nav.push(Screen.Skills) })
+            skillCount > 0 -> SectionCard(stringResource(R.string.ui_review_ai_skills)) {
+                Note(stringResource(R.string.ui_learned_from_your_corrections) + " · $skillCount")
+                PrimaryButton(stringResource(R.string.ui_review_ai_skills), { nav.push(Screen.Skills) })
             }
-            else -> SectionCard(com.hellfire.ass.ui.tr("You're caught up")) { Note(com.hellfire.ass.ui.tr("There are no payments, task proposals or drafts waiting for review.")) }
+            else -> SectionCard(stringResource(R.string.ui_youre_caught_up)) { Note(stringResource(R.string.ui_there_are_no_payments_task_proposals_or)) }
         }
-        if (payments.size > 1) SecondaryButton(com.hellfire.ass.ui.tr("Set account/category for pending payments…"), { batch = true })
-        if (nightly.isNotEmpty()) SectionCard(com.hellfire.ass.ui.tr("Cash check-in")) {
+        if (payments.size > 1) SecondaryButton(stringResource(R.string.ui_set_account_category_for_pending), { batch = true })
+        if (nightly.isNotEmpty()) SectionCard(stringResource(R.string.ui_cash_check_in)) {
             Note("Anything you spent in cash and have not logged? ${nightly.size} daily check-in(s) are still open.")
-            PrimaryButton(com.hellfire.ass.ui.tr("Add cash"), { nav.tab(MainTab.Money, "cash") })
-            SecondaryButton(com.hellfire.ass.ui.tr("I have finished these cash check-ins"), {
+            PrimaryButton(stringResource(R.string.ui_add_cash), { nav.tab(MainTab.Money, "cash") })
+            SecondaryButton(stringResource(R.string.ui_i_have_finished_these_cash_check_ins), {
                 scope.launch {
                     withContext(Dispatchers.IO) { nightly.forEach { app.database.tasks().completeReview(it.day, System.currentTimeMillis()) } }
                     message = "Cash check-ins completed. Payments waiting for confirmation remain in the queue."
@@ -85,9 +88,9 @@ fun ReviewPage() {
     payment?.let { p -> key(p.id) { CandidateReviewSheet(p, accounts, aliases, "") { message = it; if (it != null) reviewed++; paymentId = null } } }
     task?.let { t -> TaskEditSheet(t) { message = it; if (it != null) reviewed++; task = null } }
     if (batch) HfBottomSheet({ batch = false }) {
-        Text(com.hellfire.ass.ui.tr("Suggest account and category"), style = Hf.type.cardTitle, color = Hf.colors.onSurface)
-        ChoiceField("Account", accounts.firstOrNull { it.id == account }, accounts, { it.label }, { account = it.id })
-        ChipPicker(Categories, category) { category = it }
+        Text(stringResource(R.string.ui_suggest_account_and_category), style = Hf.type.cardTitle, color = Hf.colors.onSurface)
+        ChoiceField(stringResource(R.string.ui_account), accounts.firstOrNull { it.id == account }, accounts, { it.label }, { account = it.id })
+        ChipPicker(Categories, category, { categoryLabel(it) }) { category = it }
         Note("Applies to the ${payments.size} payments listed below. Amounts, dates and evidence stay unchanged. Each payment still needs confirmation.")
         if (payments.size > 50) Note("Showing the first 50; the suggestions apply to all ${payments.size} pending payments.")
         payments.take(50).forEach { Note("${Fmt.amount(it.amount)} · ${it.evidence.take(60)}") }

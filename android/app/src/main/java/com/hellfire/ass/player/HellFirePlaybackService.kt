@@ -143,7 +143,8 @@ class HellFirePlaybackService : MediaSessionService() {
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            PlaybackFlags.error.value = PlaybackLogic.playbackError(error.errorCodeName)
+            PlaybackFlags.error.value = PlaybackLogic.playbackError(error.errorCodeName)?.let { com.hellfire.ass.ui.UiLanguage.context(this@HellFirePlaybackService).getString(it) }
+                ?: "Playback failed (${error.errorCodeName}). The original was not modified."
             PlaybackFlags.playing.value = false
             persist(false)
         }

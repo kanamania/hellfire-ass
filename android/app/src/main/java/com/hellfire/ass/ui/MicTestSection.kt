@@ -1,5 +1,8 @@
 package com.hellfire.ass.ui
 
+import androidx.compose.ui.res.stringResource
+import com.hellfire.ass.R
+
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
@@ -86,7 +89,7 @@ fun MicTestSection(app: HellFireApp, permissions: PermissionStatus, onPermission
     }) { Text("Stop recording") }
     TextButton(onClick = { onSettings(Settings.ACTION_APP_NOTIFICATION_SETTINGS) }) { Text("Recording notification settings") }
     result?.let { Text(it) }
-    if (playback != null) OutlinedButton(onClick = { playback?.cancel(); playback = null }) { Text(com.hellfire.ass.ui.tr("Stop playback")) }
+    if (playback != null) OutlinedButton(onClick = { playback?.cancel(); playback = null }) { Text(stringResource(R.string.ui_stop_playback)) }
     Text("${files.size} encrypted samples retained", style = MaterialTheme.typography.titleMedium)
     files.forEach { file ->
         Text("Sample · ${formatTime(file.lastModified())}")
