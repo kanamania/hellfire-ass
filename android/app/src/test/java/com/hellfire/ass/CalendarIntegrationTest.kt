@@ -187,7 +187,7 @@ class CalendarIntegrationTest {
             assertEquals("legacy-source", migrated.tasks().task("legacy-task")!!.sourceId)
             assertEquals("Existing commitment", migrated.tasks().task("legacy-task")!!.title)
             assertArrayEquals(byteArrayOf(1, 2, 3), migrated.events().find("legacy-source")!!.encryptedPayload)
-            assertEquals(22, migrated.openHelper.writableDatabase.version)
+            assertEquals(23, migrated.openHelper.writableDatabase.version)
             assertTrue(BackupTables.tablesFor(20).none { it.startsWith("calendar_") })
         } finally { migrated.close(); context.deleteDatabase(name) }
     }

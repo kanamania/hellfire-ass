@@ -22,7 +22,9 @@ data class AssistantTask(@PrimaryKey val id: String, val sourceId: String, val t
     @ColumnInfo(defaultValue = "0") val repeatMonthly: Boolean = false, val personKey: String? = null,
     @ColumnInfo(defaultValue = "NONE") val repeatRule: String = "NONE",
     @ColumnInfo(defaultValue = "PERSISTENT") val alertProfile: String = "PERSISTENT",
-    @ColumnInfo(defaultValue = "10") val snoozeMinutes: Int = 10)
+    @ColumnInfo(defaultValue = "10") val snoozeMinutes: Int = 10,
+    /** v23: "DEBT_UNPAID:<name>" or "NO_REPLY:<name>"; the reminder closes itself once [TaskConditions.met]. */
+    val condition: String? = null)
 
 @Entity(tableName = "daily_review")
 data class DailyReview(@PrimaryKey val day: String, val state: String = "PENDING", val createdAt: Long, val completedAt: Long? = null)
