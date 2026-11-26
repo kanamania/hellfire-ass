@@ -114,7 +114,7 @@ fun RemindersPage() {
             SwitchRow("Quiet hours for heads-up", quiet, { enabled ->
                 quiet = enabled
                 prefs.edit().putBoolean("quiet_hours", enabled).apply()
-            }, subtitle = "22:00–06:30: early reminders wait until morning. Due commitments still ring.")
+            }, subtitle = "22:00–06:30: early reminders and capture-problem alerts wait until morning. Due commitments still ring.")
             ListDivider(16.dp)
             SwitchRow(stringResource(R.string.ui_morning_brief), morning, { enabled ->
                 morning = enabled
