@@ -103,7 +103,9 @@ class AndroidNewsPoster(private val context: Context) : NewsPoster {
         manager.notify(notice.tag, if (notice.channel == NewsAlerts.BRIEFING) 80 else 81, Notification.Builder(context, notice.channel)
             .setSmallIcon(R.drawable.ic_hellfire).setContentTitle(notice.title).setContentText(notice.text)
             .setStyle(Notification.BigTextStyle().bigText(notice.text)).setVisibility(Notification.VISIBILITY_PRIVATE)
-            .setContentIntent(open).setAutoCancel(true).build())
+            .setContentIntent(open).setAutoCancel(true)
+            .apply { if (notice.channel == NewsAlerts.UPDATES) addAction(Notification.Action.Builder(null, "Not useful",
+                com.hellfire.ass.insights.Interruptions.notUsefulIntent(context, "news_update", notice.tag, 81)).build()) }.build())
         return true
     }
 }

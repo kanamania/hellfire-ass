@@ -147,6 +147,7 @@
         </service>
         <receiver android:name=".tasks.ReminderReceiver" android:exported="false" />
         <receiver android:name=".tasks.TaskActionReceiver" android:exported="false" />
+        <receiver android:name=".insights.NotUsefulReceiver" android:exported="false" />
         <receiver android:name=".tasks.ReminderRestoreReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
