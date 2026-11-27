@@ -84,9 +84,11 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-070 | P1 | OxygenOS background survival verification | — | — | DEVICE |
 | HF-071 | P2 | Emulator backup round trip and process death during recording | — | M | OPEN |
 | HF-072 | P2 | UI coverage and baseline profiles | — | M | OPEN |
-| HF-073 | P2 | Hosted CI run | — | S | OWNER DECISION |
+| HF-073 | P2 | Hosted CI run | — | S | DONE: owner approved 2026-11-27; `.github/workflows/checks.yml` runs on every push (emulator job fixed in 5e1b912) |
 | HF-074 | P3 | Adult classifier session reuse | D-31 | S | DONE (3d36074); no device timing |
-| HF-075 | P3 | Relay TLS proxy config, web CSP/HSTS, async scrypt, systemd hardening | — | M | OPEN |
+| HF-075 | P3 | Relay TLS proxy config, web CSP/HSTS, async scrypt, systemd hardening | — | M | DONE (b8b7936, 1ee0d20): relay TLS blocks shipped commented out (8080/8081 are taken by other services on this PC); hardened web units installed and running; the HSTS nginx file is not yet installed here; relay and worker units verified with `systemd-analyze verify` only |
+| HF-076 | P2 | Two notifications for one payment with no reference create two review items | D-18 | S | OPEN |
+| HF-077 | P3 | Media semantic search stops silently after 1,500 embeddings | D-21 | S | OPEN |
 
 ## Item details
 

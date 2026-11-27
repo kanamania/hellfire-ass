@@ -21,8 +21,8 @@ android {
         minSdk = 29
         targetSdk = 36
         externalNativeBuild { cmake { cppFlags += "-std=c++17" } }
-        versionCode = 10
-        versionName = "0.10.0"
+        versionCode = 11
+        versionName = "0.11.0"
         testInstrumentationRunner = "com.hellfire.ass.PredeviceRunner"
         buildConfigField("boolean", "EMULATOR_BUILD", "false")
     }
