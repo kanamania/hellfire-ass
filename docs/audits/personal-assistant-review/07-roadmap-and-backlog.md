@@ -78,7 +78,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-061 | P2 | Web approvals through a phone-applied command channel | — | L | DONE (e5542f1): task Done/Snooze and "Not a payment" from the web, applied and audited by the phone, results shown on the web. Posting money and sends stay phone-only by design |
 | HF-062 | P2 | Refuse a second phone resetting the web dataset | — | S | DONE (de8c58c) |
 | HF-063 | P2 | Per-record deletion and retention for events and news | — | M | DONE (b0cc35a): daily prune of unlinked notification-removal records older than 30 days and unsaved news older than 180 days; "Delete this record" on the Source page (cleared, not removed, when something was made from it) |
-| HF-064 | P2 | Location-aware reminders (owner Priority 3) | — | L | DONE (this branch): geofence per reminder around a saved place (150 m), re-registered on restore; rings once on arrival; device NOT TESTED |
+| HF-064 | P2 | Location-aware reminders (owner Priority 3) | — | L | DONE (e2159c6): geofence per reminder around a saved place (150 m), re-registered on restore; rings once on arrival; device NOT TESTED |
 | HF-065 | P2 | Assist context (screen text) behind an owner toggle | A1.18 | M | OPEN |
 | HF-066 | P2 | Microsoft 365 mail via OAuth2 (XOAUTH2), owner approved 2026-11-27 | — | M | DONE (f0decce): device-code sign-in, owner's Azure client ID, no new library. Live Microsoft sign-in NOT TESTED |
 | HF-070 | P1 | OxygenOS background survival verification | — | — | DEVICE |
