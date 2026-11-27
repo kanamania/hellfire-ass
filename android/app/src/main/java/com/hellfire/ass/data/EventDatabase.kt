@@ -73,6 +73,13 @@ import com.hellfire.ass.news.NewsSource
 import com.hellfire.ass.templates.ActionTemplate
 import com.hellfire.ass.templates.TemplateDao
 
+/** No table that must keep its evidence (RESTRICT foreign keys) points at source event `e`. */
+const val UNREFERENCED_EVENT = "NOT EXISTS (SELECT 1 FROM finance_candidate x WHERE x.sourceId = e.id) AND NOT EXISTS (SELECT 1 FROM ledger_evidence x WHERE x.sourceId = e.id) " +
+    "AND NOT EXISTS (SELECT 1 FROM communication_message x WHERE x.sourceId = e.id) AND NOT EXISTS (SELECT 1 FROM assistant_task x WHERE x.sourceId = e.id) " +
+    "AND NOT EXISTS (SELECT 1 FROM media_item x WHERE x.sourceId = e.id) AND NOT EXISTS (SELECT 1 FROM transcript_segment x WHERE x.sourceId = e.id) " +
+    "AND NOT EXISTS (SELECT 1 FROM memory_item x WHERE x.sourceId = e.id) AND NOT EXISTS (SELECT 1 FROM ai_skill x WHERE x.sourceId = e.id) " +
+    "AND NOT EXISTS (SELECT 1 FROM skill_use x WHERE x.sourceId = e.id) AND NOT EXISTS (SELECT 1 FROM calendar_change x WHERE x.sourceId = e.id)"
+
 @Entity(tableName = "source_event", indices = [Index(value = ["source", "externalId"], unique = true), Index(value = ["receivedAt", "id"]), Index(value = ["source", "occurredAt"])])
 data class SourceEvent(
     @PrimaryKey val id: String,
@@ -213,6 +220,11 @@ interface EventDao {
     @Query("UPDATE source_event SET encryptedPayload = :payload, contentAvailable = 0, contentRedacted = 1 WHERE id IN (:ids)")
     suspend fun blank(ids: List<String>, payload: ByteArray)
     @Query("DELETE FROM source_search WHERE eventId IN (:ids)") suspend fun unsearch(ids: List<String>)
+    /** Removal records of notifications older than [before] that nothing was made from. */
+    @Query("SELECT e.id FROM source_event e WHERE e.source = 'android_notification' AND e.kind = 'REMOVED' AND e.receivedAt < :before AND " + UNREFERENCED_EVENT + " LIMIT 500")
+    suspend fun staleRemovals(before: Long): List<String>
+    @Query("SELECT COUNT(*) FROM source_event e WHERE e.id = :id AND " + UNREFERENCED_EVENT) suspend fun unreferenced(id: String): Int
+    @Query("DELETE FROM source_event WHERE id IN (:ids)") suspend fun deleteIds(ids: List<String>)
 
     @Transaction
     suspend fun deleteAll() { deleteSources(); clearSearch() }

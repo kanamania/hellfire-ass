@@ -349,6 +349,17 @@ fun SourcePage(id: String) {
             LaunchedEffect(Unit) { raw = withContext(Dispatchers.IO) { AssistantEngine(app).source(id) } }
             EvidenceCard("Raw record", raw!!.take(16000))
         }
+        var deleting by remember { mutableStateOf(false) }
+        val scope = rememberCoroutineScope()
+        QuietButton("Delete this record", { deleting = true })
+        if (deleting) ConfirmDialog("Delete this record?", "It is removed from HellFire and its search. If a payment, task or note was made from it, " +
+            "only its text is cleared and that link stays.", "Delete", destructive = true, onConfirm = {
+            deleting = false
+            scope.launch {
+                val whole = withContext(Dispatchers.IO) { com.hellfire.ass.data.Retention.deleteRecord(app, e.id) }
+                if (whole) nav.pop() else event = withContext(Dispatchers.IO) { app.database.events().find(e.id) }.also { text = "" }
+            }
+        }, onDismiss = { deleting = false })
         Note("Captured records are read-only evidence. Nothing here can be edited.")
     }
 }
