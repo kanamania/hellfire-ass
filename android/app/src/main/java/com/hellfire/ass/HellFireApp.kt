@@ -42,7 +42,11 @@ import com.hellfire.ass.widgets.Widgets
 class HellFireApp : Application() {
     val ai by lazy {
         val transport = HttpsAiTransport()
-        AiRouter(EncryptedAiStore(this) { cipher }, listOf(OfflineProvider(), OpenAiProvider(transport),
+        val onDevice = object : OnDeviceModel {
+            override suspend fun generate(prompt: String) = if (localModel.configured) localModel.generate(prompt).text else null
+            override fun installed() = localModel.configured
+        }
+        AiRouter(EncryptedAiStore(this) { cipher }, listOf(OfflineProvider(onDevice = onDevice), OpenAiProvider(transport),
             ClaudeProvider(transport), GrokProvider(transport), DeepSeekProvider(transport)), onRecord = { audit ->
                 captureScope.launch { runCatching { database.aiUsage().insert(audit.toUsage()) } }
             })

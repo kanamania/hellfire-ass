@@ -159,4 +159,21 @@ class AiRouterTest {
     private suspend fun expect(error: AiError, block: suspend () -> Unit) {
         try { block(); fail("Expected $error") } catch (e: AiException) { assertEquals(error, e.error) }
     }
+
+    @Test fun `on this phone runs the installed model for every task and stays offline help without one`() = runBlocking {
+        val prompts = mutableListOf<String>()
+        val model = object : OnDeviceModel {
+            override suspend fun generate(prompt: String): String { prompts += prompt; return "On-device summary" }
+        }
+        val onlyLocal = MemoryStore(AiState(routes = AiTask.entries.associateWith { listOf(OfflineProvider.ref) }))
+        val withModel = AiRouter(onlyLocal, listOf(OfflineProvider(onDevice = model)), clock).generate(AiTask.SUMMARY, "Synthetic article text")
+        assertEquals(ProviderId.LOCAL, withModel.provider); assertEquals("On-device summary", withModel.generation.text)
+        assertTrue(prompts.single().startsWith("Summarize this user-provided text:"))
+        // Without a model, only chat gets the fixed offline reply; other tasks are refused as before.
+        val none = AiRouter(onlyLocal, listOf(OfflineProvider()), clock)
+        assertEquals(AiError.CAPABILITY, (runCatching { none.generate(AiTask.SUMMARY, "Synthetic") }.exceptionOrNull() as AiException).error)
+        // A model failure (e.g. the phone is too hot) is reported, not answered with help text.
+        val hot = AiRouter(onlyLocal, listOf(OfflineProvider(onDevice = { error("Device must cool before local inference") })), clock)
+        assertEquals(AiError.OUTAGE, (runCatching { hot.generate(AiTask.CHAT, "habari") }.exceptionOrNull() as AiException).error)
+    }
 }
