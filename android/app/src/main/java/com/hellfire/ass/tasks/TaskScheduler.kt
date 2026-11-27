@@ -190,6 +190,10 @@ object TaskScheduler {
         if (dao.insert(next) == -1L) dao.reactivateRepeat(next.id, next.nextAlertAt, now)
         return next
     }
+    /** One distinct broadcast per task and action, so buttons on several reminders never collide. */
+    fun actionIntent(app: HellFireApp, id: String, action: String): PendingIntent = PendingIntent.getBroadcast(app, 76,
+        Intent(app, TaskActionReceiver::class.java).setAction(TaskActionReceiver.ACTION).setData(Uri.parse("hellfire://task/$id?action=$action")),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     /** Closes a conditional reminder whose condition already holds, so it never rings. Any error means remind anyway. */
     private suspend fun closeIfMet(app: HellFireApp, task: AssistantTask, now: Long, manager: NotificationManager): Boolean {
         val condition = task.condition ?: return false
@@ -260,11 +264,14 @@ object TaskScheduler {
                 continue
             }
             val builder = Notification.Builder(app, channel).setSmallIcon(R.drawable.ic_hellfire)
-                .setContentTitle(task.title).setContentText(if (channel == CHANNEL) "Due · open HellFire Ass to choose Done, Snooze or Reschedule" else "Due ${TaskTime.display(task.dueAt)} EAT · review in HellFire Ass")
+                .setContentTitle(task.title).setContentText(if (channel == CHANNEL) "Due · Done, Snooze, or open HellFire Ass to reschedule" else "Due ${TaskTime.display(task.dueAt)} EAT · review in HellFire Ass")
                 .setVisibility(Notification.VISIBILITY_PRIVATE).setContentIntent(openTask(app, task.id)).setAutoCancel(false)
                 .setCategory(if (channel == CHANNEL) Notification.CATEGORY_ALARM else Notification.CATEGORY_REMINDER)
             // Several commitments due together ring once, through the summary below.
             if (channel == CHANNEL && alarms >= 2) builder.setGroup(TaskAlerts.GROUP).setGroupAlertBehavior(Notification.GROUP_ALERT_SUMMARY)
+            // Owner decision 2026-11-27: Done and Snooze can be chosen on the notification, as well as in the app.
+            builder.addAction(Notification.Action.Builder(null, "Done", actionIntent(app, task.id, "DONE")).build())
+                .addAction(Notification.Action.Builder(null, "Snooze", actionIntent(app, task.id, "SNOOZE")).build())
             manager.notify(task.id, 71, builder.build())
             app.database.tasks().alerted(task.id, now, TaskTime.nextAlert(task.dueAt, now, repeatInterval(task, overdueMinutes)))
         }
@@ -316,4 +323,22 @@ class ReminderRestoreReceiver : BroadcastReceiver() {
             catch (caught: Exception) { Diagnostics.warn(caught); runCatching { app.database.events().failure("reminders", "RESTORATION_FAILED") } }
             finally { result.finish() } }
     }
+}
+
+/** Done / Snooze tapped on a reminder notification. Not exported: only this app's PendingIntents reach it. */
+class TaskActionReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action != ACTION) return
+        val data = intent.data ?: return
+        val id = data.lastPathSegment?.takeIf { it.matches(Regex("[a-f0-9-]{16,80}")) } ?: return
+        val action = data.getQueryParameter("action")?.takeIf { it == "DONE" || it == "SNOOZE" } ?: return
+        val result = goAsync()
+        val app = context.applicationContext as HellFireApp
+        app.captureScope.launch {
+            try { TaskScheduler.action(app, id, action) }
+            catch (caught: Exception) { Diagnostics.warn(caught); runCatching { app.database.events().failure("reminders", "NOTIFICATION_ACTION_FAILED") } }
+            finally { result.finish() }
+        }
+    }
+    companion object { const val ACTION = "com.hellfire.ass.TASK_ACTION" }
 }
