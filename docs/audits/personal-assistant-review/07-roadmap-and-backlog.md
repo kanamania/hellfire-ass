@@ -41,7 +41,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-002 | P0 | Commitment detection without noun false positives | N10 | S | DONE (9e641ed) |
 | HF-003 | P0 | Ask routing: news, finance, tasks, follow-ups, word boundaries, generic verbs | A1.3, A1.7, N8, N9, D-01–D-05 | M | DONE (4a43580); per-surface context not split (expiry only) |
 | HF-004 | P0 | Finance direction, fee words, school fees, withdrawals, airtime, reversed income | A1.4, A1.5, N2–N4 | M | DONE (294f81d) |
-| HF-004b | P2 | Amounts with cents round half-up (owner approved 2026-11-27) | N1 | S | DONE (9827e0e) |
+| HF-004b | P2 | Amounts with cents round half-up (owner approved 2026-11-27) | N1 | S | DONE (44a846e) |
 | HF-005 | P0 | Providers: AzamPesa, Selcom, DTB (added 2026-11-27), whole-word aliases | A1.6 | S | DONE (294f81d) |
 | HF-006 | P0 | Sender-ID priority for provider detection | A1.6 | M | DONE (294f81d): sender decides first. Open: flag a personal number that claims to be a provider; exact sender IDs unverified on the phone |
 | HF-007 | P0 | Relay: quarantine unreadable WhatsApp spool files | D-23 | S | DONE (cef9843) |
@@ -49,7 +49,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-009 | P0 | TheftGuard: owner-gated Device Owner relinquish | D-24 | S | DONE (073e419); device NOT TESTED |
 | HF-010 | P0 | Reminder channels: pre-alerts and review off the alarm channel; one sound for many overdue tasks | A1.10, A1.13 | S | DONE (6e07f8c) |
 | HF-011 | P1 | Open the exact task, `setAlarmClock` for commitments | A1.12 | S | DONE (6e07f8c) |
-| HF-011b | P1 | Done/Snooze buttons on reminder notifications (owner approved 2026-11-27) | A1.11 | S | DONE (7a8128c); device NOT TESTED |
+| HF-011b | P1 | Done/Snooze buttons on reminder notifications (owner approved 2026-11-27) | A1.11 | S | DONE (d759228); device NOT TESTED |
 | HF-012 | P1 | Configurable evening review time; quiet hours for non-alarm notices | — | S | DONE (6e07f8c): quiet hours cover task heads-ups; news has its own; brief is at an owner-chosen morning hour |
 | HF-013 | P1 | Voice session: listen on open, speak a short answer without source IDs | A1.8, D-08, D-09 | M | DONE (46da41e); device NOT TESTED. Replies are still English-only (D-09 partly: English voice fallback) |
 | HF-014 | P1 | Owner commands: idempotent execution, re-validation, template snapshot | D-11, D-12, D-13, D-14 | S | DONE (e26816c); per-process guard, not persisted |
@@ -64,13 +64,13 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-032 | P1 | Interruption coordinator: quiet hours, dedup, budget, "not useful" | — | M | PARTLY DONE (fac2a9c): shared quiet hours and a daily cap (`Interruptions`) for capture-problem alerts and task heads-ups. Open: news through the same gate, `notice_log`, "not useful" feedback |
 | HF-033 | P1 | Conditional reminders ("remind me Friday if Juma hasn't paid") | — | M | DONE (c554a4a): schema 23 adds `assistant_task.condition` |
 | HF-034 | P1 | Scenario replay evaluation harness | — | M | PARTLY DONE (d639f8f): `AssistantEvalTest` with bilingual time, finance and routing sets, report in `build/reports/assistant-eval.json`. Open: the 12-week timeline replay and proactive and retrieval metrics |
-| HF-040 | P2 | Opt-in auto-post for trusted provider payments (owner approved 2026-11-27) | A1.15 | M | DONE (9827e0e): off by default, Money › Accounts |
+| HF-040 | P2 | Opt-in auto-post for trusted provider payments (owner approved 2026-11-27) | A1.15 | M | DONE (44a846e): off by default, Money › Accounts |
 | HF-041 | P2 | Budget warnings and 30-day cash-flow in the brief | — | M | PARTLY DONE (2c117e7): morning brief lists budgets over or ahead of the month. Open: income-inclusive cash-flow projection |
 | HF-042 | P2 | Waiting-on includes notification-only chats | — | S | REJECTED: notifications never show the owner's own replies, so every such chat would look unanswered forever. Needs the WhatsApp relay (which sees outgoing messages) or Telegram capture |
 | HF-043 | P2 | Reply through a live notification's reply action | A1.16 | M | OPEN |
 | HF-044 | P2 | Missed-call follow-up from dialer notifications | A1.17 | S | DONE (368fd52): from the dialer notification, no call-log permission; OEM dialer formats NOT TESTED |
 | HF-045 | P2 | Quick Settings tile and text-selection action | — | S | DONE (5136024); device NOT TESTED |
-| HF-046 | P2 | LUKU tokens kept in captured text (owner approved 2026-11-27) | D-20 | S | DONE (9827e0e) |
+| HF-046 | P2 | LUKU tokens kept in captured text (owner approved 2026-11-27) | D-20 | S | DONE (44a846e) |
 | HF-050 | P2 | Local-model fallback that emits existing `OwnerCommand` text | A1.9 | M | OPEN |
 | HF-051 | P2 | Router: real on-device provider, `InputKind`, citation check | D-15, D-16 | M | PARTLY DONE (0c14409): grounded answers list only cited sources and flag invented ids. Open: real local provider in the router, `InputKind` |
 | HF-052 | P2 | Interactive inference priority for background `generate` | A1.22 | S | OPEN |
