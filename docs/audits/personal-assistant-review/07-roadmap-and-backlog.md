@@ -74,7 +74,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-050 | P2 | Local-model fallback that emits existing `OwnerCommand` text | A1.9 | M | OPEN |
 | HF-051 | P2 | Router: real on-device provider, `InputKind`, citation check | D-15, D-16 | M | PARTLY DONE (0c14409): grounded answers list only cited sources and flag invented ids. Open: real local provider in the router, `InputKind` |
 | HF-052 | P2 | Interactive inference priority for background `generate` | A1.22 | S | OPEN |
-| HF-060 | P2 | Telegram capture (owner approved 2026-11-27) | — | L | DONE (this branch): TDLib worker (tdl 8.1.0, prebuilt-tdlib 0.1008069.0), second relay instance, phone channel TELEGRAM; capture-only. Live pairing NOT TESTED |
+| HF-060 | P2 | Telegram capture (owner approved 2026-11-27) | — | L | DONE (672bc39): TDLib worker (tdl 8.1.0, prebuilt-tdlib 0.1008069.0), second relay instance, phone channel TELEGRAM; capture-only. Live pairing NOT TESTED |
 | HF-061 | P2 | Web approvals through a phone-applied command channel | — | L | OPEN |
 | HF-062 | P2 | Refuse a second phone resetting the web dataset | — | S | DONE (de8c58c) |
 | HF-063 | P2 | Per-record deletion and retention for events and news | — | M | OPEN |
