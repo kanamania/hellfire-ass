@@ -280,6 +280,36 @@ fun TransactionPage(id: String) {
     }
 }
 
+/**
+ * Reply through the other app's own notification reply action while that notification is still showing
+ * (audit HF-043). Sending needs a confirmation that shows the exact text, and is audited.
+ */
+@Composable
+private fun NotificationReply(eventId: String, keyHash: String, sender: String?) {
+    val app = LocalEnv.current.app
+    val scope = rememberCoroutineScope()
+    val reply = remember(keyHash) { com.hellfire.ass.notifications.LiveReplies.find(keyHash) } ?: return
+    var draft by remember { mutableStateOf("") }
+    var confirming by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf<String?>(null) }
+    SectionCard("Reply in ${reply.app}") {
+        message?.let { Note(it) }
+        HfTextField(draft, { draft = it.take(4000) }, "Reply to ${sender ?: reply.app}")
+        PrimaryButton("Send reply", { confirming = true }, Modifier.fillMaxWidth(), enabled = draft.isNotBlank())
+        Note("Uses ${reply.app}'s own reply button, so it works only while that notification is still showing.")
+    }
+    if (confirming) ConfirmDialog("Send this reply through ${reply.app}?", "To ${sender ?: "this chat"}:\n\n$draft", "Send", onConfirm = {
+        confirming = false
+        val text = draft
+        scope.launch {
+            val sent = com.hellfire.ass.notifications.LiveReplies.send(app, keyHash, text)
+            withContext(Dispatchers.IO) { app.database.communications().audit(com.hellfire.ass.communications.ActionAudit(java.util.UUID.randomUUID().toString(),
+                eventId, "OWNER_NOTIFICATION_REPLY", if (sent) "HANDED_TO_APP" else "NOTIFICATION_GONE", System.currentTimeMillis())) }
+            message = if (sent) { draft = ""; "Handed to ${reply.app}. Check there that it was delivered." } else "That notification is gone, so this reply was not sent. Reply in ${reply.app}."
+        }
+    }, onDismiss = { confirming = false })
+}
+
 /** Read-only view of one captured source record and what was made from it. */
 @Composable
 fun SourcePage(id: String) {
@@ -290,9 +320,13 @@ fun SourcePage(id: String) {
     var raw by remember { mutableStateOf<String?>(null) }
     var sender by remember { mutableStateOf<String?>(null) }
     var linked by remember { mutableStateOf<List<Pair<String, () -> Unit>>>(emptyList()) }
+    var replyKey by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(id) {
         withContext(Dispatchers.IO) {
             event = app.database.events().find(id)
+            replyKey = event?.takeIf { it.source == "android_notification" && it.kind != "REMOVED" }?.let { ev ->
+                runCatching { org.json.JSONObject(app.cipher.decrypt(ev.encryptedPayload).toString(Charsets.UTF_8)).optString("notification_key_hash") }.getOrNull()
+            }?.takeIf { com.hellfire.ass.notifications.LiveReplies.find(it) != null }
             event?.let { text = EventText.raw(app, it); sender = EventText.fields(app, it)["sender_hint"]?.firstOrNull()?.takeIf(String::isNotBlank) }
             val ledger = app.database.finances().entriesFor(id)
             val tasks = app.database.tasks().all().filter { it.sourceId == id }
@@ -308,6 +342,7 @@ fun SourcePage(id: String) {
             "Content" to when { e.securitySensitive -> "Redacted (security code)"; !e.contentAvailable -> "Not shared by Android"; e.contentRedacted -> "Partly redacted"; else -> "As delivered" },
             "Linked records" to if (linked.isEmpty()) "None" else linked.size.toString()))
         if (linked.isNotEmpty()) ListCard { linked.forEachIndexed { i, (label, open) -> if (i > 0) ListDivider(16.dp); ListRow(label, chevron = true, onClick = open) } }
+        replyKey?.let { key -> NotificationReply(e.id, key, sender) }
         if (!e.securitySensitive && e.contentAvailable) SourceActions(e.id, text)
         if (raw == null) QuietButton("Show raw record", { raw = "loading" })
         else {

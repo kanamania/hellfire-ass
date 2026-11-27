@@ -56,7 +56,7 @@ class HellFireNotificationListener : NotificationListenerService() {
         NotificationCaptureStatus.connected.value = true
         NotificationCaptureStatus.error.value = null
         try {
-            activeNotifications?.forEach { enqueue(it, "POSTED", null, currentRanking) }
+            activeNotifications?.forEach { remember(it); enqueue(it, "POSTED", null, currentRanking) }
         } catch (caught: Exception) { Diagnostics.warn(caught);
             NotificationCaptureStatus.error.value = "Could not read active notifications. Check notification access."
         }
@@ -67,11 +67,18 @@ class HellFireNotificationListener : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification, rankingMap: RankingMap) {
+        remember(sbn)
         enqueue(sbn, "POSTED", null, rankingMap)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification, rankingMap: RankingMap, reason: Int) {
+        LiveReplies.forget(sbn)
         enqueue(sbn, "REMOVED", reason, rankingMap)
+    }
+
+    private fun remember(sbn: StatusBarNotification) {
+        if (sbn.packageName == packageName) return
+        runCatching { LiveReplies.remember(sbn, runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(sbn.packageName, 0)).toString() }.getOrDefault(sbn.packageName)) }
     }
 
     private fun enqueue(sbn: StatusBarNotification, kind: String, reason: Int?, ranks: RankingMap?) {
