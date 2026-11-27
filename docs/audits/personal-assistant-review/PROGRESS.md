@@ -38,14 +38,9 @@ Each item's status and commit are in `07-roadmap-and-backlog.md`.
 
 **Checks:** Android unit tests 595, 0 failures, 5 skips. Web API 32/32. Relay 40.
 
-**Waiting for an owner decision:**
-- HF-004b: amounts with cents.
-- HF-011b: Done/Snooze buttons on reminder notifications.
-- HF-040: auto-posting money.
-- HF-046: LUKU token redaction.
-- HF-060: Telegram.
-- HF-066: Microsoft 365.
-- HF-073: hosted CI.
+**Owner decisions (approved 2026-11-27, all implemented): HF-004b cents, HF-011b notification Done/Snooze,
+HF-040 opt-in auto-post, HF-046 LUKU tokens, HF-060 Telegram, HF-066 Microsoft 365, HF-073 hosted CI (pushed,
+emulator job fixed). Live Telegram/Microsoft sign-in and device behaviour remain NOT TESTED.
 
 **Resume:** a durable cron job (every 30 minutes, at :17 and :47) re-prompts the session to continue from this file.
 
