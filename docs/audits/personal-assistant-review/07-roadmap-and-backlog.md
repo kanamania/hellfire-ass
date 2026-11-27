@@ -67,7 +67,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-040 | P2 | Opt-in auto-post for trusted provider payments (owner approved 2026-11-27) | A1.15 | M | DONE (44a846e): off by default, Money › Accounts |
 | HF-041 | P2 | Budget warnings and 30-day cash-flow in the brief | — | M | DONE (2c117e7, 9914212): budgets over or ahead of the month; 30-day cash-flow counts income seen monthly (e.g. salary) before warning about bills |
 | HF-042 | P2 | Waiting-on includes notification-only chats | — | S | REJECTED: notifications never show the owner's own replies, so every such chat would look unanswered forever. Needs the WhatsApp relay (which sees outgoing messages) or Telegram capture |
-| HF-043 | P2 | Reply through a live notification's reply action | A1.16 | M | DONE (this branch): in-memory while the notification shows; confirmation plus audit; delivery is up to the other app; device NOT TESTED |
+| HF-043 | P2 | Reply through a live notification's reply action | A1.16 | M | DONE (8f9e8f8): in-memory while the notification shows; confirmation plus audit; delivery is up to the other app; device NOT TESTED |
 | HF-044 | P2 | Missed-call follow-up from dialer notifications | A1.17 | S | DONE (368fd52): from the dialer notification, no call-log permission; OEM dialer formats NOT TESTED |
 | HF-045 | P2 | Quick Settings tile and text-selection action | — | S | DONE (5136024); device NOT TESTED |
 | HF-046 | P2 | LUKU tokens kept in captured text (owner approved 2026-11-27) | D-20 | S | DONE (44a846e) |
