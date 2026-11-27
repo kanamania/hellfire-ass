@@ -24,6 +24,7 @@ has been run on the phone or against live accounts.
 | Cents round half-up; LUKU tokens kept | PASS (host) | Parser, normalizer and golden fixture tests |
 | Microsoft 365 / Outlook via OAuth2 (device code, XOAUTH2) | NOT TESTED (live) | Fake-endpoint tests. Needs the owner's Azure app registration (public client; IMAP.AccessAsUser.All and SMTP.Send) |
 | Telegram capture (TDLib worker + `hellfire-relay-telegram`) | NOT TESTED (live) | Relay, worker and phone envelope tests; worker refuses to start without credentials. Needs the owner's api_id/api_hash from my.telegram.org, then QR pairing at the relay's /pair page |
+| Place reminders (owner Priority 3): "when I get to <place>" / "nikifika <place>" | NOT TESTED (device) | Parser and geofence tests. Needs "Allow all the time" location and a place saved with a map position; Android/OxygenOS geofence delivery is unverified |
 | Hosted CI | See the latest GitHub Actions run | The emulator job was fixed to give the app its models on a fresh AVD; 20/20 locally on the fixture AVD |
 
 ## Personal-assistant audit — 2026-11-26

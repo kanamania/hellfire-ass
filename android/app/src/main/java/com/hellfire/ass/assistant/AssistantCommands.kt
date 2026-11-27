@@ -76,7 +76,10 @@ object AssistantCommands {
         remind.find(input)?.let { m ->
             val conditional = TaskConditions.parse(m.groupValues[1].trim())
             val rest = conditional.rest
-            val due = requireNotNull(TaskExtractor.extract(rest, now.toEpochMilli(), outgoing = true, requireCommitment = false)) { WHEN_HINT }.dueAt
+            val place = TaskConditions.arrival(conditional.condition)
+            // A place reminder needs no time; it stays armed for 30 days unless the owner gives an end time.
+            val due = TaskExtractor.extract(rest, now.toEpochMilli(), outgoing = true, requireCommitment = false)?.dueAt
+                ?: if (place) now.toEpochMilli() + 30L * 86_400_000L else throw IllegalArgumentException(WHEN_HINT)
             require(due >= now.toEpochMilli() - 60_000) { "That time has already passed (${TaskTime.display(due)} EAT)." }
             val title = stripWhen(rest).also { require(it.isNotEmpty() && it.length <= 300) { "Say what to be reminded about (up to 300 characters)." } }
             return OwnerCommand.Remind(input, title, due, conditional.condition)
@@ -175,11 +178,20 @@ object AssistantCommands {
             is OwnerCommand.Remind -> {
                 // A proposal confirmed late must not start with an immediate overdue alarm.
                 require(command.dueAt >= now - 60_000) { "That time has already passed (${TaskTime.display(command.dueAt)} EAT). Ask again with a new time." }
+                val condition = command.condition?.let { c ->
+                    if (!c.startsWith("ARRIVE:")) c else {
+                        val name = c.substringAfter(':')
+                        val place = com.hellfire.ass.tasks.Geofences.place(app.database.inbox().locationsNow(), name)
+                            ?: throw IllegalArgumentException("No saved place called \"$name\" with a map position. Share a map location to HellFire and name it $name first.")
+                        "ARRIVE:${place.id}|${place.label}"
+                    }
+                }
                 val sourceId = ownerSource(app, command.utterance, now)
                 val id = NotificationNormalizer.sha256("task:$sourceId")
                 app.database.tasks().insert(AssistantTask(id, sourceId, command.title, command.dueAt, party = "OWNER",
-                    evidence = command.utterance, createdAt = now, updatedAt = now, condition = command.condition))
+                    evidence = command.utterance, createdAt = now, updatedAt = now, condition = condition))
                 TaskScheduler.activate(app, id, command.title, command.dueAt, "OWNER")
+                if (TaskConditions.arrival(condition)) com.hellfire.ass.tasks.Geofences.sync(app)
                 "Reminder active for ${TaskTime.display(command.dueAt)} EAT. Manage it in Tasks."
             }
             is OwnerCommand.Remember -> {
