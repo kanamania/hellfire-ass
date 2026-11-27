@@ -97,7 +97,8 @@ object CaptureGaps {
             .setContentTitle("HellFire Ass is missing some of your activity")
             .setContentText(gaps.first().message + if (gaps.size > 1) " · and ${gaps.size - 1} more" else "")
             .setStyle(Notification.BigTextStyle().bigText(gaps.joinToString("\n") { it.message }))
-            .setContentIntent(open).setAutoCancel(true).build())
+            .setContentIntent(open).setAutoCancel(true)
+            .addAction(Notification.Action.Builder(null, "Not useful", Interruptions.notUsefulIntent(app, "capture_gap", "capture-gap", 73)).build()).build())
         prefs.edit().putString("signature", signature).putLong("at", now).apply()
         Interruptions.record(app, "capture_gap", now)
     }
