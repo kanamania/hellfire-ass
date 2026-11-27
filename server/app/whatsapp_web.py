@@ -11,9 +11,12 @@ from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 MAX_FILE_BYTES = 192 * 1024
+# Capture-only linked transports and how their worker names and identifies events.
+# Telegram (owner decision 2026-11-27) reuses the WhatsApp Web spool format through its own TDLib worker.
+LINKED = {"web": ("whatsapp_web", "whatsapp-web:message:"), "telegram": ("telegram", "telegram:message:")}
 STATES = {"STARTING", "PAIRING_REQUIRED", "SYNCING", "CONNECTED", "AUTH_FAILED", "DISCONNECTED", "FAILED", "STOPPED"}
 ERRORS = {"QUEUE_FULL", "CAPTURE_FAILED", "SPOOL_UNAVAILABLE", "QR_RENDER_FAILED", "PAIR_AGAIN",
-          "RESTART_WORKER_OR_PAIR_AGAIN", "BROWSER_START_FAILED"}
+          "RESTART_WORKER_OR_PAIR_AGAIN", "BROWSER_START_FAILED", "PASSWORD_REQUIRED", "TELEGRAM_API_CREDENTIALS_REQUIRED"}
 
 
 def read_json(path: Path, limit: int):
@@ -66,7 +69,8 @@ def quarantine(path: Path) -> None:
     path.replace(target / path.name)
 
 
-def drain_spool(directory: str, store) -> bool:
+def drain_spool(directory: str, store, transport: str = "web") -> bool:
+    event_transport, identity_prefix = LINKED[transport]
     outbox = Path(directory) / "outbox"
     if not outbox.exists():
         return False
@@ -92,8 +96,8 @@ def drain_spool(directory: str, store) -> bool:
         try:
             event = json.loads(AESGCM(store.key).decrypt(nonce, data, f"hellfire-web-spool-v1:{identity}".encode()))
             item = event["item"]
-            expected = hashlib.sha256(f"whatsapp-web:message:{item['id']}".encode()).hexdigest()
-            if (expected != identity or event.get("schema_version") != 1 or event.get("transport") != "whatsapp_web"
+            expected = hashlib.sha256(f"{identity_prefix}{item['id']}".encode()).hexdigest()
+            if (expected != identity or event.get("schema_version") != 1 or event.get("transport") != event_transport
                     or event.get("collection") not in {"messages", "message_echoes"}
                     or not isinstance(item.get("text", {}).get("body"), str)
                     or not re.fullmatch(r"[0-9]{1,12}", item.get("timestamp", ""))):

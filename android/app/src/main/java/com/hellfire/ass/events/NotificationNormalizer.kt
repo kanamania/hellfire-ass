@@ -56,7 +56,7 @@ object NotificationNormalizer {
     // 13/11/2026, 13-11-26, 13.11.2026
     private val dayMonthYear = Regex("(?<![\\p{L}\\p{N}])[0-9]{1,2}[/.-][0-9]{1,2}[/.-](?:[0-9]{4}|[0-9]{2})(?![\\p{L}\\p{N}])")
     /** Sources whose provider supplies a durable identity (row ID, IMAP UID, relay message ID). */
-    private val providerKeyed = setOf("android_sms", "email_imap", "whatsapp_web", "whatsapp_business")
+    private val providerKeyed = setOf("android_sms", "email_imap", "whatsapp_web", "whatsapp_business", "telegram")
     private val contentFields = setOf("title", "text", "big_text", "text_lines", "sub_text", "messages")
 
     fun isProviderKeyed(source: String) = source in providerKeyed

@@ -20,6 +20,7 @@ done
 python3 tools/generate_predevice_fixtures.py --check
 (cd server && .venv/bin/python -m pytest -q)
 (cd server/whatsapp-web && npm test)
+(cd server/telegram && npm test)
 (cd web/api && npm test)
 (cd web/frontend && npm run typecheck && API_URL=http://127.0.0.1:43911 npm run build)
 node tools/test_web_browser.mjs

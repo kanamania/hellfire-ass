@@ -118,7 +118,7 @@ fun MessagePage(id: String) {
             Text(m.body.take(8000).ifBlank { "No readable text. Attachments and unsupported formats stay in the source record." }, style = Hf.type.body, color = Hf.colors.onSurface)
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (m.direction == "INCOMING" && m.channel != "WHATSAPP_WEB") PrimaryButton("Prepare reply", {
+            if (m.direction == "INCOMING" && m.channel != "WHATSAPP_WEB" && m.channel != "TELEGRAM") PrimaryButton("Prepare reply", {
                 replying = ReplyDraft(m.channel,
                     if (m.channel == "EMAIL_IMAP") runCatching { javax.mail.internet.InternetAddress.parse(m.sender).first().address }.getOrDefault("") else m.sender,
                     "Re: ${m.subject}".takeIf { m.channel == "EMAIL_IMAP" }.orEmpty(), "",
@@ -127,6 +127,7 @@ fun MessagePage(id: String) {
             SecondaryButton("Source record", { nav.push(Screen.Source, m.sourceId) })
         }
         if (m.channel == "WHATSAPP_WEB") Note("WhatsApp Web capture is read-only. Replies need the Business connection.")
+        if (m.channel == "TELEGRAM") Note("Telegram capture is read-only. Reply in Telegram.")
     }
     replying?.let { d -> ReplySheet(d) { msg -> replying = null; if (msg != null) status = msg } }
 }
@@ -336,7 +337,7 @@ fun WhatsAppPage() {
             accounts.forEachIndexed { index, account ->
                 if (index > 0) ListDivider(16.dp)
                 val state = states.firstOrNull { it.adapter == Accounts.gatewayState(account.getString("id")) }
-                ListRow(Accounts.label(account), subtitle = listOf(if (Accounts.transport(account) == "web") "WhatsApp Web · capture only" else "Business API",
+                ListRow(Accounts.label(account), subtitle = listOf(when (Accounts.transport(account)) { "web" -> "WhatsApp Web · capture only"; "telegram" -> "Telegram · capture only"; else -> "Business API" },
                     state?.let { it.state.lowercase().replace('_', ' ') + (it.error?.let { e -> " · $e" } ?: "") } ?: "waiting for first sync").joinToString(" · "),
                     icon = HfIcons.Chat, tone = Tone.Success, chevron = true, onClick = { startEdit(account) })
             }
@@ -346,8 +347,9 @@ fun WhatsAppPage() {
         editing?.let { editingId ->
             SectionCard(if (editingId.isEmpty()) "New WhatsApp account" else "Edit ${label.ifBlank { "account" }}") {
                 GroupLabel("Connection type")
-                ChipPicker(listOf("web", "meta"), transport, { if (it == "web") "WhatsApp Web" else "Business API" }) { transport = it }
-                Note(if (transport == "web") "WhatsApp Web uses an unofficial linked session. Your server can read captured messages. Sending is disabled; attachments are metadata only. Pair at the gateway's /pair page with its device token, then scan with WhatsApp › Linked devices."
+                ChipPicker(listOf("web", "meta", "telegram"), transport, { when (it) { "web" -> "WhatsApp Web"; "telegram" -> "Telegram"; else -> "Business API" } }) { transport = it }
+                if (transport == "telegram") Note("Telegram capture runs on its own relay (hellfire-relay-telegram) with your api_id/api_hash from my.telegram.org. Capture only; sending is disabled. Pair at that relay's /pair page, then scan with Telegram › Settings › Devices › Link Desktop Device.")
+                else Note(if (transport == "web") "WhatsApp Web uses an unofficial linked session. Your server can read captured messages. Sending is disabled; attachments are metadata only. Pair at the gateway's /pair page with its device token, then scan with WhatsApp › Linked devices."
                     else "Business mode needs eligible Meta Coexistence onboarding and gateway credentials. Never paste the Meta app secret into this app.")
                 HfTextField(label, { label = it.take(40) }, "Name, e.g. Personal or Shop")
                 HfTextField(gateway, { gateway = it }, "Self-hosted gateway HTTPS URL")

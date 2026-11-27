@@ -24,7 +24,7 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.whatsapp_web import capture_status, drain_spool
+from app.whatsapp_web import LINKED, capture_status, drain_spool
 from app.theft import TheftGuard, Heartbeat, Evidence, open_payload
 
 
@@ -74,7 +74,7 @@ class Settings:
 
     def ready(self):
         common = bool(self.device_public_key) and len(self.device_token) >= 32 and len(self.store_key) == 32
-        if self.whatsapp_transport == "web":
+        if self.whatsapp_transport in LINKED:
             return common and bool(self.web_state_directory)
         return (common and self.whatsapp_transport == "meta"
                 and bool(self.app_secret and self.verify_token and self.phone_id and self.waba_id))
@@ -253,7 +253,7 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
     async def health():
         return {"service": "HellFire Ass", "configured": store is not None,
                 "outbound_configured": settings.outbound_ready(), "transport": settings.whatsapp_transport,
-                "coexistence": "NOT_USED" if settings.whatsapp_transport == "web" else "ACCOUNT_VERIFICATION_REQUIRED"}
+                "coexistence": "NOT_USED" if settings.whatsapp_transport in LINKED else "ACCOUNT_VERIFICATION_REQUIRED"}
 
     @app.get("/pair", response_class=HTMLResponse)
     async def pairing_page():
@@ -265,7 +265,7 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
     @app.get("/device/whatsapp-web/pairing")
     async def web_status(request: Request, authorization: str | None = Header(default=None)):
         authorized(authorization)
-        if settings.whatsapp_transport != "web":
+        if settings.whatsapp_transport not in LINKED:
             raise HTTPException(409, "Linked-device transport is not selected")
         return capture_status(settings.web_state_directory, pairing=request.url.path.endswith("/pairing"))
 
@@ -304,9 +304,9 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
     async def events(authorization: str | None = Header(default=None)):
         authorized(authorization)
         pending_spool = False
-        if settings.whatsapp_transport == "web":
+        if settings.whatsapp_transport in LINKED:
             try:
-                pending_spool = drain_spool(settings.web_state_directory, store)
+                pending_spool = drain_spool(settings.web_state_directory, store, settings.whatsapp_transport)
             except Exception:
                 raise HTTPException(503, "Linked-device spool unavailable or invalid; no events acknowledged") from None
         with store.lock:
@@ -324,7 +324,7 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
             size += event_size
         result = {"transport": settings.whatsapp_transport,
                   "events": batch, "has_more": len(rows) > len(batch) or pending_spool}
-        if settings.whatsapp_transport == "web":
+        if settings.whatsapp_transport in LINKED:
             result["capture_status"] = capture_status(settings.web_state_directory)
         return result
 
@@ -347,7 +347,7 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
     @app.post("/drafts")
     async def draft(value: Draft, authorization: str | None = Header(default=None)):
         authorized(authorization)
-        if settings.whatsapp_transport == "web":
+        if settings.whatsapp_transport in LINKED:
             raise HTTPException(409, "Linked-device transport is capture-only; sending is disabled")
         identity, nonce = secrets.token_hex(16), secrets.token_urlsafe(32)
         iv = secrets.token_bytes(12)

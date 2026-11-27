@@ -36,15 +36,17 @@ export function atomicJson(path, value) {
 }
 
 export class CaptureSpool {
-  constructor(directory, key, maxEvents = 10000) {
+  // [normalize] turns a client message into { id, event }; the Telegram worker passes its own.
+  constructor(directory, key, maxEvents = 10000, normalize = normalizeMessage) {
     if (key.length !== 32) throw new Error('STORE_KEY_REQUIRED');
     this.directory = directory;
     this.key = key;
     this.maxEvents = maxEvents;
+    this.normalize = normalize;
     mkdirSync(directory, { recursive: true, mode: 0o700 });
   }
   enqueue(message) {
-    const { id, event } = normalizeMessage(message);
+    const { id, event } = this.normalize(message);
     const target = join(this.directory, `${id}.json`);
     // An already pending message is immutable; replay after ACK is deduplicated by the relay.
     try { readFileSync(target); return id; } catch (error) { if (error.code !== 'ENOENT') throw error; }

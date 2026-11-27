@@ -96,7 +96,7 @@ class GatewayAdapter(private val app: HellFireApp) {
             val stored = requireNotNull(app.events.store(snapshot, app.packageName))
             if (item != null && collection in setOf("messages", "message_echoes")) {
                 val external = item.optString("id").ifBlank { id }
-                val identity = if (transport == "web") "wa-web:${config.getString("id")}:$external" else "wa:$external"
+                val identity = when (transport) { "telegram" -> "tg:${config.getString("id")}:$external"; "web" -> "wa-web:${config.getString("id")}:$external"; else -> "wa:$external" }
                 app.database.communications().message(CommunicationMessage(NotificationNormalizer.sha256(identity),
                     channel, config.getString("id"), external, stored.id, GatewayEvents.thread(item, collection, transport),
                     safe.snapshot.fields["sender_hint"]?.firstOrNull().orEmpty(), safe.snapshot.fields["recipient_hint"]?.firstOrNull().orEmpty(), "",
@@ -112,12 +112,12 @@ class GatewayAdapter(private val app: HellFireApp) {
         if (acknowledged.isNotEmpty()) request(config, "/device/events/ack", JSONObject().put("ids", org.json.JSONArray(acknowledged)))
         val capture = response.optJSONObject("capture_status")
         app.database.communications().integration(IntegrationState(Accounts.gatewayState(config.getString("id")),
-            if (transport == "web") capture?.optString("state", "WORKER_UNAVAILABLE") ?: "WORKER_UNAVAILABLE" else "CONNECTED",
+            if (GatewayEvents.linked(transport)) capture?.optString("state", "WORKER_UNAVAILABLE") ?: "WORKER_UNAVAILABLE" else "CONNECTED",
             System.currentTimeMillis(), capture?.optString("error")?.takeUnless { it.isBlank() || it == "null" }))
         return response.optBoolean("has_more", events.length() == 100)
     }
     fun send(config: JSONObject, draft: OutboundDraft): String {
-        require(config.optString("transport", "meta") == "meta") { "WhatsApp Web capture cannot send messages" }
+        require(config.optString("transport", "meta") == "meta") { "Linked capture (WhatsApp Web, Telegram) cannot send messages" }
         require(draft.recipient.matches(Regex("[0-9]{6,20}")) && draft.body.length in 1..4096)
         val remote = request(config, "/drafts", JSONObject().put("to", draft.recipient).put("text", draft.body))
         val id = remote.getString("id").also { require(it.matches(Regex("[a-f0-9]{32}"))) }

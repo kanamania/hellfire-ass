@@ -50,7 +50,7 @@ object Fmt {
         "ADJUSTMENT" -> "Correction"; "BALANCE" -> "Balance"; else -> code.lowercase().replaceFirstChar { it.uppercase() }
     }
     fun channel(code: String): String = when (code) {
-        "EMAIL_IMAP" -> "Email"; "WHATSAPP_BUSINESS" -> "WhatsApp"; "WHATSAPP_WEB" -> "WhatsApp"; else -> code
+        "EMAIL_IMAP" -> "Email"; "WHATSAPP_BUSINESS" -> "WhatsApp"; "WHATSAPP_WEB" -> "WhatsApp"; "TELEGRAM" -> "Telegram"; else -> code
     }
 }
 
@@ -72,7 +72,7 @@ object EventText {
     }
     fun sourceLabel(event: SourceEvent): String = when (event.source) {
         "android_sms" -> "SMS"; "android_notification" -> "Notification"; "email_imap" -> "Email"
-        "whatsapp_web", "whatsapp_business" -> "WhatsApp"; "owner_entry" -> "Your entry"; "owner_memory" -> "Your note"
+        "whatsapp_web", "whatsapp_business" -> "WhatsApp"; "telegram" -> "Telegram"; "owner_entry" -> "Your entry"; "owner_memory" -> "Your note"
         "call_recording_import" -> "Call recording"; "in_person_audio" -> "Conversation"; "media_import" -> "Media"
         "owner_skill_use" -> "Skill application"; "synthetic_notification" -> "Test event"; else -> event.source
     }

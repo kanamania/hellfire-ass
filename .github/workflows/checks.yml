@@ -55,6 +55,11 @@ jobs:
         run: |
           npm ci --omit=optional --ignore-scripts
           npm test
+      - name: Telegram capture worker tests
+        working-directory: server/telegram
+        run: |
+          npm ci --ignore-scripts
+          npm test
       - name: Web API tests
         working-directory: web/api
         env:
