@@ -71,6 +71,8 @@ class CaptureMaintenanceWorker(context: Context, params: WorkerParameters) : Cor
                 .onFailure { if (it is CancellationException) throw it; Diagnostics.warn(it) }
             runCatching { (applicationContext as HellFireApp).let { app -> CaptureGaps.report(app, CaptureGaps.check(app)) } }
                 .onFailure { if (it is CancellationException) throw it; Diagnostics.warn(it) }
+            runCatching { com.hellfire.ass.data.Retention.daily(applicationContext as HellFireApp) }
+                .onFailure { if (it is CancellationException) throw it; Diagnostics.warn(it) }
             Result.success()
         } catch (e: CancellationException) { throw e }
         catch (caught: Exception) { Diagnostics.warn(caught); Result.retry() }

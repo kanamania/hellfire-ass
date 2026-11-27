@@ -275,6 +275,16 @@ interface NewsDao {
     @Query("SELECT stage, ok, COUNT(*) AS runs, SUM(count) AS items, SUM(microUsd) AS microUsd FROM news_run WHERE at >= :since GROUP BY stage, ok") suspend fun runSummary(since: Long): List<NewsStageCount>
     @Query("SELECT * FROM news_run ORDER BY at DESC LIMIT :limit") suspend fun recentRuns(limit: Int): List<NewsRun>
     @Query("DELETE FROM news_run WHERE at < :before") suspend fun pruneRuns(before: Long)
+    /** Stories not updated since [before] that the owner did not bookmark, save for later or follow. */
+    @Query("SELECT id FROM news_event WHERE updatedAt < :before AND id NOT IN (SELECT eventId FROM news_event_state WHERE bookmarked = 1 OR readLater = 1 OR followed = 1) LIMIT 500")
+    suspend fun staleEvents(before: Long): List<String>
+    @Query("DELETE FROM news_article WHERE eventId IN (:ids)") suspend fun deleteArticlesOf(ids: List<String>)
+    @Query("DELETE FROM news_event_version WHERE eventId IN (:ids)") suspend fun deleteVersionsOf(ids: List<String>)
+    @Query("DELETE FROM news_event_state WHERE eventId IN (:ids)") suspend fun deleteStatesOf(ids: List<String>)
+    @Query("DELETE FROM news_feedback WHERE eventId IN (:ids)") suspend fun deleteFeedbackOf(ids: List<String>)
+    @Query("DELETE FROM news_event WHERE id IN (:ids)") suspend fun deleteEvents(ids: List<String>)
+    @Query("DELETE FROM news_briefing WHERE generatedAt < :before") suspend fun pruneBriefings(before: Long)
+    @Query("DELETE FROM news_progress WHERE briefingId NOT IN (SELECT id FROM news_briefing)") suspend fun pruneProgress()
 
     // --- Runtime queries (owned by the runtime branch; append below) -------------------------------------------
 
