@@ -167,3 +167,28 @@ def test_real_node_spool_is_consumed_by_python(web_gateway):
 def test_meta_mode_rejects_linked_device_pairing(gateway):
     client, settings, _, _, _ = gateway
     assert client.get("/device/whatsapp-web/pairing", headers=auth(settings)).status_code == 409
+
+
+def test_telegram_transport_drains_its_own_spool_and_never_sends(gateway, tmp_path):
+    _, original, _, _, _ = gateway
+    directory = tmp_path / "telegram"
+    (directory / "outbox").mkdir(parents=True)
+    settings = replace(original, whatsapp_transport="telegram", web_state_directory=str(directory),
+                       database=str(tmp_path / "telegram.db"), app_secret="", verify_token="", waba_id="", phone_id="")
+    app = create_app(settings)
+    with TestClient(app) as client:
+        identity = hashlib.sha256(b"telegram:message:-100:42").hexdigest()
+        event = {"schema_version": 1, "transport": "telegram", "collection": "messages", "field": "updateNewMessage",
+                 "item": {"id": "-100:42", "timestamp": "1794571200", "from": "Asha", "to": "me", "thread_id": "tg:-100",
+                          "text": {"body": "Synthetic Telegram text"}}}
+        nonce = b"1" * 12
+        data = AESGCM(settings.store_key).encrypt(nonce, json.dumps(event).encode(), f"hellfire-web-spool-v1:{identity}".encode())
+        (directory / "outbox" / f"{identity}.json").write_text(json.dumps({"version": 1, "nonce": base64.b64encode(nonce).decode(), "data": base64.b64encode(data).decode()}))
+        # A WhatsApp-shaped event in the Telegram spool is rejected, not accepted.
+        wrong_id, wrong_path = spool(directory, settings.store_key, identity="whatsapp-shaped")
+        body = client.get("/device/events", headers=auth(settings)).json()
+        assert body["transport"] == "telegram"
+        assert [e["id"] for e in body["events"]] == [identity]
+        assert (directory / "rejected" / wrong_path.name).exists()
+        assert client.post("/drafts", headers=auth(settings), json={"to": "255712000000", "text": "hi"}).status_code == 409
+    app.state.store.db.close()

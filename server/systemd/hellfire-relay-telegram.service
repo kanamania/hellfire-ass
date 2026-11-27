@@ -1,0 +1,29 @@
+# Second relay instance for Telegram: own port, database and spool; add it to the phone as another relay.
+# HellFire Telegram relay on 127.0.0.1:8081; give it its own HTTPS name or path in the reverse proxy.
+# Install: python3 -m venv server/.venv && server/.venv/bin/pip install -r server/requirements.txt
+#          sudo cp server/systemd/*.service /etc/systemd/system/ && sudo systemctl daemon-reload
+#          sudo systemctl enable --now hellfire-relay   (add hellfire-whatsapp-web for linked-device capture)
+# Adjust User and paths if this checkout moves.
+[Unit]
+Description=HellFire relay
+After=network.target
+
+[Service]
+User=dev
+WorkingDirectory=/home/dev/Projects/hellfire-ass/server
+# Private file (gitignored): DEVICE_TOKEN, STORE_KEY_BASE64 and, for the Meta transport, the META_* values.
+EnvironmentFile=/home/dev/Projects/hellfire-ass/server/.env
+Environment=DEVICE_PUBLIC_KEY_FILE=/home/dev/Projects/hellfire-ass/server/device-public.pem
+Environment=RELAY_DATABASE=/home/dev/Projects/hellfire-ass/server/state/relay-telegram.db
+# Telegram capture (owner decision 2026-11-27): capture-only, drains the Telegram worker's spool.
+Environment=WHATSAPP_TRANSPORT=telegram
+Environment=WHATSAPP_WEB_STATE_DIR=/home/dev/Projects/hellfire-ass/server/state/telegram
+# Only the local reverse proxy connects, so trust its X-Forwarded-For for per-client rate limits.
+ExecStart=/home/dev/Projects/hellfire-ass/server/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8081 --proxy-headers --forwarded-allow-ips 127.0.0.1 --log-config logging.json
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

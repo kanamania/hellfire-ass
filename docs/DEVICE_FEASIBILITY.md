@@ -12,6 +12,20 @@ implements **Priority 1 only**. The earlier deferral below is historical; no new
 media/library/news/player/widget surface is part of this slice. Physical testing
 remains last. The existing TheftGuard consent exception is unchanged.
 
+## Owner decisions — 2026-11-27
+
+These features were implemented after the owner approved the audit's open decisions. Host tests pass; nothing below
+has been run on the phone or against live accounts.
+
+| Feature | Status | Evidence / what is still needed |
+|---|---|---|
+| Done/Snooze on reminder notifications | NOT TESTED (device) | Robolectric receiver test closes the task |
+| Opt-in auto-posting of trusted payments (off by default) | NOT TESTED (device) | Rule unit tests. SELCOM/DTB sender IDs must be checked on the phone before enabling |
+| Cents round half-up; LUKU tokens kept | PASS (host) | Parser, normalizer and golden fixture tests |
+| Microsoft 365 / Outlook via OAuth2 (device code, XOAUTH2) | NOT TESTED (live) | Fake-endpoint tests. Needs the owner's Azure app registration (public client; IMAP.AccessAsUser.All and SMTP.Send) |
+| Telegram capture (TDLib worker + `hellfire-relay-telegram`) | NOT TESTED (live) | Relay, worker and phone envelope tests; worker refuses to start without credentials. Needs the owner's api_id/api_hash from my.telegram.org, then QR pairing at the relay's /pair page |
+| Hosted CI | See the latest GitHub Actions run | The emulator job was fixed to give the app its models on a fresh AVD; 20/20 locally on the fixture AVD |
+
 ## Personal-assistant audit — 2026-11-26
 
 A source-level audit of `main @ 85f5ae5` is in `docs/audits/personal-assistant-review/`.

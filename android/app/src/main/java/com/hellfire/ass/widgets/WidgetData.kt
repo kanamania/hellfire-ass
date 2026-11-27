@@ -137,7 +137,7 @@ suspend fun repliesWaiting(app: HellFireApp, now: Long = System.currentTimeMilli
     val since = now - 7L * 86_400_000
     val drafts = app.database.communications().allDrafts().filter { it.state == "DRAFT" }
     val threads = app.database.communications().messagesIn(since, now + 1).groupBy { it.threadKey }.values
-        .map { it.maxBy { m -> m.occurredAt } }.filter { it.direction == "INCOMING" && it.channel != "WHATSAPP_WEB" }
+        .map { it.maxBy { m -> m.occurredAt } }.filter { it.direction == "INCOMING" && it.channel != "WHATSAPP_WEB" && it.channel != "TELEGRAM" }
         .map { m ->
             val draft = drafts.firstOrNull { d -> d.replyToMessageId == m.externalId || d.recipient.equals(m.sender, true) }
             Waiting(if (m.channel == "EMAIL_IMAP") "@" else "WA", m.sender.substringBefore('<').trim().ifBlank { m.sender }, m.subject.ifBlank { m.body }.take(60),

@@ -1,0 +1,24 @@
+# HellFire Telegram capture worker (capture-only; owner decision 2026-11-27); no listening port.
+# Install: cd server/telegram && npm ci --omit=dev. Needs the owner's own api_id/api_hash from https://my.telegram.org
+# in server/.env as TELEGRAM_API_ID and TELEGRAM_API_HASH (and TELEGRAM_PASSWORD only if the account has 2FA).
+# Pair by scanning the QR on the relay's /pair page from Telegram > Settings > Devices > Link Desktop Device.
+[Unit]
+Description=HellFire Telegram capture
+After=network.target hellfire-relay-telegram.service
+Wants=hellfire-relay-telegram.service
+
+[Service]
+User=dev
+WorkingDirectory=/home/dev/Projects/hellfire-ass/server/telegram
+EnvironmentFile=/home/dev/Projects/hellfire-ass/server/.env
+Environment=NODE_ENV=production
+# Spool, status and the TDLib session database (encrypted with STORE_KEY_BASE64; still protect this disk).
+Environment=TELEGRAM_STATE_DIR=/home/dev/Projects/hellfire-ass/server/state/telegram
+ExecStart=/home/dev/.nvm/versions/node/v24.13.0/bin/node src/main.js
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -142,7 +142,7 @@ suspend fun loadInteractions(app: HellFireApp, since: Long, until: Long = System
     val messages = app.database.communications().messagesIn(since, until).mapNotNull { m ->
         val incoming = m.direction == "INCOMING"
         val raw = (if (incoming) m.sender else m.recipient).substringBefore(", ").ifBlank { return@mapNotNull null }
-        Interaction(Handles.key(raw) ?: return@mapNotNull null, raw, if (m.channel == "EMAIL_IMAP") "Email" else "WhatsApp", incoming, m.occurredAt,
+        Interaction(Handles.key(raw) ?: return@mapNotNull null, raw, when (m.channel) { "EMAIL_IMAP" -> "Email"; "TELEGRAM" -> "Telegram"; else -> "WhatsApp" }, incoming, m.occurredAt,
             listOf(m.subject, m.body).filter(String::isNotBlank).joinToString(" · ").take(200), m.sourceId, m.id, m.threadKey.endsWith("@g.us"), if (m.channel == "EMAIL_IMAP") "${m.accountId}:${m.threadKey}" else null)
     }
     val sms = app.database.events().fromSource("android_sms", since, until, smsLimit).mapNotNull { event ->
