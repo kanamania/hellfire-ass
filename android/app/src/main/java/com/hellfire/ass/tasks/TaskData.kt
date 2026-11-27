@@ -62,6 +62,8 @@ interface TaskDao {
     @Query("UPDATE assistant_task SET direction=:direction, amount=:amount, kind=:kind, repeatMonthly=:repeatMonthly, updatedAt=:now WHERE id=:id")
     suspend fun details(id: String, direction: String, amount: Long?, kind: String, repeatMonthly: Boolean, now: Long): Int
     @Query("SELECT * FROM assistant_task") suspend fun all(): List<AssistantTask>
+    @Query("SELECT * FROM assistant_task WHERE state = 'ACTIVE' AND condition LIKE 'ARRIVE:%'") suspend fun placeTasks(): List<AssistantTask>
+    @Query("UPDATE assistant_task SET condition = :condition WHERE id = :id") suspend fun condition(id: String, condition: String?)
     @Query("SELECT * FROM assistant_task WHERE state = 'ACTIVE' ORDER BY dueAt") suspend fun active(): List<AssistantTask>
     /** Active and proposed tasks: what briefs and widgets show. Done and rejected history is not loaded. */
     @Query("SELECT * FROM assistant_task WHERE state IN ('ACTIVE', 'REVIEW') ORDER BY dueAt") suspend fun open(): List<AssistantTask>

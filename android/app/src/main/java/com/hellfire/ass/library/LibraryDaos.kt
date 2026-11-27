@@ -398,6 +398,7 @@ interface InboxDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun saveLocation(location: SavedLocation)
     @Query("SELECT * FROM saved_location ORDER BY updatedAt DESC") fun locations(): Flow<List<SavedLocation>>
     @Query("SELECT * FROM saved_location WHERE id = :id") suspend fun location(id: String): SavedLocation?
+    @Query("SELECT * FROM saved_location") suspend fun locationsNow(): List<SavedLocation>
     @Query("DELETE FROM saved_location WHERE id = :id") suspend fun deleteLocation(id: String)
 }
 

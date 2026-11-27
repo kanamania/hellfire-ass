@@ -113,7 +113,27 @@ object TaskScheduler {
             app.database.communications().integration(IntegrationState("REMINDERS", "BEST_EFFORT", now, "EXACT_ACCESS_REVOKED"))
         }
     }
-    suspend fun restore(app: HellFireApp) = lock.withLock { arm(app) }
+    suspend fun restore(app: HellFireApp) {
+        lock.withLock { arm(app) }
+        runCatching { Geofences.sync(app) }.onFailure { if (it is CancellationException) throw it; Diagnostics.warn(it) }
+    }
+
+    /** The owner arrived at a place reminder's place: ring once, then stop watching that place. */
+    @SuppressLint("MissingPermission")
+    suspend fun arrived(app: HellFireApp, taskIds: List<String>) = lock.withLock {
+        val manager = notifications(app)
+        val now = System.currentTimeMillis()
+        for (task in app.database.tasks().placeTasks().filter { it.id in taskIds }) {
+            val place = task.condition!!.substringAfter('|', "your place")
+            manager.notify(task.id, 71, Notification.Builder(app, CHANNEL).setSmallIcon(R.drawable.ic_hellfire)
+                .setContentTitle(task.title).setContentText("You're at $place")
+                .setVisibility(Notification.VISIBILITY_PRIVATE).setContentIntent(openTask(app, task.id)).setAutoCancel(false)
+                .setCategory(Notification.CATEGORY_REMINDER)
+                .addAction(Notification.Action.Builder(null, "Done", actionIntent(app, task.id, "DONE")).build()).build())
+            app.database.tasks().condition(task.id, "ARRIVED:" + task.condition!!.substringAfter(':'))
+            app.database.communications().audit(ActionAudit(UUID.randomUUID().toString(), task.id, "TASK_PLACE_ARRIVED", "NOTIFIED", now))
+        }
+    }
     /**
      * A missed call becomes a "Call back" proposal in review (one per caller per day), never a live alarm: the owner
      * activates it like any other found task.
@@ -257,6 +277,8 @@ object TaskScheduler {
         val alarms = due.count { TaskAlerts.channel(it.dueAt, now) == CHANNEL }
         val overdueMinutes = app.getSharedPreferences("capture", 0).getInt("overdue_minutes", 10)
         for (task in due) {
+            // Place reminders ring on arrival (Geofences), not by time, until their window ends.
+            if (TaskConditions.arrival(task.condition) && task.dueAt > now) { app.database.tasks().alerted(task.id, now, task.dueAt); continue }
             val channel = TaskAlerts.channel(task.dueAt, now)
             if (channel == TaskAlerts.HEADS_UP && quietUntil != null) {
                 // Hold an early heads-up until quiet hours end (never past the due time).
