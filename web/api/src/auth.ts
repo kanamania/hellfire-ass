@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import type { Request } from 'express';
-import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, scrypt, scryptSync, timingSafeEqual } from 'node:crypto';
+import { promisify } from 'node:util';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { CONFIG, type Config } from './config.js';
 import { Db } from './db.js';
@@ -15,11 +16,14 @@ export function hashPassword(password: string): string {
   return ['scrypt', salt.toString('base64'), key.toString('base64')].join(':');
 }
 
-export function verifyPassword(password: string, stored: string): boolean {
+const scryptAsync = promisify(scrypt) as (password: string, salt: Buffer, length: number, options: typeof SCRYPT) => Promise<Buffer>;
+
+/** Async so a login attempt does not block the event loop for other requests. */
+export async function verifyPassword(password: string, stored: string): Promise<boolean> {
   const [scheme, salt, key] = stored.split(':');
   if (scheme !== 'scrypt' || !salt || !key) return false;
   const expected = Buffer.from(key, 'base64');
-  const actual = scryptSync(password, Buffer.from(salt, 'base64'), expected.length, SCRYPT);
+  const actual = await scryptAsync(password, Buffer.from(salt, 'base64'), expected.length, SCRYPT);
   return timingSafeEqual(actual, expected);
 }
 
