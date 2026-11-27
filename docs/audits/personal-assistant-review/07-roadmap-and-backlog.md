@@ -82,7 +82,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-065 | P2 | Assist context (screen text) behind an owner toggle | A1.18 | M | DONE (eef6725): off by default (Settings › This device); visible text only, passwords skipped; saved only on an explicit tap through the share intake; device NOT TESTED |
 | HF-066 | P2 | Microsoft 365 mail via OAuth2 (XOAUTH2), owner approved 2026-11-27 | — | M | DONE (f0decce): device-code sign-in, owner's Azure client ID, no new library. Live Microsoft sign-in NOT TESTED |
 | HF-070 | P1 | OxygenOS background survival verification | — | — | DEVICE |
-| HF-071 | P2 | Emulator backup round trip and process death during recording | — | M | OPEN |
+| HF-071 | P2 | Emulator backup round trip and process death during recording | — | M | PARTLY DONE: `NativeBackupRoundTripTest` runs a full backup and restore through the app's SQLCipher database, Keystore vault and staging database on the API 35 fixture emulator (PASS). Open: forced process death during recording needs a test hook (the recording service is not exported and instrumentation dies with the app process) or the phone; host tests cover truncated-recording recovery |
 | HF-072 | P2 | UI coverage and baseline profiles | — | M | OPEN |
 | HF-073 | P2 | Hosted CI run | — | S | DONE: owner approved 2026-11-27; `.github/workflows/checks.yml` runs on every push (emulator job fixed in 5e1b912) |
 | HF-074 | P3 | Adult classifier session reuse | D-31 | S | DONE (3d36074); no device timing |

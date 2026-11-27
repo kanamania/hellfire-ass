@@ -4,6 +4,20 @@ Latest update: 2026-11-27 (0.11.0 checkpoint, below). Earlier
 checkpoints keep the test counts and APK checksums that were true when they were
 written; the newest checkpoint has the current ones.
 
+## 0.11.0 checkpoint — 2026-11-27
+
+Version 0.11.0 (code 11), Room and backup schema 23. Host and emulator evidence only; nothing here ran on the phone.
+
+| Check | Command / evidence | Status |
+|---|---|---|
+| Android unit tests, lint, APKs | `./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease --offline` | PASS (host): 619 tests, 0 failures, 5 skipped; lint 0 errors, 442 warnings; `HellFire-Ass-0.11.0-code11-debug.apk`, `HellFire-Ass-0.11.0-code11-release.apk` (owner-signed) |
+| Native backup round trip (HF-071) | `NativeBackupRoundTripTest` on the isolated API 35 fixture AVD | PASS (emulator): rows and an original come back byte-identical through real SQLCipher and Keystore; a second restore onto non-empty data is refused |
+| Other emulator instrumentation | `am instrument -e notClass …CaptureIntegrationTest,…CapturePermissionTest` | PASS (emulator): 16/16 |
+| `CapturePermissionTest` (run before grants) | Run alone 6 times | PARTIAL: 5 pass, 1 fail (event count rose by 1 at line 49); both failures seen came soon after a full-suite run, so an interaction with test database clearing is not ruled out |
+| Process death during recording | — | NOT TESTED: needs a test hook or the phone |
+| Relay, workers, web API | `pytest -q`; `npm test` | PASS (host): relay 41, WhatsApp 6/6, Telegram 3/3, web API 33/33 |
+| Web hardening (HF-075) | Units installed and restarted; `curl` through nginx | PASS (this PC): both web units active under the systemd sandbox; CSP served; sign-in page 200, sync without token 401. The nginx HSTS/TLS changes and relay TLS blocks are in the repo but not installed here |
+
 ## Current scope — owner update 2026-11-25
 
 The owner authorized core-depth work in this order: Calendar integration,
