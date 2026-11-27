@@ -7,7 +7,10 @@ import com.hellfire.ass.assistant.AssistantCommands
 import com.hellfire.ass.assistant.OwnerCommand
 import com.hellfire.ass.data.EventDatabase
 import com.hellfire.ass.security.PayloadCipher
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import com.hellfire.ass.tasks.TaskScheduler
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -51,5 +54,20 @@ class OwnerCommandSafetyTest {
         assertTrue(runCatching { AssistantCommands.execute(app, late) }.exceptionOrNull() is IllegalArgumentException)
         assertTrue(runCatching { AssistantCommands.execute(app, late) }.exceptionOrNull() is IllegalArgumentException)
         assertTrue(db.tasks().all().isEmpty())
+    }
+
+    @Test fun `reminder notification Done button closes the task`() = runBlocking {
+        val now = System.currentTimeMillis()
+        val remind = OwnerCommand.Remind("remind me to pay rent tomorrow", "pay rent", now + 86_400_000)
+        AssistantCommands.execute(app, remind)
+        val task = db.tasks().all().single()
+        assertEquals("ACTIVE", task.state)
+        val intent = TaskScheduler.actionIntent(app, task.id, "DONE")
+        org.robolectric.Shadows.shadowOf(intent).savedIntent.let { saved ->
+            assertEquals("hellfire://task/${task.id}?action=DONE", saved.dataString)
+            com.hellfire.ass.tasks.TaskActionReceiver().onReceive(object : android.content.ContextWrapper(app) { override fun getApplicationContext() = app }, saved)
+        }
+        withTimeout(5_000) { while (db.tasks().task(task.id)!!.state != "DONE") delay(20) }
+        assertEquals("DONE", db.tasks().task(task.id)!!.state)
     }
 }
