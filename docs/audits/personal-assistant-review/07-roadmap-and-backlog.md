@@ -80,7 +80,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-063 | P2 | Per-record deletion and retention for events and news | — | M | OPEN |
 | HF-064 | P2 | Location-aware reminders (owner Priority 3) | — | L | OPEN |
 | HF-065 | P2 | Assist context (screen text) behind an owner toggle | A1.18 | M | OPEN |
-| HF-066 | P2 | Microsoft 365 mail via OAuth2 (XOAUTH2) | — | M | OWNER DECISION |
+| HF-066 | P2 | Microsoft 365 mail via OAuth2 (XOAUTH2), owner approved 2026-11-27 | — | M | DONE (f0decce): device-code sign-in, owner's Azure client ID, no new library. Live Microsoft sign-in NOT TESTED |
 | HF-070 | P1 | OxygenOS background survival verification | — | — | DEVICE |
 | HF-071 | P2 | Emulator backup round trip and process death during recording | — | M | OPEN |
 | HF-072 | P2 | UI coverage and baseline profiles | — | M | OPEN |
