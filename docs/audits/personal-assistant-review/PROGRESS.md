@@ -26,17 +26,28 @@ The backlog's implementation status is tracked in the **Status** column of
 `07-roadmap-and-backlog.md`. Each implemented item is merged to `main` through its
 own worktree branch with tests.
 
-## Implemented so far (2026-11-26)
+## Implemented so far (updated 2026-11-27)
 
-HF-001–HF-010, HF-012–HF-014, HF-020, HF-022, HF-025 and HF-030 are done; HF-011, HF-023 and HF-024 are partly done. Each one's status and commit are in `07-roadmap-and-backlog.md`. Android unit tests: 583, 0 failures, 5 skips.
+**Done:** HF-001–HF-010, HF-012–HF-014, HF-020–HF-023, HF-025, HF-030, HF-031, HF-033, HF-044, HF-045, HF-062, HF-074.
 
-Items waiting for an owner decision:
+**Partly done:** HF-011, HF-024, HF-032, HF-034, HF-041, HF-051.
+
+**Rejected:** HF-042.
+
+Each item's status and commit are in `07-roadmap-and-backlog.md`.
+
+**Checks:** Android unit tests 595, 0 failures, 5 skips. Web API 32/32. Relay 40.
+
+**Waiting for an owner decision:**
 - HF-004b: amounts with cents.
-- HF-011b: Done/Snooze buttons on reminder notifications (locked requirement 9).
+- HF-011b: Done/Snooze buttons on reminder notifications.
 - HF-040: auto-posting money.
+- HF-046: LUKU token redaction.
 - HF-060: Telegram.
 - HF-066: Microsoft 365.
 - HF-073: hosted CI.
+
+**Resume:** a durable cron job (every 30 minutes, at :17 and :47) re-prompts the session to continue from this file.
 
 ## Next starting point
 
