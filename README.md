@@ -19,10 +19,11 @@ and no gateway was deployed.
   the 2026-11-16 review findings, **multiple email inboxes and WhatsApp accounts**, and
   **Gemma 4 E2B downloaded on first launch with on-device update checks**, and the
   **daily brief, waiting-on, people, debts, bills, expiry reminders, capture alerts and
-  action templates**, plus **local contact picking and person links**, and **device-calendar context and approved event changes**. Debug/release version **0.10.0** (code 10), Room schema **21**, backup schema **21** (restores 8 and 10–21).
+  action templates**, plus **local contact picking and person links**, and **device-calendar context and approved event changes**. Debug/release version **0.11.0** (code 11), Room schema **23**, backup schema **23** (restores 8 and 10–23).
 - **News and media:** scheduled/readable/spoken news, source controls, saved stories and news Ask; device library, media playback, local analysis/search, capture drawer, sanitized sharing, encrypted library sync and backup coverage. See the setup notes below.
-- **Web access:** an optional read-only web copy (NestJS API, Postgres, Next.js site
-  in `web/`) synced from the phone; see [Web access](#web-access-read-only-mirror).
+- **Web access:** an optional web copy (NestJS API, Postgres, Next.js site in `web/`)
+  synced from the phone. The site can ask the phone for a few reversible changes, which the
+  phone checks and applies; see [Web access](#web-access).
   Local website: `https://hellfire.local`; not yet connected to a real phone.
 - **Review follow-up (2026-11-26):** versioned handover APK names from Gradle, inbox
   search through the full-text index, interface text as named string resources (no
@@ -76,13 +77,13 @@ cd android
 **Build naming (owner requirement, 2026-11-18):** Use versioned names for prepared
 and delivered build artifacts: `HellFire-Ass-<versionName>-code<versionCode>-<variant>.apk`.
 Gradle names the debug and release APKs this way itself, from the version in
-`android/app/build.gradle.kts`: currently `HellFire-Ass-0.10.0-code10-debug.apk`, and
-`HellFire-Ass-0.10.0-code10-release.apk` (or `-release-unsigned.apk` without the private
+`android/app/build.gradle.kts`: currently `HellFire-Ass-0.11.0-code11-debug.apk`, and
+`HellFire-Ass-0.11.0-code11-release.apk` (or `-release-unsigned.apk` without the private
 signing file). Bump `versionCode` for every build handed over, so no two different
 builds share a name. Test-only variants (emulator, deviceTest, benchmark, profile) keep
 Gradle's default names for the tools in `tools/`.
 
-Gradle output: `android/app/build/outputs/apk/debug/HellFire-Ass-0.10.0-code10-debug.apk`.
+Gradle output: `android/app/build/outputs/apk/debug/HellFire-Ass-0.11.0-code11-debug.apk`.
 It is built for **arm64-v8a only** (since 2026-11-16), Android API 29+, target/compile
 API 36. Confirm the phone ABI before installation (`adb shell getprop ro.product.cpu.abilist`);
 32-bit-only phones and x86_64 PC emulators cannot run it. Size: about 171 MB
@@ -234,8 +235,8 @@ assistant is the Ask tab. [DECISIONS.md](DECISIONS.md) records where each contro
   Registered originals, source events, finance, messages/drafts, tasks, memory and
   transcripts are included. Limits: 7 GiB originals plus 1 GiB database rows.
   Passwords/tokens, gateway private key, Android grants, models, recording exclusions,
-  folder grants and Phase 0 samples are excluded. Restore accepts backup schemas 8,
-  10, 11, 12, 13 and 14 and requires empty local data, stopped microphone, disabled notification/SMS capture
+  folder grants and Phase 0 samples are excluded. Restore accepts backup schemas 8
+  and 10–23 and requires empty local data, stopped microphone, disabled notification/SMS capture
   and disconnected integrations. It authenticates/stages before merging, re-encrypts
   payloads/media with the receiving device key, revokes stale send approvals and
   preserves uncertain sends. Reconnect accounts and review exclusions afterward.
@@ -648,12 +649,15 @@ References: [Android biometric prompt](https://developer.android.com/reference/a
 [Drive upload protocol](https://developers.google.com/workspace/drive/api/guides/manage-uploads),
 [Drive file scope](https://developers.google.com/workspace/drive/api/guides/api-specific-auth).
 
-## Web access (read-only mirror)
+## Web access
 
 `web/` is an optional website for reading your data away from the phone. The phone stays
 the only place anything is captured, parsed, classified, summarised or approved. It pushes
-a copy of selected records to your own server, and the site only displays that copy.
-Confirming payments, sending replies and changing tasks still happen on the phone.
+a copy of selected records to your own server, and the site displays that copy.
+The site can also queue a few reversible requests: mark a task Done or Snooze it, dismiss a
+payment as "Not a payment", and news actions. On its next sync the phone pulls them, applies
+each only if the record is still open, audits it, and reports APPLIED or STALE back to the
+site. Posting money and sending messages happen only on the phone.
 
 - **Copied:** accounts, confirmed ledger entries, account balances and this/last month's
   totals (computed on the phone), payments waiting for review, SMS balances, tasks,
@@ -703,8 +707,20 @@ self-signed certificate in `/etc/nginx/ssl/hellfire.local.{crt,key}` (CN and SAN
 units enabled, and `web/.env` filled. The generated site password is in
 `~/.config/hellfire-web/owner-password` (mode 600); replace it with `npm run hash-password`
 and a restart of `hellfire-web-api`. Browsers on this PC must accept or trust the certificate.
-**The phone cannot sync to it yet:** `hellfire.local` resolves only on this PC, and the app
-trusts only system certificate authorities, so it refuses a self-signed certificate.
+**Connecting the phone (not yet tested on the phone):**
+1. Make `hellfire.local` resolve on the LAN to this PC, for example with a DNS record on the
+   router. Android may resolve `.local` names only through mDNS, so check with the phone's browser.
+2. Install `/etc/nginx/ssl/hellfire.local.crt` (a CA certificate) on the phone under
+   **Settings › Security › Encryption & credentials › Install a certificate › CA certificate**.
+3. Use a **debug** build: its `network_security_config` trusts user-installed CAs. Release
+   builds trust system CAs only, so for a release build use a real domain with a public certificate.
+
+`web/nginx/hellfire.local.conf` adds HSTS and pins TLS 1.2/1.3 (the copy installed on this PC
+predates that and has not been reloaded: HSTS stops browsers clicking through a certificate warning,
+so install it only once browsers here trust the certificate). The website sends a Content-Security-Policy. The same
+file has commented-out TLS blocks for the relays (8443 → 127.0.0.1:8080 WhatsApp, 8444 →
+127.0.0.1:8081 Telegram). Uncomment them only once the relays run on those ports: on this PC
+8080 and 8081 are currently used by other services.
 
 The website forwards only `/api/sync/*` to the API, for the phone; the read API is
 reachable only from the website's server. Sign-in sessions last 12 hours in an HttpOnly,
@@ -724,7 +740,7 @@ Phone side: `WebSyncTest` in the Android unit tests. Pinned: NestJS 12.3.2,
 
 ## Storage, recovery and boundaries
 
-Room schema **19** has non-destructive migrations from schema 1. Production uses
+Room schema **23** has non-destructive migrations from schema 1. Production uses
 SQLCipher plus Android Keystore-wrapped database credentials; captured payloads
 also use Keystore-backed AES-GCM. Legacy plaintext database conversion exports to
 an encrypted copy, checks it and atomically replaces the original; errors do not
@@ -892,7 +908,7 @@ HellFire screens and through Android’s Share target; a system-wide overlay is 
 implemented. File access and codec/model support depend on
 the actual device; absent permission or model is not a successful analysis.
 
-The **Library** web page is separate from the ordinary read-only mirror: optional
+The **Library** web page is separate from the ordinary web copy: optional
 library sync encrypts originals and editable metadata with a shared passphrase
 before transfer. Enter the same passphrase on the phone and in the browser. The
 server sees opaque keyed identifiers, sizes and timing. Local IDs, tags and

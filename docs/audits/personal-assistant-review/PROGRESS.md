@@ -28,7 +28,7 @@ own worktree branch with tests.
 
 ## Implemented so far (updated 2026-11-27)
 
-**Done:** HF-001–HF-014, HF-020–HF-025, HF-030, HF-031, HF-032, HF-033, HF-034, HF-041, HF-043, HF-044, HF-045, HF-050, HF-051, HF-052, HF-061, HF-062, HF-063, HF-064, HF-065, HF-074.
+**Done:** HF-001–HF-014, HF-020–HF-025, HF-030, HF-031, HF-032, HF-033, HF-034, HF-041, HF-043, HF-044, HF-045, HF-050, HF-051, HF-052, HF-061, HF-062, HF-063, HF-064, HF-065, HF-073, HF-074, HF-075.
 
 **Partly done:** none.
 
@@ -36,13 +36,13 @@ own worktree branch with tests.
 
 Each item's status and commit are in `07-roadmap-and-backlog.md`.
 
-**Checks:** Android unit tests 595, 0 failures, 5 skips. Web API 32/32. Relay 40.
+**Checks (2026-11-27):** Android unit tests 619, 0 failures, 5 skips; lint 0 errors. Web API 33/33. Relay 41. WhatsApp worker 6/6. Telegram worker 3/3.
 
 **Owner decisions (approved 2026-11-27, all implemented): HF-004b cents, HF-011b notification Done/Snooze,
 HF-040 opt-in auto-post, HF-046 LUKU tokens, HF-060 Telegram, HF-066 Microsoft 365, HF-073 hosted CI (pushed,
 emulator job fixed). Live Telegram/Microsoft sign-in and device behaviour remain NOT TESTED.
 
-**Resume:** a durable cron job (every 30 minutes, at :17 and :47) re-prompts the session to continue from this file.
+**Resume:** the autonomous cron job was deleted on 2026-11-27 at the owner's request. New items start only when asked.
 
 ## Next starting point
 
