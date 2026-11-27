@@ -189,8 +189,12 @@ fun EmailPage() {
                                     else Accounts.mailId(email, imap)
                                 require(existing?.getString("id") == id || Accounts.find(app.secrets, Accounts.MAIL, id) == null) { "This inbox is already connected" }
                                 val secret = password.ifEmpty { existing?.optString("password").orEmpty() }
+                                val prior = existing?.let { MailConfig.from(it) }
+                                // A Microsoft account keeps its sign-in; typing a password here switches it to password login.
+                                val keepOauth = prior?.oauth == true && password.isEmpty()
                                 val config = MailConfig(id, email.trim(), if (imap.trim().equals("imap.gmail.com", true)) secret.replace(" ", "") else secret,
-                                    imap.trim(), smtp.trim(), port.toInt()).also { it.validate() }
+                                    imap.trim(), smtp.trim(), port.toInt(), if (keepOauth) prior!!.auth else "PASSWORD",
+                                    if (keepOauth) prior!!.clientId else "", if (keepOauth) prior!!.tenant else "common").also { it.validate() }
                                 // Changing the address or server is a different inbox: the old one is replaced, its messages are kept.
                                 if (existing != null && existing.getString("id") != id) removeMail(app, existing.getString("id"))
                                 Accounts.save(app.secrets, Accounts.MAIL, config.json())
@@ -206,6 +210,7 @@ fun EmailPage() {
                 }
             }
         }
+        if (editing == null && accounts.size < Accounts.MAX) MicrosoftSignIn(app, onSaved = { status = it; scope.launch { reload() } })
         if (accounts.isNotEmpty()) SectionCard("Sync") {
             SecondaryButton("Sync all inboxes now", { scope.launch { CommunicationWork.schedule(app); status = "Sync scheduled." } }, Modifier.fillMaxWidth())
             SecondaryButton("Start live mail (IMAP IDLE) · 10 minutes, every inbox", {
@@ -224,6 +229,65 @@ fun EmailPage() {
                     catch (e: CancellationException) { throw e } catch (caught: Exception) { Diagnostics.warn(caught); "The inbox could not be disconnected." }
             }
         }, onDismiss = { removing = null })
+    }
+}
+
+/**
+ * Microsoft 365 / Outlook.com: device-code sign-in with the owner's own Azure app registration (owner decision 2026-11-27).
+ * The refresh token is encrypted with the other mail secrets; HellFire never sees the Microsoft password.
+ */
+@Composable
+private fun MicrosoftSignIn(app: HellFireApp, onSaved: (String) -> Unit) {
+    val scope = rememberCoroutineScope()
+    var address by remember { mutableStateOf("") }
+    var clientId by remember { mutableStateOf("") }
+    var tenant by remember { mutableStateOf("common") }
+    var code by remember { mutableStateOf<MicrosoftOAuth.DeviceCode?>(null) }
+    var note by remember { mutableStateOf<String?>(null) }
+    var job by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    SectionCard("Microsoft 365 / Outlook") {
+        Note("Microsoft mail needs sign-in instead of a password. Register an app in Azure (Entra ID) as a public client with " +
+            "the IMAP.AccessAsUser.All and SMTP.Send delegated permissions, then paste its Application (client) ID here.")
+        HfTextField(address, { address = it.trim() }, "Microsoft email address")
+        HfTextField(clientId, { clientId = it.trim() }, "Application (client) ID")
+        HfTextField(tenant, { tenant = it.trim() }, "Tenant", supporting = "common for most accounts; your organisation's tenant ID if it requires one")
+        code?.let { c -> Banner("Open ${c.verificationUri} on any device and enter ${c.userCode}. Waiting for you to finish…", Tone.Info, null) }
+        note?.let { Note(it) }
+        if (job == null) PrimaryButton("Sign in with Microsoft", {
+            job = scope.launch {
+                try {
+                    val started = withContext(Dispatchers.IO) { MicrosoftOAuth.start(clientId, tenant) }
+                    code = started
+                    var wait = started.intervalSeconds
+                    var result: MicrosoftOAuth.Poll = MicrosoftOAuth.Poll.Pending
+                    while (System.currentTimeMillis() < started.expiresAt) {
+                        kotlinx.coroutines.delay(wait * 1000L)
+                        result = withContext(Dispatchers.IO) { MicrosoftOAuth.poll(clientId, tenant, started.deviceCode) }
+                        if (result is MicrosoftOAuth.Poll.SlowDown) wait += 5
+                        if (result is MicrosoftOAuth.Poll.Done || result is MicrosoftOAuth.Poll.Failed) break
+                    }
+                    code = null
+                    when (result) {
+                        is MicrosoftOAuth.Poll.Done -> {
+                            withContext(Dispatchers.IO) {
+                                val id = Accounts.mailId(address, MicrosoftOAuth.IMAP_HOST)
+                                require(Accounts.find(app.secrets, Accounts.MAIL, id) == null) { "This inbox is already connected" }
+                                val config = MailConfig(id, address, result.tokens.refreshToken, MicrosoftOAuth.IMAP_HOST, MicrosoftOAuth.SMTP_HOST, 587,
+                                    "MICROSOFT_OAUTH", clientId, tenant).also { it.validate() }
+                                Accounts.save(app.secrets, Accounts.MAIL, config.json())
+                            }
+                            CommunicationWork.schedule(app)
+                            address = ""; onSaved("Microsoft inbox connected; first sync scheduled.")
+                        }
+                        is MicrosoftOAuth.Poll.Failed -> note = "Microsoft sign-in did not finish (${result.code}). Nothing was saved."
+                        else -> note = "The sign-in code expired. Nothing was saved."
+                    }
+                } catch (e: CancellationException) { throw e }
+                catch (caught: Exception) { Diagnostics.warn(caught); code = null; note = caught.message ?: "Microsoft sign-in failed. Nothing was saved." }
+                finally { job = null }
+            }
+        }, Modifier.fillMaxWidth(), enabled = address.contains('@') && MicrosoftOAuth.validClientId(clientId) && MicrosoftOAuth.validTenant(tenant))
+        else QuietButton(stringResource(R.string.ui_cancel), { job?.cancel(); job = null; code = null })
     }
 }
 

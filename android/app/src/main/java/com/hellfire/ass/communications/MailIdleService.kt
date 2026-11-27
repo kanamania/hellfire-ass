@@ -62,9 +62,9 @@ class MailIdleService : android.app.Service() {
                 setProperty("mail.imaps.timeout", "650000")
                 setProperty("mail.imaps.writetimeout", "15000")
             }
-            val connected = Session.getInstance(properties).getStore("imaps") as IMAPStore
+            val connected = Session.getInstance(if (config.oauth) MailAdapter.oauth(properties) else properties).getStore("imaps") as IMAPStore
             stores[config.id] = connected
-            connected.connect(config.imapHost, 993, config.address, config.password)
+            connected.connect(config.imapHost, 993, config.address, MailAdapter.credential(app, config))
             check(connected.hasCapability("IDLE")) { "IDLE_UNSUPPORTED" }
             val folder = connected.getFolder("INBOX") as IMAPFolder
             folder.open(Folder.READ_ONLY)

@@ -10,21 +10,31 @@ import javax.mail.*
 import javax.mail.internet.*
 import org.json.JSONObject
 
-/** IMAP/SMTP only; normal passwords, insecure sockets and Gmail API are never substituted. */
+/**
+ * IMAP/SMTP only; insecure sockets and Gmail API are never substituted. [auth] is PASSWORD (app password) or
+ * MICROSOFT_OAUTH, where [password] holds the OAuth refresh token and [clientId]/[tenant] the owner's Azure app.
+ */
 data class MailConfig(val id: String, val address: String, val password: String,
-    val imapHost: String, val smtpHost: String, val smtpPort: Int) {
+    val imapHost: String, val smtpHost: String, val smtpPort: Int,
+    val auth: String = "PASSWORD", val clientId: String = "", val tenant: String = "common") {
+    val oauth get() = auth == "MICROSOFT_OAUTH"
     fun validate() {
         val parsed = InternetAddress(address, true).also { it.validate() }
         require(parsed.address == address && !address.contains(Regex("[\\r\\n]")))
         require(password.isNotBlank())
+        require(auth in setOf("PASSWORD", "MICROSOFT_OAUTH"))
+        if (oauth) require(MicrosoftOAuth.validClientId(clientId) && MicrosoftOAuth.validTenant(tenant))
         for (host in listOf(imapHost, smtpHost)) require(host.matches(Regex("[A-Za-z0-9.-]{1,253}")) && !host.startsWith("."))
         require(smtpPort in setOf(465, 587))
     }
     fun json() = JSONObject().put("id", id).put("address", address).put("password", password)
-        .put("imap_host", imapHost).put("smtp_host", smtpHost).put("smtp_port", smtpPort)
+        .put("imap_host", imapHost).put("smtp_host", smtpHost).put("smtp_port", smtpPort).apply {
+            if (oauth) put("auth", auth).put("client_id", clientId).put("tenant", tenant)
+        }
     companion object {
         fun from(o: JSONObject) = MailConfig(o.getString("id"), o.getString("address"), o.getString("password"),
-            o.getString("imap_host"), o.getString("smtp_host"), o.getInt("smtp_port")).also { it.validate() }
+            o.getString("imap_host"), o.getString("smtp_host"), o.getInt("smtp_port"),
+            o.optString("auth", "PASSWORD"), o.optString("client_id"), o.optString("tenant", "common")).also { it.validate() }
     }
 }
 
@@ -73,6 +83,22 @@ object MailMime {
 
 class MailAdapter(private val app: HellFireApp) {
     companion object {
+        /** XOAUTH2 instead of a password for Microsoft accounts. */
+        fun oauth(properties: Properties) = properties.apply {
+            for (protocol in listOf("imaps", "smtp", "smtps")) {
+                setProperty("mail.$protocol.auth.mechanisms", "XOAUTH2")
+                setProperty("mail.$protocol.auth.login.disable", "true")
+                setProperty("mail.$protocol.auth.plain.disable", "true")
+            }
+        }
+        /** The secret to log in with: the app password, or a fresh Microsoft access token (rotated refresh token saved). */
+        fun credential(app: HellFireApp, config: MailConfig): String {
+            if (!config.oauth) return config.password
+            val tokens = MicrosoftOAuth.refresh(config.clientId, config.tenant, config.password)
+            if (tokens.refreshToken != config.password)
+                Accounts.find(app.secrets, Accounts.MAIL, config.id)?.let { Accounts.save(app.secrets, Accounts.MAIL, config.copy(password = tokens.refreshToken).json()) }
+            return tokens.accessToken
+        }
         /** Messages per folder considered on the first sync of an inbox. Older mail is not imported. */
         const val INITIAL_WINDOW = 500
         const val BATCH = 100
@@ -95,10 +121,10 @@ class MailAdapter(private val app: HellFireApp) {
 
     suspend fun sync(config: MailConfig): Boolean {
         config.validate()
-        val store = Session.getInstance(properties()).getStore("imaps")
+        val store = Session.getInstance(properties().let { if (config.oauth) oauth(it) else it }).getStore("imaps")
         var more = false
         try {
-            store.connect(config.imapHost, 993, config.address, config.password)
+            store.connect(config.imapHost, 993, config.address, credential(app, config))
             val folders = store.defaultFolder.list("*").take(200)
             val sent = folders.filterIsInstance<IMAPFolder>().firstOrNull { it.attributes.contains("\\Sent") }
             for (folder in listOfNotNull(store.getFolder("INBOX"), sent).distinctBy { it.fullName }) {
@@ -157,7 +183,7 @@ class MailAdapter(private val app: HellFireApp) {
         val to = InternetAddress(draft.recipient, true).also { it.validate() }
         require(to.address == draft.recipient && !draft.recipient.contains(Regex("[\\r\\n]")))
         val identity = "<${draft.id}@${config.address.substringAfter('@')}>"
-        val session = Session.getInstance(properties())
+        val session = Session.getInstance(properties().let { if (config.oauth) oauth(it) else it })
         val message = object : MimeMessage(session) {
             override fun updateMessageID() { setHeader("Message-ID", identity) }
         }.apply {
@@ -173,7 +199,7 @@ class MailAdapter(private val app: HellFireApp) {
         }
         val transport = session.getTransport(if (config.smtpPort == 465) "smtps" else "smtp")
         try {
-            transport.connect(config.smtpHost, config.smtpPort, config.address, config.password)
+            transport.connect(config.smtpHost, config.smtpPort, config.address, credential(app, config))
             transport.sendMessage(message, message.allRecipients)
         } finally { transport.close() }
         return identity
