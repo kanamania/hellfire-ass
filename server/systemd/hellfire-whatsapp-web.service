@@ -22,6 +22,19 @@ Restart=on-failure
 RestartSec=10
 NoNewPrivileges=true
 PrivateTmp=true
+# Chrome sandboxes itself with namespaces and may write under the home directory, so no ProtectHome,
+# PrivateDevices or RestrictNamespaces here.
+ProtectSystem=full
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+CapabilityBoundingSet=
 
 [Install]
 WantedBy=multi-user.target

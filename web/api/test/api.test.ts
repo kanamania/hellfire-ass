@@ -54,10 +54,10 @@ before(async () => {
 after(() => close());
 
 describe('passwords and sessions', () => {
-  it('verifies only the right password', () => {
-    assert.equal(verifyPassword('correct horse battery', config.ownerPasswordHash), true);
-    assert.equal(verifyPassword('wrong horse battery', config.ownerPasswordHash), false);
-    assert.equal(verifyPassword('anything', 'plain-text'), false);
+  it('verifies only the right password', async () => {
+    assert.equal(await verifyPassword('correct horse battery', config.ownerPasswordHash), true);
+    assert.equal(await verifyPassword('wrong horse battery', config.ownerPasswordHash), false);
+    assert.equal(await verifyPassword('anything', 'plain-text'), false);
   });
   it('rejects expired, forged and malformed sessions', () => {
     const { token, expiresAt } = issueSession(config.sessionSecret, 1_000);

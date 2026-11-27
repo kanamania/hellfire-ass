@@ -124,9 +124,9 @@ export class ViewController {
 
   // Reached only from the Next.js server, which keeps the token in an HttpOnly cookie.
   @Post('auth/login') @HttpCode(200) @Throttle({ default: { limit: 5, ttl: 60_000 } })
-  login(@Body() body: { password?: unknown }) {
+  async login(@Body() body: { password?: unknown }) {
     const password = body?.password;
-    if (typeof password !== 'string' || password.length > 1024 || !verifyPassword(password, this.config.ownerPasswordHash))
+    if (typeof password !== 'string' || password.length > 1024 || !(await verifyPassword(password, this.config.ownerPasswordHash)))
       throw new UnauthorizedException();
     return issueSession(this.config.sessionSecret);
   }
