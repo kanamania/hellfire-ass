@@ -453,7 +453,10 @@ class NewsRepository(
         val latest = dao.version(eventId, version)
         val decision = NewsAlerts.decide(event, state, latest, prefs, now)
         if (decision != null) {
-            if (!decision.quiet) poster.post(decision.notice)
+            // Follow-up updates share the daily nudge budget; breaking alerts keep their own rules. Held ones stay in the briefing.
+            val held = decision.notice.channel == NewsAlerts.UPDATES && !com.hellfire.ass.insights.Interruptions.allow(app, "news_update", UPDATE_DAILY_CAP, now)
+            if (!decision.quiet && !held && poster.post(decision.notice) && decision.notice.channel == NewsAlerts.UPDATES)
+                com.hellfire.ass.insights.Interruptions.record(app, "news_update", now)
             dao.saveEvent(event.copy(breakingNotifiedVersion = version))
         }
     }
@@ -529,6 +532,8 @@ class NewsRepository(
     private fun xToken(): String? = app.secrets.read(X_TOKEN)?.optString("token")?.takeIf { it.isNotBlank() }
 
     companion object {
+        /** Follow-up news alerts per day (the shared budget in Interruptions); the briefing carries the rest. */
+        const val UPDATE_DAILY_CAP = 6
         const val SETTINGS = "news-settings"
         const val X_TOKEN = "news-x-token"
         fun articleId(value: String): String = MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString("") { "%02x".format(it) }.take(32)

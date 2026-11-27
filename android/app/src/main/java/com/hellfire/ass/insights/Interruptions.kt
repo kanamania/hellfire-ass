@@ -1,6 +1,6 @@
 package com.hellfire.ass.insights
 
-import com.hellfire.ass.HellFireApp
+import android.content.Context
 import com.hellfire.ass.tasks.TaskAlerts
 import com.hellfire.ass.tasks.TaskTime
 import java.time.Instant
@@ -15,13 +15,13 @@ object Interruptions {
 
     private fun day(now: Long) = Instant.ofEpochMilli(now).atZone(TaskTime.zone).toLocalDate().toString()
 
-    fun allow(app: HellFireApp, kind: String, dailyCap: Int, now: Long = System.currentTimeMillis()): Boolean {
+    fun allow(app: Context, kind: String, dailyCap: Int, now: Long = System.currentTimeMillis()): Boolean {
         val quiet = TaskAlerts.quietUntil(now, app.getSharedPreferences("capture", 0).getBoolean("quiet_hours", true)) != null
         val sent = app.getSharedPreferences("interruptions", 0).getInt("$kind:${day(now)}", 0)
         return allowed(sent, dailyCap, quiet)
     }
 
-    fun record(app: HellFireApp, kind: String, now: Long = System.currentTimeMillis()) {
+    fun record(app: Context, kind: String, now: Long = System.currentTimeMillis()) {
         val prefs = app.getSharedPreferences("interruptions", 0)
         val today = day(now)
         prefs.edit().apply {
