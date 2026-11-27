@@ -9,6 +9,15 @@ object Money {
         require(Regex("(?:[0-9]+|[0-9]{1,3}(?:,[0-9]{3})+)(?:\\.0{1,2})?").matches(value)) { "Use whole TZS, for example 15000 or 15,000.00" }
         return BigDecimal(value.replace(",", "")).longValueExact().also { require(it > 0) }
     }
+    /**
+     * Provider messages may state cents ("TZS 12,345.50"). The ledger keeps whole shillings, so cents round half-up
+     * (owner decision 2026-11-27); the original text stays in the evidence. Owner-typed amounts still use [tzs].
+     */
+    fun tzsRounded(text: String): Long {
+        val value = text.trim().replace(Regex("(?i)^(TZS|TSH|TShs)[ .]*"), "").trim()
+        require(Regex("(?:[0-9]+|[0-9]{1,3}(?:,[0-9]{3})+)(?:\\.[0-9]{1,2})?").matches(value)) { "Not an amount" }
+        return BigDecimal(value.replace(",", "")).setScale(0, java.math.RoundingMode.HALF_UP).longValueExact().also { require(it > 0) }
+    }
     fun display(amount: Long): String = "TZS " + String.format(Locale.ENGLISH, "%,d", amount)
     fun delta(kind: String, amount: Long): Long {
         require(amount > 0)
@@ -30,6 +39,7 @@ object FinanceParser {
         "MIXX" to listOf("mixx by yas", "mixx", "tigo pesa", "tigopesa"), "HALOPESA" to listOf("halopesa", "halo pesa"),
         "AZAMPESA" to listOf("azampesa", "azam pesa"), "SELCOM" to listOf("selcom pesa", "selcom"),
         "CRDB" to listOf("crdb bank", "crdb"), "NMB" to listOf("nmb bank", "nmb"), "NBC" to listOf("nbc bank", "nbc"),
+        "DTB" to listOf("diamond trust bank", "diamond trust", "dtb bank", "dtb"),
     )
     /** Longest alias first, so "azampesa" is never read as "mpesa". */
     private val aliases = providers.flatMap { (code, names) -> names.map { it to code } }.sortedByDescending { it.first.length }
@@ -49,6 +59,8 @@ object FinanceParser {
      * Provider for a message. A known provider sender ID (the SMS address, e.g. "M-PESA", "AzamPesa") decides first;
      * the message text only decides when the sender names no provider, e.g. a notification or an email.
      */
+    /** Provider whose own sender ID sent this message, ignoring the message text. */
+    fun senderProvider(sender: String): String? = named(sender.lowercase(Locale.ROOT))
     fun provider(sender: String, text: String): String? =
         named(sender.lowercase(Locale.ROOT)) ?: named(text.lowercase(Locale.ROOT))
     private val balanceRegex = Regex("(?i)\\b(?:salio(?:\\s+jipya)?(?:\\s+(?:ni|la|lako))?|new\\s+balance(?:\\s+is)?|available\\s+balance(?:\\s+is)?|balance(?:\\s+is)?|bal)[\\s:.]*(?:TZS|TShs?|Tsh)\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)")
@@ -69,10 +81,10 @@ object FinanceParser {
         val fees = feeRegex.findAll(text).filter { m -> !m.groupValues[1].equals("ada", ignoreCase = true) || m.range.first > firstAmount }.toList()
         val main = amounts.firstOrNull { hit -> fees.none { hit.range.first in it.range } } ?: return null
         return runCatching {
-            val total = Money.tzs(main.groups[1]?.value ?: main.groups[2]!!.value)
+            val total = Money.tzsRounded(main.groups[1]?.value ?: main.groups[2]!!.value)
             val fee = fees.fold(0L) { sum, m ->
                 val value = m.groupValues[2]
-                Math.addExact(sum, if (BigDecimal(value.replace(",", "")).signum() == 0) 0 else Money.tzs(value))
+                Math.addExact(sum, if (BigDecimal(value.replace(",", "")).setScale(0, java.math.RoundingMode.HALF_UP).signum() == 0) 0 else Money.tzsRounded(value))
             }
             ParsedFinance(provider, reference(text)?.uppercase(Locale.ROOT), kind,
                 total, fee, merchant.find(text)?.groupValues?.get(1), text)

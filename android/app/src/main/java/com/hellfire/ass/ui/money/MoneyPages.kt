@@ -125,6 +125,17 @@ fun AccountsPage(focusAdd: Boolean = false) {
         message?.let { Banner(it) }
         val formFirst = focusAdd || accounts.isEmpty()
         if (formFirst) AddAccountCard()
+        val prefs = remember { app.getSharedPreferences("capture", 0) }
+        var autoPost by remember { mutableStateOf(prefs.getBoolean("auto_post", false)) }
+        var autoCap by remember { mutableStateOf(prefs.getLong("auto_post_cap", 50_000L).toString()) }
+        SectionCard("Automatic posting") {
+            SwitchRow("Post trusted payments without asking", autoPost, { on -> autoPost = on; prefs.edit().putBoolean("auto_post", on).apply() },
+                subtitle = "Only SMS from the provider's own sender ID (for example SELCOM or DTB), with a reference, no duplicate, " +
+                    "under the limit, and a payee whose account and category you told HellFire to remember. Everything else waits in To confirm.")
+            if (autoPost) HfTextField(autoCap, { value -> autoCap = value.filter(Char::isDigit).take(9)
+                autoCap.toLongOrNull()?.takeIf { it > 0 }?.let { prefs.edit().putLong("auto_post_cap", it).apply() } },
+                "Limit per payment (TZS)", number = true, supporting = "Larger payments always wait for you. Reverse any posting to undo it.")
+        }
         if (accounts.isNotEmpty()) ListCard {
             accounts.forEachIndexed { i, a ->
                 if (i > 0) ListDivider()
