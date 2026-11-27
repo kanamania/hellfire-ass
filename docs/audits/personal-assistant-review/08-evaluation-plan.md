@@ -75,7 +75,25 @@ These reuse the existing benchmark module and protocol in `docs/DEVICE_FEASIBILI
 
 The test runs them through the real `AssistantCommands`, `TaskExtractor`, `FinanceParser`, `AskRouting` and `NewsAsk`. It writes per-set accuracy and misses to `android/app/build/reports/assistant-eval.json`, and fails on any miss. Add a row for every new defect.
 
-These are parser and routing checks, not model accuracy or real-message accuracy. The timeline replay and the retrieval, proactive and recovery metrics above are not built yet.
+These are parser and routing checks, not model accuracy or real-message accuracy.
+
+`TimelineReplayTest` replays a seeded 21-day timeline (88 events) through the real capture and processing pipeline:
+- Selcom, M-Pesa and DTB SMS;
+- payment-app notification copies;
+- chat commitments;
+- news and promotions.
+
+It runs with an interruption half-way and re-delivered SMS rows, and asserts:
+
+| Check | Result |
+|---|---|
+| Every payment reaches review once | 34/34 |
+| Copies linked as duplicates | 7/7 |
+| False payment candidates | 0 |
+| Commitments proposed at the stated time | 2/2 |
+| Events unprocessed after recovery | 0 |
+
+The report is in `build/reports/assistant-replay.json`. Retrieval and proactive-precision metrics are still targets.
 
 ## Existing tests (inventory)
 
