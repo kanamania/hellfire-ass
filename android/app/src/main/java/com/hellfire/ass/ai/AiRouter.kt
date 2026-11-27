@@ -89,7 +89,7 @@ class AiRouter(
                 !local && !state.cloudEnabled -> AiError.PRIVACY
                 !local && !config.enabled -> AiError.DISABLED
                 !local && config.apiKey.isBlank() -> AiError.MISSING_CREDENTIALS
-                local && task != AiTask.CHAT -> AiError.CAPABILITY
+                local && task != AiTask.CHAT && (provider as? OfflineProvider)?.generalPurpose != true -> AiError.CAPABILITY
                 !provider.capabilities(ref.model).containsAll(required) -> AiError.CAPABILITY
                 else -> null
             }
@@ -99,7 +99,8 @@ class AiRouter(
                 continue
             }
             val safe = if (local) text else CloudPrivacy.redact(text)
-            val prompt = if (local) safe else when (task) {
+            val offlineHelp = local && (provider as? OfflineProvider)?.generalPurpose != true
+            val prompt = if (offlineHelp) safe else when (task) {
                 AiTask.CHAT -> safe
                 AiTask.REASONING -> "Reason carefully about this user-provided question:\n$safe"
                 AiTask.DRAFT -> "Draft a reply for review. Do not send anything:\n$safe"

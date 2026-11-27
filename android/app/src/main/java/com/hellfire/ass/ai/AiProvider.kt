@@ -5,7 +5,7 @@ import com.hellfire.ass.assistant.LocalAssistant
 // These are capabilities exposed by the adapter, not every feature advertised by a vendor.
 enum class Capability { TEXT, STREAMING, TOOLS, IMAGES, STRUCTURED_OUTPUT }
 enum class ProviderId(val label: String) {
-    LOCAL("On-device offline test"), OPENAI("OpenAI"), CLAUDE("Anthropic Claude"), GROK("xAI Grok"), DEEPSEEK("DeepSeek")
+    LOCAL("On this phone"), OPENAI("OpenAI"), CLAUDE("Anthropic Claude"), GROK("xAI Grok"), DEEPSEEK("DeepSeek")
 }
 enum class AiTask(val label: String) {
     CHAT("General chat"), REASONING("Complex reasoning"), DRAFT("Reply drafting"),
@@ -53,13 +53,28 @@ interface AiProvider {
     suspend fun generate(apiKey: String, request: GenerationRequest): Generation
 }
 
-class OfflineProvider(private val assistant: LocalAssistant = LocalAssistant()) : AiProvider {
+/** Runs a prompt on the phone's own language model; null when no model is installed. */
+fun interface OnDeviceModel { suspend fun generate(prompt: String): String? ; fun installed(): Boolean = true }
+
+/**
+ * The route entry "On this phone". With an imported on-device model it runs that model for every task (no network,
+ * no budget); without one it only answers chat with the fixed offline help text, as before.
+ */
+class OfflineProvider(private val assistant: LocalAssistant = LocalAssistant(), private val onDevice: OnDeviceModel? = null) : AiProvider {
     override val id = ProviderId.LOCAL
+    /** True when a real on-device model can take any task, not only chat. */
+    val generalPurpose get() = onDevice?.installed() == true
     override suspend fun discover(apiKey: String) = listOf(ModelInfo(MODEL))
     override fun capabilities(model: String) = if (model == MODEL) setOf(Capability.TEXT) else emptySet()
     override suspend fun generate(apiKey: String, request: GenerationRequest): Generation {
         if (request.model != MODEL) throw AiException(AiError.MODEL)
         if (!capabilities(request.model).containsAll(request.required)) throw AiException(AiError.CAPABILITY)
+        if (generalPurpose) {
+            if (request.text.length > 12_000) throw AiException(AiError.INVALID_REQUEST)
+            val text = try { onDevice!!.generate(request.text) } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                catch (caught: Exception) { throw AiException(AiError.OUTAGE) } // e.g. the phone must cool down first
+            if (text != null) return Generation(text, MODEL)
+        }
         return Generation(assistant.answer(request.text), MODEL)
     }
     companion object {
