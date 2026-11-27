@@ -72,7 +72,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-045 | P2 | Quick Settings tile and text-selection action | — | S | DONE (5136024); device NOT TESTED |
 | HF-046 | P2 | LUKU token kept in an encrypted field | D-20 | S | OWNER DECISION: `NotificationNormalizer` redacts LUKU tokens on purpose (its comment names them) under the code-redaction rule |
 | HF-050 | P2 | Local-model fallback that emits existing `OwnerCommand` text | A1.9 | M | OPEN |
-| HF-051 | P2 | Router: real on-device provider, `InputKind`, citation check | D-15, D-16 | M | OPEN |
+| HF-051 | P2 | Router: real on-device provider, `InputKind`, citation check | D-15, D-16 | M | PARTLY DONE (0c14409): grounded answers list only cited sources and flag invented ids. Open: real local provider in the router, `InputKind` |
 | HF-052 | P2 | Interactive inference priority for background `generate` | A1.22 | S | OPEN |
 | HF-060 | P2 | Telegram capture | — | L | OWNER DECISION |
 | HF-061 | P2 | Web approvals through a phone-applied command channel | — | L | OPEN |
