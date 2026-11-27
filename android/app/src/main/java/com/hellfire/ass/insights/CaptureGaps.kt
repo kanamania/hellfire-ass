@@ -58,7 +58,18 @@ object CaptureGaps {
         val sources = loadCaptureSources(app)
         val audits = app.database.events().auditsNow().associateBy { it.source }
         val smsWorking = sources.any { it.name == "SMS" && it.working }
-        return find(now, sources, audits["android_notification"]?.lastCapturedAt, if (smsWorking) newestSmsOnPhone(app) else null, audits["android_sms"]?.lastCapturedAt)
+        val ai = runCatching { cloudKeyGaps(app.ai.store.read()) }.getOrDefault(emptyList())
+        return find(now, sources, audits["android_notification"]?.lastCapturedAt, if (smsWorking) newestSmsOnPhone(app) else null, audits["android_sms"]?.lastCapturedAt) + ai
+    }
+
+    /** An enabled cloud AI provider whose latest call was refused: the key expired or was revoked. */
+    fun cloudKeyGaps(state: com.hellfire.ass.ai.AiState): List<CaptureGap> {
+        if (!state.cloudEnabled) return emptyList()
+        return state.providers.filter { (id, config) -> id != com.hellfire.ass.ai.ProviderId.LOCAL && config.enabled }.keys.mapNotNull { id ->
+            val last = state.audit.lastOrNull { it.provider == id && it.result != "STARTED" } ?: return@mapNotNull null
+            if (last.result != com.hellfire.ass.ai.AiError.UNAUTHORIZED.name) null
+            else CaptureGap("Cloud AI", "${id.label} refused its API key. Update it in Settings › Cloud AI.")
+        }
     }
 
     /**

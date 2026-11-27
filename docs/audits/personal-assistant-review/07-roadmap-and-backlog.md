@@ -57,7 +57,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-021 | P1 | Coalesce ongoing and progress notification re-posts | D-28 | S | DONE (3acab6e): every notification is still captured (first post, at most one update per 10 min, removal); volume on the phone NOT MEASURED |
 | HF-022 | P1 | Separate mail authentication failures from network failures | D-29 | S | DONE (88be2d4) |
 | HF-023 | P1 | Bounded queries for widgets, Inbox, Money, Ask categories; remembered Flows | A1.19, A1.21, D-26, D-27 | M | DONE (c659cd6, 06aa58b): widgets, brief, spend totals, review candidates and storage sizes use bounded SQL; 16 composition-time Flows are remembered. Report pages that are opened rarely still load full tables |
-| HF-024 | P1 | Record release-build failures; alerts for brief failure and cloud key failure | D-30, D-10 | S | PARTLY DONE (88be2d4: brief, search index, recording recovery, restore follow-ups, mail accounts recorded in Needs attention; D-10 fixed with HF-010). Open: cloud-key alert |
+| HF-024 | P1 | Record release-build failures; alerts for brief failure and cloud key failure | D-30, D-10 | S | DONE (88be2d4: brief, search index, recording recovery, restore follow-ups, mail accounts recorded in Needs attention; D-10 fixed with HF-010); cloud-key alert in c708423 |
 | HF-025 | P1 | Ask search uses the full-text index, not the decrypt scan | A1.20 | S | DONE (c659cd6) |
 | HF-030 | P1 | Ledger: corrected re-post after reversal | D-17 | M | DONE (0ca9f5d) |
 | HF-031 | P1 | Person- and month-aware search | D-22 | M | DONE (d940e37) without a new table: names expand to saved handles in the existing FTS index; months filter by date. Open: citation check for model answers (moved to HF-051) |
