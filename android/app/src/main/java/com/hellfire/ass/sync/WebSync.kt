@@ -332,6 +332,8 @@ class WebSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorke
                 val config = app.secrets.read(WebSync.CONFIG) ?: return@withLock Result.success()
                 val generation = config.getString("generation")
                 WebSync.status(app, "Syncing")
+                // Web commands first, so this pass already mirrors their results.
+                WebCommands.sync(app, WebSync.https(config.getString("url"), config.getString("token")))
                 val counts = WebSync.run(app.database, app.cipher, app.secrets.read(WebSync.STATE),
                     WebSync.https(config.getString("url"), config.getString("token")),
                     save = { state -> if (app.secrets.read(WebSync.CONFIG)?.optString("generation") == generation) app.secrets.save(WebSync.STATE, state) else throw Superseded() },

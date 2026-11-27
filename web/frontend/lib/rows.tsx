@@ -34,7 +34,7 @@ export function LedgerItem({ row }: { row: Row }) {
   );
 }
 
-export function TaskItem({ row }: { row: Row }) {
+export function TaskItem({ row, children }: { row: Row; children?: React.ReactNode }) {
   const d = row.data;
   return (
     <li>
@@ -49,6 +49,7 @@ export function TaskItem({ row }: { row: Row }) {
         {d.evidence && <div className="body">“{d.evidence}”</div>}
       </div>
       <span className="amount">{d.amount != null ? tzs(d.amount) : <span className="pill">{words(d.state)}</span>}</span>
+      {children}
     </li>
   );
 }

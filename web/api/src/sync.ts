@@ -75,6 +75,7 @@ export class SyncService {
       await client.query("DELETE FROM meta WHERE key = 'last_sync_at'");
       await client.query('DELETE FROM record');
       await client.query('DELETE FROM news_action');
+      await client.query('DELETE FROM command');
     });
     return { dataset };
   }

@@ -42,7 +42,7 @@ const owner = (path: string, body?: unknown) => call(path, { token: session, bod
 before(async () => {
   const admin = new pg.Client({ connectionString: databaseUrl });
   await admin.connect();
-  await admin.query('DROP TABLE IF EXISTS library_chunk, library_blob, library_record, library_search, library_meta, record, meta, news_action CASCADE');
+  await admin.query('DROP TABLE IF EXISTS library_chunk, library_blob, library_record, library_search, library_meta, record, meta, news_action, command CASCADE');
   await admin.query('DROP SEQUENCE IF EXISTS library_change_seq');
   await admin.end();
   const app = await createApp(config);
@@ -513,5 +513,27 @@ describe('news', () => {
     assert.deepEqual((await owner('/api/news/search?q=bandari')).body.map((s: { event: { id: string } }) => s.event.id), ['e2']);
     assert.deepEqual((await owner(`/api/news/search?to=${now - 86_400_000}`)).body.map((s: { event: { id: string } }) => s.event.id), ['old']);
     assert.equal((await owner('/api/news/search?level=SECRET')).status, 400);
+  });
+});
+
+describe('web commands', () => {
+  it('lets the owner ask, the phone pull, apply and report; only reversible kinds; reset clears them', async () => {
+    assert.equal((await owner('/api/commands', { kind: 'ledger.post', target: 'cand-123456' })).status, 400);
+    assert.equal((await owner('/api/commands', { kind: 'task.done', target: 'bad target!' })).status, 400);
+    assert.equal((await phone('/api/commands', { kind: 'task.done', target: 'task-123456' })).status, 401); // the phone token cannot ask
+    const first = (await owner('/api/commands', { kind: 'task.done', target: 'task-123456' })).body;
+    const second = (await owner('/api/commands', { kind: 'candidate.dismiss', target: 'cand-123456' })).body;
+    assert.equal(first.status, 'PENDING');
+    assert.equal((await owner('/api/sync/commands')).status, 401); // a browser session cannot pull
+    const pending = (await phone('/api/sync/commands?after=0')).body.commands;
+    assert.deepEqual(pending.map((c: { kind: string }) => c.kind), ['task.done', 'candidate.dismiss']);
+    assert.equal((await phone('/api/sync/commands/results', { results: [{ seq: first.seq, status: 'APPLIED' }, { seq: second.seq, status: 'STALE', result: 'Already reviewed on the phone' }] })).body.updated, 2);
+    assert.equal((await phone('/api/sync/commands/results', { results: [{ seq: first.seq, status: 'STALE' }] })).body.updated, 0); // final once reported
+    assert.deepEqual((await phone('/api/sync/commands?after=0')).body.commands, []);
+    const recent = (await owner('/api/commands')).body.commands;
+    assert.deepEqual(recent.map((c: { status: string }) => c.status), ['STALE', 'APPLIED']);
+    await owner('/api/commands', { kind: 'task.snooze', target: 'task-123456' });
+    await phone('/api/sync/reset', {});
+    assert.deepEqual((await owner('/api/commands')).body.commands, []);
   });
 });

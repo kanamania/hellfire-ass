@@ -66,6 +66,15 @@ CREATE TABLE IF NOT EXISTS news_action (
   value jsonb NOT NULL
 );
 CREATE INDEX IF NOT EXISTS news_action_target ON news_action (target);
+CREATE TABLE IF NOT EXISTS command (
+  seq bigserial PRIMARY KEY,
+  at bigint NOT NULL,
+  kind text NOT NULL,
+  target text NOT NULL,
+  status text NOT NULL,
+  result text
+);
+CREATE INDEX IF NOT EXISTS command_pending ON command (seq) WHERE status = 'PENDING';
 `;
 
 @Injectable()
