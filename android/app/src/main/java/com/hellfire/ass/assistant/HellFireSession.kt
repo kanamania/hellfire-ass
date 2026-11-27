@@ -70,6 +70,16 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
     }
 
     private var input: EditText? = null
+    private var screenView: Button? = null
+    private var screen = ""
+
+    override fun onHandleAssist(state: AssistState) {
+        super.onHandleAssist(state)
+        if (!ScreenText.enabled(sessionContext) || AppLock.enabled(sessionContext)) return
+        screen = ScreenText.from(state.assistStructure)
+        screenView?.let { button -> button.visibility = if (screen.isEmpty()) View.GONE else View.VISIBLE
+            button.text = "Save what's on screen to HellFire (${screen.length} characters)" }
+    }
     private var answerView: TextView? = null
     private var confirmButton: Button? = null
     /** The current turn started by voice: answer aloud and listen for a spoken yes or no. */
@@ -191,6 +201,20 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
         input = field
         layout.addView(field)
         answerView = label(lastAnswer)
+        // Only text the owner chose to share: nothing is saved until this tap, and it goes through the usual share intake.
+        screenView = Button(sessionContext).apply {
+            visibility = if (screen.isEmpty()) View.GONE else View.VISIBLE
+            text = "Save what's on screen to HellFire (${screen.length} characters)"
+            setOnClickListener {
+                if (screen.isEmpty()) return@setOnClickListener
+                sessionContext.startActivity(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, screen)
+                    .putExtra("hellfire-share-id", java.util.UUID.randomUUID().toString()).setClass(sessionContext, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP))
+                screen = ""
+                hide()
+            }
+        }
+        layout.addView(screenView)
         confirmButton = Button(sessionContext).apply {
             text = "Confirm proposed action"; visibility = View.GONE
             setOnClickListener { confirm() }
@@ -241,7 +265,7 @@ class HellFireSession(private val sessionContext: Context) : VoiceInteractionSes
         return ScrollView(sessionContext).apply { addView(layout) }
     }
 
-    override fun onHide() { queryJob?.cancel(); recognizer?.cancel(); speech?.stop(); super.onHide() }
+    override fun onHide() { screen = ""; queryJob?.cancel(); recognizer?.cancel(); speech?.stop(); super.onHide() }
     override fun onDestroy() {
         scope.cancel()
         speechReady = false

@@ -330,6 +330,10 @@ fun DevicePage() {
             SecondaryButton(stringResource(R.string.ui_choose_hellfire_as_the_digital_assistant), env.actions.onRole, Modifier.fillMaxWidth())
             SecondaryButton(stringResource(R.string.ui_open_assistant_settings), { env.actions.onSettings(Settings.ACTION_VOICE_INPUT_SETTINGS) }, Modifier.fillMaxWidth())
             SecondaryButton(stringResource(R.string.ui_test_the_assistant_session), env.actions.onSession, Modifier.fillMaxWidth())
+            val prefs = remember { env.app.getSharedPreferences("capture", 0) }
+            var screen by remember { mutableStateOf(prefs.getBoolean("assist_screen", false)) }
+            SwitchRow("Read the screen when I call HellFire", screen, { on -> screen = on; prefs.edit().putBoolean("assist_screen", on).apply() },
+                subtitle = "Off by default. Only when you call HellFire, and only if Android's \"Use text from screen\" is on. Apps that protect their screens share nothing. Nothing is saved unless you tap Save.")
             Note("Hotword, lock-screen and OEM gesture behaviour need testing on the phone.")
         }
         SecondaryButton("Performance (developer)", { nav.push(Screen.Performance) }, Modifier.fillMaxWidth())
