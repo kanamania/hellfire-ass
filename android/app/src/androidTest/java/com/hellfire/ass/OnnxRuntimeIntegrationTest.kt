@@ -13,7 +13,7 @@ import java.io.File
 class OnnxRuntimeIntegrationTest {
     @Test fun realCpuVadRejectsDigitalSilenceAndResetsItsRecurrentState() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val model = File(context.getExternalFilesDir(null), "models/silero_vad.onnx")
+        val model = listOf(context.getExternalFilesDir(null), context.filesDir).map { File(it, "models/silero_vad.onnx") }.firstOrNull { it.isFile } ?: File(context.filesDir, "models/silero_vad.onnx")
         assumeTrue("Install the pinned public VAD model with tools/test_emulator.sh", model.isFile)
         LearnedVad.open(model).use { vad ->
             val first = FloatArray(50) { vad.probability(FloatArray(512)) }

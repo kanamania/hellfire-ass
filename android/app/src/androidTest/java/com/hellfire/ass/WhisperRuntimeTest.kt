@@ -16,7 +16,7 @@ class WhisperRuntimeTest {
     @Test fun realQuantizedModelTranscribesPublicEnglishSample() = runBlocking {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val app = instrumentation.targetContext
-        val model = File(app.getExternalFilesDir(null), "models/ggml-tiny.en-q5_1.bin")
+        val model = listOf(app.getExternalFilesDir(null), app.filesDir).map { File(it, "models/ggml-tiny.en-q5_1.bin") }.firstOrNull { it.isFile } ?: File(app.filesDir, "models/ggml-tiny.en-q5_1.bin")
         assumeTrue("Install the pinned public test model with tools/test_emulator.sh", model.isFile)
         val hash = model.inputStream().use { input ->
             val digest = MessageDigest.getInstance("SHA-256")

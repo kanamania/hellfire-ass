@@ -8,9 +8,13 @@ adb_bin="${ANDROID_HOME:-/home/dev/android-sdk}/platform-tools/adb"
 "$adb_bin" -s "$serial" install -r "$repo_dir/android/app/build/outputs/apk/emulator/app-emulator.apk"
 "$adb_bin" -s "$serial" install -r "$repo_dir/android/app/build/outputs/apk/androidTest/emulator/app-emulator-androidTest.apk"
 if [[ $# -ge 2 ]]; then
-    "$adb_bin" -s "$serial" shell mkdir -p /sdcard/Android/data/com.hellfire.ass.emulator/files/models
-    "$adb_bin" -s "$serial" push "$2/ggml-tiny.en-q5_1.bin" /sdcard/Android/data/com.hellfire.ass.emulator/files/models/
-    "$adb_bin" -s "$serial" push "$2/silero_vad.onnx" /sdcard/Android/data/com.hellfire.ass.emulator/files/models/
+    # On a fresh emulator a folder that adb creates under Android/data belongs to the shell user and the app cannot
+    # read it. Copy the models into the app's own files/models as the (debuggable) emulator app instead.
+    for model in ggml-tiny.en-q5_1.bin silero_vad.onnx; do
+        "$adb_bin" -s "$serial" push "$2/$model" "/data/local/tmp/$model"
+        "$adb_bin" -s "$serial" shell run-as com.hellfire.ass.emulator sh -c "'mkdir -p files/models && cp /data/local/tmp/$model files/models/$model'"
+        "$adb_bin" -s "$serial" shell rm -f "/data/local/tmp/$model"
+    done
 fi
 report_dir="$repo_dir/android/build/reports/predevice"
 mkdir -p "$report_dir"
