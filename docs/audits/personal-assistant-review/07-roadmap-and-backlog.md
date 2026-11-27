@@ -65,7 +65,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-033 | P1 | Conditional reminders ("remind me Friday if Juma hasn't paid") | — | M | DONE (c554a4a): schema 23 adds `assistant_task.condition` |
 | HF-034 | P1 | Scenario replay evaluation harness | — | M | DONE (d639f8f, 09ac3f7): `AssistantEvalTest` (bilingual time, finance, routing sets) and `TimelineReplayTest` (21-day synthetic timeline through the real pipeline with interruption and re-delivery; report in `build/reports/assistant-replay.json`). Retrieval and proactive-precision metrics remain evaluation-plan targets |
 | HF-040 | P2 | Opt-in auto-post for trusted provider payments (owner approved 2026-11-27) | A1.15 | M | DONE (44a846e): off by default, Money › Accounts |
-| HF-041 | P2 | Budget warnings and 30-day cash-flow in the brief | — | M | PARTLY DONE (2c117e7): morning brief lists budgets over or ahead of the month. Open: income-inclusive cash-flow projection |
+| HF-041 | P2 | Budget warnings and 30-day cash-flow in the brief | — | M | DONE (2c117e7, 9914212): budgets over or ahead of the month; 30-day cash-flow counts income seen monthly (e.g. salary) before warning about bills |
 | HF-042 | P2 | Waiting-on includes notification-only chats | — | S | REJECTED: notifications never show the owner's own replies, so every such chat would look unanswered forever. Needs the WhatsApp relay (which sees outgoing messages) or Telegram capture |
 | HF-043 | P2 | Reply through a live notification's reply action | A1.16 | M | OPEN |
 | HF-044 | P2 | Missed-call follow-up from dialer notifications | A1.17 | S | DONE (368fd52): from the dialer notification, no call-log permission; OEM dialer formats NOT TESTED |

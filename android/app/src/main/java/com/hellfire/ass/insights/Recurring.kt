@@ -17,10 +17,11 @@ object Recurring {
     private val generic = setOf("expense", "income", "transfer", "refund", "fee", "payment", "")
 
     /** Rule-based: same description, one or two payments a month, in each of the last three calendar months it appeared, and still current. */
-    fun detect(entries: List<LedgerEntry>, now: Long): List<RecurringPayment> {
+    /** [kind] EXPENSE finds bills; INCOME finds money that arrives monthly, such as a salary. Amounts are positive either way. */
+    fun detect(entries: List<LedgerEntry>, now: Long, kind: String = "EXPENSE"): List<RecurringPayment> {
         val reversed = entries.mapNotNull { it.reversesId }.toSet()
         val current = YearMonth.from(Instant.ofEpochMilli(now).atZone(TaskTime.zone))
-        return entries.filter { it.kind == "EXPENSE" && it.reversesId == null && it.id !in reversed && it.occurredAt <= now }
+        return entries.filter { it.kind == kind && it.reversesId == null && it.id !in reversed && it.occurredAt <= now }
             .groupBy { it.description.lineSequence().first().trim().replace(Regex("\\s+"), " ").lowercase(Locale.ROOT) }
             .filterKeys { it !in generic }
             .mapNotNull { (_, list) ->
@@ -35,7 +36,7 @@ object Recurring {
                 if (run < 3 || recent.last() < current.minusMonths(1)) return@mapNotNull null
                 val inRun = recent.flatMap { byMonth.getValue(it) }
                 if (inRun.size > run * 3 / 2) return@mapNotNull null
-                val amounts = inRun.map { -it.amount }.sorted()
+                val amounts = inRun.map { Math.absExact(it.amount) }.sorted()
                 val last = sorted.last()
                 RecurringPayment(last.description.lineSequence().first().trim().take(80), last.category, amounts[amounts.size / 2], run, last.occurredAt,
                     Instant.ofEpochMilli(last.occurredAt).atZone(TaskTime.zone).plusMonths(1).toInstant().toEpochMilli(),
@@ -48,6 +49,11 @@ object Recurring {
         val bills = tasks.filter { it.kind == "BILL" && it.state in setOf("ACTIVE", "REVIEW") }.map { it.title.trim().lowercase(Locale.ROOT) }
         return found.filter { r -> val label = r.label.lowercase(Locale.ROOT); bills.none { it == label || it.contains(label) || label.contains(it) } }
     }
+
+    /** Money on hand plus recurring income expected in the window, minus the bills due in it. */
+    fun cashFlowEnd(forecast: BillForecast, income: List<RecurringPayment>, now: Long, days: Int = 30): Long =
+        income.filter { it.nextAt in now until now + days * 86_400_000L }
+            .fold(forecast.balance) { sum, i -> Math.addExact(sum, i.amount) }.let { Math.subtractExact(it, forecast.total) }
 
     fun forecast(tasks: List<AssistantTask>, balance: Long, now: Long, days: Int = 30): BillForecast {
         val due = tasks.filter { it.kind == "BILL" && it.state == "ACTIVE" && it.dueAt < now + days * 86_400_000L }.sortedBy { it.dueAt }

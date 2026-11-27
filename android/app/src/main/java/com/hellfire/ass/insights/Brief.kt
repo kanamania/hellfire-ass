@@ -31,7 +31,7 @@ data class Brief(val evening: Boolean, val day: LocalDate, val headline: String,
 /** Everything the brief is built from. [spent] and [received] cover today in the evening and yesterday in the morning. */
 data class BriefInputs(val evening: Boolean, val now: Long, val tasks: List<AssistantTask>, val spent: Long, val received: Long,
     val toConfirm: Int, val reviewsPending: Int, val waiting: WaitingOn, val debts: List<DebtBalance>, val forecast: BillForecast, val gaps: List<CaptureGap>, val calendar: CalendarAgenda = CalendarAgenda("NOT_CHECKED"),
-    val budgets: List<BudgetStatus> = emptyList())
+    val budgets: List<BudgetStatus> = emptyList(), val income: List<RecurringPayment> = emptyList())
 
 /** This month's spending against one category budget (confirmed payments only). */
 data class BudgetStatus(val category: String, val budget: Long, val spent: Long, val pace: com.hellfire.ass.widgets.Pace)
@@ -47,6 +47,21 @@ object Briefs {
         (if (withDay) Fmt.dayTime(t.dueAt) else Fmt.time(t.dueAt)) + " · " + t.title.take(90),
         listOfNotNull(if (t.dueAt < now) "overdue" else null, t.amount?.let(Money::display)).joinToString(" · ").ifEmpty { null },
         "hellfire://task/${t.id}", warn = t.dueAt < now)
+
+    /** Bills against money on hand and, when HellFire has seen it arrive monthly, expected income such as a salary. */
+    private fun cashFlowLine(i: BriefInputs): BriefLine? {
+        if (i.forecast.total <= 0) return null
+        val expected = i.income.filter { it.nextAt in i.now until i.now + 30 * DAY }
+        val end = Recurring.cashFlowEnd(i.forecast, expected, i.now)
+        val incomeText = expected.fold(0L) { s, r -> Math.addExact(s, r.amount) }.takeIf { it > 0 }?.let { " + expected income ${Money.display(it)}" }.orEmpty()
+        return when {
+            end < 0 -> BriefLine("Bills in the next 30 days come to ${Money.display(i.forecast.total)}",
+                "balances${incomeText.replace(" + expected income", " and expected income")} leave you ${Money.display(-end)} short", "hellfire://bills", warn = true)
+            expected.isNotEmpty() -> BriefLine("Next 30 days: ${Money.display(i.forecast.balance)}$incomeText − bills ${Money.display(i.forecast.total)} = ${Money.display(end)}",
+                "income seen monthly: " + expected.joinToString { it.label.take(30) }, "hellfire://bills")
+            else -> null
+        }
+    }
 
     fun build(i: BriefInputs): Brief {
         val day = Instant.ofEpochMilli(i.now).atZone(TaskTime.zone).toLocalDate()
@@ -82,8 +97,7 @@ object Briefs {
                 .ifEmpty { listOf(BriefLine("Nothing due today.", link = "hellfire://tasks")) })
             section("Bills", billsSoon.take(6).map {
                 BriefLine(it.title.take(90), listOfNotNull(it.amount?.let(Money::display), "due ${Fmt.day(it.dueAt)}").joinToString(" · "), "hellfire://task/${it.id}", warn = it.dueAt < i.now)
-            } + listOfNotNull(if (i.forecast.shortfall > 0) BriefLine("Bills in the next 30 days come to ${Money.display(i.forecast.total)}",
-                "your balances cover ${Money.display(i.forecast.balance.coerceAtLeast(0))}", "hellfire://bills", warn = true) else null))
+            } + listOfNotNull(cashFlowLine(i)))
             section("Money", money)
             section("Replies", replies)
             val owed = i.debts.filter { it.balance > 0 }; val owing = i.debts.filter { it.balance < 0 }
@@ -134,7 +148,7 @@ object Briefs {
         val waiting = Waiting.compute(loadInteractions(app, now - Waiting.WINDOW), loadAliases(app), now, WaitingPrefs.dismissed(app), loadIdentities(app))
         return build(BriefInputs(evening, now, tasks, totals.expenses, totals.income, dao.reviewCount(), app.database.tasks().reviewsNow().size,
             waiting, Debts.balances(app.database.debts().all()), Recurring.forecast(tasks, balance, now), CaptureGaps.check(app, now), app.calendar.agenda(start, Fmt.startOf(day.plusDays(8))),
-            budgets(app, day)))
+            budgets(app, day), Recurring.detect(dao.entriesBetween(now - 130 * DAY, now + 1), now, "INCOME")))
     }
 
     private suspend fun budgets(app: HellFireApp, day: java.time.LocalDate): List<BudgetStatus> {
