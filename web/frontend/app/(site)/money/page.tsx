@@ -1,6 +1,7 @@
 import { api, param, records } from '@/lib/api';
 import { monthRange, tzs, when, words } from '@/lib/format';
 import { Pager, type Summary } from '@/lib/rows';
+import { PhoneCommand, type Command } from '@/lib/phone-command';
 
 type Search = Promise<Record<string, string | string[] | undefined>>;
 
@@ -8,7 +9,7 @@ export default async function MoneyPage({ searchParams }: { searchParams: Search
   const params = await searchParams;
   const filters = { account: param(params, 'account'), category: param(params, 'category'), kind: param(params, 'kind'), month: param(params, 'month') };
   const range = filters.month ? monthRange(filters.month) : null;
-  const [overview, accounts, wallets, candidates, ledger] = await Promise.all([
+  const [overview, accounts, wallets, candidates, ledger, { commands }] = await Promise.all([
     api<{ summary: Summary | null }>('/api/overview'),
     records({ kinds: 'account', limit: '200' }),
     records({ kinds: 'balance', limit: '50' }),
@@ -18,6 +19,7 @@ export default async function MoneyPage({ searchParams }: { searchParams: Search
       from: range ? String(range.from) : undefined, to: range ? String(range.to) : undefined,
       afterAt: param(params, 'afterAt'), afterId: param(params, 'afterId'),
     }),
+    api<{ commands: Command[] }>('/api/commands'),
   ]);
   const label = new Map(accounts.rows.map((a) => [a.id, a.data.label as string]));
   const s = overview.summary;
@@ -50,6 +52,7 @@ export default async function MoneyPage({ searchParams }: { searchParams: Search
               <div className="muted small">{when(c.at)}{c.data.fee ? ` · fee ${tzs(c.data.fee)}` : ''}{c.data.reference ? ` · ref ${c.data.reference}` : ''}</div>
             </div>
             <span className="amount">{tzs(c.data.amount)}</span>
+            <PhoneCommand kind="candidate.dismiss" target={c.id} label="Not a payment" back="/money" recent={commands} />
           </li>
         ))}</ul> : <p className="muted">Nothing waiting.</p>}
       </section>

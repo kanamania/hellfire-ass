@@ -28,7 +28,7 @@ own worktree branch with tests.
 
 ## Implemented so far (updated 2026-11-27)
 
-**Done:** HF-001–HF-014, HF-020–HF-025, HF-030, HF-031, HF-032, HF-033, HF-034, HF-041, HF-043, HF-044, HF-045, HF-050, HF-051, HF-052, HF-062, HF-074.
+**Done:** HF-001–HF-014, HF-020–HF-025, HF-030, HF-031, HF-032, HF-033, HF-034, HF-041, HF-043, HF-044, HF-045, HF-050, HF-051, HF-052, HF-061, HF-062, HF-074.
 
 **Partly done:** none.
 
