@@ -99,6 +99,10 @@ object ExecutionScheduler {
     @Synchronized fun shouldYield(holder: WorkPriority): Boolean =
         holder == WorkPriority.DEFERRED && waiting.containsKey(WorkPriority.INTERACTIVE)
     @Synchronized fun waitingSnapshot(): Set<WorkPriority> = waiting.keys.toSet()
+    /** A deferred request waits while an interactive one is queued, so background summaries never delay the owner. */
+    suspend fun awaitTurn(priority: WorkPriority, pollMillis: Long = 200) {
+        while (shouldYield(priority)) kotlinx.coroutines.delay(pollMillis)
+    }
     @Synchronized fun reset() { waiting.clear() }
 }
 
