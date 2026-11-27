@@ -78,13 +78,16 @@ class LocalModel(private val context: Context) {
             java.nio.file.Files.move(file.toPath(), modelFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE)
         }
     }
-    suspend fun generate(prompt: String, gpu: Boolean = false, backend: String? = null): ModelAnswer = withContext(Dispatchers.IO) {
+    /** [priority] DEFERRED is for background work: it waits behind the owner's requests and never claims to be interactive. */
+    suspend fun generate(prompt: String, gpu: Boolean = false, backend: String? = null, priority: WorkPriority = WorkPriority.INTERACTIVE): ModelAnswer = withContext(Dispatchers.IO) {
         require(prompt.length <= 12_000) { "Input exceeds the local request limit" }
-        ExecutionScheduler.noteWaiting(WorkPriority.INTERACTIVE)
-        var waiting = true
+        val interactive = priority == WorkPriority.INTERACTIVE
+        if (!interactive) ExecutionScheduler.awaitTurn(priority)
+        if (interactive) ExecutionScheduler.noteWaiting(WorkPriority.INTERACTIVE)
+        var waiting = interactive
         try {
             mutex.withLock {
-                ExecutionScheduler.clearWaiting(WorkPriority.INTERACTIVE)
+                if (interactive) ExecutionScheduler.clearWaiting(WorkPriority.INTERACTIVE)
                 waiting = false
                 check(context.getSystemService(android.os.PowerManager::class.java).currentThermalStatus < android.os.PowerManager.THERMAL_STATUS_SEVERE) { "Device must cool before local inference" }
                 check(configured) { "No local model imported. Core capture and finance still work." }

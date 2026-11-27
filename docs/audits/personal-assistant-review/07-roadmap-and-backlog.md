@@ -73,7 +73,7 @@ or adds a provider/dependency; not started without the owner), `DEVICE` (needs t
 | HF-046 | P2 | LUKU tokens kept in captured text (owner approved 2026-11-27) | D-20 | S | DONE (44a846e) |
 | HF-050 | P2 | Local-model fallback that emits existing `OwnerCommand` text | A1.9 | M | DONE (e72b40f): reminders, notes and cash only; output re-parsed by the rules and confirmed; on-device model quality NOT MEASURED |
 | HF-051 | P2 | Router: real on-device provider, `InputKind`, citation check | D-15, D-16 | M | DONE (0c14409, f53a773): citation check; "On this phone" runs the installed model for every task. `InputKind` needed no callers: only owner text and public news text reach the router, while captured messages go to the on-device model directly |
-| HF-052 | P2 | Interactive inference priority for background `generate` | A1.22 | S | OPEN |
+| HF-052 | P2 | Interactive inference priority for background `generate` | A1.22 | S | DONE (0967063): background summaries run DEFERRED and wait behind the owner; a generation already running still finishes (the runtime has no abort); timing NOT MEASURED |
 | HF-060 | P2 | Telegram capture (owner approved 2026-11-27) | — | L | DONE (672bc39): TDLib worker (tdl 8.1.0, prebuilt-tdlib 0.1008069.0), second relay instance, phone channel TELEGRAM; capture-only. Live pairing NOT TESTED |
 | HF-061 | P2 | Web approvals through a phone-applied command channel | — | L | OPEN |
 | HF-062 | P2 | Refuse a second phone resetting the web dataset | — | S | DONE (de8c58c) |

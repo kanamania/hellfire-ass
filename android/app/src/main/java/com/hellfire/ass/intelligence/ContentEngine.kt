@@ -280,7 +280,8 @@ class ContentEngine(private val app: HellFireApp) {
     private suspend fun draft(evidence: String, ask: String): String? {
         if (!app.localModel.configured || evidence.isBlank()) return null
         val prompt = "Use only the evidence. Do not invent people, identities, locations, ages, consent, or events. If the evidence is insufficient, reply INSUFFICIENT.\n$ask\nEvidence:\n${evidence.take(3000)}"
-        val text = runCatching { app.localModel.generate(prompt).text.trim() }.getOrNull() ?: return null
+        // Background analysis: waits behind the owner's own questions instead of competing as interactive work.
+        val text = runCatching { app.localModel.generate(prompt, priority = com.hellfire.ass.performance.WorkPriority.DEFERRED).text.trim() }.getOrNull() ?: return null
         if (text.equals("INSUFFICIENT", true) || !QueryGrounding.accepts(text, evidence)) return null
         return text.take(400)
     }
