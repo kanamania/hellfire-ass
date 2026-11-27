@@ -126,7 +126,7 @@
       "id": "reject-10",
       "language": "en",
       "sender": "M-PESA",
-      "text": "Paid TZS 1.25 ref SYNTH0003",
+      "text": "Paid TZS 0.25 ref SYNTH0003",
       "expected": null
     },
     {
@@ -135,6 +135,19 @@
       "sender": "M-PESA",
       "text": "Umelipa TZS 0 ref SYNTH0004",
       "expected": null
+    },
+    {
+      "id": "finance-cents",
+      "language": "en",
+      "sender": "NMB",
+      "text": "Paid TZS 12,345.50 ref SYNTHCENTS. Synthetic fixture.",
+      "expected": {
+        "provider": "NMB",
+        "kind": "EXPENSE",
+        "amount": 12346,
+        "fee": 0,
+        "reference": "SYNTHCENTS"
+      }
     }
   ],
   "queries": [

@@ -99,7 +99,13 @@ class NotificationNormalizerTest {
         }
         val luku = normalize(raw("text" to listOf("M-PESA: Umelipa Tsh 25,000 kwa LUKU. Token: 12345678901234567890. Salio Tsh 80,000")))
         assertFalse(luku.securitySensitive)
-        assertEquals("M-PESA: Umelipa Tsh 25,000 kwa LUKU. Token: [CODE REDACTED]. Salio Tsh 80,000", luku.snapshot.fields["text"]!!.single())
+        // Owner decision 2026-11-27: the purchased token is kept (it only loads units on that meter).
+        assertEquals("M-PESA: Umelipa Tsh 25,000 kwa LUKU. Token: 12345678901234567890. Salio Tsh 80,000", luku.snapshot.fields["text"]!!.single())
+        val grouped = normalize(raw("text" to listOf("TANESCO LUKU Token 1234 5678 9012 3456 7890 Units 45.6")))
+        assertEquals("TANESCO LUKU Token 1234 5678 9012 3456 7890 Units 45.6", grouped.snapshot.fields["text"]!!.single())
+        // Codes elsewhere are still redacted, and real security messages still withhold everything.
+        assertEquals("Umeme: PIN yako [CODE REDACTED]", normalize(raw("text" to listOf("Umeme: PIN yako 4821"))).snapshot.fields["text"]!!.single())
+        assertTrue(normalize(raw("text" to listOf("LUKU verification code 482910"))).securitySensitive)
     }
     @Test fun `codes after code pin token or verify are removed including alphanumeric values`() {
         for (text in listOf("Your code is AB7K9Z", "Weka PIN ni 7Q4X2M", "verify: G7KX2Q", "Your code is 123456")) {

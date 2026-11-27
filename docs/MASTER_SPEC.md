@@ -76,6 +76,20 @@ ownership have regression coverage. Exact counts/commands and the current remain
 software/hardware classifications are in `docs/DEVICE_FEASIBILITY.md`; this is not
 a physical OnePlus or GPU/NPU validation claim.
 
+**Owner decisions update — 2026-11-27:** The owner approved the audit's open
+decisions (`docs/audits/personal-assistant-review/07-roadmap-and-backlog.md`):
+- Provider amounts with cents round half-up to whole shillings; owner-typed amounts stay whole.
+- Done and Snooze may be chosen from the reminder notification itself, as well as in the app.
+- Optional automatic posting of trusted provider payments, **off by default**. It applies only to an SMS from the
+  provider's own sender ID, with a reference, no duplicate, under an owner limit, and to a payee whose account and
+  category the owner saved. It is audited, and undone by reversal.
+- Purchased LUKU tokens are kept in captured text.
+- Telegram capture through a self-hosted TDLib worker; it needs the owner's own api_id/api_hash.
+- Microsoft 365 mail through OAuth2 (XOAUTH2); it needs the owner's Azure app registration.
+- Hosted CI.
+
+SELCOM and DTB sender IDs and message formats are not yet verified on the phone.
+
 **Owner scope update — 2026-11-18:** “Finish what you have done and plan the
 remaining later.” Finish regression, packaging and integration of this checkpoint;
 defer further feature expansion. The prioritized remaining software and physical

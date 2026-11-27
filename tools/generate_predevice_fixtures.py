@@ -22,8 +22,11 @@ def dataset():
                 expected=dict(provider=provider, kind='EXPENSE', amount=amount, fee=0, reference=reference)))
     for lang, text in [('en', 'Payment failed. Paid TZS 5,000 ref SYNTH0001'),
                        ('sw', 'Muamala umeshindwa. Umelipa TZS 5,000 ref SYNTH0002'),
-                       ('en', 'Paid TZS 1.25 ref SYNTH0003'), ('sw', 'Umelipa TZS 0 ref SYNTH0004')]:
+                       ('en', 'Paid TZS 0.25 ref SYNTH0003'), ('sw', 'Umelipa TZS 0 ref SYNTH0004')]:
         finance.append(dict(id=f'reject-{len(finance)}', language=lang, sender='M-PESA', text=text, expected=None))
+    # Owner decision 2026-11-27: cents round half-up to whole shillings instead of dropping the message.
+    finance.append(dict(id='finance-cents', language='en', sender='NMB', text='Paid TZS 12,345.50 ref SYNTHCENTS. Synthetic fixture.',
+        expected=dict(provider='NMB', kind='EXPENSE', amount=12346, fee=0, reference='SYNTHCENTS')))
     queries = []
     for en, sw, kinds, categories, date in [
         ('Find my travel videos last year', 'Tafuta video zangu za safari mwaka jana', ['VIDEO'], ['travel'], 'last-year'),
