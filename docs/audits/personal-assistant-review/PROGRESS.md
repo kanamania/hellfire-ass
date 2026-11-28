@@ -26,9 +26,9 @@ The backlog's implementation status is tracked in the **Status** column of
 `07-roadmap-and-backlog.md`. Each implemented item is merged to `main` through its
 own worktree branch with tests.
 
-## Implemented so far (updated 2026-11-27)
+## Implemented so far (updated 2026-11-28)
 
-**Done:** HF-001–HF-014, HF-020–HF-025, HF-030, HF-031, HF-032, HF-033, HF-034, HF-041, HF-043, HF-044, HF-045, HF-050, HF-051, HF-052, HF-061, HF-062, HF-063, HF-064, HF-065, HF-073, HF-074, HF-075.
+**Done:** HF-001–HF-014, HF-020–HF-025, HF-030, HF-031, HF-032, HF-033, HF-034, HF-041, HF-043, HF-044, HF-045, HF-050, HF-051, HF-052, HF-061, HF-062, HF-063, HF-064, HF-065, HF-073, HF-074, HF-075, HF-076, HF-077.
 
 **Partly done:** HF-071 (process death during recording still open).
 
@@ -36,7 +36,7 @@ own worktree branch with tests.
 
 Each item's status and commit are in `07-roadmap-and-backlog.md`.
 
-**Checks (2026-11-27):** Android unit tests 619, 0 failures, 5 skips; lint 0 errors. Web API 33/33. Relay 41. WhatsApp worker 6/6. Telegram worker 3/3.
+**Checks (2026-11-28):** Android unit tests 621, 0 failures, 5 skips; lint 0 errors. Web API 33/33. Relay 41. WhatsApp worker 6/6. Telegram worker 3/3.
 
 **Owner decisions (approved 2026-11-27, all implemented): HF-004b cents, HF-011b notification Done/Snooze,
 HF-040 opt-in auto-post, HF-046 LUKU tokens, HF-060 Telegram, HF-066 Microsoft 365, HF-073 hosted CI (pushed,

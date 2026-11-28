@@ -25,6 +25,10 @@ data class SearchHit(
 )
 
 class IntelligenceSearch(private val app: HellFireApp) {
+    /** True when the last [search] stopped the meaning scan at [SEMANTIC_SCAN_LIMIT] with embeddings left unread. */
+    var semanticTruncated = false
+        private set
+
     suspend fun searchWithin(itemId: String, query: String): List<TimestampHit> =
         LibraryTimestampSearch(app.database.library()).searchWithin(itemId, query)
 
@@ -91,13 +95,18 @@ class IntelligenceSearch(private val app: HellFireApp) {
     }
 
     private suspend fun semantic(query: String, raw: MutableList<Triple<String, String, Double>>) {
+        semanticTruncated = false
         if (query.isBlank() || !app.semantic.configured) return
         val model = app.semantic.embeddingModel() ?: return
         val vector = app.semantic.embedText(query) ?: return
         var after = ""
         var afterEmbedding = ""
         var scanned = 0
-        while (scanned < 1500) {
+        while (true) {
+            if (scanned >= SEMANTIC_SCAN_LIMIT) {
+                semanticTruncated = app.database.library().embeddings(model, after, 1, afterEmbedding).isNotEmpty()
+                break
+            }
             val page = app.database.library().embeddings(model, after, 200, afterEmbedding)
             if (page.isEmpty()) break
             page.forEach { row ->
@@ -112,4 +121,6 @@ class IntelligenceSearch(private val app: HellFireApp) {
             if (page.size < 200) break
         }
     }
+
+    companion object { const val SEMANTIC_SCAN_LIMIT = 1500 }
 }

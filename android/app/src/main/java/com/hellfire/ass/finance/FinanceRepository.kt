@@ -173,11 +173,11 @@ class FinanceRepository(private val db: EventDatabase, private val suppress: sus
         if (dao.findCandidate(id) != null) return@withTransaction
         if (suppress(sourceId, text)) return@withTransaction
         val referenced = parsed.reference != null && dao.hasReference(parsed.provider, parsed.reference)
-        // An SMS and the SMS app's notification about it rarely share a parsed reference. Only a different kind of
-        // source counts, so two genuine equal payments arriving as two SMS both stay in review.
-        val source = db.events().find(sourceId)?.source
-        val match = if (referenced || source == null) null else dao.crossSourceMatch(parsed.provider, parsed.kind, parsed.amount,
-            occurredAt, occurredAt - CROSS_SOURCE_WINDOW, occurredAt + CROSS_SOURCE_WINDOW, source)
+        // An SMS and the notifications about it rarely share a parsed reference. Only a different channel (source kind
+        // or app) counts, so two genuine equal payments arriving as two SMS both stay in review.
+        val event = db.events().find(sourceId)
+        val match = if (referenced || event == null) null else dao.crossSourceMatch(parsed.provider, parsed.kind, parsed.amount,
+            occurredAt, occurredAt - CROSS_SOURCE_WINDOW, occurredAt + CROSS_SOURCE_WINDOW, event.source, event.packageName)
         val candidate = FinanceCandidate(id, sourceId, provider = parsed.provider, reference = parsed.reference, kind = parsed.kind,
             amount = parsed.amount, fee = parsed.fee, merchant = parsed.merchant, evidence = parsed.evidence, occurredAt = occurredAt,
             state = if (referenced || match != null) "DUPLICATE" else "REVIEW", duplicateOf = match?.id)

@@ -69,8 +69,9 @@ fun SearchScreen(route: Route) {
         if (query.isNotBlank()) {
             val parsed = QueryParser.parse(query, System.currentTimeMillis())
             constraints = parsed
-            hits = IntelligenceSearch(app).search(parsed)
-            status = if (hits.isEmpty()) "No matching saved items." else "${hits.size} results."
+            val search = IntelligenceSearch(app)
+            hits = search.search(parsed)
+            status = (if (hits.isEmpty()) "No matching saved items." else "${hits.size} results.") + capNote(search)
         }
     }
     PushedPage(stringResource(R.string.ui_intel_search), breadcrumb = stringResource(R.string.ui_intel_settings)) {
@@ -80,11 +81,12 @@ fun SearchScreen(route: Route) {
                 val now = System.currentTimeMillis()
                 val next = constraints?.let { QueryParser.refine(it, query, now) } ?: QueryParser.parse(query, now)
                 constraints = next
-                hits = runCatching { IntelligenceSearch(app).search(next) }.getOrElse {
+                val search = IntelligenceSearch(app)
+                hits = runCatching { search.search(next) }.getOrElse {
                     status = it.message ?: "Search failed"
                     emptyList()
                 }
-                status = if (hits.isEmpty()) "No matching saved items." else "${hits.size} results. Constraints stay until you start with Find."
+                status = (if (hits.isEmpty()) "No matching saved items." else "${hits.size} results. Constraints stay until you start with Find.") + capNote(search)
             }
         })
         if (status.isNotBlank()) Note(status)
@@ -105,6 +107,9 @@ fun SearchScreen(route: Route) {
         }
     }
 }
+
+private fun capNote(search: IntelligenceSearch) =
+    if (search.semanticTruncated) " Meaning search read only the first ${IntelligenceSearch.SEMANTIC_SCAN_LIMIT} segments; add words or a date to narrow it." else ""
 
 @Composable
 fun ProcessingQueueScreen() {

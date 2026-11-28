@@ -60,9 +60,12 @@ interface FinanceDao {
     @Query("SELECT sourceId FROM finance_candidate WHERE provider = :provider AND reference = :reference AND state = 'DUPLICATE'") suspend fun duplicateSources(provider: String, reference: String): List<String>
     @Query("UPDATE finance_candidate SET state = 'DUPLICATE_LINKED' WHERE provider = :provider AND reference = :reference AND state = 'DUPLICATE'") suspend fun linkDuplicates(provider: String, reference: String)
     @Query("UPDATE finance_candidate SET state = :state WHERE id = :id") suspend fun candidateState(id: String, state: String)
-    /** Same payment already seen by a different kind of source (SMS vs notification) within the window. */
-    @Query("SELECT c.* FROM finance_candidate c JOIN source_event e ON e.id = c.sourceId WHERE c.provider = :provider AND c.kind = :kind AND c.amount = :amount AND c.occurredAt BETWEEN :from AND :to AND e.source != :source AND c.state IN ('REVIEW', 'APPROVED') ORDER BY ABS(c.occurredAt - :at) LIMIT 1")
-    suspend fun crossSourceMatch(provider: String, kind: String, amount: Long, at: Long, from: Long, to: Long, source: String): FinanceCandidate?
+    /**
+     * Same payment already seen on a different channel (source kind or app, e.g. SMS vs SMS-app notification vs wallet
+     * push) within the window. A copy that is itself a duplicate resolves to its original, which is returned.
+     */
+    @Query("SELECT o.* FROM finance_candidate c JOIN source_event e ON e.id = c.sourceId JOIN finance_candidate o ON o.id = COALESCE(c.duplicateOf, c.id) WHERE c.provider = :provider AND c.kind = :kind AND c.amount = :amount AND c.occurredAt BETWEEN :from AND :to AND (e.source != :source OR e.packageName != :packageName) AND (c.state IN ('REVIEW', 'APPROVED') OR (c.state IN ('DUPLICATE', 'DUPLICATE_LINKED') AND c.duplicateOf IS NOT NULL)) AND o.state IN ('REVIEW', 'APPROVED') ORDER BY ABS(c.occurredAt - :at) LIMIT 1")
+    suspend fun crossSourceMatch(provider: String, kind: String, amount: Long, at: Long, from: Long, to: Long, source: String, packageName: String): FinanceCandidate?
     @Query("SELECT * FROM finance_candidate WHERE duplicateOf = :id AND state = 'DUPLICATE'") suspend fun duplicatesOf(id: String): List<FinanceCandidate>
     @Query("UPDATE finance_candidate SET state = :state WHERE duplicateOf = :id AND state = 'DUPLICATE'") suspend fun resolveDuplicatesOf(id: String, state: String)
     @Query("SELECT * FROM ledger_entry ORDER BY occurredAt DESC, createdAt DESC LIMIT 100") fun entries(): Flow<List<LedgerEntry>>

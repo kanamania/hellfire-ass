@@ -85,7 +85,7 @@ class ReviewFixesTest {
         assertNull(FinanceParser.parse("MPESA", "CONFIRMED Ksh paid nothing"))
     }
 
-    private suspend fun source(id: String, kind: String) = db.events().insertCaptured(SourceEvent(id, source = kind, externalId = id, packageName = "fixture",
+    private suspend fun source(id: String, kind: String, app: String = "fixture") = db.events().insertCaptured(SourceEvent(id, source = kind, externalId = id, packageName = app,
         occurredAt = 1, receivedAt = 1, kind = "POSTED", payloadHash = id, encryptedPayload = byteArrayOf(1), contentAvailable = true,
         contentRedacted = false, securitySensitive = false))
 
@@ -111,6 +111,25 @@ class ReviewFixesTest {
         repo.collect("two", 2_000, "MPESA", "M-PESA umelipa TSh 2,000 bodaboda")
         repo.collect("late", 2_000 + FinanceRepository.CROSS_SOURCE_WINDOW + 1, "MPESA", "M-PESA umelipa TSh 2,000 bodaboda")
         assertEquals(listOf("REVIEW", "REVIEW", "REVIEW"), listOf("one", "two", "late").map { db.finances().candidatesFor(it).single().state })
+    }
+
+    @Test fun `one payment seen as an SMS and two app notifications leaves one review item`() = runBlocking {
+        val repo = FinanceRepository(db)
+        source("note", "android_notification", "com.sms.app"); source("sms", "android_sms"); source("push", "android_notification", "com.wallet")
+        repo.collect("note", 1_000, "MPESA", "M-PESA umelipa TSh 4,000 sokoni")
+        repo.collect("sms", 2_000, "MPESA", "M-PESA umelipa TSh 4,000 sokoni")
+        repo.collect("push", 3_000, "MPESA", "M-PESA umelipa TSh 4,000 sokoni")
+        val original = db.finances().candidatesFor("note").single()
+        assertEquals(listOf(original), db.finances().reviewCandidates())
+        assertEquals(listOf(original.id, original.id), listOf("sms", "push").map { db.finances().candidatesFor(it).single().duplicateOf })
+    }
+
+    @Test fun `two equal payments notified by the same app both stay in review`() = runBlocking {
+        val repo = FinanceRepository(db)
+        source("one", "android_notification", "com.wallet"); source("two", "android_notification", "com.wallet")
+        repo.collect("one", 1_000, "MPESA", "M-PESA umelipa TSh 2,000 bodaboda")
+        repo.collect("two", 2_000, "MPESA", "M-PESA umelipa TSh 2,000 bodaboda")
+        assertEquals(2, db.finances().reviewCandidates().size)
     }
 
     @Test fun `rejecting a payment also clears its copies from review`() = runBlocking {
