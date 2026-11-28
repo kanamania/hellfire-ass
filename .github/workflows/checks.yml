@@ -25,6 +25,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      # Robolectric fetches android-all jars from Maven Central at test time; uncached runs hit HTTP 429.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.m2/repository/org/robolectric
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/gradle/libs.versions.toml', 'android/**/*.gradle.kts', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
@@ -101,6 +110,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      # Robolectric fetches android-all jars from Maven Central at test time; uncached runs hit HTTP 429.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.m2/repository/org/robolectric
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/gradle/libs.versions.toml', 'android/**/*.gradle.kts', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
       - uses: actions/setup-python@v6
         with:
           python-version: '3.14'
